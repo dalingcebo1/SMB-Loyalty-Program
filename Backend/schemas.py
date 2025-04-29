@@ -49,3 +49,18 @@ class AssignVehicleRequest(BaseModel):
     plate:       Optional[str] = None
     make:        Optional[str] = None
     model:       Optional[str] = None
+
+# ─── Payments ────────────────────────────────────────────────────────────────
+
+class PaymentInitRequest(BaseModel):
+    order_id: int
+    email: Optional[str] = None  # if not stored on the user
+
+class PaymentInitResponse(BaseModel):
+    reference:         str
+    access_code:       str
+    authorization_url: str
+
+class QRResponse(BaseModel):
+    reference:       str
+    qr_code_base64:  str

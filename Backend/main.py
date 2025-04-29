@@ -8,6 +8,8 @@ from routes.loyalty import router as loyalty_router
 # import the new catalog router
 from routes.catalog import router as catalog_router
 from routes.orders import router as orders_router
+from routes.payments import router as payments_router
+
 
 app = FastAPI(title="SMB Loyalty Program")
 
@@ -17,6 +19,8 @@ app.include_router(loyalty_router, prefix="/api", tags=["Loyalty"])
 app.include_router(catalog_router, prefix="/api", tags=["Catalog"])
 # include new orders endpoints under /api
 app.include_router(orders_router,  prefix="/api", tags=["Orders"])
+# include new payments endpoints under /api
+app.include_router(payments_router,prefix="/api")
 
 # Optionally, you can create the tables on startup (if not using Alembic here)
 #@app.on_event("startup")

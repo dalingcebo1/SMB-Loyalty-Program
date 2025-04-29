@@ -30,6 +30,8 @@ class User(Base):
     __tablename__ = "users"
     id         = Column(Integer, primary_key=True, index=True)
     phone      = Column(String, unique=True, index=True, nullable=False)
+    name       = Column(String, nullable=False)
+    email      = Column(String, nullable=True)
     tenant_id  = Column(String, ForeignKey("tenants.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -127,6 +129,7 @@ class Order(Base):
     user          = relationship("User",  back_populates="orders")
     items         = relationship("OrderItem",    back_populates="order",   cascade="all, delete")
     vehicles      = relationship("OrderVehicle", back_populates="order",   cascade="all, delete")
+    payments      = relationship("Payment",      back_populates="order",   cascade="all, delete")
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -149,3 +152,19 @@ class OrderVehicle(Base):
 
     order       = relationship("Order",   back_populates="vehicles")
     vehicle     = relationship("Vehicle")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+    id                = Column(Integer, primary_key=True, index=True)
+    order_id          = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    reference         = Column(String,  unique=True,  nullable=False)
+    access_code       = Column(String,  nullable=True)
+    authorization_url = Column(String,  nullable=True)
+    amount            = Column(Integer, nullable=False)  # in kobo
+    status            = Column(String,  nullable=False, default="initialized")
+    raw_response      = Column(JSON,    nullable=True)
+    created_at        = Column(DateTime, default=datetime.utcnow)
+
+    # relationship back to Order
+    order = relationship("Order", back_populates="payments")

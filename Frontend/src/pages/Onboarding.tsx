@@ -17,7 +17,7 @@ export const Onboarding: React.FC = () => {
     setLoading(true);
 
     try {
-      const { data } = await api.post("/api/loyalty/register", {
+      const { data } = await api.post("/loyalty/register", {
         name,
         phone,
         email: email || undefined,

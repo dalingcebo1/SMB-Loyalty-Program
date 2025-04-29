@@ -15,7 +15,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-very-secure-secret")
 DEFAULT_TENANT = os.getenv("TENANT_ID", "default")
 
 router = APIRouter(
-    prefix="/api/loyalty",
+    prefix="/loyalty",
     tags=["Loyalty"],
 )
 

@@ -7,3 +7,4 @@ python-jose
 qrcode[pil]
 pydantic
 python-dotenv
+requests

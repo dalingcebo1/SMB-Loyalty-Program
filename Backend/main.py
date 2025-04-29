@@ -15,8 +15,10 @@ from routes.catalog import router as catalog_router
 from routes.orders import router as orders_router
 from routes.payments import router as payments_router
 
-
-app = FastAPI(title="SMB Loyalty Program")
+load_dotenv()
+app = FastAPI(title="SMB Loyalty Program",
+              version="0.1",
+              description="A loyalty program for small and medium businesses",)
 
 # include existing loyalty endpoints under /api
 app.include_router(loyalty_router, prefix="/api", tags=["Loyalty"])
@@ -38,15 +40,13 @@ def health_check():
     return {"status": "ok"}
 
 
-load_dotenv()
-app = FastAPI()
 
 # Parse allowed origins from env (comma-separated)
-origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+origins = os.getenv("ALLOWED_ORIGINS", "").split(",") or["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins or ["*"],   # in prod replace "*" with your exact URLs
+    allow_origins=origins,   # in prod replace "*" with your exact URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,43 +1,37 @@
 import os
-import datetime
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import Base, engine
-from routes.loyalty import router as loyalty_router
-from routes.catalog import router as catalog_router
-from routes.orders import router as orders_router
-from routes.payments import router as payments_router
+from routes import loyalty, catalog, orders, payments
 
-# load .env (SECRET_KEY, FRONTEND_ORIGINS, TENANT_ID, etc.)
-load_dotenv()
-
-app = FastAPI(title="SMB Loyalty Program", version="0.1")
-
-# configure CORS
-origins = os.getenv("FRONTEND_ORIGINS", "*").split(",")
-if origins == [""]:
-    origins = ["*"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
+app = FastAPI(
+    title="SMB Loyalty Program",
+    version="0.1",
+    openapi_url="/openapi.json",
 )
 
-# create all tables on startup
+# allow your front-end host (and port) to talk to us
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        os.getenv("FRONTEND_URL", "http://localhost:5173"),
+        # you can add your Codespaces URL here if you need:
+        "https://laughing-space-trout-pgv46w7pw97h7vv-5173.app.github.dev",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# mount each router **without** an extra prefix,
+# since each router has its own `prefix="/loyalty"`, `/catalog`, etc.
+app.include_router(loyalty.router)
+app.include_router(catalog.router)
+app.include_router(orders.router)
+app.include_router(payments.router)
+
 @app.on_event("startup")
 def on_startup():
+    # create any missing tables
+    from database import Base, engine
     Base.metadata.create_all(bind=engine)
-
-# mount our routers
-app.include_router(loyalty_router, prefix="/loyalty", tags=["Loyalty"])
-app.include_router(catalog_router, prefix="/catalog", tags=["Catalog"])
-app.include_router(orders_router, prefix="/orders", tags=["Orders"])
-app.include_router(payments_router, prefix="/payments", tags=["Payments"])
-
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}

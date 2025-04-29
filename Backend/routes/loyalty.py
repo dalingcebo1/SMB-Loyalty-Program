@@ -11,15 +11,14 @@ from database import SessionLocal
 from models import Tenant, User, VisitCount, Reward, Redemption
 from utils.qr import generate_qr_code  # your existing QR util
 
-# load secret & tenant defaults
-SECRET_KEY = os.getenv("SECRET_KEY", "your-very-secure-secret")
+SECRET_KEY = os.getenv("SECRET_KEY", "your-VERY-secure-secret")
 DEFAULT_TENANT = os.getenv("TENANT_ID", "default")
 
 router = APIRouter(
     prefix="/loyalty",
     tags=["Loyalty"],
+    responses={404: {"description": "Not found"}},
 )
-
 
 def get_db():
     db = SessionLocal()
@@ -28,8 +27,7 @@ def get_db():
     finally:
         db.close()
 
-
-# ─── Schemas ────────────────────────────────────────────────────────────────
+# ─── Schemas ────────────────────────────────────────────────────────────────────
 
 class UserInfo(BaseModel):
     name: str
@@ -52,17 +50,12 @@ class PhoneIn(BaseModel):
 class RedeemIn(BaseModel):
     token: str
 
-# ─── Helpers ────────────────────────────────────────────────────────────────
+# ─── Helpers ────────────────────────────────────────────────────────────────────
 
 def _ensure_tenant(db: Session) -> Tenant:
     t = db.query(Tenant).filter_by(id=DEFAULT_TENANT).first()
     if not t:
-        t = Tenant(
-            id=DEFAULT_TENANT,
-            name=DEFAULT_TENANT,
-            loyalty_type="milestone",
-            created_at=datetime.datetime.utcnow(),
-        )
+        t = Tenant(id=DEFAULT_TENANT, name=DEFAULT_TENANT, loyalty_type="milestone")
         db.add(t)
         db.commit()
     return t
@@ -72,7 +65,7 @@ def _create_jwt(payload: dict, minutes: int) -> str:
     payload = {**payload, "exp": exp}
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
-# ─── Endpoints ──────────────────────────────────────────────────────────────
+# ─── Endpoints ──────────────────────────────────────────────────────────────────
 
 @router.post(
     "/register",
@@ -83,7 +76,7 @@ def _create_jwt(payload: dict, minutes: int) -> str:
 def register_user(user: RegisterUser, db: Session = Depends(get_db)):
     tenant = _ensure_tenant(db)
 
-    # lookup existing
+    # already exists?
     db_user = (
         db.query(User)
         .filter_by(phone=user.phone, tenant_id=tenant.id)
@@ -94,10 +87,14 @@ def register_user(user: RegisterUser, db: Session = Depends(get_db)):
         return AuthResponse(
             message="User already registered, token re-issued",
             token=token,
-            user=UserInfo(name=db_user.name, phone=db_user.phone, email=db_user.email),
+            user=UserInfo(
+                name=db_user.name,
+                phone=db_user.phone,
+                email=db_user.email,
+            ),
         )
 
-    # create new
+    # brand-new user
     db_user = User(
         phone=user.phone,
         name=user.name,
@@ -113,9 +110,12 @@ def register_user(user: RegisterUser, db: Session = Depends(get_db)):
     return AuthResponse(
         message="User registered successfully",
         token=token,
-        user=UserInfo(name=db_user.name, phone=db_user.phone, email=db_user.email),
+        user=UserInfo(
+            name=db_user.name,
+            phone=db_user.phone,
+            email=db_user.email,
+        ),
     )
-
 
 @router.post(
     "/visit",
@@ -123,7 +123,11 @@ def register_user(user: RegisterUser, db: Session = Depends(get_db)):
     summary="Log a visit for a given phone number",
 )
 def log_visit(body: PhoneIn, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter_by(phone=body.phone).first()
+    db_user = (
+        db.query(User)
+        .filter_by(phone=body.phone, tenant_id=DEFAULT_TENANT)
+        .first()
+    )
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -135,13 +139,10 @@ def log_visit(body: PhoneIn, db: Session = Depends(get_db)):
     if not vc:
         vc = VisitCount(user_id=db_user.id, tenant_id=db_user.tenant_id, count=0)
     vc.count += 1
-    vc.updated_at = datetime.datetime.utcnow()
-
     db.add(vc)
     db.commit()
 
     return {"message": "Visit logged", "total_visits": vc.count}
-
 
 @router.get(
     "/me",
@@ -151,7 +152,11 @@ def get_profile(
     phone: str = Query(..., description="User phone number"),
     db: Session = Depends(get_db),
 ):
-    db_user = db.query(User).filter_by(phone=phone).first()
+    db_user = (
+        db.query(User)
+        .filter_by(phone=phone, tenant_id=DEFAULT_TENANT)
+        .first()
+    )
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -162,29 +167,32 @@ def get_profile(
     )
     visits = vc.count if vc else 0
 
-    all_rewards = (
+    # load milestone rewards
+    rewards = (
         db.query(Reward)
         .filter_by(tenant_id=db_user.tenant_id, type="milestone")
         .order_by(Reward.milestone)
         .all()
     )
     redeemed_ids = {
-        r.reward_id
-        for r in db.query(Redemption).filter_by(user_id=db_user.id)
+        rec.reward_id
+        for rec in db.query(Redemption).filter_by(user_id=db_user.id)
     }
 
     ready, upcoming = [], []
-    for r in all_rewards:
+    for r in rewards:
         if r.id in redeemed_ids:
             continue
         if visits >= r.milestone:
             ready.append({"milestone": r.milestone, "reward": r.title})
         else:
-            upcoming.append({
-                "milestone": r.milestone,
-                "reward": r.title,
-                "visits_needed": r.milestone - visits,
-            })
+            upcoming.append(
+                {
+                    "milestone": r.milestone,
+                    "reward": r.title,
+                    "visits_needed": r.milestone - visits,
+                }
+            )
 
     history = [
         {
@@ -192,10 +200,12 @@ def get_profile(
             "reward": rec.reward.title,
             "timestamp": rec.created_at.isoformat(),
         }
-        for rec in db.query(Redemption)
-                        .filter_by(user_id=db_user.id)
-                        .order_by(Redemption.created_at.desc())
-                        .all()
+        for rec in (
+            db.query(Redemption)
+            .filter_by(user_id=db_user.id)
+            .order_by(Redemption.created_at.desc())
+            .all()
+        )
     ]
 
     return {
@@ -208,13 +218,16 @@ def get_profile(
         "redeemed_history": history,
     }
 
-
 @router.post(
     "/reward",
     summary="Issue QR-coded JWTs for any newly unlocked milestone rewards",
 )
 def claim_reward(body: PhoneIn, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter_by(phone=body.phone).first()
+    db_user = (
+        db.query(User)
+        .filter_by(phone=body.phone, tenant_id=DEFAULT_TENANT)
+        .first()
+    )
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -225,18 +238,17 @@ def claim_reward(body: PhoneIn, db: Session = Depends(get_db)):
     )
     visits = vc.count if vc else 0
 
-    # find all milestone rewards <= visits
-    milestones = (
+    rewards = (
         db.query(Reward)
         .filter_by(tenant_id=db_user.tenant_id, type="milestone")
         .filter(Reward.milestone <= visits)
         .all()
     )
     redeemed_ids = {
-        r.reward_id
-        for r in db.query(Redemption).filter_by(user_id=db_user.id)
+        rec.reward_id
+        for rec in db.query(Redemption).filter_by(user_id=db_user.id)
     }
-    to_issue = [r for r in milestones if r.id not in redeemed_ids]
+    to_issue = [r for r in rewards if r.id not in redeemed_ids]
 
     if not to_issue:
         return {"message": "No new rewards", "rewards": []}
@@ -253,15 +265,16 @@ def claim_reward(body: PhoneIn, db: Session = Depends(get_db)):
             minutes=10,
         )
         qr = generate_qr_code(token)
-        out.append({
-            "milestone": r.milestone,
-            "reward": r.title,
-            "token": token,
-            "qr_code_base64": qr,
-        })
+        out.append(
+            {
+                "milestone": r.milestone,
+                "reward": r.title,
+                "token": token,
+                "qr_code_base64": qr,
+            }
+        )
 
     return {"message": "Rewards issued", "rewards": out}
-
 
 @router.post(
     "/redeem",
@@ -278,7 +291,7 @@ def redeem(body: RedeemIn, db: Session = Depends(get_db)):
     user_id = payload["user_id"]
     reward_id = payload["reward_id"]
 
-    db_user = db.query(User).get(user_id)
+    db_user = db.get(User, user_id)
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 

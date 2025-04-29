@@ -7,7 +7,6 @@ from database import engine, Base  # ensure Base.metadata.create_all is called i
 from routes.loyalty import router as loyalty_router
 # import the new catalog router
 from routes.catalog import router as catalog_router
-from routes.catalog import router as catalog_router
 from routes.orders import router as orders_router
 
 app = FastAPI(title="SMB Loyalty Program")
@@ -20,9 +19,10 @@ app.include_router(catalog_router, prefix="/api", tags=["Catalog"])
 app.include_router(orders_router,  prefix="/api", tags=["Orders"])
 
 # Optionally, you can create the tables on startup (if not using Alembic here)
-@app.on_event("startup")
-def on_startup():
-    Base.metadata.create_all(bind=engine)
+#@app.on_event("startup")
+#def on_startup():
+    #Base.metadata.create_all(bind=engine)
+#assume init_db.py was already run to create tables
 
 @app.get("/health")
 def health_check():

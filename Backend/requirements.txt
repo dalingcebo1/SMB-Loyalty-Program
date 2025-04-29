@@ -8,3 +8,4 @@ qrcode[pil]
 pydantic
 python-dotenv
 requests
+alembic

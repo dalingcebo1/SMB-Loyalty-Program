@@ -3,15 +3,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Order, OrderItem, Vehicle, OrderVehicle, VisitCount, Service, Extra
+from models import Order, OrderItem, Vehicle, OrderVehicle, Service, Extra, VisitCount
 from schemas import (
-    OrderCreate, 
-    OrderResponse, 
-    OrderDetailResponse, 
+    OrderCreate,
+    OrderResponse,
+    OrderDetailResponse,
     AssignVehicleRequest,
 )
 
-router = APIRouter(tags=["Orders"])
+router = APIRouter(prefix="/orders", tags=["Orders"])
 
 def get_db():
     db = SessionLocal()
@@ -20,66 +20,57 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/orders", response_model=OrderResponse)
+@router.post("", response_model=OrderResponse)
 def create_order(data: OrderCreate, db: Session = Depends(get_db)):
-    """
-    Create an order from a cart payload:
-    {
-      "user_id": 1,
-      "items": [
-        { "service_id": 3, "category":"car/bike", "qty":1, "extras":[5,6] },
-        …
-      ]
-    }
-    """
-    # Compute line totals & order total
     total = 0
-    items = []
+    items_to_add = []
     for it in data.items:
         svc = db.get(Service, it.service_id)
         if not svc:
-            raise HTTPException(404, "Service not found")
-        base = svc.base_price * it.qty
-        extra_sum = sum((db.get(Extra, e).price_map[it.category] or 0) * it.qty for e in (it.extras or []))
-        line_total = base + extra_sum
-        total += line_total
-        items.append(OrderItem(
-            service_id=it.service_id,
-            category=it.category,
-            qty=it.qty,
-            extras=it.extras,
-            line_total=line_total
-        ))
+            raise HTTPException(404, f"Service {it.service_id} not found")
+        line = svc.base_price * it.qty
+        for eid in it.extras or []:
+            ext = db.get(Extra, eid)
+            if ext:
+                line += ext.price_map.get(it.category, 0) * it.qty
+        total += line
+        items_to_add.append((it, line))
 
     order = Order(user_id=data.user_id, total_amount=total)
     db.add(order)
     db.flush()  # assign order.id
-    for item in items:
-        item.order_id = order.id
-        db.add(item)
+
+    for it, line in items_to_add:
+        db.add(
+            OrderItem(
+                order_id=order.id,
+                service_id=it.service_id,
+                category=it.category,
+                qty=it.qty,
+                extras=it.extras,
+                line_total=line,
+            )
+        )
+
     db.commit()
     db.refresh(order)
-    return OrderResponse.from_orm(order)
+    return order
 
-
-@router.get("/orders/{order_id}", response_model=OrderDetailResponse)
+@router.get("/{order_id}", response_model=OrderDetailResponse)
 def get_order(order_id: int, db: Session = Depends(get_db)):
     order = db.query(Order).filter_by(id=order_id).first()
     if not order:
         raise HTTPException(404, "Order not found")
-    return OrderDetailResponse.from_orm(order)
+    resp = OrderDetailResponse.from_orm(order).dict()
+    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
+    return resp
 
-
-@router.post("/orders/{order_id}/assign-vehicle", response_model=OrderDetailResponse)
+@router.post("/{order_id}/assign-vehicle", response_model=OrderDetailResponse)
 def assign_vehicle(order_id: int, req: AssignVehicleRequest, db: Session = Depends(get_db)):
-    """
-    Assign an existing vehicle or create & assign new via plate/make/model.
-    """
-    order = db.query(Order).get(order_id)
+    order = db.get(Order, order_id)
     if not order:
         raise HTTPException(404, "Order not found")
 
-    # Create or find vehicle
     if req.vehicle_id:
         vehicle = db.get(Vehicle, req.vehicle_id)
         if not vehicle:
@@ -89,14 +80,15 @@ def assign_vehicle(order_id: int, req: AssignVehicleRequest, db: Session = Depen
         db.add(vehicle)
         db.flush()
 
-    ova = OrderVehicle(order_id=order.id, vehicle_id=vehicle.id)
-    db.add(ova)
+    db.add(OrderVehicle(order_id=order.id, vehicle_id=vehicle.id))
     db.commit()
     db.refresh(order)
-    return OrderDetailResponse.from_orm(order)
 
+    resp = OrderDetailResponse.from_orm(order).dict()
+    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
+    return resp
 
-@router.post("/orders/{order_id}/start-wash", response_model=OrderDetailResponse)
+@router.post("/{order_id}/start-wash", response_model=OrderDetailResponse)
 def start_wash(order_id: int, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
@@ -104,16 +96,18 @@ def start_wash(order_id: int, db: Session = Depends(get_db)):
     order.status = "in_progress"
     db.commit()
     db.refresh(order)
-    return OrderDetailResponse.from_orm(order)
 
+    resp = OrderDetailResponse.from_orm(order).dict()
+    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
+    return resp
 
-@router.post("/orders/{order_id}/complete-wash", response_model=OrderDetailResponse)
+@router.post("/{order_id}/complete-wash", response_model=OrderDetailResponse)
 def complete_wash(order_id: int, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
         raise HTTPException(404, "Order not found")
     order.status = "completed"
-    # Log visits: increment VisitCount
+    # increment visits
     vc = db.query(VisitCount).filter_by(user_id=order.user_id).first()
     if not vc:
         vc = VisitCount(user_id=order.user_id, tenant_id=order.user.tenant_id, count=0)
@@ -121,4 +115,7 @@ def complete_wash(order_id: int, db: Session = Depends(get_db)):
     vc.count += sum(item.qty for item in order.items)
     db.commit()
     db.refresh(order)
-    return OrderDetailResponse.from_orm(order)
+
+    resp = OrderDetailResponse.from_orm(order).dict()
+    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
+    return resp

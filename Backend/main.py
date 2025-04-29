@@ -1,5 +1,10 @@
 # Backend/main.py
 
+# Backend/main.py  (or wherever you create your FastAPI app)
+from fastapi.middleware.cors import CORSMiddleware
+import os
+from dotenv import load_dotenv
+
 from fastapi import FastAPI
 from database import engine, Base  # ensure Base.metadata.create_all is called if needed
 
@@ -33,3 +38,18 @@ def health_check():
     return {"status": "ok"}
 
 
+load_dotenv()
+app = FastAPI()
+
+# Parse allowed origins from env (comma-separated)
+origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins or ["*"],   # in prod replace "*" with your exact URLs
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# … your existing routers & startup events …

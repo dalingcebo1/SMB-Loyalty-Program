@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
-# 1) Create a fresh Vite+React+TS app in ./frontend
+# 1) Remove any existing frontend folder and scaffold a new Vite+React+TS app
+rm -rf frontend
 npm create vite@latest frontend -- --template react-ts
 cd frontend
 
-# 2) Install our routing, HTTP client and QR library
+# 2) Install routing, HTTP client, and QR library
 npm install react-router-dom axios qrcode.react
 
-# 3) Create a sane folder structure
-mkdir -p \
-  src/pages \
-  src/components \
-  src/api \
-  src/utils \
-  src/types
+# 3) Create our directory structure
+mkdir -p src/pages src/components src/api src/utils src/types
 
-# 4) Scaffold our six pages
+# 4) Scaffold the main pages
 for page in Onboarding Services Cart Payment QrScreen StaffDashboard; do
   cat > src/pages/${page}.tsx <<EOF
 import React from "react";
@@ -24,7 +20,7 @@ import React from "react";
 export const ${page}: React.FC = () => {
   return (
     <div>
-      <h1>${page.replace(/([A-Z])/g, " \$1").trim()}</h1>
+      <h1>${page}</h1>
       {/* TODO: implement ${page} */}
     </div>
   );
@@ -32,7 +28,8 @@ export const ${page}: React.FC = () => {
 EOF
 done
 
-# 5) Scaffold shared components
+# 5) Shared UI components
+
 cat > src/components/Header.tsx <<EOF
 import React from "react";
 import { Link } from "react-router-dom";
@@ -124,8 +121,7 @@ import React from "react";
 
 export const QrViewer: React.FC<{ data: string }> = ({ data }) => (
   <div>
-    {/* you can wrap qrcode.react or any lib here */}
-    <img src={data} alt="Scan for your wash" />
+    <img src={data} alt="Scan to validate payment" />
   </div>
 );
 EOF
@@ -147,7 +143,11 @@ export const OrdersTable: React.FC<{
   <table>
     <thead>
       <tr>
-        <th>Order ID</th><th>User ID</th><th>Total</th><th>Status</th><th>Action</th>
+        <th>Order ID</th>
+        <th>User ID</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody>
@@ -155,7 +155,7 @@ export const OrdersTable: React.FC<{
         <tr key={o.id}>
           <td>{o.id}</td>
           <td>{o.user_id}</td>
-          <td>\${o.total_amount/100}</td>
+          <td>\${o.total_amount / 100}</td>
           <td>{o.status}</td>
           <td>
             <button onClick={() => onSelect(o.id)}>Open</button>
@@ -167,7 +167,7 @@ export const OrdersTable: React.FC<{
 );
 EOF
 
-# 6) API helper
+# 6) API client setup
 cat > src/api/api.ts <<EOF
 import axios from "axios";
 
@@ -176,7 +176,7 @@ export const api = axios.create({
 });
 EOF
 
-# 7) Basic router setup in App.tsx
+# 7) App routing in App.tsx
 cat > src/App.tsx <<'EOF'
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -204,12 +204,12 @@ export const App: React.FC = () => (
 export default App;
 EOF
 
-# 8) Bootstrapping in main.tsx
-cat > src/main.tsx <<'EOF'
+# 8) Entry point in main.tsx
+cat > src/main.tsx <<EOF
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import "./index.css";  // create this or use your own styling
+import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -233,6 +233,8 @@ export type Extra = {
 };
 EOF
 
-echo "✅ Front-end scaffold complete in ./frontend"
-echo "→ cd frontend && npm install"
-echo "→ npm run dev  to start your React app"
+echo "✅ Front-end scaffold complete!"
+echo "Run the following to start your app:"
+echo "  cd frontend"
+echo "  npm install"
+echo "  npm run dev"

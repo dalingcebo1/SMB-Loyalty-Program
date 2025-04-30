@@ -6,23 +6,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // <-- add this block:
-      '/catalog': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/loyalty': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/orders': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/payments': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
+      '/catalog':  { target: 'http://localhost:8000', changeOrigin: true },
+      '/loyalty':  { target: 'http://localhost:8000', changeOrigin: true },
+      '/orders':   { target: 'http://localhost:8000', changeOrigin: true },
+      '/payments': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
 })

@@ -1,7 +1,7 @@
 // Frontend/src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Onboarding from './pages/Onboarding';
-import Services from './pages/Services';
+import { Services } from './pages/Services';
 import Cart from './pages/Cart';
 import Payment from './pages/Payment';
 import QrDisplay from './pages/QRDisplay';

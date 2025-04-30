@@ -1,13 +1,13 @@
 // Frontend/src/api/api.ts
-import axios from 'axios';
+import axios from "axios";
 
 export const api = axios.create({
-  // no baseURL here ⇒ use relative URLs like "/catalog/services"
+  baseURL: import.meta.env.VITE_API_URL || "/",  // proxy will kick in for /catalog, /loyalty, etc.
 });
 
-// attach Bearer token if present
+// Attach JWT (if present)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }

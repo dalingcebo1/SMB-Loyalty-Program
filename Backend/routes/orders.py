@@ -44,24 +44,30 @@ def create_order(
     req: OrderCreateRequest,
     db: Session = Depends(get_db),
 ):
-    # 1) Create order record
-    #    (you'll want to flesh this out with real fields)
-    new_order = Order(
-        id=str(uuid.uuid4()),
-        service_id=req.service_id,
-        quantity=req.quantity,
-        # you could store extras as JSON, or in a join table
-        extras=req.extras  # assuming Order.extras is a JSON column
-    )
-    db.add(new_order)
-    db.commit()
-    db.refresh(new_order)
+    print(">>> create_order payload:", req.dict())   # <–– log it
+    try:
+        # optional: verify each extra exists in your extras table
+        from models import Extra  
+        for e in req.extras:
+            if not db.query(Extra).filter(Extra.id == e.id).first():
+                raise HTTPException(status_code=400, detail=f"Invalid extra id {e.id}")
 
-    # 2) Generate the QR payload (here just encoding the order ID,
-    #    but you can embed anything you like)
-    qr_payload = new_order.id
-
-    return OrderCreateResponse(order_id=new_order.id, qr_data=qr_payload)
+        new_order = Order(
+            id=str(uuid.uuid4()),
+            service_id=req.service_id,
+            quantity=req.quantity,
+            extras=[{"id": e.id, "quantity": e.quantity} for e in req.extras],
+        )
+        db.add(new_order)
+        db.commit()
+        db.refresh(new_order)
+        return OrderCreateResponse(order_id=new_order.id, qr_data=new_order.id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        # return the raw exception text so the front‐end alert shows it
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("", response_model=List[OrderResponse])
 def list_orders(

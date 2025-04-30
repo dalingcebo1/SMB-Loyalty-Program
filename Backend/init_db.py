@@ -1,36 +1,26 @@
-from dotenv import load_dotenv
-import os
+#!/usr/bin/env python3
 import sys
-from sqlalchemy.exc import OperationalError
+import os
 
-# so we can import database.py/models.py no matter cwd
-sys.path.append(os.path.dirname(__file__))
-
-# load DATABASE_URL, SECRET_KEY, etc from .env
-load_dotenv()
+# add project root to PYTHONPATH so "models" is importable
+HERE = os.path.dirname(__file__)            # Backend/
+ROOT = os.path.abspath(os.path.join(HERE, ".."))  # project root
+sys.path.insert(0, ROOT)
 
 from database import Base, engine
-import models  # noqa: F401 — ensures all your ORM model classes are registered
 
-def main():
-    db_url = os.getenv("DATABASE_URL")
-    print(f"▶️ init_db using DATABASE_URL: {db_url}")
-    if not db_url:
-        raise RuntimeError("DATABASE_URL is not set in environment")
+# Make sure ALL of your table-definitions get loaded into Base.metadata:
+import models       # <-- this is your Backend/models.py
+# (if you have any tables defined elsewhere, import those too,
+# e.g. `import routes.orders` so that Order is registered)
 
-    # 1) Test the connection
-    try:
-        with engine.connect() as conn:
-            print("✅ Successfully connected to Postgres")
-    except OperationalError as err:
-        print("❌ ERROR connecting to Postgres:")
-        print(err)
-        sys.exit(1)
-
-    # 2) Create any missing tables
-    print("⏳ Creating any missing tables…")
+def reset_db():
+    print("⚠️  Dropping all existing tables...")
+    Base.metadata.drop_all(bind=engine)
+    print("✅ All tables dropped.")
+    print("⚙️  Recreating all tables...")
     Base.metadata.create_all(bind=engine)
-    print("✅ Tables created (or already existed).")
+    print("✅ Tables created.")
 
 if __name__ == "__main__":
-    main()
+    reset_db()

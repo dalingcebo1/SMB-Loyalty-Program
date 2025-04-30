@@ -10,12 +10,12 @@ app = FastAPI(
 )
 
 # CORS: allow your front-end origin
+# CORS: allow all origins set in ALLOWED_ORIGINS
+origins = os.getenv("ALLOWED_ORIGINS", "")
+allowed = [o.strip() for o in origins.split(",") if o.strip()]
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        os.getenv("FRONTEND_URL", "http://localhost:5173"),
-        # add Codespaces URL if needed
-    ],
+     CORSMiddleware,
+    allow_origins=allowed,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

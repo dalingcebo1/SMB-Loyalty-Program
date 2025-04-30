@@ -121,6 +121,7 @@ class Vehicle(Base):
 class Order(Base):
     __tablename__ = "orders"
     id            = Column(Integer, primary_key=True, index=True)
+    service_id    = Column(Integer, ForeignKey("service.id"), nullable=False)
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
     status        = Column(String, default="pending", nullable=False)
     total_amount  = Column(Integer, nullable=False)

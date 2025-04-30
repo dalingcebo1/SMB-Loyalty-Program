@@ -1,3 +1,4 @@
+// Frontend/src/types.ts
 export interface Service {
   id: number;
   name: string;
@@ -7,7 +8,7 @@ export interface Service {
 export interface Extra {
   id: number;
   name: string;
-  // maps category name → extra price
+  // map category name → extra price
   price_map: Record<string, number>;
 }
 

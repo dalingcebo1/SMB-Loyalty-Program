@@ -1,7 +1,7 @@
 // Frontend/src/pages/Cart.tsx
 import React, { useState, useEffect } from 'react';
 import { CartItem, Service, Extra } from '../types';
-import { api } from '../api/api';
+import  api  from '../api/api';
 
 const Cart: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);

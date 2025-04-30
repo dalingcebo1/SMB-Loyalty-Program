@@ -1,15 +1,17 @@
 // Frontend/src/api/api.ts
-import axios from "axios";
+import axios from 'axios';
 
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/",  // proxy will kick in for /catalog, /loyalty, etc.
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL, // e.g. http://localhost:8000
 });
 
-// Attach JWT (if present)
+// Attach JWT from localStorage (if present)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+export default api;

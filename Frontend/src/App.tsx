@@ -1,26 +1,35 @@
-// Frontend/src/App.tsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Onboarding from './pages/Onboarding';
-import { Services } from './pages/Services';
-import Cart from './pages/Cart';
-import Payment from './pages/Payment';
-import QrDisplay from './pages/QRDisplay';
-import StaffDashboard from './pages/StaffDashboard';
+// src/App.tsx
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
-function App() {
+import Onboarding from "./pages/Onboarding";
+import Services from "./pages/Services";
+// import Rewards   from "./pages/Rewards";
+// import Claimed   from "./pages/Claimed";
+// import History   from "./pages/History";
+
+const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/onboarding" />} />
+        {/* Redirect root to onboarding */}
+        <Route path="/" element={<Navigate to="/onboarding" replace />} />
+
+        {/* Onboarding flow */}
         <Route path="/onboarding" element={<Onboarding />} />
+
+        {/* Catalog / services picker */}
         <Route path="/services" element={<Services />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/payment" element={<Payment />} />
-        <Route path="/qr" element={<QrDisplay />} />
-        <Route path="/staff" element={<StaffDashboard />} />
+
+        {/*
+          // add your other pages here, e.g.:
+          <Route path="/rewards" element={<Rewards />} />
+          <Route path="/claimed" element={<Claimed />} />
+          <Route path="/history" element={<History />} />
+        */}
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
-}
+};
 
 export default App;

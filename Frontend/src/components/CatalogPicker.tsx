@@ -1,5 +1,4 @@
-// src/pages/Services.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/api";
 
 interface Service {
@@ -8,15 +7,15 @@ interface Service {
   base_price: number;
 }
 
-const Services: React.FC = () => {
-  // 1) Raw map from the API: category → Service[]
+export default function CatalogPicker() {
+  // Raw map from the API
   const [byCategory, setByCategory] = useState<Record<string, Service[]>>({});
-  // 2) Dropdown state
+  // Dropdown state
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [services, setServices] = useState<Service[]>([]);
 
-  // Fetch and initialize on mount
+  // 1) Fetch and initialize
   useEffect(() => {
     api
       .get("/catalog/services")
@@ -26,17 +25,15 @@ const Services: React.FC = () => {
 
         const cats = Object.keys(data);
         setCategories(cats);
-        if (cats.length) {
+        if (cats.length > 0) {
           setSelectedCategory(cats[0]);
           setServices(data[cats[0]]);
         }
       })
-      .catch((err) => {
-        console.error("Error loading services:", err);
-      });
+      .catch(console.error);
   }, []);
 
-  // Update services list whenever the category changes
+  // 2) Whenever category changes, update the services list
   useEffect(() => {
     if (selectedCategory) {
       setServices(byCategory[selectedCategory] || []);
@@ -67,6 +64,4 @@ const Services: React.FC = () => {
       </select>
     </div>
   );
-};
-
-export default Services;
+}

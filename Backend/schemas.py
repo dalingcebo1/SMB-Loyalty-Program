@@ -64,3 +64,17 @@ class PaymentInitResponse(BaseModel):
 class QRResponse(BaseModel):
     reference:       str
     qr_code_base64:  str
+
+class ExtraItem(BaseModel):
+    id: int
+    quantity: int
+
+class OrderCreateRequest(BaseModel):
+    service_id: int
+    quantity: int
+    extras: List[ExtraItem]
+
+class OrderCreateResponse(BaseModel):
+    order_id: str
+    qr_data: str
+

@@ -1,9 +1,11 @@
 # Backend/routes/orders.py
 
+import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import SessionLocal
+
 
 from models import (
     Order,
@@ -17,6 +19,8 @@ from models import (
 from schemas import (
     OrderCreate,
     OrderResponse,
+    OrderCreateRequest,
+    OrderCreateResponse,
     OrderDetailResponse,
     AssignVehicleRequest,
 )
@@ -30,6 +34,34 @@ def get_db():
     finally:
         db.close()
 
+
+@router.post(
+    "/create",
+    response_model=OrderCreateResponse,
+    status_code=201
+)
+def create_order(
+    req: OrderCreateRequest,
+    db: Session = Depends(get_db),
+):
+    # 1) Create order record
+    #    (you'll want to flesh this out with real fields)
+    new_order = Order(
+        id=str(uuid.uuid4()),
+        service_id=req.service_id,
+        quantity=req.quantity,
+        # you could store extras as JSON, or in a join table
+        extras=req.extras  # assuming Order.extras is a JSON column
+    )
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+
+    # 2) Generate the QR payload (here just encoding the order ID,
+    #    but you can embed anything you like)
+    qr_payload = new_order.id
+
+    return OrderCreateResponse(order_id=new_order.id, qr_data=qr_payload)
 
 @router.get("", response_model=List[OrderResponse])
 def list_orders(

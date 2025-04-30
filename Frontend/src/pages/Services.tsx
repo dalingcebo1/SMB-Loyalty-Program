@@ -1,111 +1,135 @@
 // Frontend/src/pages/Services.tsx
-import React, { useEffect, useState } from 'react';
-import { Service, Extra, CartItem } from '../types';
-import { api } from '../api/api';
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api } from '../api/api'
+
+export type Service = { id: number; name: string; base_price: number }
+export type Extra   = { id: number; name: string; price_map: Record<string, number> }
+
+// one line in your Cart.tsx will destructure this shape from location.state
+export interface CartItem {
+  serviceId: number
+  name:      string
+  basePrice: number
+  qty:       number
+  extras:    number[]           // IDs of selected extras
+}
 
 const Services: React.FC = () => {
-  const [cats, setCats] = useState<Record<string,Service[]>>({});
-  const [extras, setExtras] = useState<Extra[]>([]);
-  const [selectedCat, setSelectedCat] = useState<string>('');
-  const [pickedExtras, setPickedExtras] = useState<number[]>([]);
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const navigate = useNavigate()
 
-  // fetch services & extras once
+  // the two payloads
+  const [servicesByCat, setServicesByCat] = useState<Record<string,Service[]>>({})
+  const [extrasList,    setExtrasList]    = useState<Extra[]>([])
+
+  const [selectedCat,   setSelectedCat]   = useState<string>('')
+  const [cart,          setCart]          = useState<CartItem[]>([])
+
+  // load data once
   useEffect(() => {
-    api.get('/catalog/services').then(r => {
-      setCats(r.data);
-      // pick first category by default
-      const firstCat = Object.keys(r.data)[0];
-      setSelectedCat(firstCat);
-    });
-    api.get('/catalog/extras').then(r => setExtras(r.data));
-  }, []);
+    api.get<Record<string,Service[]>>('/catalog/services')
+      .then(r => {
+        setServicesByCat(r.data)
+        const cats = Object.keys(r.data)
+        if (cats.length) setSelectedCat(cats[0])
+      })
+      .catch(console.error)
 
-  const toggleExtra = (id: number) => {
-    setPickedExtras(xs =>
-      xs.includes(id) ? xs.filter(x => x !== id) : [...xs, id]
-    );
-  };
+    api.get<Extra[]>('/catalog/extras')
+      .then(r => setExtrasList(r.data))
+      .catch(console.error)
+  }, [])
 
-  const addToCart = (svc: Service) => {
-    const item: CartItem = {
-      service_id: svc.id,
-      category: selectedCat,
-      qty: 1,
-      extras: pickedExtras,
-    };
-    const next = [...cart, item];
-    setCart(next);
-    localStorage.setItem('cart', JSON.stringify(next));
-    // reset extras picks
-    setPickedExtras([]);
-  };
+  // add a new line to the cart
+  const handleAdd = (svc: Service) => {
+    setCart(c => [
+      ...c,
+      { serviceId: svc.id, name: svc.name, basePrice: svc.base_price, qty: 1, extras: [] }
+    ])
+  }
+
+  // toggle one extra on one cart row
+  const toggleExtra = (row: number, eid: number) => {
+    setCart(c => {
+      const copy = [...c]
+      const item = copy[row]
+      item.extras = item.extras.includes(eid)
+        ? item.extras.filter(x => x !== eid)
+        : [...item.extras, eid]
+      return copy
+    })
+  }
+
+  // push to /cart with all the state we need
+  const goToCart = () => {
+    navigate('/cart', { state: { cart, servicesByCat, extrasList, selectedCat } })
+  }
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Choose your wash</h2>
-      <div style={{ marginBottom: 20 }}>
-        {Object.keys(cats).map(cat => (
-          <button
-            key={cat}
-            style={{
-              marginRight: 8,
-              fontWeight: cat === selectedCat ? 'bold' : 'normal',
-            }}
-            onClick={() => {
-              setSelectedCat(cat);
-              setPickedExtras([]);
-            }}
-          >
-            {cat}
-          </button>
+      <h1>Pick a Category</h1>
+      <select
+        value={selectedCat}
+        onChange={e => setSelectedCat(e.target.value)}
+      >
+        {Object.keys(servicesByCat).map(cat => (
+          <option key={cat} value={cat}>{cat}</option>
         ))}
-      </div>
+      </select>
 
-      {/* List services for selected category */}
-      {cats[selectedCat]?.map(svc => (
-        <div
-          key={svc.id}
-          style={{
-            border: '1px solid #ddd',
-            padding: 12,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ marginBottom: 8 }}>
-            <strong>{svc.name}</strong> — R{svc.base_price}
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <em>Select extras:</em>
-            <div>
-              {extras.map(ex => (
-                <label key={ex.id} style={{ marginRight: 12 }}>
-                  <input
-                    type="checkbox"
-                    checked={pickedExtras.includes(ex.id)}
-                    onChange={() => toggleExtra(ex.id)}
-                  />{' '}
-                  {ex.name} (+R{ex.price_map[selectedCat] ?? 0})
-                </label>
-              ))}
+      <h2>Services — {selectedCat}</h2>
+      <ul>
+        {(servicesByCat[selectedCat] || []).map(svc => (
+          <li key={svc.id} style={{ margin: '8px 0' }}>
+            {svc.name} — R{svc.base_price}
+            <button
+              style={{ marginLeft: 8 }}
+              onClick={() => handleAdd(svc)}
+            >
+              Add
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {cart.length > 0 && (
+        <>
+          <h2>Your Cart</h2>
+          {cart.map((item, idx) => (
+            <div
+              key={idx}
+              style={{
+                border: '1px solid #ddd',
+                padding: 12,
+                marginBottom: 12,
+              }}
+            >
+              <strong>{item.name}</strong> (x{item.qty})
+              <div style={{ marginTop: 8 }}>
+                <em>Extras:</em>
+                <div>
+                  {extrasList.map(ext => (
+                    <label key={ext.id} style={{ marginRight: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={item.extras.includes(ext.id)}
+                        onChange={() => toggleExtra(idx, ext.id)}
+                      />{' '}
+                      {ext.name} (+R{ext.price_map[selectedCat] ?? 0})
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-          <button onClick={() => addToCart(svc)}>
-            Add to cart
+          ))}
+
+          <button onClick={goToCart} style={{ marginTop: 16 }}>
+            Review Cart &amp; Pay
           </button>
-        </div>
-      ))}
-
-      <div style={{ marginTop: 24 }}>
-        <button onClick={() => (window.location.href = '/cart')}>
-          View Cart ({cart.length})
-        </button>
-      </div>
+        </>
+      )}
     </div>
-  );
-};
+  )
+}
 
-export default Services;
+export default Services

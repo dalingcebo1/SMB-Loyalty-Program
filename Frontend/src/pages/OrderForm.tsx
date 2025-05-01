@@ -1,6 +1,8 @@
 // src/pages/OrderForm.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
 
 interface Service {
@@ -17,20 +19,19 @@ interface Extra {
 
 const OrderForm: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
-  const [servicesByCategory, setServicesByCategory] = useState<Record<string,Service[]>>({});
+  const [servicesByCategory, setServicesByCategory] = useState<Record<string, Service[]>>({});
   const [extras, setExtras] = useState<Extra[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [selectedServiceId, setSelectedServiceId] = useState<number|null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [serviceQuantity, setServiceQuantity] = useState(1);
-  const [extraQuantities, setExtraQuantities] = useState<Record<number,number>>({});
+  const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  // fetch services & extras
   useEffect(() => {
     api.get("/catalog/services")
       .then(res => {
-        const data = res.data as Record<string,Service[]>;
+        const data = res.data as Record<string, Service[]>;
         setServicesByCategory(data);
         const cats = Object.keys(data);
         setCategories(cats);
@@ -39,22 +40,24 @@ const OrderForm: React.FC = () => {
           setSelectedServiceId(data[cats[0]][0]?.id ?? null);
         }
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error(err);
+        toast.error("Failed to load services");
+      });
 
     api.get("/catalog/extras")
       .then(res => {
         const raw = res.data as Extra[];
-        // dedupe by id
         const unique = Array.from(new Map(raw.map(e => [e.id, e])).values());
         setExtras(unique);
-        const init: Record<number,number> = {};
-        unique.forEach(e => { init[e.id] = 0; });
-        setExtraQuantities(init);
+        setExtraQuantities(Object.fromEntries(unique.map(e => [e.id, 0])));
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error(err);
+        toast.error("Failed to load extras");
+      });
   }, []);
 
-  // reset service & qty when category changes
   useEffect(() => {
     if (selectedCategory && servicesByCategory[selectedCategory]?.length) {
       setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
@@ -84,11 +87,12 @@ const OrderForm: React.FC = () => {
 
   const handleSubmit = () => {
     if (selectedServiceId == null) {
-      alert("Please select a service.");
+      toast.warning("Please select a service");
       return;
     }
 
     setIsSubmitting(true);
+
     const payload = {
       service_id: selectedServiceId,
       quantity: serviceQuantity,
@@ -100,17 +104,19 @@ const OrderForm: React.FC = () => {
     api.post("/orders/create", payload)
       .then(res => {
         const { order_id, qr_data } = res.data;
+        toast.success("Order placed!");
         navigate("/order/confirmation", {
           state: { orderId: order_id, qrData: qr_data }
         });
       })
       .catch(err => {
         console.error("Order creation failed:", err);
-        const msg = err?.response?.data?.detail
+        const msg =
+          err?.response?.data?.detail
           ?? err?.response?.data
           ?? err.message
-          ?? "Unknown server error";
-        alert(msg);
+          ?? "Server error";
+        toast.error(msg);
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -119,6 +125,7 @@ const OrderForm: React.FC = () => {
 
   return (
     <div style={{ padding: "1rem", maxWidth: 600, margin: "0 auto" }}>
+      <ToastContainer position="top-right" />
       <h1>Book a Service</h1>
 
       <section>
@@ -127,7 +134,9 @@ const OrderForm: React.FC = () => {
           value={selectedCategory}
           onChange={e => setSelectedCategory(e.target.value)}
         >
-          {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          {categories.map(cat =>
+            <option key={cat} value={cat}>{cat}</option>
+          )}
         </select>
       </section>
 

@@ -330,6 +330,18 @@
   resolved "https://registry.npmjs.org/@rollup/rollup-linux-x64-musl/-/rollup-linux-x64-musl-4.40.1.tgz"
   integrity sha512-2BRORitq5rQ4Da9blVovzNCMaUlyKrzMSvkVR0D4qPuOy/+pMCrh1d7o01RATwVy+6Fa1WBw+da7QPeLWU/1mQ==
 
+"@tanstack/query-core@5.74.9":
+  version "5.74.9"
+  resolved "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.74.9.tgz"
+  integrity sha512-qmjXpWyigDw4SfqdSBy24FzRvpBPXlaSbl92N77lcrL+yvVQLQkf0T6bQNbTxl9IEB/SvVFhhVZoIlQvFnNuuw==
+
+"@tanstack/react-query@^5.74.11":
+  version "5.74.11"
+  resolved "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.74.11.tgz"
+  integrity sha512-FFhn9ZiYRUOsxLAWZYxVfQTpVE7UWRaAeHJIWVDHKlmZZGc16rMHW9KrFZ8peC4hA71QUf/shJD8dPSMqDnRmA==
+  dependencies:
+    "@tanstack/query-core" "5.74.9"
+
 "@types/babel__core@^7.20.5":
   version "7.20.5"
   resolved "https://registry.npmjs.org/@types/babel__core/-/babel__core-7.20.5.tgz"

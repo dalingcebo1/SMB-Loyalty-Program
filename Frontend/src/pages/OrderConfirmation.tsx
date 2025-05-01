@@ -46,7 +46,20 @@ const OrderConfirmation: React.FC = () => {
         View My Active Rewards
       </button>
     </div>
+    
+    import PaystackPayment from "./PaystackPayment";
+
+    // …
+    
+    // inside your component’s JSX, below the QR / “Order placed” message:
+    <PaystackPayment
+      email={userEmail}          // however you pull in the customer’s email
+      amount={qrData.amount}     // amount in kobo—make sure your backend passes it
+      orderId={orderId}
+    />
+    
   );
 };
+
 
 export default OrderConfirmation;

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
+import { useAuth } from "../auth/AuthProvider";   // ⭐ NEW
 
 interface Service {
   id: number;
@@ -17,11 +18,11 @@ interface Extra {
 }
 
 const OrderForm: React.FC = () => {
+  const { user } = useAuth();                     // ⭐ NEW
   const navigate = useNavigate();
 
-  //
-  // 1) Fetch services by category
-  //
+  /* ---------- 1.  Fetch catalog data ---------- */
+
   const servicesQuery = useQuery({
     queryKey: ["services"],
     queryFn: async (): Promise<Record<string, Service[]>> => {
@@ -31,9 +32,6 @@ const OrderForm: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  //
-  // 2) Fetch extras & dedupe
-  //
   const extrasQuery = useQuery({
     queryKey: ["extras"],
     queryFn: async (): Promise<Extra[]> => {
@@ -43,37 +41,28 @@ const OrderForm: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  useEffect(() => {
-    if (servicesQuery.error) toast.error("Failed to load services");
-  }, [servicesQuery.error]);
+  /* ---------- 2.  Error toast helpers ---------- */
 
-  useEffect(() => {
-    if (extrasQuery.error) toast.error("Failed to load extras");
-  }, [extrasQuery.error]);
+  useEffect(() => { if (servicesQuery.error) toast.error("Failed to load services"); },
+            [servicesQuery.error]);
+  useEffect(() => { if (extrasQuery.error) toast.error("Failed to load extras"); },
+            [extrasQuery.error]);
 
-  //
-  // 3) TS-safe defaults
-  //
+  /* ---------- 3.  Type-safe fall-backs ---------- */
+
   const servicesByCategory = servicesQuery.data ?? {};
-  const extras = extrasQuery.data ?? [];
+  const extras                = extrasQuery.data ?? [];
 
-  //
-  // 4) Local UI state
-  //
+  /* ---------- 4.  UI state ---------- */
+
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
-    null
-  );
-  const [serviceQuantity, setServiceQuantity] = useState(1);
-  const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>(
-    {}
-  );
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [serviceQuantity,  setServiceQuantity ]   = useState(1);
+  const [extraQuantities,  setExtraQuantities ]   = useState<Record<number, number>>({});
+  const [isSubmitting,     setIsSubmitting   ]    = useState(false);
 
-  //
-  // 5) On load, pick first category + service
-  //
+  /* ---------- 5.  Default to first category / service ---------- */
+
   useEffect(() => {
     const cats = Object.keys(servicesByCategory);
     if (cats.length) {
@@ -82,44 +71,34 @@ const OrderForm: React.FC = () => {
     }
   }, [servicesByCategory]);
 
-  //
-  // 6) Zero-out extras when they load
-  //
+  /* ---------- 6.  Init extra counters ---------- */
+
   useEffect(() => {
     const init: Record<number, number> = {};
     extras.forEach((e) => (init[e.id] = 0));
     setExtraQuantities(init);
   }, [extras]);
 
-  //
-  // 7) Reset service selection on category switch
-  //
+  /* ---------- 7.  Reset service on category switch ---------- */
+
   useEffect(() => {
-    if (
-      selectedCategory &&
-      servicesByCategory[selectedCategory]?.length
-    ) {
+    if (selectedCategory && servicesByCategory[selectedCategory]?.length) {
       setServiceQuantity(1);
       setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
     }
   }, [selectedCategory, servicesByCategory]);
 
-  //
-  // 8) Increment / decrement handlers
-  //
-  const incService = () => setServiceQuantity((q) => q + 1);
-  const decService = () => setServiceQuantity((q) => Math.max(1, q - 1));
+  /* ---------- 8.  Increment / decrement helpers ---------- */
+
+  const incService        = () => setServiceQuantity((q) => q + 1);
+  const decService        = () => setServiceQuantity((q) => Math.max(1, q - 1));
   const incExtra = (id: number) =>
     setExtraQuantities((q) => ({ ...q, [id]: (q[id] || 0) + 1 }));
   const decExtra = (id: number) =>
-    setExtraQuantities((q) => ({
-      ...q,
-      [id]: Math.max(0, (q[id] || 0) - 1),
-    }));
+    setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, (q[id] || 0) - 1) }));
 
-  //
-  // 9) Compute total
-  //
+  /* ---------- 9.  Re-calculate total ---------- */
+
   const total = useMemo(() => {
     let sum = 0;
     if (selectedCategory && selectedServiceId != null) {
@@ -144,21 +123,18 @@ const OrderForm: React.FC = () => {
     extras,
   ]);
 
-  //
-  // 10) Submit order
-  //
+  /* ---------- 10.  Submit order ---------- */
+
   const handleSubmit = () => {
-    if (!email) {
-      toast.warning("Please enter your email");
-      return;
-    }
-    if (selectedServiceId == null) {
+    if (!selectedServiceId) {
       toast.warning("Please select a service");
       return;
     }
+
     setIsSubmitting(true);
 
     const payload = {
+      email: user!.email,                // ⭐ auto-injected
       service_id: selectedServiceId,
       quantity: serviceQuantity,
       extras: Object.entries(extraQuantities)
@@ -171,14 +147,13 @@ const OrderForm: React.FC = () => {
       .then((res) => {
         const { order_id, qr_data } = res.data;
         toast.success("Order placed!");
-       navigate("/order/confirmation", {
-           state: {
-             orderId: order_id,
-             qrData: qr_data,
-             // pass your total in kobo to payment
-             amount: total * 100,
-           },
-         });
+        navigate("/order/confirmation", {
+          state: {
+            orderId: order_id,
+            qrData:  qr_data,
+            amount:  total * 100,        // in kobo
+          },
+        });
       })
       .catch((err: any) => {
         const msg =
@@ -191,12 +166,17 @@ const OrderForm: React.FC = () => {
       .finally(() => setIsSubmitting(false));
   };
 
-  //
-  // 11) Loading skeleton
-  //
+  /* ---------- 11.  Block anonymous users ---------- */
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  /* ---------- 12.  Loading skeleton ---------- */
+
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
     return <div style={{ padding: "1rem", textAlign: "center" }}>Loading…</div>;
   }
+
+  /* ---------- 13.  Render ---------- */
 
   return (
     <div style={{ padding: "1rem", maxWidth: 600, margin: "0 auto" }}>
@@ -249,11 +229,7 @@ const OrderForm: React.FC = () => {
         {extras.map((e) => (
           <div
             key={e.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              margin: "0.5rem 0",
-            }}
+            style={{ display: "flex", alignItems: "center", margin: "0.5rem 0" }}
           >
             <div style={{ flex: 1 }}>
               {e.name} — R{e.price_map[selectedCategory] ?? 0}
@@ -265,19 +241,7 @@ const OrderForm: React.FC = () => {
         ))}
       </section>
 
-      {/* 4. Your Email */}
-      <section style={{ marginTop: "1rem" }}>
-        <h2>4. Your Email</h2>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          style={{ width: "100%", padding: "0.5rem" }}
-        />
-      </section>
-
-      {/* Real-time total & submit */}
+      {/* 4.  Live total & submit */}
       <div style={{ marginTop: "1rem", fontWeight: "bold" }}>
         Total: R {total}
       </div>
@@ -292,7 +256,7 @@ const OrderForm: React.FC = () => {
           cursor: isSubmitting ? "not-allowed" : "pointer",
         }}
       >
-        {isSubmitting ? "Submitting…" : "Submit Order"}
+        {isSubmitting ? "Submitting…" : "Confirm & Pay"}
       </button>
     </div>
   );

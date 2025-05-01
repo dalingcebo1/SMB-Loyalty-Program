@@ -1,6 +1,13 @@
 {
   "dependencies": {
-    "html5-qrcode": "^2.3.8"
+    "@hookform/resolvers": "^5.0.1",
+    "@tanstack/react-query": "^5.75.0",
+    "firebase": "^11.6.1",
+    "html5-qrcode": "^2.3.8",
+    "react": "18.2",
+    "react-dom": "18.2",
+    "react-hook-form": "^7.56.1",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",

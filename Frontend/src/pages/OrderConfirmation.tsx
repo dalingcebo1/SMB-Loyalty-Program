@@ -2,13 +2,29 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import QRCode from "react-qr-code";
-import PaystackPayment from "./PaystackPayment";
 
 interface LocationState {
   orderId: number;
   qrData: string;
   amount: number; // in kobo
 }
+
+interface PaystackPaymentProps {
+  orderId: number;
+  amount: number;
+}
+
+const PaystackPayment: React.FC<PaystackPaymentProps> = ({ orderId, amount }) => {
+  // your component logic
+  return (
+    <div>
+      {/* Paystack payment button or logic goes here */}
+      <button disabled>
+        Pay ₦{(amount / 100).toFixed(2)} for Order #{orderId} (Coming Soon)
+      </button>
+    </div>
+  );
+};
 
 const OrderConfirmation: React.FC = () => {
   const navigate = useNavigate();

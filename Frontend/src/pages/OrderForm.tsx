@@ -1,3 +1,4 @@
+// src/pages/OrderForm.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +11,6 @@ interface Service {
   name: string;
   base_price: number;
 }
-
 interface Extra {
   id: number;
   name: string;
@@ -20,40 +20,44 @@ interface Extra {
 const OrderForm: React.FC = () => {
   const navigate = useNavigate();
 
-  // 1) Fetch services
-  const {
-    data: servicesByCategory = {},
-    isLoading: isServicesLoading,
-  } = useQuery<Record<string, Service[]>, Error>(
-    ["services"],
-    async () =>
-      (
-        await api.get("/catalog/services")
-      ).data as Record<string, Service[]>,
-    {
-      onError: () => toast.error("Failed to load services"),
-      staleTime: 1000 * 60 * 5,
-    }
-  );
-
-  // 2) Fetch extras & dedupe
-  const {
-    data: extras = [],
-    isLoading: isExtrasLoading,
-  } = useQuery<Extra[], Error>(
-    ["extras"],
-    async () => {
-      const raw = (await api.get("/catalog/extras")).data as Extra[];
-      return Array.from(new Map(raw.map((e) => [e.id, e])).values());
+  //
+  // 1) Fetch services by category (v5 single-arg style)
+  //
+  const servicesQuery = useQuery({
+    queryKey: ["services"],
+    queryFn: async (): Promise<Record<string, Service[]>> => {
+      const { data } = await api.get("/catalog/services");
+      return data;
     },
-    {
-      onError: () => toast.error("Failed to load extras"),
-      staleTime: 1000 * 60 * 5,
-    }
-  );
+    staleTime: 1000 * 60 * 5,
+    onError: () => toast.error("Failed to load services"),
+  });
 
-  // 3) UI state
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  //
+  // 2) Fetch extras & dedupe
+  //
+  const extrasQuery = useQuery({
+    queryKey: ["extras"],
+    queryFn: async (): Promise<Extra[]> => {
+      const { data: raw } = await api.get("/catalog/extras");
+      // dedupe by id
+      return Array.from(new Map(raw.map((e: Extra) => [e.id, e])).values());
+    },
+    staleTime: 1000 * 60 * 5,
+    onError: () => toast.error("Failed to load extras"),
+  });
+
+  //
+  // TS-safe defaults so indexing/map works
+  //
+  const servicesByCategory: Record<string, Service[]> =
+    servicesQuery.data ?? {};
+  const extras: Extra[] = extrasQuery.data ?? [];
+
+  //
+  // 3) Local UI state
+  //
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
     null
   );
@@ -63,31 +67,44 @@ const OrderForm: React.FC = () => {
   >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 4) Init once data arrives
+  //
+  // 4) When services load, pick first category + service
+  //
   useEffect(() => {
     const cats = Object.keys(servicesByCategory);
-    if (cats.length > 0) {
+    if (cats.length) {
       setSelectedCategory(cats[0]);
       setSelectedServiceId(servicesByCategory[cats[0]][0]?.id ?? null);
     }
   }, [servicesByCategory]);
 
+  //
+  // 5) Zero-out extras when they load
+  //
   useEffect(() => {
-    setExtraQuantities(Object.fromEntries(extras.map((e: Extra) => [e.id, 0])));
+    const init: Record<number, number> = {};
+    extras.forEach((e) => {
+      init[e.id] = 0;
+    });
+    setExtraQuantities(init);
   }, [extras]);
 
-  // 5) Reset service qty on category switch
+  //
+  // 6) When category changes, reset service qty & selection
+  //
   useEffect(() => {
     if (
       selectedCategory &&
-      servicesByCategory[selectedCategory]?.length > 0
+      servicesByCategory[selectedCategory]?.length
     ) {
       setServiceQuantity(1);
       setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
     }
   }, [selectedCategory, servicesByCategory]);
 
-  // 6) Increment/decrement
+  //
+  // 7) Increment / decrement handlers
+  //
   const incService = () => setServiceQuantity((q) => q + 1);
   const decService = () => setServiceQuantity((q) => Math.max(1, q - 1));
   const incExtra = (id: number) =>
@@ -95,24 +112,23 @@ const OrderForm: React.FC = () => {
   const decExtra = (id: number) =>
     setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, q[id] || 0 - 1) }));
 
-  // 7) Compute total
+  //
+  // 8) Compute total
+  //
   const total = useMemo(() => {
     let sum = 0;
-
     if (selectedCategory && selectedServiceId != null) {
-      const svc = servicesByCategory[selectedCategory]?.find(
+      const svc = servicesByCategory[selectedCategory].find(
         (s) => s.id === selectedServiceId
       );
       if (svc) sum += svc.base_price * serviceQuantity;
     }
-
-    extras.forEach((e: Extra) => {
+    extras.forEach((e) => {
       const qty = extraQuantities[e.id] || 0;
       if (qty > 0 && selectedCategory) {
         sum += (e.price_map[selectedCategory] ?? 0) * qty;
       }
     });
-
     return sum;
   }, [
     selectedCategory,
@@ -123,7 +139,9 @@ const OrderForm: React.FC = () => {
     extras,
   ]);
 
-  // 8) Submit
+  //
+  // 9) Submit order
+  //
   const handleSubmit = () => {
     if (selectedServiceId == null) {
       toast.warning("Please select a service");
@@ -141,13 +159,14 @@ const OrderForm: React.FC = () => {
 
     api
       .post("/orders/create", payload)
-      .then(({ data }) => {
+      .then((res) => {
+        const { order_id, qr_data } = res.data;
         toast.success("Order placed!");
         navigate("/order/confirmation", {
-          state: { orderId: data.order_id, qrData: data.qr_data },
+          state: { orderId: order_id, qrData: qr_data },
         });
       })
-      .catch((err) => {
+      .catch((err: any) => {
         const msg =
           err?.response?.data?.detail ??
           err?.response?.data ??
@@ -158,11 +177,11 @@ const OrderForm: React.FC = () => {
       .finally(() => setIsSubmitting(false));
   };
 
-  // 9) Loading state
-  if (isServicesLoading || isExtrasLoading) {
-    return (
-      <div style={{ padding: "1rem", textAlign: "center" }}>Loading…</div>
-    );
+  //
+  // 10) Loading skeleton
+  //
+  if (servicesQuery.isLoading || extrasQuery.isLoading) {
+    return <div style={{ padding: "1rem", textAlign: "center" }}>Loading…</div>;
   }
 
   return (
@@ -210,16 +229,20 @@ const OrderForm: React.FC = () => {
 
       <section style={{ marginTop: "1rem" }}>
         <h2>3. Extras</h2>
-        {extras.map((e: Extra) => (
+        {extras.map((e) => (
           <div
             key={e.id}
-            style={{ display: "flex", alignItems: "center", margin: "0.5rem 0" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              margin: "0.5rem 0",
+            }}
           >
             <div style={{ flex: 1 }}>
               {e.name} — R{e.price_map[selectedCategory] ?? 0}
             </div>
             <button onClick={() => decExtra(e.id)}>−</button>
-            <span style={{ margin: "0 8px" }}>{extraQuantities[e.id] || 0}</span>
+            <span style={{ margin: "0 8px" }}>{extraQuantities[e.id]}</span>
             <button onClick={() => incExtra(e.id)}>+</button>
           </div>
         ))}

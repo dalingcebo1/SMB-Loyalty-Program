@@ -1,10 +1,11 @@
 // src/pages/OrderForm.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 
 interface Service {
   id: number;
+  category: string;
   name: string;
   base_price: number;
 }
@@ -16,122 +17,142 @@ interface Extra {
 }
 
 const OrderForm: React.FC = () => {
-  // Catalog state
-  const [byCategory, setByCategory] = useState<Record<string, Service[]>>({});
   const [categories, setCategories] = useState<string[]>([]);
+  const [servicesByCategory, setServicesByCategory] = useState<
+    Record<string, Service[]>
+  >({});
+  const [extras, setExtras] = useState<Extra[]>([]);
+
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-
-  // Service & quantity
-  const [services, setServices] = useState<Service[]>([]);
-  const [selectedServiceId, setSelectedServiceId] = useState<number | "">("");
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
+    null
+  );
   const [serviceQuantity, setServiceQuantity] = useState<number>(1);
-
-  // Extras & quantities
-  const [allExtras, setAllExtras] = useState<Extra[]>([]);
-  const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>({});
+  const [extraQuantities, setExtraQuantities] = useState<Record<
+    number,
+    number
+  >>({});
 
   const navigate = useNavigate();
 
-  // Fetch catalog on mount
+  // Fetch catalog data
   useEffect(() => {
-    api.get("/catalog/services").then((res) => {
-      const data: Record<string, Service[]> = res.data;
-      setByCategory(data);
-      const cats = Object.keys(data);
-      setCategories(cats);
-      if (cats.length) {
-        setSelectedCategory(cats[0]);
-        setServices(data[cats[0]]);
-      }
-    });
-    api.get("/catalog/extras").then((res) => {
-      setAllExtras(res.data);
-    });
+    api
+      .get("/catalog/services")
+      .then((res) => {
+        const data: Record<string, Service[]> = res.data;
+        setServicesByCategory(data);
+        const cats = Object.keys(data);
+        setCategories(cats);
+        if (cats.length > 0) {
+          setSelectedCategory(cats[0]);
+          setSelectedServiceId(data[cats[0]][0]?.id ?? null);
+        }
+      })
+      .catch(console.error);
+
+    api
+      .get("/catalog/extras")
+      .then((res) => {
+        // dedupe by id in case of duplicates
+        const raw = res.data as Extra[];
+        const unique = Array.from(
+          new Map(raw.map((e) => [e.id, e])).values()
+        );
+        setExtras(unique);
+
+        // initialize all extras to zero
+        const init: Record<number, number> = {};
+        unique.forEach((e) => {
+          init[e.id] = 0;
+        });
+        setExtraQuantities(init);
+      })
+      .catch(console.error);
   }, []);
 
-  // When category changes
+  // Reset service when category changes
   useEffect(() => {
-    if (selectedCategory) {
-      setServices(byCategory[selectedCategory] || []);
-      setSelectedServiceId("");
+    if (
+      selectedCategory &&
+      servicesByCategory[selectedCategory]?.length > 0
+    ) {
+      setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
       setServiceQuantity(1);
-      // reset extras for this category
-      const ids = (allExtras || [])
-        .filter((e) => e.price_map[selectedCategory] != null)
-        .map((e) => e.id);
-      setExtraQuantities(ids.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}));
     }
-  }, [selectedCategory, byCategory, allExtras]);
+  }, [selectedCategory, servicesByCategory]);
 
-  const filteredExtras = allExtras.filter((e) =>
-    e.price_map[selectedCategory] != null
-  );
-
-  // Stepper helpers
+  // Service quantity handlers
   const incService = () => setServiceQuantity((q) => q + 1);
   const decService = () => setServiceQuantity((q) => Math.max(1, q - 1));
 
+  // Extra quantity handlers
   const incExtra = (id: number) =>
-    setExtraQuantities((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+    setExtraQuantities((q) => ({ ...q, [id]: q[id] + 1 }));
   const decExtra = (id: number) =>
-    setExtraQuantities((prev) => ({
-      ...prev,
-      [id]: Math.max(0, (prev[id] || 0) - 1),
-    }));
+    setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, q[id] - 1) }));
 
-  // Total calculation
+  // Compute total price
   const total = (() => {
-    const svc = services.find((s) => s.id === selectedServiceId);
-    const svcTotal = svc ? svc.base_price * serviceQuantity : 0;
-    const extrasTotal = filteredExtras.reduce(
-      (sum, ex) =>
-        sum + (ex.price_map[selectedCategory] || 0) * (extraQuantities[ex.id] || 0),
-      0
-    );
-    return svcTotal + extrasTotal;
+    let sum = 0;
+    // service
+    if (selectedCategory && selectedServiceId != null) {
+      const svc = servicesByCategory[selectedCategory].find(
+        (s) => s.id === selectedServiceId
+      );
+      if (svc) {
+        sum += svc.base_price * serviceQuantity;
+      }
+    }
+    // extras
+    extras.forEach((e) => {
+      const qty = extraQuantities[e.id] || 0;
+      if (qty > 0 && selectedCategory) {
+        const price = e.price_map[selectedCategory] ?? 0;
+        sum += price * qty;
+      }
+    });
+    return sum;
   })();
 
-  // --- Updated submission handler ----
-  const handleSubmit = async () => {
-    if (!selectedServiceId) {
-      return alert("Please pick a service");
+  // Submit handler
+  const handleSubmit = () => {
+    if (selectedServiceId == null) {
+      alert("Please select a service.");
+      return;
     }
 
-    try {
-      const response = await api.post("/orders/create", {
-        service_id: selectedServiceId,
-        quantity: serviceQuantity,
-        extras: Object.entries(extraQuantities)
-          .filter(([, qty]) => qty > 0)
-          .map(([id, qty]) => ({ id: Number(id), quantity: qty })),
-      });
+    const payload = {
+      service_id: selectedServiceId,
+      quantity: serviceQuantity,
+      extras: Object.entries(extraQuantities)
+        .filter(([, qty]) => qty > 0)
+        .map(([id, qty]) => ({ id: Number(id), quantity: qty })),
+    };
 
-      // Expect { order_id: string, qr_data: string }
-      const { order_id, qr_data } = response.data;
-
-      // Navigate to confirmation, passing the payload
-      navigate("/order/confirmation", {
-        state: { orderId: order_id, qrData: qr_data },
+    api
+      .post("/orders/create", payload)
+      .then((res) => {
+        const { order_id, qr_data } = res.data;
+        navigate("/order/confirmation", {
+          state: { orderId: order_id, qrData: qr_data },
+        });
+      })
+      .catch((err: any) => {
+        console.error("Order creation failed:", err);
+        const msg =
+          err?.response?.data?.detail ??
+          err?.response?.data ??
+          err.message ??
+          "Unknown server error";
+        alert(msg);
       });
-    } catch (err: any) {
-      console.error("Order creation failed:", err);
-      alert("Something went wrong. Please try again.");
-    }
   };
-  // -----------------------------------
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        overflowY: "auto",
-        padding: "1rem",
-        boxSizing: "border-box",
-      }}
-    >
+    <div style={{ padding: "1rem", maxWidth: 600, margin: "0 auto" }}>
       <h1>Book a Service</h1>
 
-      {/* Category */}
       <section>
         <h2>1. Pick a Category</h2>
         <select
@@ -146,98 +167,69 @@ const OrderForm: React.FC = () => {
         </select>
       </section>
 
-      {/* Service + quantity inline */}
-      <section style={{ marginTop: "1.5rem" }}>
+      <section style={{ marginTop: "1rem" }}>
         <h2>2. Pick a Service</h2>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "1rem",
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center" }}>
           <select
-            value={selectedServiceId}
-            onChange={(e) => setSelectedServiceId(Number(e.target.value))}
-            style={{ flexGrow: 1 }}
+            value={selectedServiceId ?? undefined}
+            onChange={(e) =>
+              setSelectedServiceId(Number(e.target.value))
+            }
           >
-            <option value="">-- select a service --</option>
-            {services.map((svc) => (
-              <option key={svc.id} value={svc.id}>
-                {svc.name} — R{svc.base_price}
-              </option>
-            ))}
+            {selectedCategory &&
+              servicesByCategory[selectedCategory].map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — R{s.base_price}
+                </option>
+              ))}
           </select>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <button onClick={decService} disabled={serviceQuantity <= 1}>
-              –
-            </button>
-            <span>{serviceQuantity}</span>
-            <button onClick={incService}>+</button>
-          </div>
+          <button onClick={decService} style={{ margin: "0 8px" }}>
+            −
+          </button>
+          <span>{serviceQuantity}</span>
+          <button onClick={incService} style={{ margin: "0 8px" }}>
+            +
+          </button>
         </div>
       </section>
 
-      {/* Extras with steppers */}
-      <section style={{ marginTop: "1.5rem" }}>
+      <section style={{ marginTop: "1rem" }}>
         <h2>3. Extras</h2>
-        {filteredExtras.length === 0 ? (
-          <p>No extras for this category.</p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {filteredExtras.map((ext) => (
-              <li
-                key={ext.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "0.75rem",
-                }}
-              >
-                <span>
-                  {ext.name} — R{ext.price_map[selectedCategory]}
-                </span>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <button
-                    onClick={() => decExtra(ext.id)}
-                    disabled={(extraQuantities[ext.id] || 0) <= 0}
-                  >
-                    –
-                  </button>
-                  <span>{extraQuantities[ext.id] || 0}</span>
-                  <button onClick={() => incExtra(ext.id)}>+</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        {extras.map((e) => (
+          <div
+            key={e.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              margin: "0.5rem 0",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              {e.name} — R{e.price_map[selectedCategory] ?? 0}
+            </div>
+            <button onClick={() => decExtra(e.id)}>−</button>
+            <span style={{ margin: "0 8px" }}>
+              {extraQuantities[e.id] || 0}
+            </span>
+            <button onClick={() => incExtra(e.id)}>+</button>
+          </div>
+        ))}
       </section>
 
-      {/* Total & Submit */}
-      <section
+      <div style={{ marginTop: "1rem", fontWeight: "bold" }}>
+        Total: R {total}
+      </div>
+
+      <button
+        onClick={handleSubmit}
         style={{
-          marginTop: "2rem",
-          borderTop: "1px solid #ddd",
-          paddingTop: "1rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          marginTop: "1rem",
+          padding: "0.75rem 1.5rem",
+          fontSize: "1rem",
         }}
       >
-        <strong>Total:</strong>
-        <strong>R{total}</strong>
-      </section>
-
-      <section style={{ marginTop: "1.5rem" }}>
-        <button onClick={handleSubmit}>Submit Order</button>
-      </section>
+        Submit Order
+      </button>
     </div>
   );
 };

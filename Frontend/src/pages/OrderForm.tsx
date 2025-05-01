@@ -1,6 +1,6 @@
-// src/pages/OrderForm.tsx
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
@@ -18,79 +18,117 @@ interface Extra {
 }
 
 const OrderForm: React.FC = () => {
-  const [categories, setCategories] = useState<string[]>([]);
-  const [servicesByCategory, setServicesByCategory] = useState<Record<string, Service[]>>({});
-  const [extras, setExtras] = useState<Extra[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
-  const [serviceQuantity, setServiceQuantity] = useState(1);
-  const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    api.get("/catalog/services")
-      .then(res => {
-        const data = res.data as Record<string, Service[]>;
-        setServicesByCategory(data);
-        const cats = Object.keys(data);
-        setCategories(cats);
-        if (cats.length) {
-          setSelectedCategory(cats[0]);
-          setSelectedServiceId(data[cats[0]][0]?.id ?? null);
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        toast.error("Failed to load services");
-      });
+  // 1) Fetch services
+  const {
+    data: servicesByCategory = {},
+    isLoading: isServicesLoading,
+  } = useQuery<Record<string, Service[]>, Error>(
+    ["services"],
+    async () =>
+      (
+        await api.get("/catalog/services")
+      ).data as Record<string, Service[]>,
+    {
+      onError: () => toast.error("Failed to load services"),
+      staleTime: 1000 * 60 * 5,
+    }
+  );
 
-    api.get("/catalog/extras")
-      .then(res => {
-        const raw = res.data as Extra[];
-        const unique = Array.from(new Map(raw.map(e => [e.id, e])).values());
-        setExtras(unique);
-        setExtraQuantities(Object.fromEntries(unique.map(e => [e.id, 0])));
-      })
-      .catch(err => {
-        console.error(err);
-        toast.error("Failed to load extras");
-      });
-  }, []);
+  // 2) Fetch extras & dedupe
+  const {
+    data: extras = [],
+    isLoading: isExtrasLoading,
+  } = useQuery<Extra[], Error>(
+    ["extras"],
+    async () => {
+      const raw = (await api.get("/catalog/extras")).data as Extra[];
+      return Array.from(new Map(raw.map((e) => [e.id, e])).values());
+    },
+    {
+      onError: () => toast.error("Failed to load extras"),
+      staleTime: 1000 * 60 * 5,
+    }
+  );
+
+  // 3) UI state
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
+    null
+  );
+  const [serviceQuantity, setServiceQuantity] = useState(1);
+  const [extraQuantities, setExtraQuantities] = useState<
+    Record<number, number>
+  >({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 4) Init once data arrives
+  useEffect(() => {
+    const cats = Object.keys(servicesByCategory);
+    if (cats.length > 0) {
+      setSelectedCategory(cats[0]);
+      setSelectedServiceId(servicesByCategory[cats[0]][0]?.id ?? null);
+    }
+  }, [servicesByCategory]);
 
   useEffect(() => {
-    if (selectedCategory && servicesByCategory[selectedCategory]?.length) {
-      setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
+    setExtraQuantities(Object.fromEntries(extras.map((e: Extra) => [e.id, 0])));
+  }, [extras]);
+
+  // 5) Reset service qty on category switch
+  useEffect(() => {
+    if (
+      selectedCategory &&
+      servicesByCategory[selectedCategory]?.length > 0
+    ) {
       setServiceQuantity(1);
+      setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
     }
   }, [selectedCategory, servicesByCategory]);
 
-  const incService = () => setServiceQuantity(q => q + 1);
-  const decService = () => setServiceQuantity(q => Math.max(1, q - 1));
-  const incExtra   = (id: number) => setExtraQuantities(q => ({ ...q, [id]: q[id] + 1 }));
-  const decExtra   = (id: number) => setExtraQuantities(q => ({ ...q, [id]: Math.max(0, q[id] - 1) }));
+  // 6) Increment/decrement
+  const incService = () => setServiceQuantity((q) => q + 1);
+  const decService = () => setServiceQuantity((q) => Math.max(1, q - 1));
+  const incExtra = (id: number) =>
+    setExtraQuantities((q) => ({ ...q, [id]: (q[id] || 0) + 1 }));
+  const decExtra = (id: number) =>
+    setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, q[id] || 0 - 1) }));
 
-  const total = (() => {
+  // 7) Compute total
+  const total = useMemo(() => {
     let sum = 0;
+
     if (selectedCategory && selectedServiceId != null) {
-      const svc = servicesByCategory[selectedCategory]?.find(s => s.id === selectedServiceId);
+      const svc = servicesByCategory[selectedCategory]?.find(
+        (s) => s.id === selectedServiceId
+      );
       if (svc) sum += svc.base_price * serviceQuantity;
     }
-    extras.forEach(e => {
+
+    extras.forEach((e: Extra) => {
       const qty = extraQuantities[e.id] || 0;
       if (qty > 0 && selectedCategory) {
         sum += (e.price_map[selectedCategory] ?? 0) * qty;
       }
     });
-    return sum;
-  })();
 
+    return sum;
+  }, [
+    selectedCategory,
+    selectedServiceId,
+    serviceQuantity,
+    extraQuantities,
+    servicesByCategory,
+    extras,
+  ]);
+
+  // 8) Submit
   const handleSubmit = () => {
     if (selectedServiceId == null) {
       toast.warning("Please select a service");
       return;
     }
-
     setIsSubmitting(true);
 
     const payload = {
@@ -98,45 +136,52 @@ const OrderForm: React.FC = () => {
       quantity: serviceQuantity,
       extras: Object.entries(extraQuantities)
         .filter(([, qty]) => qty > 0)
-        .map(([id, qty]) => ({ id: Number(id), quantity: qty }))
+        .map(([id, qty]) => ({ id: Number(id), quantity: qty })),
     };
 
-    api.post("/orders/create", payload)
-      .then(res => {
-        const { order_id, qr_data } = res.data;
+    api
+      .post("/orders/create", payload)
+      .then(({ data }) => {
         toast.success("Order placed!");
         navigate("/order/confirmation", {
-          state: { orderId: order_id, qrData: qr_data }
+          state: { orderId: data.order_id, qrData: data.qr_data },
         });
       })
-      .catch(err => {
-        console.error("Order creation failed:", err);
+      .catch((err) => {
         const msg =
-          err?.response?.data?.detail
-          ?? err?.response?.data
-          ?? err.message
-          ?? "Server error";
+          err?.response?.data?.detail ??
+          err?.response?.data ??
+          err.message ??
+          "Server error";
         toast.error(msg);
       })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+      .finally(() => setIsSubmitting(false));
   };
+
+  // 9) Loading state
+  if (isServicesLoading || isExtrasLoading) {
+    return (
+      <div style={{ padding: "1rem", textAlign: "center" }}>Loading…</div>
+    );
+  }
 
   return (
     <div style={{ padding: "1rem", maxWidth: 600, margin: "0 auto" }}>
       <ToastContainer position="top-right" />
+
       <h1>Book a Service</h1>
 
       <section>
         <h2>1. Pick a Category</h2>
         <select
           value={selectedCategory}
-          onChange={e => setSelectedCategory(e.target.value)}
+          onChange={(e) => setSelectedCategory(e.target.value)}
         >
-          {categories.map(cat =>
-            <option key={cat} value={cat}>{cat}</option>
-          )}
+          {Object.keys(servicesByCategory).map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
         </select>
       </section>
 
@@ -145,24 +190,31 @@ const OrderForm: React.FC = () => {
         <div style={{ display: "flex", alignItems: "center" }}>
           <select
             value={selectedServiceId ?? undefined}
-            onChange={e => setSelectedServiceId(Number(e.target.value))}
+            onChange={(e) => setSelectedServiceId(Number(e.target.value))}
           >
-            {selectedCategory && servicesByCategory[selectedCategory].map(s =>
+            {servicesByCategory[selectedCategory]?.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} — R{s.base_price}
               </option>
-            )}
+            ))}
           </select>
-          <button onClick={decService} style={{ margin: "0 8px" }}>−</button>
+          <button onClick={decService} style={{ margin: "0 8px" }}>
+            −
+          </button>
           <span>{serviceQuantity}</span>
-          <button onClick={incService} style={{ margin: "0 8px" }}>+</button>
+          <button onClick={incService} style={{ margin: "0 8px" }}>
+            +
+          </button>
         </div>
       </section>
 
       <section style={{ marginTop: "1rem" }}>
         <h2>3. Extras</h2>
-        {extras.map(e =>
-          <div key={e.id} style={{ display: "flex", alignItems: "center", margin: "0.5rem 0" }}>
+        {extras.map((e: Extra) => (
+          <div
+            key={e.id}
+            style={{ display: "flex", alignItems: "center", margin: "0.5rem 0" }}
+          >
             <div style={{ flex: 1 }}>
               {e.name} — R{e.price_map[selectedCategory] ?? 0}
             </div>
@@ -170,7 +222,7 @@ const OrderForm: React.FC = () => {
             <span style={{ margin: "0 8px" }}>{extraQuantities[e.id] || 0}</span>
             <button onClick={() => incExtra(e.id)}>+</button>
           </div>
-        )}
+        ))}
       </section>
 
       <div style={{ marginTop: "1rem", fontWeight: "bold" }}>
@@ -185,7 +237,7 @@ const OrderForm: React.FC = () => {
           padding: "0.75rem 1.5rem",
           fontSize: "1rem",
           opacity: isSubmitting ? 0.6 : 1,
-          cursor: isSubmitting ? "not-allowed" : "pointer"
+          cursor: isSubmitting ? "not-allowed" : "pointer",
         }}
       >
         {isSubmitting ? "Submitting…" : "Submit Order"}

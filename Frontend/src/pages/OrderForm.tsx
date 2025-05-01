@@ -171,14 +171,14 @@ const OrderForm: React.FC = () => {
       .then((res) => {
         const { order_id, qr_data } = res.data;
         toast.success("Order placed!");
-        navigate("/order/confirmation", {
-          state: {
-            orderId: order_id,
-            qrData: qr_data,
-            email,
-            amount: total,
-          },
-        });
+       navigate("/order/confirmation", {
+           state: {
+             orderId: order_id,
+             qrData: qr_data,
+             // pass your total in kobo to payment
+             amount: total * 100,
+           },
+         });
       })
       .catch((err: any) => {
         const msg =

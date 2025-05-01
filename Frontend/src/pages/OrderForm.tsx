@@ -145,15 +145,15 @@ const OrderForm: React.FC = () => {
     api
       .post("/orders/create", payload)
       .then((res) => {
-        const { order_id, qr_data } = res.data;
+      const { order_id, qr_data } = res.data;
         toast.success("Order placed!");
-        navigate("/order/confirmation", {
-          state: {
-            orderId: order_id,
-            qrData:  qr_data,
-            amount:  total * 100,        // in kobo
-          },
-        });
+        navigate("/order/payment", {
+        state: {
+        orderId: order_id,
+          qrData: qr_data,
+          amount: total * 100,  // in kobo
+        },
+      });
       })
       .catch((err: any) => {
         const msg =

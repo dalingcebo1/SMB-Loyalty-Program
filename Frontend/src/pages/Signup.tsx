@@ -1,3 +1,4 @@
+// src/pages/Signup.tsx
 import React from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
@@ -8,8 +9,12 @@ interface FormData {
   password: string;
 }
 
-const Login: React.FC = () => {
-  const { loginWithGoogle, loginWithApple, loginWithEmail } = useAuth();
+const Signup: React.FC = () => {
+  const {
+    loginWithGoogle,
+    loginWithApple,
+    signupWithEmail,
+  } = useAuth();
   const navigate = useNavigate();
   const {
     register,
@@ -18,14 +23,22 @@ const Login: React.FC = () => {
   } = useForm<FormData>();
 
   const onSubmit = async (data: FormData) => {
-    await loginWithEmail(data.email, data.password);
-    navigate("/");
+    try {
+      await signupWithEmail(data.email, data.password);
+      navigate("/");
+    } catch (err: any) {
+      // handle and surface Firebase errors
+      alert(err.message || "Signup failed");
+    }
   };
 
   return (
     <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
-      <h1 className="text-2xl font-semibold text-center">Log In</h1>
+      <h1 className="text-2xl font-semibold text-center">
+        Welcome to Sparkle Car Wash
+      </h1>
 
+      {/* Social sign-up */}
       <button
         onClick={() => loginWithGoogle().then(() => navigate("/"))}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
@@ -42,12 +55,14 @@ const Login: React.FC = () => {
         Continue with Apple
       </button>
 
+      {/* Divider */}
       <div className="flex items-center">
         <hr className="flex-grow" />
-        <span className="px-3 text-gray-500 text-sm">Or</span>
+        <span className="px-3 text-gray-500 text-sm">Or sign up with email</span>
         <hr className="flex-grow" />
       </div>
 
+      {/* Email/password form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <input
           type="email"
@@ -55,33 +70,44 @@ const Login: React.FC = () => {
           className="w-full border rounded px-3 py-2"
           {...register("email", { required: "Email is required" })}
         />
-        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+        {errors.email && (
+          <p className="text-red-500 text-sm">{errors.email.message}</p>
+        )}
 
         <input
           type="password"
           placeholder="Password"
           className="w-full border rounded px-3 py-2"
-          {...register("password", { required: "Password is required" })}
+          {...register("password", {
+            required: "Password is required",
+            minLength: {
+              value: 6,
+              message: "Password must be at least 6 characters",
+            },
+          })}
         />
-        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+        {errors.password && (
+          <p className="text-red-500 text-sm">{errors.password.message}</p>
+        )}
 
         <button
           type="submit"
           disabled={isSubmitting}
           className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
         >
-          Log in
+          {isSubmitting ? "Signing up…" : "Sign up"}
         </button>
       </form>
 
+      {/* Footer link */}
       <p className="text-center text-sm">
-        Don’t have an account?{" "}
-        <Link to="/signup" className="text-blue-600 underline">
-          Sign up
+        Already have an account?{" "}
+        <Link to="/login" className="text-blue-600 underline">
+          Log in
         </Link>
       </p>
     </div>
   );
 };
 
-export default Login;
+export default Signup;

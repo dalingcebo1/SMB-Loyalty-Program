@@ -1,7 +1,9 @@
-import os
+import os 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import loyalty, catalog, orders  # removed payments
+
+from routes import catalog, loyalty, orders
+from routes.payments import router as payments
 
 app = FastAPI(
     title="SMB Loyalty Program",
@@ -9,12 +11,11 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
-# CORS: allow your front-end origin
-# CORS: allow all origins set in ALLOWED_ORIGINS
+# CORS: allow all origins listed in ALLOWED_ORIGINS
 origins = os.getenv("ALLOWED_ORIGINS", "")
 allowed = [o.strip() for o in origins.split(",") if o.strip()]
 app.add_middleware(
-     CORSMiddleware,
+    CORSMiddleware,
     allow_origins=allowed,
     allow_credentials=True,
     allow_methods=["*"],
@@ -24,7 +25,8 @@ app.add_middleware(
 # Mount all routers under /api
 app.include_router(loyalty.router, prefix="/api")
 app.include_router(catalog.router, prefix="/api")
-app.include_router(orders.router, prefix="/api")
+app.include_router(orders.router,  prefix="/api")
+app.include_router(payments,       prefix="/api")
 
 @app.on_event("startup")
 def on_startup():

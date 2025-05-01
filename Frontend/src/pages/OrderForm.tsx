@@ -30,7 +30,6 @@ const OrderForm: React.FC = () => {
       return data;
     },
     staleTime: 1000 * 60 * 5,
-    onError: () => toast.error("Failed to load services"),
   });
 
   //
@@ -39,13 +38,19 @@ const OrderForm: React.FC = () => {
   const extrasQuery = useQuery({
     queryKey: ["extras"],
     queryFn: async (): Promise<Extra[]> => {
-      const { data: raw } = await api.get("/catalog/extras");
-      // dedupe by id
+      const { data: raw } = await api.get<Extra[]>("/catalog/extras");
       return Array.from(new Map(raw.map((e: Extra) => [e.id, e])).values());
     },
     staleTime: 1000 * 60 * 5,
-    onError: () => toast.error("Failed to load extras"),
   });
+
+  useEffect(() => {
+    if (extrasQuery.error) toast.error("Failed to load extras");
+  }, [extrasQuery.error]);
+
+  useEffect(() => {
+    if (servicesQuery.error) toast.error("Failed to load services");
+  }, [servicesQuery.error]);
 
   //
   // TS-safe defaults so indexing/map works
@@ -68,26 +73,33 @@ const OrderForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   //
-  // 4) When services load, pick first category + service
+  // 4) When services load, pick first category + service (only once)
   //
   useEffect(() => {
+    // guard: only if nothing selected yet
+    if (selectedCategory) return;
+
     const cats = Object.keys(servicesByCategory);
     if (cats.length) {
       setSelectedCategory(cats[0]);
       setSelectedServiceId(servicesByCategory[cats[0]][0]?.id ?? null);
     }
-  }, [servicesByCategory]);
+  }, [servicesByCategory, selectedCategory]);
 
   //
-  // 5) Zero-out extras when they load
+  // 5) Zero-out extras when they load (only once)
   //
   useEffect(() => {
+    // guard: only if we haven't initialized extras yet
+    if (Object.keys(extraQuantities).length > 0) return;
+    if (!extras.length) return;
+
     const init: Record<number, number> = {};
     extras.forEach((e) => {
       init[e.id] = 0;
     });
     setExtraQuantities(init);
-  }, [extras]);
+  }, [extras, extraQuantities]);
 
   //
   // 6) When category changes, reset service qty & selection
@@ -110,7 +122,7 @@ const OrderForm: React.FC = () => {
   const incExtra = (id: number) =>
     setExtraQuantities((q) => ({ ...q, [id]: (q[id] || 0) + 1 }));
   const decExtra = (id: number) =>
-    setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, q[id] || 0 - 1) }));
+    setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, (q[id] || 0) - 1) }));
 
   //
   // 8) Compute total

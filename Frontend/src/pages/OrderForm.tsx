@@ -38,7 +38,7 @@ const OrderForm: React.FC = () => {
     queryKey: ["extras"],
     queryFn: async (): Promise<Extra[]> => {
       const { data: raw } = await api.get<Extra[]>("/catalog/extras");
-      return Array.from(new Map(raw.map((e: Extra) => [e.id, e])).values());
+      return Array.from(new Map(raw.map((e) => [e.id, e])).values());
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -52,28 +52,27 @@ const OrderForm: React.FC = () => {
   }, [extrasQuery.error]);
 
   //
-  // TS‐safe defaults so indexing/map works
+  // 3) TS-safe defaults
   //
-  const servicesByCategory: Record<string, Service[]> =
-    servicesQuery.data ?? {};
-  const extras: Extra[] = extrasQuery.data ?? [];
+  const servicesByCategory = servicesQuery.data ?? {};
+  const extras = extrasQuery.data ?? [];
 
   //
-  // 3) Local UI state
+  // 4) Local UI state
   //
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
     null
   );
   const [serviceQuantity, setServiceQuantity] = useState(1);
-  const [extraQuantities, setExtraQuantities] = useState<
-    Record<number, number>
-  >({});
+  const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>(
+    {}
+  );
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   //
-  // 4) When services load, pick first category + service
+  // 5) On load, pick first category + service
   //
   useEffect(() => {
     const cats = Object.keys(servicesByCategory);
@@ -84,18 +83,16 @@ const OrderForm: React.FC = () => {
   }, [servicesByCategory]);
 
   //
-  // 5) Zero‐out extras when they load
+  // 6) Zero-out extras when they load
   //
   useEffect(() => {
     const init: Record<number, number> = {};
-    extras.forEach((e) => {
-      init[e.id] = 0;
-    });
+    extras.forEach((e) => (init[e.id] = 0));
     setExtraQuantities(init);
   }, [extras]);
 
   //
-  // 6) When category changes, reset service qty & selection
+  // 7) Reset service selection on category switch
   //
   useEffect(() => {
     if (
@@ -108,7 +105,7 @@ const OrderForm: React.FC = () => {
   }, [selectedCategory, servicesByCategory]);
 
   //
-  // 7) Increment / decrement handlers
+  // 8) Increment / decrement handlers
   //
   const incService = () => setServiceQuantity((q) => q + 1);
   const decService = () => setServiceQuantity((q) => Math.max(1, q - 1));
@@ -121,7 +118,7 @@ const OrderForm: React.FC = () => {
     }));
 
   //
-  // 8) Compute total
+  // 9) Compute total
   //
   const total = useMemo(() => {
     let sum = 0;
@@ -148,11 +145,11 @@ const OrderForm: React.FC = () => {
   ]);
 
   //
-  // 9) Submit → navigate to payment
+  // 10) Submit order
   //
   const handleSubmit = () => {
-    if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
-      toast.warning("Please enter a valid email");
+    if (!email) {
+      toast.warning("Please enter your email");
       return;
     }
     if (selectedServiceId == null) {
@@ -162,20 +159,25 @@ const OrderForm: React.FC = () => {
     setIsSubmitting(true);
 
     const payload = {
-      service_id:     selectedServiceId,
-      quantity:       serviceQuantity,
-      extras:         Object.entries(extraQuantities)
-                        .filter(([, qty]) => qty > 0)
-                        .map(([id, qty]) => ({ id: Number(id), quantity: qty })),
-      customer_email: email,
+      service_id: selectedServiceId,
+      quantity: serviceQuantity,
+      extras: Object.entries(extraQuantities)
+        .filter(([, qty]) => qty > 0)
+        .map(([id, qty]) => ({ id: Number(id), quantity: qty })),
     };
 
     api
       .post("/orders/create", payload)
       .then((res) => {
-        const { order_id } = res.data;
-        navigate("/order/payment", {
-          state: { orderId: order_id, total, email },
+        const { order_id, qr_data } = res.data;
+        toast.success("Order placed!");
+        navigate("/order/confirmation", {
+          state: {
+            orderId: order_id,
+            qrData: qr_data,
+            email,
+            amount: total,
+          },
         });
       })
       .catch((err: any) => {
@@ -190,7 +192,7 @@ const OrderForm: React.FC = () => {
   };
 
   //
-  // 10) Loading skeleton
+  // 11) Loading skeleton
   //
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
     return <div style={{ padding: "1rem", textAlign: "center" }}>Loading…</div>;
@@ -202,26 +204,83 @@ const OrderForm: React.FC = () => {
 
       <h1>Book a Service</h1>
 
-      {/* …existing category / service / extras UI… */}
+      {/* 1. Pick a Category */}
+      <section>
+        <h2>1. Pick a Category</h2>
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+        >
+          {Object.keys(servicesByCategory).map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
+      </section>
 
-      {/* ✉️ Email capture */}
-      <section style={{ margin: "1rem 0" }}>
-        <label style={{ display: "block", marginBottom: 4 }}>
-          Your email
-        </label>
+      {/* 2. Pick a Service */}
+      <section style={{ marginTop: "1rem" }}>
+        <h2>2. Pick a Service</h2>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <select
+            value={selectedServiceId ?? undefined}
+            onChange={(e) => setSelectedServiceId(Number(e.target.value))}
+          >
+            {servicesByCategory[selectedCategory]?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} — R{s.base_price}
+              </option>
+            ))}
+          </select>
+          <button onClick={decService} style={{ margin: "0 8px" }}>
+            −
+          </button>
+          <span>{serviceQuantity}</span>
+          <button onClick={incService} style={{ margin: "0 8px" }}>
+            +
+          </button>
+        </div>
+      </section>
+
+      {/* 3. Extras */}
+      <section style={{ marginTop: "1rem" }}>
+        <h2>3. Extras</h2>
+        {extras.map((e) => (
+          <div
+            key={e.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              margin: "0.5rem 0",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              {e.name} — R{e.price_map[selectedCategory] ?? 0}
+            </div>
+            <button onClick={() => decExtra(e.id)}>−</button>
+            <span style={{ margin: "0 8px" }}>{extraQuantities[e.id]}</span>
+            <button onClick={() => incExtra(e.id)}>+</button>
+          </div>
+        ))}
+      </section>
+
+      {/* 4. Your Email */}
+      <section style={{ marginTop: "1rem" }}>
+        <h2>4. Your Email</h2>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
           style={{ width: "100%", padding: "0.5rem" }}
         />
       </section>
 
-      {/* Total */}
+      {/* Real-time total & submit */}
       <div style={{ marginTop: "1rem", fontWeight: "bold" }}>
         Total: R {total}
       </div>
-
       <button
         onClick={handleSubmit}
         disabled={isSubmitting}
@@ -233,7 +292,7 @@ const OrderForm: React.FC = () => {
           cursor: isSubmitting ? "not-allowed" : "pointer",
         }}
       >
-        {isSubmitting ? "Submitting…" : "Proceed to Payment"}
+        {isSubmitting ? "Submitting…" : "Submit Order"}
       </button>
     </div>
   );

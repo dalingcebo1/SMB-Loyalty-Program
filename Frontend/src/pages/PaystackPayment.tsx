@@ -1,28 +1,10 @@
 import React from "react";
-import { usePaystackPayment, PaystackPaymentInitializeOptions } from "react-paystack";
+import { usePaystackPayment, PaystackProps } from "react-paystack";
 
-/**
- * Props:
- *  - email: customer’s email
- *  - amount: numeric amount in kobo (e.g. R100 → 10000)
- *  - orderId: your internal order id, used for reference / reconcile
- */
 interface PaystackPaymentProps {
-  email: string;
-  amount: number;
+  email:   string;
+  amount:  number;   // in kobo
   orderId: number;
-}
-
-/**
- * Once payment succeeds, we call your backend to verify & capture.
- * Adjust the endpoint & payload to match your server.
- */
-async function verifyPaymentOnServer(reference: string, orderId: number) {
-  await fetch("/payments/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reference, order_id: orderId }),
-  });
 }
 
 const PaystackPayment: React.FC<PaystackPaymentProps> = ({
@@ -30,38 +12,32 @@ const PaystackPayment: React.FC<PaystackPaymentProps> = ({
   amount,
   orderId,
 }) => {
-  // pull in your public key from VITE env
-  const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string;
+  const publicKey = import.meta.env
+    .VITE_PAYSTACK_PUBLIC_KEY as string;
 
-  const config: PaystackPaymentInitializeOptions = {
-    publicKey,
+  const config: PaystackProps = {
+    reference: orderId.toString(),
     email,
     amount,
-    reference: `${orderId}-${Date.now()}`,
+    publicKey,
   };
 
   const initializePayment = usePaystackPayment(config);
 
-  const onSuccess = async (reference: { reference: string }) => {
-    try {
-      // send to your backend for verification / fulfillment
-      await verifyPaymentOnServer(reference.reference, orderId);
-      // then navigate or toast success
-      alert("Payment successful! 🎉");
-    } catch (err) {
-      console.error("Verification failed:", err);
-      alert("Payment succeeded but verification failed. Check server logs.");
-    }
+  const onSuccess = (reference: any) => {
+    console.log("Payment successful:", reference);
+    // TODO: maybe hit your backend to mark paid
   };
 
   const onClose = () => {
-    // user closed the modal
-    console.log("Paystack payment dialog closed");
+    console.log("Payment dialog closed");
   };
 
   return (
     <button
-      onClick={() => initializePayment(onSuccess, onClose)}
+      onClick={() =>
+        initializePayment({ onSuccess, onClose })
+      }
       style={{
         marginTop: "1rem",
         padding: "0.75rem 1.5rem",
@@ -69,7 +45,7 @@ const PaystackPayment: React.FC<PaystackPaymentProps> = ({
         cursor: "pointer",
       }}
     >
-      Pay R{(amount / 100).toFixed(2)}
+      Pay Now
     </button>
   );
 };

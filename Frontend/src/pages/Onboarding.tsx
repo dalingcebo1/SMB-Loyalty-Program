@@ -1,9 +1,18 @@
-// src/pages/Onboarding.tsx
+// Frontend/src/pages/Onboarding.tsx
 import React from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
-//import api from "../api/api";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  getAuth,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  linkWithPopup,
+  GoogleAuthProvider,
+  OAuthProvider,
+  EmailAuthProvider,
+  linkWithCredential,
+} from "firebase/auth";
+import api from "../api/api";
 
 declare global {
   interface Window {
@@ -11,81 +20,91 @@ declare global {
   }
 }
 
-interface FormData {
+type State =
+  | { mode: "google" | "apple" }
+  | { mode: "email"; email: string; password: string };
+
+interface ProfileForm {
   firstName: string;
   lastName: string;
   phone: string;
   subscribe: boolean;
 }
 
-// Will hold Firebase’s ConfirmationResult
-export const confirmationRef = React.createRef<import("firebase/auth").ConfirmationResult>();
+export const confirmationRef = React.createRef<any>();
 
 const Onboarding: React.FC = () => {
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<FormData>({ defaultValues: { subscribe: false } });
+  const { register, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
+    defaultValues: { subscribe: false }
+  });
   const navigate = useNavigate();
-
-  // Keep the last submitted data so we can pass it along to OTPVerify
-  const formDataRef = React.useRef<FormData | null>(null);
-
-  // local loading state
-  const [loading, setLoading] = React.useState(false);
+  const { state } = useLocation();
+  const authData = state as State;
 
   React.useEffect(() => {
     const auth = getAuth();
     if (!window.recaptchaVerifier) {
-      const verifier = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        { size: "invisible" }
-      );
-      verifier
-        .render()
-        .then(() => {
-          window.recaptchaVerifier = verifier;
-        })
-        .catch((err) => {
-          console.error("reCAPTCHA render failed:", err);
-        });
+      const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+      });
+      verifier.render().then(() => {
+        window.recaptchaVerifier = verifier;
+      });
     }
   }, []);
 
-  const onSubmit = async (data: FormData) => {
-    formDataRef.current = data;
-    setLoading(true);
-
+  const onSubmit = async (form: ProfileForm) => {
     const auth = getAuth();
-    // convert leading zero format to E.164 +27...
-    const phoneNumber = data.phone.startsWith("+")
-      ? data.phone
-      : "+27" + data.phone.slice(1);
+    const raw = form.phone.replace(/\s+/g, "");
+    const phoneNumber = raw.startsWith("+") ? raw : "+27" + raw.slice(1);
 
     try {
-      const confirmationResult = await signInWithPhoneNumber(
+      // 1) send OTP
+      const confirmation = await signInWithPhoneNumber(
         auth,
         phoneNumber,
-        // @ts-ignore recaptchaVerifier injected on window
         window.recaptchaVerifier
       );
-      confirmationRef.current = confirmationResult;
-      navigate("/onboarding/verify", { state: formDataRef.current });
+      confirmationRef.current = confirmation;
+
+      // 2) prompt + confirm code
+      const code = window.prompt("Enter SMS code") || "";
+      await confirmation.confirm(code);
+
+      // 3) link account
+      if (authData.mode === "google") {
+        await linkWithPopup(auth.currentUser!, new GoogleAuthProvider());
+      } else if (authData.mode === "apple") {
+        await linkWithPopup(auth.currentUser!, new OAuthProvider("apple.com"));
+      } else if (authData.mode === "email") {
+        const cred = EmailAuthProvider.credential(
+          authData.email,
+          authData.password
+        );
+        await linkWithCredential(auth.currentUser!, cred);
+      }
+
+      // 4) onboard in your DB
+      await api.post("/auth/onboard", {
+        first_name: form.firstName,
+        last_name:  form.lastName,
+        subscribe:   form.subscribe,
+      });
+
+      navigate("/");
     } catch (err: any) {
-      console.error("Failed to send OTP:", err);
-      alert(err.message || "Failed to send OTP");
-    } finally {
-      setLoading(false);
+      console.error("Onboarding failed:", err);
+      alert("Onboarding failed. Please try again.");
+
+      // roll back
+      const user = getAuth().currentUser;
+      if (user) await user.delete().catch(() => {});
     }
   };
 
   return (
     <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
       <div id="recaptcha-container"></div>
-      <div className="text-center text-sm text-gray-500">Step 1 of 2</div>
       <h1 className="text-2xl font-semibold text-center">
         Tell us about yourself.
       </h1>
@@ -97,9 +116,7 @@ const Onboarding: React.FC = () => {
           className="w-full border rounded px-3 py-2"
           {...register("firstName", { required: true })}
         />
-        {errors.firstName && (
-          <p className="text-red-500 text-sm">First name is required</p>
-        )}
+        {errors.firstName && <p className="text-red-500 text-sm">Required</p>}
 
         <input
           type="text"
@@ -107,9 +124,7 @@ const Onboarding: React.FC = () => {
           className="w-full border rounded px-3 py-2"
           {...register("lastName", { required: true })}
         />
-        {errors.lastName && (
-          <p className="text-red-500 text-sm">Last name is required</p>
-        )}
+        {errors.lastName && <p className="text-red-500 text-sm">Required</p>}
 
         <input
           type="tel"
@@ -118,40 +133,27 @@ const Onboarding: React.FC = () => {
           {...register("phone", {
             required: "Cell number is required",
             pattern: {
-              // either 0XXXXXXXXX or +27XXXXXXXXX
               value: /^(\+27|0)\d{9}$/,
-              message: "Enter a valid South African phone number",
-            },
-            onChange: (e) => {
-              // strip out spaces as you type
-              const cleaned = e.target.value.replace(/\s+/g, "");
-              setValue("phone", cleaned, { shouldValidate: true });
+              message: "Valid SA phone: +27XXXXXXXXX or 0XXXXXXXXX",
             },
           })}
         />
-        {errors.phone && (
-          <p className="text-red-500 text-sm">{errors.phone.message}</p>
-        )}
+        {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
 
-        <div className="text-center text-gray-700">
-          <p>Would you like to keep in touch with us?</p>
-          <p className="mt-1">Subscribe to our newsletter</p>
-          <label className="inline-flex items-center mt-2">
-            <input
-              type="checkbox"
-              className="form-checkbox h-5 w-5 text-blue-600"
-              {...register("subscribe")}
-            />
-            <span className="ml-2">Yes, sign me up</span>
-          </label>
-        </div>
+        <label className="inline-flex items-center">
+          <input
+            type="checkbox"
+            className="form-checkbox h-5 w-5 text-blue-600"
+            {...register("subscribe")}
+          />
+          <span className="ml-2">Subscribe to newsletter</span>
+        </label>
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
         >
-          {loading ? "Next…" : "Next"}
+          Finish Signup
         </button>
       </form>
     </div>

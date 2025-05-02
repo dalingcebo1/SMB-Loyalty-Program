@@ -57,7 +57,7 @@ const Login: React.FC = () => {
 
   // ---- social login helper ----
   const handleSocialLogin = async (
-    signInFn: () => Promise<void>,
+    signInFn: () => Promise<any>,
     providerName: "Google" | "Apple"
   ) => {
     setAuthError(null);

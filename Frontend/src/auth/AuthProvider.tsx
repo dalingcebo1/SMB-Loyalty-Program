@@ -11,6 +11,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   OAuthProvider,
+  signInAnonymously,
   sendPasswordResetEmail,
   signInWithPopup,
   createUserWithEmailAndPassword,
@@ -18,10 +19,12 @@ import {
   onIdTokenChanged,
   signOut as fbSignOut,
   User as FirebaseUser,
+  UserCredential,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 
+// 1) Initialize Firebase
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FB_API_KEY,
   authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
@@ -38,10 +41,18 @@ interface User {
 
 interface AuthCtxType {
   user: User | null;
-  loginWithGoogle(): Promise<void>;
-  loginWithApple(): Promise<void>;
+
+  /** Anonymous sign-in */
+  signInAnon(): Promise<UserCredential>;
+
+  /** Social sign-ins return the user credential */
+  loginWithGoogle(): Promise<UserCredential>;
+  loginWithApple(): Promise<UserCredential>;
+
+  /** Email/password returns void (we only care that it succeeded) */
   signupWithEmail(email: string, password: string): Promise<void>;
   loginWithEmail(email: string, password: string): Promise<void>;
+
   resetPassword(email: string): Promise<void>;
   logout(): Promise<void>;
 }
@@ -52,10 +63,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [, setOnboardingRequired] = useState(false);
   const navigate = useNavigate();
 
+  // Single listener for token changes (login / logout / token refresh)
   useEffect(() => {
-    // single listener for any sign-in / sign-out event
     return onIdTokenChanged(auth, async (fbUser: FirebaseUser | null) => {
       // 1) signed out
       if (!fbUser) {
@@ -64,11 +76,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         return;
       }
 
-      // 2) set Firebase token header
+      // 2) set Firebase token on axios
       const token = await fbUser.getIdToken();
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
 
-      // 3) ask our backend if they have a profile
+      // 3) check our backend for the onboarded profile
       try {
         const res = await api.get("/auth/me");
         const me = res.data;
@@ -77,46 +89,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           name: `${me.first_name} ${me.last_name}`,
           email: me.email,
         });
+        setOnboardingRequired(false);
       } catch (err: any) {
-        // if 404 → not onboarded yet
+        // not yet onboarded? bounce them into onboarding
         if (err.response?.status === 404) {
-          await fbSignOut(auth);
-          delete api.defaults.headers.common.Authorization;
+          setUser(null);
+          setOnboardingRequired(true);
           navigate("/onboarding");
         } else {
+          setOnboardingRequired(false);
           console.error("Could not fetch /auth/me:", err);
         }
       }
     });
   }, [navigate]);
 
-  // Social providers
-  const loginWithGoogle = async () => {
-    await signInWithPopup(auth, new GoogleAuthProvider());
-  };
+  // 4) Implement each method
 
-  const loginWithApple = async () => {
-    await signInWithPopup(auth, new OAuthProvider("apple.com"));
-  };
+  const signInAnon = () => signInAnonymously(auth);
 
-  // Email / Password
-  const signupWithEmail = async (email: string, password: string): Promise<void> => {
+  const loginWithGoogle = () =>
+    signInWithPopup(auth, new GoogleAuthProvider());
+
+  const loginWithApple = () =>
+    signInWithPopup(auth, new OAuthProvider("apple.com"));
+
+  const signupWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<void> => {
+    // await so that this truly returns Promise<void>
     await createUserWithEmailAndPassword(auth, email, password);
   };
 
-  const loginWithEmail = async (email: string, password: string) => {
+  const loginWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, password);
   };
+
   const resetPassword = (email: string) =>
     sendPasswordResetEmail(auth, email);
 
-  // Sign out
   const logout = () => fbSignOut(auth);
 
   return (
     <AuthCtx.Provider
       value={{
         user,
+        signInAnon,
         loginWithGoogle,
         loginWithApple,
         signupWithEmail,

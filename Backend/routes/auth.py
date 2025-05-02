@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from model import user
 from utils.firebase_admin import admin_auth
 from database import get_db
 from models import User  # your SQLAlchemy User model
@@ -121,11 +122,7 @@ async def onboard_user(
 from fastapi import Depends
 
 #  --- Get onboarded user profile ---
-@router.get(
-    "/auth/me",
-    status_code=status.HTTP_200_OK,
-    summary="Return the onboarded user or 404 if not found",
-)
+@router.get("/auth/me", status_code=200)
 async def get_my_user(
     decoded_token: dict = Depends(get_current_user),
     db: Session = Depends(get_db),

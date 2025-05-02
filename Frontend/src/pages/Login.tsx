@@ -1,7 +1,9 @@
 // src/pages/Login.tsx
-import React, { useState } from "react";
+
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
+import { getAuth, signOut } from "firebase/auth";
 import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
 
@@ -12,7 +14,7 @@ interface FormData {
 
 const Login: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
-  const { loginWithGoogle, loginWithApple, loginWithEmail } = useAuth();
+  const { loginWithEmail, loginWithGoogle, loginWithApple } = useAuth();
   const navigate = useNavigate();
   const {
     register,
@@ -20,26 +22,23 @@ const Login: React.FC = () => {
     formState: { errors, isSubmitting },
   } = useForm<FormData>();
 
-  // ---- email / password ----
+  // Clear any lingering session so we start fresh
+  useEffect(() => {
+    const auth = getAuth();
+    if (auth.currentUser) signOut(auth).catch(console.warn);
+  }, []);
+
+  // Email/password login
   const onSubmit = async (data: FormData) => {
     setAuthError(null);
-
     try {
-      // 1) Firebase email sign-in
       await loginWithEmail(data.email, data.password);
-
-      // 2) check onboarded
       await api.get("/auth/me");
-
-      // 3) success → dashboard
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (err: any) {
-      // backend says “not onboarded” → signup
       if (err.response?.status === 404) {
-        return navigate("/signup");
+        return navigate("/signup", { replace: true });
       }
-
-      // else map Firebase error codes
       switch (err.code) {
         case "auth/user-not-found":
         case "auth/wrong-password":
@@ -55,13 +54,12 @@ const Login: React.FC = () => {
     }
   };
 
-  // ---- social login helper ----
+  // Social login
   const handleSocialLogin = async (
     signInFn: () => Promise<any>,
     providerName: "Google" | "Apple"
   ) => {
     setAuthError(null);
-    // 1) Firebase OAuth
     try {
       await signInFn();
     } catch (e: any) {
@@ -71,14 +69,12 @@ const Login: React.FC = () => {
       );
     }
 
-    // 2) Check onboarded
     try {
       await api.get("/auth/me");
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (e: any) {
-      // not onboarded → signup
       if (e.response?.status === 404) {
-        return navigate("/signup");
+        return navigate("/signup", { replace: true });
       }
       console.error(`Checking /auth/me after ${providerName} failed`, e);
       setAuthError(
@@ -126,7 +122,9 @@ const Login: React.FC = () => {
             },
           })}
         />
-        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+        {errors.email && (
+          <p className="text-red-500 text-sm">{errors.email.message}</p>
+        )}
 
         <input
           type="password"
@@ -134,14 +132,16 @@ const Login: React.FC = () => {
           className="w-full border rounded px-3 py-2"
           {...register("password", {
             required: "Password is required",
-            minLength: { value: 8, message: "Password must be at least 8 characters" },
+            minLength: { value: 8, message: "Must be at least 8 characters" },
             pattern: {
               value: /(?=.*[A-Z])(?=.*\d).+/,
               message: "Password must include an uppercase letter and a number",
             },
           })}
         />
-        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+        {errors.password && (
+          <p className="text-red-500 text-sm">{errors.password.message}</p>
+        )}
 
         <button
           type="submit"
@@ -151,14 +151,10 @@ const Login: React.FC = () => {
           Log in
         </button>
 
-        {authError && <p className="text-red-500 text-center text-sm">{authError}</p>}
+        {authError && (
+          <p className="text-red-500 text-center text-sm">{authError}</p>
+        )}
       </form>
-
-      <div className="text-center text-sm">
-        <Link to="/reset-password" className="text-blue-600 underline">
-          Forgot password?
-        </Link>
-      </div>
 
       <p className="text-center text-sm">
         Don’t have an account?{" "}

@@ -1,7 +1,9 @@
 // src/firebase.ts
-import { initializeApp } from "firebase/app";
+
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
+// Your Firebase configuration; make sure these are set in your .env as VITE_ prefixed variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -12,7 +14,11 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase once
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0
+  ? initializeApp(firebaseConfig)
+  : getApps()[0];
 
-// Export the Auth instance
+// Export the shared Auth instance
 export const auth = getAuth(app);
+
+export default app;

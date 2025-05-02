@@ -1,35 +1,44 @@
 // src/pages/OTPVerify.tsx
 
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { auth } from "../firebase";
 import api from "../api/api";
-// Make sure you export `confirmationRef` from your OTP‐init page
+// confirmationRef is set in Onboarding.tsx when signInWithPhoneNumber succeeds
 import { confirmationRef } from "./Onboarding";
+
+interface LocationState {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  subscribe: boolean;
+}
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
+  const { state } = useLocation() as { state: LocationState };
 
-  // If there's no pending SMS confirmation, send them back
+  // If there's no pending SMS confirmation, send them back to signup
   useEffect(() => {
     if (!confirmationRef.current) {
-      // No in-flight OTP → they need to start over at signup
       navigate("/signup", { replace: true });
     }
   }, [navigate]);
 
-  // six separate inputs, same as before
   const inputsRef = useRef<HTMLInputElement[]>([]);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [timer, setTimer] = useState(60);
 
+  // Countdown timer
   useEffect(() => {
     if (timer <= 0) return;
     const id = setTimeout(() => setTimer((t) => t - 1), 1000);
     return () => clearTimeout(id);
   }, [timer]);
 
+  // Handle digit entry and auto-advance
   const handleChange = (idx: number, val: string) => {
-    if (!/^[0-9]?$/.test(val)) return;
+    if (!/^\d?$/.test(val)) return;
     const next = [...otp];
     next[idx] = val;
     setOtp(next);
@@ -38,34 +47,66 @@ const OTPVerify: React.FC = () => {
     }
   };
 
+  // Handle backspace navigation & deletion
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    idx: number
+  ) => {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const next = [...otp];
+      if (next[idx] === "") {
+        // move to previous and clear it
+        if (idx > 0) {
+          next[idx - 1] = "";
+          setOtp(next);
+          inputsRef.current[idx - 1]?.focus();
+        }
+      } else {
+        // clear current
+        next[idx] = "";
+        setOtp(next);
+      }
+    }
+  };
+
+  // Verify OTP and submit profile
   const handleSubmit = async () => {
     const code = otp.join("");
     if (code.length < 6) {
-      return alert("Enter all 6 digits");
+      alert("Enter all 6 digits");
+      return;
     }
     try {
-      // 1) Confirm the SMS code with Firebase
+      // 1) Confirm with Firebase
       await confirmationRef.current!.confirm(code);
 
-      // 2) Persist the profile in your own backend
-      //    (make sure you still pass whatever fields you need here)
-      await api.post("/api/users/create", {
-        /* firstName, lastName, phone, subscribe, etc */
+      // 2) Persist profile to your backend
+      const user = auth.currentUser;
+      if (!user) throw new Error("No authenticated user.");
+
+      await api.post("/users", {
+        uid: user.uid,
+        firstName: state.firstName,
+        lastName: state.lastName,
+        phone: state.phone,
+        subscribe: state.subscribe,
       });
 
-      // 3) Finally, navigate into the app
+      // 3) Enter the app
       navigate("/", { replace: true });
     } catch (err: any) {
       alert(err.message || "Invalid OTP, please try again.");
     }
   };
 
+  // Resend OTP
   const resend = async () => {
     if (timer > 0) return;
     try {
-      await api.post("/api/auth/send-otp", { /* phone: … */ });
+      await api.post("/auth/send-otp", { phone: state.phone });
       setTimer(60);
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(Array(6).fill(""));
       inputsRef.current[0]?.focus();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to resend OTP");
@@ -75,14 +116,17 @@ const OTPVerify: React.FC = () => {
   return (
     <div className="p-6 max-w-sm mx-auto">
       <h1 className="text-xl mb-4">Enter OTP</h1>
+
       <div className="flex space-x-2 mb-4">
         {otp.map((digit, i) => (
           <input
             key={i}
             type="text"
+            inputMode="numeric"
             maxLength={1}
             value={digit}
             onChange={(e) => handleChange(i, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, i)}
             ref={(el) => {
               if (el) inputsRef.current[i] = el;
             }}
@@ -90,16 +134,18 @@ const OTPVerify: React.FC = () => {
           />
         ))}
       </div>
+
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={resend}
           disabled={timer > 0}
           className="text-blue-600 underline disabled:opacity-50"
         >
-          Resend OTP in {`${Math.floor(timer / 60)}:${(timer % 60)
+          Resend in {`${Math.floor(timer / 60)}:${(timer % 60)
             .toString()
             .padStart(2, "0")}`}
         </button>
+
         <button
           onClick={handleSubmit}
           className="px-4 py-2 bg-blue-600 text-white rounded"

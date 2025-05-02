@@ -1,7 +1,13 @@
 // src/App.tsx
+
 import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useNavigate, Outlet } from "react-router-dom";
-import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from "firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut as firebaseSignOut,
+  User as FirebaseUser,
+} from "firebase/auth";
 
 import Signup            from "./pages/Signup";
 import Login             from "./pages/Login";
@@ -28,23 +34,31 @@ function RequireProfile() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
       if (!user) {
-        // not signed in → login
+        // not signed in → redirect to login
         navigate("/login", { replace: true });
-      } else {
-        try {
-          const { data } = await api.get<{ exists: boolean }>(`/users/${user.uid}/exists`);
-          if (!data.exists) {
-            // signed in but not onboarded → onboarding
-            navigate("/onboarding", { replace: true, state: { uid: user.uid } });
-          }
-          // else: has profile → stay on protected route
-        } catch (err) {
-          console.error("Profile-check failed:", err);
-          await firebaseSignOut(auth);
-          navigate("/login", { replace: true });
-        }
+        setChecking(false);
+        return;
       }
-      setChecking(false);
+
+      try {
+        // check if user is onboarded
+        const { data } = await api.get<{ exists: boolean }>(
+          `/users/${user.uid}/exists`
+        );
+
+        if (!data.exists) {
+          // no backend record → sign out and restart at signup
+          await firebaseSignOut(auth);
+          navigate("/signup", { replace: true });
+        }
+      } catch (err) {
+        console.error("Profile-check failed:", err);
+        // on error, clear session and back to login
+        await firebaseSignOut(auth);
+        navigate("/login", { replace: true });
+      } finally {
+        setChecking(false);
+      }
     });
 
     return () => unsubscribe();
@@ -58,7 +72,7 @@ function RequireProfile() {
     );
   }
 
-  // when we're done checking, render the nested routes
+  // when done checking, render nested protected routes
   return <Outlet />;
 }
 
@@ -83,8 +97,8 @@ const App: React.FC = () => (
       {/* <Route path="history"   element={<HistoryPage />} /> */}
 
       {/* Order flow */}
-      <Route path="order"             element={<OrderForm         />} />
-      <Route path="order/payment"     element={<PaymentPage       />} />
+      <Route path="order"              element={<OrderForm         />} />
+      <Route path="order/payment"      element={<PaymentPage       />} />
       <Route path="order/confirmation" element={<OrderConfirmation />} />
     </Route>
 

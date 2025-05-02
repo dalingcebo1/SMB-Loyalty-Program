@@ -1,13 +1,15 @@
-// Frontend/src/pages/Signup.tsx
-import React from "react";
+// src/pages/Signup.tsx
+
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
+import { getAuth, signOut } from "firebase/auth";
 import { useAuth } from "../auth/AuthProvider";
 
 type FormData = { email: string; password: string };
 
 const Signup: React.FC = () => {
-  const { signInAnon, loginWithGoogle, loginWithApple } = useAuth();
+  const { loginWithGoogle, loginWithApple } = useAuth();
   const navigate = useNavigate();
   const {
     register,
@@ -15,10 +17,32 @@ const Signup: React.FC = () => {
     formState: { errors, isSubmitting },
   } = useForm<FormData>();
 
+  // Clear any lingering session so we start fresh
+  useEffect(() => {
+    const auth = getAuth();
+    if (auth.currentUser) signOut(auth).catch(console.warn);
+  }, []);
+
+  // Handle email-password flow: hand off to onboarding
   const onEmail = (data: FormData) => {
     navigate("/onboarding", {
       state: { mode: "email", email: data.email, password: data.password },
     });
+  };
+
+  // Social sign-up
+  const handleSocial = async (provider: "google" | "apple") => {
+    try {
+      if (provider === "google") {
+        await loginWithGoogle();
+      } else {
+        await loginWithApple();
+      }
+      navigate("/onboarding", { state: { mode: provider } });
+    } catch (err) {
+      console.error(`${provider} signup failed`, err);
+      // you can set an error state here if you want to show UI feedback
+    }
   };
 
   return (
@@ -28,11 +52,7 @@ const Signup: React.FC = () => {
       </h1>
 
       <button
-        onClick={async () => {
-          await signInAnon();
-          await loginWithGoogle();
-          navigate("/onboarding", { state: { mode: "google" } });
-        }}
+        onClick={() => handleSocial("google")}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/google.svg" alt="G" className="h-5 w-5 mr-2" />
@@ -40,11 +60,7 @@ const Signup: React.FC = () => {
       </button>
 
       <button
-        onClick={async () => {
-          await signInAnon();
-          await loginWithApple();
-          navigate("/onboarding", { state: { mode: "apple" } });
-        }}
+        onClick={() => handleSocial("apple")}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/apple.svg" alt="" className="h-5 w-5 mr-2" />

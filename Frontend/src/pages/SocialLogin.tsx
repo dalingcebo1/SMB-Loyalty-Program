@@ -1,5 +1,4 @@
 // src/pages/SocialLogin.tsx
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup } from "firebase/auth";
 

@@ -1,8 +1,16 @@
+// src/pages/Onboarding.tsx
 import React from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { Switch } from "@headlessui/react"; // or your own toggle
+import { useMutation } from "@tanstack/react-query";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import api from "../api/api";
+
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}
 
 interface FormData {
   firstName: string;
@@ -11,90 +19,160 @@ interface FormData {
   subscribe: boolean;
 }
 
-const Onboarding: React.FC = () => {
-  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormData>({
-    defaultValues: { subscribe: false }
-  });
+ // Will hold Firebase’s ConfirmationResult
+ //const confirmationRef = React.createRef<import("firebase/auth").ConfirmationResult>();
+ export const confirmationRef = React.createRef<import("firebase/auth").ConfirmationResult>();
+
+ // Will hold the RecaptchaVerifier instance
+  const Onboarding: React.FC = () => {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({ defaultValues: { subscribe: false } });
   const navigate = useNavigate();
 
-  const onSubmit = async (data: FormData) => {
-    try {
-      // send OTP to phone
-      await api.post("/auth/send-otp", { phone: data.phone });
-      // navigate to OTP screen, passing along the profile info
-      navigate("/onboarding/verify", { state: data });
-    } catch (err: any) {
+  // Keep the last submitted data so we can pass it along to OTPVerify
+  const formDataRef = React.useRef<FormData | null>(null);
+
+  // Mutation to send OTP
+  const sendOtp = useMutation<
+    any, // response type from api.post
+    any, // error type
+    string // variable type (phone)
+  >({
+    mutationFn: (phone: string) => api.post("/auth/send-otp", { phone }),
+    onSuccess: () => {
+      // navigation with the captured form data
+      navigate("/onboarding/verify", { state: formDataRef.current });
+    },
+    onError: (err: any) => {
       alert(err.response?.data?.message || "Failed to send OTP");
+    },
+  });
+
+  React.useEffect(() => {
+    const auth = getAuth();
+    if (!window.recaptchaVerifier) {
+      // 1) container ID, 2) config, 3) auth
+      const verifier = new RecaptchaVerifier(
+        auth,
+        "recaptcha-container",
+        { size: "invisible" }
+      );
+      // 2) explicitly render so the widget (and fallback) is ready
+      verifier
+        .render()
+        .then(() => {
+          window.recaptchaVerifier = verifier;
+        })
+        .catch((err) => {
+          console.error("reCAPTCHA render failed:", err);
+        });
     }
+  }, []);
+
+  const onSubmit = (data: FormData) => {
+    formDataRef.current = data;
+    const auth = getAuth();
+  
+    // normalize to +27XXXXXXXXX if needed
+    const phoneNumber = data.phone.startsWith("+")
+      ? data.phone
+      : "+27" + data.phone.slice(1);
+  
+    signInWithPhoneNumber(
+      auth,
+      phoneNumber,
+      // @ts-ignore recaptchaVerifier injected on window
+      window.recaptchaVerifier
+    )
+      .then((confirmationResult) => {
+        // store for OTPVerify
+        confirmationRef.current = confirmationResult;
+        navigate("/onboarding/verify", { state: formDataRef.current });
+      })
+      .catch((err) => {
+        alert(err.message || "Failed to send OTP");
+      });
   };
+  
 
   return (
     <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
-      <h1 className="text-2xl font-semibold text-center">Registration Step 2</h1>
+      {/* invisible Firebase reCAPTCHA will live here */}
+      <div id="recaptcha-container"></div>
+
+      {/* Progress indicator */}
+      <div className="text-center text-sm text-gray-500">Step 1 of 2</div>
+
+      {/* Title */}
+      <h1 className="text-2xl font-semibold text-center">
+        Tell us about yourself.
+      </h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <input
           type="text"
-          placeholder="Name"
+          placeholder="First name"
           className="w-full border rounded px-3 py-2"
-          {...register("firstName", { required: "First name is required" })}
+          {...register("firstName", { required: true })}
         />
-        {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName.message}</p>}
+        {errors.firstName && (
+          <p className="text-red-500 text-sm">First name is required</p>
+        )}
 
         <input
           type="text"
-          placeholder="Surname"
+          placeholder="Last name"
           className="w-full border rounded px-3 py-2"
-          {...register("lastName", { required: "Last name is required" })}
+          {...register("lastName", { required: true })}
         />
-        {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName.message}</p>}
+        {errors.lastName && (
+          <p className="text-red-500 text-sm">Last name is required</p>
+        )}
 
         <input
           type="tel"
-          placeholder="Phone"
+          placeholder="Cell number"
           className="w-full border rounded px-3 py-2"
           {...register("phone", {
-            required: "Phone number is required",
+            required: "Cell number is required",
             pattern: {
-              value: /^[0-9]{10,15}$/,
-              message: "Enter a valid phone number"
-            }
+                // matches either "0XXXXXXXXX" or "+27XXXXXXXXX"
+                value: /^(\+27|0)\d{9}$/,
+                message: "Enter a valid South African phone number",
+              },
           })}
-        />
-        {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
-
-        <div className="flex items-center space-x-2">
-          <Controller
-            name="subscribe"
-            control={control}
-            render={({ field }) => (
-              <Switch
-                checked={field.value}
-                onChange={field.onChange}
-                className={`${field.value ? 'bg-blue-600' : 'bg-gray-300'} relative inline-flex h-6 w-11 items-center rounded-full`}
-              >
-                <span
-                  className={`${field.value ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform bg-white rounded-full transition-transform`}
-                />
-              </Switch>
-            )}
           />
-          <span>Subscribe to newsletter</span>
+          {errors.phone && (
+            <p className="text-red-500 text-sm">{errors.phone.message}</p>
+          )}
+          
+
+        {/* Subscribe text + checkbox */}
+        <div className="text-center text-gray-700">
+          <p>Would you like to keep in touch with us?</p>
+          <p className="mt-1">Subscribe to our newsletter</p>
+          <label className="inline-flex items-center mt-2">
+            <input
+              type="checkbox"
+              className="form-checkbox h-5 w-5 text-blue-600"
+              {...register("subscribe")}
+            />
+            <span className="ml-2">Yes, sign me up</span>
+          </label>
         </div>
 
+        {/* Next button */}
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full border rounded px-4 py-2 hover:bg-gray-100 disabled:opacity-50"
+          disabled={sendOtp.isPending}
+          className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
         >
-          {isSubmitting ? "Sending OTP…" : "Send OTP"}
+          {sendOtp.status === "pending" ? "Next…" : "Next"}
         </button>
       </form>
-
-      <div className="flex justify-between text-sm text-gray-600">
-        <button onClick={() => navigate("/")} className="underline">Skip</button>
-        <button onClick={() => handleSubmit(onSubmit)()} className="underline">Next</button>
-      </div>
     </div>
   );
 };

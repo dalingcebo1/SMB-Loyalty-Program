@@ -1,25 +1,34 @@
+// src/pages/OTPVerify.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api/api";
+// Make sure you export `confirmationRef` from your Onboarding file:
+//   export const confirmationRef = React.createRef<ConfirmationResult>();
+import { confirmationRef } from "./Onboarding";
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const profile = (state as any) || null;
+  const profile = state as {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    subscribe: boolean;
+  };
+
+  // ensure we came via Onboarding
+  useEffect(() => {
+    if (!profile) {
+      navigate("/onboarding");
+    }
+  }, [profile, navigate]);
 
   // six separate inputs
   const inputsRef = useRef<HTMLInputElement[]>([]);
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
 
-  useEffect(() => {
-    if (!profile) {
-      navigate("/onboarding");
-      return;
-    }
-  }, [profile, navigate]);
-
-  // countdown
+  // countdown timer
   useEffect(() => {
     if (timer <= 0) return;
     const id = setTimeout(() => setTimer((t) => t - 1), 1000);
@@ -38,29 +47,40 @@ const OTPVerify: React.FC = () => {
 
   const handleSubmit = async () => {
     const code = otp.join("");
-    if (code.length < 6) return alert("Enter all 6 digits");
+    if (code.length < 6) {
+      return alert("Enter all 6 digits");
+    }
 
     try {
-      await api.post("/auth/verify-otp", { phone: profile.phone, code });
-      // once verified, submit profile + move to dashboard
-      await api.post("/users/create", {
+      // 1) Confirm the SMS code with Firebase
+      await confirmationRef.current!.confirm(code);
+
+      // 2) Persist the profile in your own backend
+      await api.post("/api/users/create", {
         firstName: profile.firstName,
         lastName:  profile.lastName,
         phone:     profile.phone,
         subscribe: profile.subscribe,
       });
+
+      // 3) Navigate into the app
       navigate("/");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Invalid OTP");
+      alert(err.message || "Invalid OTP, please try again.");
     }
   };
 
   const resend = async () => {
     if (timer > 0) return;
-    await api.post("/auth/send-otp", { phone: profile.phone });
-    setTimer(60);
-    setOtp(["", "", "", "", "", ""]);
-    inputsRef.current[0]?.focus();
+    try {
+      // if you still want to use your backend for resends:
+      await api.post("/api/auth/send-otp", { phone: profile.phone });
+      setTimer(60);
+      setOtp(["", "", "", "", "", ""]);
+      inputsRef.current[0]?.focus();
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to resend OTP");
+    }
   };
 
   return (
@@ -76,14 +96,19 @@ const OTPVerify: React.FC = () => {
             maxLength={1}
             value={digit}
             onChange={(e) => handleChange(i, e.target.value)}
-            ref={(el) => { if (el) inputsRef.current[i] = el; }}
+            ref={(el) => {
+              if (el) inputsRef.current[i] = el;
+            }}
             className="w-10 h-12 text-center border rounded"
           />
         ))}
       </div>
 
       <p className="text-sm text-gray-600">
-        Resend OTP in {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, "0")}
+        Resend OTP in{" "}
+        {`${Math.floor(timer / 60)}:${(timer % 60)
+          .toString()
+          .padStart(2, "0")}`}
       </p>
 
       <button

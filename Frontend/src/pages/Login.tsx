@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
@@ -9,6 +9,7 @@ interface FormData {
 }
 
 const Login: React.FC = () => {
+  const [authError, setAuthError] = useState<string | null>(null);
   const { loginWithGoogle, loginWithApple, loginWithEmail } = useAuth();
   const navigate = useNavigate();
   const {
@@ -18,8 +19,25 @@ const Login: React.FC = () => {
   } = useForm<FormData>();
 
   const onSubmit = async (data: FormData) => {
-    await loginWithEmail(data.email, data.password);
-    navigate("/");
+    setAuthError(null);
+    try {
+      await loginWithEmail(data.email, data.password);
+      navigate("/");
+    } catch (err: any) {
+      // Map known Firebase Auth error codes
+      switch (err.code) {
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+        case "auth/invalid-credential":
+          setAuthError("The email and password provided are incorrect.");
+          break;
+        case "auth/too-many-requests":
+          setAuthError("Too many attempts. Please try again later.");
+          break;
+        default:
+          setAuthError(err.message || "Login failed. Please try again.");
+      }
+    }
   };
 
   return (
@@ -53,17 +71,37 @@ const Login: React.FC = () => {
           type="email"
           placeholder="Email"
           className="w-full border rounded px-3 py-2"
-          {...register("email", { required: "Email is required" })}
+          {...register("email", {
+            required: "Email is required",
+            pattern: {
+              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              message: "Enter a valid email address",
+            },
+          })}
         />
-        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+        {errors.email && (
+          <p className="text-red-500 text-sm">{errors.email.message}</p>
+        )}
 
         <input
           type="password"
           placeholder="Password"
           className="w-full border rounded px-3 py-2"
-          {...register("password", { required: "Password is required" })}
+          {...register("password", {
+            required: "Password is required",
+            minLength: {
+              value: 8,
+              message: "Password must be at least 8 characters",
+            },
+            pattern: {
+              value: /(?=.*[A-Z])(?=.*\d).+/,
+              message: "Password must include an uppercase letter and a number",
+            },
+          })}
         />
-        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+        {errors.password && (
+          <p className="text-red-500 text-sm">{errors.password.message}</p>
+        )}
 
         <button
           type="submit"
@@ -72,7 +110,17 @@ const Login: React.FC = () => {
         >
           Log in
         </button>
+
+        {authError && (
+          <p className="text-red-500 text-center text-sm">{authError}</p>
+        )}
       </form>
+
+      <div className="text-center text-sm">
+        <Link to="/reset-password" className="text-blue-600 underline">
+          Forgot password?
+        </Link>
+      </div>
 
       <p className="text-center text-sm">
         Don’t have an account?{" "}

@@ -11,6 +11,7 @@ import React, {
     getAuth,
     GoogleAuthProvider,
     OAuthProvider,
+    sendPasswordResetEmail,
     signInWithPopup,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -41,6 +42,7 @@ import React, {
     loginWithApple(): Promise<void>;
     signupWithEmail(email: string, password: string): Promise<void>;
     loginWithEmail(email: string, password: string): Promise<void>;
+    resetPassword(email: string): Promise<void>; 
     logout(): Promise<void>;
   }
   
@@ -48,6 +50,10 @@ import React, {
   
   export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+ // Forgot-password helper
+    const resetPassword = (email: string) =>
+    sendPasswordResetEmail(auth, email);
+    
   
     // Listen for auth state & set Axios header
     useEffect(() => {
@@ -96,6 +102,7 @@ import React, {
           loginWithApple,
           signupWithEmail,
           loginWithEmail,
+          resetPassword, 
           logout,
         }}
       >

@@ -1,8 +1,8 @@
 import os 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from routes import catalog, loyalty, orders
+from routes import auth  
 from routes.payments import router as payments
 
 app = FastAPI(
@@ -25,8 +25,10 @@ app.add_middleware(
 # Mount all routers under /api
 app.include_router(loyalty.router, prefix="/api")
 app.include_router(catalog.router, prefix="/api")
-app.include_router(orders.router,  prefix="/api")
-app.include_router(payments,       prefix="/api")
+app.include_router(orders.router,  prefix="/api") 
+app.include_router(orders.payments, prefix="/api")
+app.include_router(auth.router, prefix="/api/auth")   # <-- mount /api/auth
+# app.include_router(payments,       prefix="/api")
 
 @app.on_event("startup")
 def on_startup():

@@ -6,7 +6,6 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { useNavigate } from "react-router-dom";
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -20,6 +19,7 @@ import {
   signOut as fbSignOut,
   User as FirebaseUser,
 } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 
 const firebaseConfig = {
@@ -27,7 +27,6 @@ const firebaseConfig = {
   authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FB_PROJECT_ID,
 };
-
 initializeApp(firebaseConfig);
 const auth = getAuth();
 
@@ -56,19 +55,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, async (fbUser: FirebaseUser | null) => {
+    // single listener for any sign-in / sign-out event
+    return onIdTokenChanged(auth, async (fbUser: FirebaseUser | null) => {
+      // 1) signed out
       if (!fbUser) {
         setUser(null);
         delete api.defaults.headers.common.Authorization;
         return;
       }
 
-      // Get fresh ID token
+      // 2) set Firebase token header
       const token = await fbUser.getIdToken();
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
 
+      // 3) ask our backend if they have a profile
       try {
-        // Check if this Firebase user is onboarded
         const res = await api.get("/auth/me");
         const me = res.data;
         setUser({
@@ -77,16 +78,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           email: me.email,
         });
       } catch (err: any) {
-        // Not onboarded → sign out and redirect
-        await fbSignOut(auth);
-        delete api.defaults.headers.common.Authorization;
-        navigate("/signup", { replace: true });
+        // if 404 → not onboarded yet
+        if (err.response?.status === 404) {
+          await fbSignOut(auth);
+          delete api.defaults.headers.common.Authorization;
+          navigate("/onboarding");
+        } else {
+          console.error("Could not fetch /auth/me:", err);
+        }
       }
     });
-
-    return unsubscribe;
   }, [navigate]);
 
+  // Social providers
   const loginWithGoogle = async () => {
     await signInWithPopup(auth, new GoogleAuthProvider());
   };
@@ -95,23 +99,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     await signInWithPopup(auth, new OAuthProvider("apple.com"));
   };
 
-  const signupWithEmail = async (email: string, password: string) => {
+  // Email / Password
+  const signupWithEmail = async (email: string, password: string): Promise<void> => {
     await createUserWithEmailAndPassword(auth, email, password);
   };
 
   const loginWithEmail = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
+  const resetPassword = (email: string) =>
+    sendPasswordResetEmail(auth, email);
 
-  const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
-  };
-
-  const logout = async () => {
-    await fbSignOut(auth);
-    setUser(null);
-    delete api.defaults.headers.common.Authorization;
-  };
+  // Sign out
+  const logout = () => fbSignOut(auth);
 
   return (
     <AuthCtx.Provider

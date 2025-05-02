@@ -1,3 +1,4 @@
+// src/pages/Login.tsx
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
@@ -19,33 +20,70 @@ const Login: React.FC = () => {
     formState: { errors, isSubmitting },
   } = useForm<FormData>();
 
+  // ---- email / password ----
   const onSubmit = async (data: FormData) => {
     setAuthError(null);
+
     try {
+      // 1) Firebase email sign-in
       await loginWithEmail(data.email, data.password);
+
+      // 2) check onboarded
       await api.get("/auth/me");
+
+      // 3) success → dashboard
       navigate("/");
     } catch (err: any) {
- // If our own backend says 404 → not onboarded, send to signup
-         if (err.response?.status === 404) {
-        navigate("/signup");
-        return;
+      // backend says “not onboarded” → signup
+      if (err.response?.status === 404) {
+        return navigate("/signup");
       }
 
-    // Otherwise it’s a Firebase Auth error: map codes to messages
-    switch (err.code) {
-          case "auth/user-not-found":
-          case "auth/wrong-password":
-          case "auth/invalid-credential":
-            setAuthError("The email and password provided are incorrect.");
-            break;
-          case "auth/too-many-requests":
-            setAuthError("Too many attempts. Please try again later.");
-            break;
-          default:
-            setAuthError(err.message || "Login failed. Please try again.");
-        }
+      // else map Firebase error codes
+      switch (err.code) {
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+        case "auth/invalid-credential":
+          setAuthError("The email and password provided are incorrect.");
+          break;
+        case "auth/too-many-requests":
+          setAuthError("Too many attempts. Please try again later.");
+          break;
+        default:
+          setAuthError(err.message || "Login failed. Please try again.");
+      }
+    }
+  };
 
+  // ---- social login helper ----
+  const handleSocialLogin = async (
+    signInFn: () => Promise<void>,
+    providerName: "Google" | "Apple"
+  ) => {
+    setAuthError(null);
+    // 1) Firebase OAuth
+    try {
+      await signInFn();
+    } catch (e: any) {
+      console.error(`${providerName} sign-in failed`, e);
+      return setAuthError(
+        `${providerName} login failed. Please try again or use email/password.`
+      );
+    }
+
+    // 2) Check onboarded
+    try {
+      await api.get("/auth/me");
+      navigate("/");
+    } catch (e: any) {
+      // not onboarded → signup
+      if (e.response?.status === 404) {
+        return navigate("/signup");
+      }
+      console.error(`Checking /auth/me after ${providerName} failed`, e);
+      setAuthError(
+        `Could not complete login. Please try again later or use another method.`
+      );
     }
   };
 
@@ -54,31 +92,7 @@ const Login: React.FC = () => {
       <h1 className="text-2xl font-semibold text-center">Log In</h1>
 
       <button
-      onClick={async () => {
-        try {
-          // 1) Sign in with Google via Firebase
-          await loginWithGoogle();
-
-          // 2) Check our own backend if they’re onboarded
-          await api.get("/auth/me");
-
-          // 3) If that succeeds, go to dashboard
-          navigate("/");
-        } catch (err: any) {
-          // if backend says USER_NOT_FOUND → onboarding
-          if (
-            err.response?.status === 400 &&
-            err.response?.data?.error?.message === "USER_NOT_FOUND"
-          ) {
-            return navigate("/signup");
-          }
-          // anything else is fatal
-          console.error(err);
-          alert("Something went wrong. Please try again.");
-
-        }
-      }}
-
+        onClick={() => handleSocialLogin(loginWithGoogle, "Google")}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/google.svg" alt="G" className="h-5 w-5 mr-2" />
@@ -86,15 +100,7 @@ const Login: React.FC = () => {
       </button>
 
       <button
-        onClick={async () => {
-          try {
-            await loginWithApple();
-            await api.get("/auth/me");
-            navigate("/");
-          } catch {
-            navigate("/signup");
-          }
-        }}
+        onClick={() => handleSocialLogin(loginWithApple, "Apple")}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/apple.svg" alt="" className="h-5 w-5 mr-2" />
@@ -120,9 +126,7 @@ const Login: React.FC = () => {
             },
           })}
         />
-        {errors.email && (
-          <p className="text-red-500 text-sm">{errors.email.message}</p>
-        )}
+        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
 
         <input
           type="password"
@@ -130,19 +134,14 @@ const Login: React.FC = () => {
           className="w-full border rounded px-3 py-2"
           {...register("password", {
             required: "Password is required",
-            minLength: {
-              value: 8,
-              message: "Password must be at least 8 characters",
-            },
+            minLength: { value: 8, message: "Password must be at least 8 characters" },
             pattern: {
               value: /(?=.*[A-Z])(?=.*\d).+/,
               message: "Password must include an uppercase letter and a number",
             },
           })}
         />
-        {errors.password && (
-          <p className="text-red-500 text-sm">{errors.password.message}</p>
-        )}
+        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
 
         <button
           type="submit"
@@ -152,9 +151,7 @@ const Login: React.FC = () => {
           Log in
         </button>
 
-        {authError && (
-          <p className="text-red-500 text-center text-sm">{authError}</p>
-        )}
+        {authError && <p className="text-red-500 text-center text-sm">{authError}</p>}
       </form>
 
       <div className="text-center text-sm">

@@ -1,5 +1,7 @@
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+// src/App.tsx
+import React, { useEffect, useState } from "react";
+import { Routes, Route, Navigate, useNavigate, Outlet } from "react-router-dom";
+import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from "firebase/auth";
 
 import Signup            from "./pages/Signup";
 import Login             from "./pages/Login";
@@ -8,38 +10,85 @@ import OTPVerify         from "./pages/OTPVerify";
 import OrderForm         from "./pages/OrderForm";
 import PaymentPage       from "./pages/PaymentPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import { SocialLogin }   from "./pages/SocialLogin";
 // import RewardsPage     from "./pages/RewardsPage";
 // import ClaimedPage     from "./pages/ClaimedPage";
 // import HistoryPage     from "./pages/HistoryPage";
 
 import DashboardLayout   from "./components/DashboardLayout";
+import api               from "./api/api";
 
+
+// ——— Protects dashboard & order routes ————————————————
+function RequireProfile() {
+  const [checking, setChecking] = useState(true);
+  const navigate = useNavigate();
+  const auth = getAuth();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
+      if (!user) {
+        // not signed in → login
+        navigate("/login", { replace: true });
+      } else {
+        try {
+          const { data } = await api.get<{ exists: boolean }>(`/users/${user.uid}/exists`);
+          if (!data.exists) {
+            // signed in but not onboarded → onboarding
+            navigate("/onboarding", { replace: true, state: { uid: user.uid } });
+          }
+          // else: has profile → stay on protected route
+        } catch (err) {
+          console.error("Profile-check failed:", err);
+          await firebaseSignOut(auth);
+          navigate("/login", { replace: true });
+        }
+      }
+      setChecking(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth, navigate]);
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-500">Loading…</p>
+      </div>
+    );
+  }
+
+  // when we're done checking, render the nested routes
+  return <Outlet />;
+}
+
+
+// ——— App & Routes ————————————————————————————————
 const App: React.FC = () => (
   <Routes>
-    {/* Public */}
-    <Route path="/signup"  element={<Signup />} />
-    <Route path="/login"   element={<Login  />} />
-    <Route path="/onboarding"        element={<Onboarding />} />
-    <Route path="/onboarding/verify" element={<OTPVerify  />} />
+    {/* PUBLIC */}
+    <Route path="/signup"             element={<Signup />} />
+    <Route path="/login"              element={<Login  />} />
+    <Route path="/social-login"       element={<SocialLogin />} />
+    <Route path="/onboarding"         element={<Onboarding />} />
+    <Route path="/onboarding/verify"  element={<OTPVerify  />} />
 
-    {/* Protected dashboard & order flows */}
-    <Route path="/" element={<DashboardLayout />}>
-      {/* Dashboard tabs (enable when ready) */}
-      {/* <Route index           element={<RewardsPage />} /> */}
-      {/* <Route path="rewards"  element={<RewardsPage />} /> */}
-      {/* <Route path="claimed"  element={<ClaimedPage />} /> */}
-      {/* <Route path="history"  element={<HistoryPage />} /> */}
+    {/* PROTECTED: dashboard & order flows */}
+    <Route element={<RequireProfile />}>
+      <Route path="/"                  element={<DashboardLayout />} />
 
-      {/* Order → Payment → Confirmation */}
-      <Route path="order"            element={<OrderForm         />} />
-      <Route path="order/payment"    element={<PaymentPage       />} />
+      {/* Dashboard tabs (uncomment when ready) */}
+      {/* <Route path="rewards"   element={<RewardsPage />} /> */}
+      {/* <Route path="claimed"   element={<ClaimedPage />} /> */}
+      {/* <Route path="history"   element={<HistoryPage />} /> */}
+
+      {/* Order flow */}
+      <Route path="order"             element={<OrderForm         />} />
+      <Route path="order/payment"     element={<PaymentPage       />} />
       <Route path="order/confirmation" element={<OrderConfirmation />} />
-
-      {/* Fallback inside dashboard */}
-      <Route path="*" element={<Navigate to="" replace />} />
     </Route>
 
-    {/* Global fallback */}
+    {/* FALLBACK */}
     <Route path="*" element={<Navigate to="/login" replace />} />
   </Routes>
 );

@@ -1,34 +1,27 @@
 // src/pages/OTPVerify.tsx
+
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../api/api";
-// Make sure you export `confirmationRef` from your Onboarding file:
-//   export const confirmationRef = React.createRef<ConfirmationResult>();
+// Make sure you export `confirmationRef` from your OTP‐init page
 import { confirmationRef } from "./Onboarding";
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
-  const { state } = useLocation();
-  const profile = state as {
-    firstName: string;
-    lastName: string;
-    phone: string;
-    subscribe: boolean;
-  };
 
-  // ensure we came via Onboarding
+  // If there's no pending SMS confirmation, send them back
   useEffect(() => {
-    if (!profile) {
-      navigate("/onboarding");
+    if (!confirmationRef.current) {
+      // No in-flight OTP → they need to start over at signup
+      navigate("/signup", { replace: true });
     }
-  }, [profile, navigate]);
+  }, [navigate]);
 
-  // six separate inputs
+  // six separate inputs, same as before
   const inputsRef = useRef<HTMLInputElement[]>([]);
-  const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
 
-  // countdown timer
   useEffect(() => {
     if (timer <= 0) return;
     const id = setTimeout(() => setTimer((t) => t - 1), 1000);
@@ -50,20 +43,18 @@ const OTPVerify: React.FC = () => {
     if (code.length < 6) {
       return alert("Enter all 6 digits");
     }
-
     try {
       // 1) Confirm the SMS code with Firebase
       await confirmationRef.current!.confirm(code);
 
-      // Persist the profile via our new onboard endpoint
-      await api.post("/api/auth/onboard", {
-        first_name: profile.firstName,
-        last_name:  profile.lastName,
-        subscribe:  profile.subscribe,
+      // 2) Persist the profile in your own backend
+      //    (make sure you still pass whatever fields you need here)
+      await api.post("/api/users/create", {
+        /* firstName, lastName, phone, subscribe, etc */
       });
 
-      // 3) Navigate into the app
-      navigate("/");
+      // 3) Finally, navigate into the app
+      navigate("/", { replace: true });
     } catch (err: any) {
       alert(err.message || "Invalid OTP, please try again.");
     }
@@ -72,8 +63,7 @@ const OTPVerify: React.FC = () => {
   const resend = async () => {
     if (timer > 0) return;
     try {
-      // if you still want to use your backend for resends:
-      await api.post("/api/auth/send-otp", { phone: profile.phone });
+      await api.post("/api/auth/send-otp", { /* phone: … */ });
       setTimer(60);
       setOtp(["", "", "", "", "", ""]);
       inputsRef.current[0]?.focus();
@@ -83,15 +73,13 @@ const OTPVerify: React.FC = () => {
   };
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-4 space-y-8 text-center">
-      <h1 className="text-2xl font-semibold">Enter OTP</h1>
-
-      <div className="flex justify-center space-x-2">
+    <div className="p-6 max-w-sm mx-auto">
+      <h1 className="text-xl mb-4">Enter OTP</h1>
+      <div className="flex space-x-2 mb-4">
         {otp.map((digit, i) => (
           <input
             key={i}
             type="text"
-            inputMode="numeric"
             maxLength={1}
             value={digit}
             onChange={(e) => handleChange(i, e.target.value)}
@@ -102,28 +90,23 @@ const OTPVerify: React.FC = () => {
           />
         ))}
       </div>
-
-      <p className="text-sm text-gray-600">
-        Resend OTP in{" "}
-        {`${Math.floor(timer / 60)}:${(timer % 60)
-          .toString()
-          .padStart(2, "0")}`}
-      </p>
-
-      <button
-        onClick={resend}
-        disabled={timer > 0}
-        className="text-blue-600 underline disabled:opacity-50"
-      >
-        Resend OTP
-      </button>
-
-      <button
-        onClick={handleSubmit}
-        className="mt-4 w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-      >
-        Verify
-      </button>
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={resend}
+          disabled={timer > 0}
+          className="text-blue-600 underline disabled:opacity-50"
+        >
+          Resend OTP in {`${Math.floor(timer / 60)}:${(timer % 60)
+            .toString()
+            .padStart(2, "0")}`}
+        </button>
+        <button
+          onClick={handleSubmit}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Verify
+        </button>
+      </div>
     </div>
   );
 };

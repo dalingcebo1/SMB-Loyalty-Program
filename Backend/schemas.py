@@ -50,7 +50,8 @@ class AssignVehicleRequest(BaseModel):
     make:        Optional[str] = None
     model:       Optional[str] = None
 
-# ─── Payments ────────────────────────────────────────────────────────────────
+
+### ─── Payments ────────────────────────────────────────────────────────────────
 
 class PaymentInitRequest(BaseModel):
     order_id: int
@@ -78,3 +79,11 @@ class OrderCreateResponse(BaseModel):
     order_id: str
     qr_data: str
 
+
+### ─── New: User‐exists check ────────────────────────────────────────────────────
+
+class ExistsResponse(BaseModel):
+    """
+    Returned by GET /users/{uid}/exists.
+    """
+    exists: bool

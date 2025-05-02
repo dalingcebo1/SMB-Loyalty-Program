@@ -1,9 +1,15 @@
 from fastapi import APIRouter, Depends
+from routes.auth import get_current_user
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import Service, Extra
 
-router = APIRouter(prefix="/catalog", tags=["Catalog"])
+router = APIRouter(
+    prefix="/catalog",
+    dependencies=[Depends(get_current_user)],
+    tags=["Catalog"],
+)
+
 
 def get_db():
     db = SessionLocal()

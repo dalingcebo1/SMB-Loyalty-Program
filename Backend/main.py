@@ -23,11 +23,11 @@ app.add_middleware(
 )
 
 # Mount all routers under /api
-app.include_router(loyalty.router, prefix="/api")
-app.include_router(catalog.router, prefix="/api")
-app.include_router(orders.router,  prefix="/api") 
+app.include_router(loyalty.router,  prefix="/api")
+app.include_router(catalog.router,  prefix="/api")
+app.include_router(orders.router,   prefix="/api") 
 app.include_router(orders.payments, prefix="/api")
-app.include_router(auth.router, prefix="/api/auth")   # <-- mount /api/auth
+app.include_router(auth.router,     prefix="/api")   # <-- mount /api/auth
 # app.include_router(payments,       prefix="/api")
 
 @app.on_event("startup")

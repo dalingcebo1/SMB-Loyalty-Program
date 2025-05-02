@@ -4,6 +4,7 @@ from typing import Optional, List
 
 import jwt
 from fastapi import APIRouter, HTTPException, Depends, Query, status
+from routes.auth import get_current_user
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -16,9 +17,10 @@ DEFAULT_TENANT = os.getenv("TENANT_ID", "default")
 
 router = APIRouter(
     prefix="/loyalty",
-    tags=["Loyalty"],
-    responses={404: {"description": "Not found"}},
+    dependencies=[Depends(get_current_user)],
+    tags=["loyalty"],
 )
+
 
 def get_db():
     db = SessionLocal()

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import api from "../api/api";
 
 interface FormData {
   email: string;
@@ -22,21 +23,29 @@ const Login: React.FC = () => {
     setAuthError(null);
     try {
       await loginWithEmail(data.email, data.password);
+      await api.get("/auth/me");
       navigate("/");
     } catch (err: any) {
-      // Map known Firebase Auth error codes
-      switch (err.code) {
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-        case "auth/invalid-credential":
-          setAuthError("The email and password provided are incorrect.");
-          break;
-        case "auth/too-many-requests":
-          setAuthError("Too many attempts. Please try again later.");
-          break;
-        default:
-          setAuthError(err.message || "Login failed. Please try again.");
+ // If our own backend says 404 → not onboarded, send to signup
+         if (err.response?.status === 404) {
+        navigate("/signup");
+        return;
       }
+
+    // Otherwise it’s a Firebase Auth error: map codes to messages
+    switch (err.code) {
+          case "auth/user-not-found":
+          case "auth/wrong-password":
+          case "auth/invalid-credential":
+            setAuthError("The email and password provided are incorrect.");
+            break;
+          case "auth/too-many-requests":
+            setAuthError("Too many attempts. Please try again later.");
+            break;
+          default:
+            setAuthError(err.message || "Login failed. Please try again.");
+        }
+
     }
   };
 
@@ -45,7 +54,31 @@ const Login: React.FC = () => {
       <h1 className="text-2xl font-semibold text-center">Log In</h1>
 
       <button
-        onClick={() => loginWithGoogle().then(() => navigate("/"))}
+      onClick={async () => {
+        try {
+          // 1) Sign in with Google via Firebase
+          await loginWithGoogle();
+
+          // 2) Check our own backend if they’re onboarded
+          await api.get("/auth/me");
+
+          // 3) If that succeeds, go to dashboard
+          navigate("/");
+        } catch (err: any) {
+          // if backend says USER_NOT_FOUND → onboarding
+          if (
+            err.response?.status === 400 &&
+            err.response?.data?.error?.message === "USER_NOT_FOUND"
+          ) {
+            return navigate("/signup");
+          }
+          // anything else is fatal
+          console.error(err);
+          alert("Something went wrong. Please try again.");
+
+        }
+      }}
+
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/google.svg" alt="G" className="h-5 w-5 mr-2" />
@@ -53,7 +86,15 @@ const Login: React.FC = () => {
       </button>
 
       <button
-        onClick={() => loginWithApple().then(() => navigate("/"))}
+        onClick={async () => {
+          try {
+            await loginWithApple();
+            await api.get("/auth/me");
+            navigate("/");
+          } catch {
+            navigate("/signup");
+          }
+        }}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/apple.svg" alt="" className="h-5 w-5 mr-2" />

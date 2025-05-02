@@ -55,12 +55,11 @@ const OTPVerify: React.FC = () => {
       // 1) Confirm the SMS code with Firebase
       await confirmationRef.current!.confirm(code);
 
-      // 2) Persist the profile in your own backend
-      await api.post("/api/users/create", {
-        firstName: profile.firstName,
-        lastName:  profile.lastName,
-        phone:     profile.phone,
-        subscribe: profile.subscribe,
+      // Persist the profile via our new onboard endpoint
+      await api.post("/api/auth/onboard", {
+        first_name: profile.firstName,
+        last_name:  profile.lastName,
+        subscribe:  profile.subscribe,
       });
 
       // 3) Navigate into the app

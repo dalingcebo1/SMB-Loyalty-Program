@@ -5,6 +5,7 @@ import hmac
 import hashlib
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from routes.auth import get_current_user
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
@@ -17,7 +18,12 @@ PAYSTACK_SECRET = os.getenv("PAYSTACK_SECRET_KEY")
 if not PAYSTACK_SECRET:
     raise RuntimeError("PAYSTACK_SECRET_KEY is not set in .env")
 
-router = APIRouter(prefix="/payments", tags=["Payments"])
+router = APIRouter(
+    prefix="/payments",
+    dependencies=[Depends(get_current_user)],
+    tags=["Payments"],
+)
+
 
 def get_db():
     db = SessionLocal()

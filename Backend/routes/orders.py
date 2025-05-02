@@ -3,6 +3,7 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
+from routes.auth import get_current_user
 from sqlalchemy.orm import Session
 from database import SessionLocal
 
@@ -25,7 +26,11 @@ from schemas import (
     AssignVehicleRequest,
 )
 
-router = APIRouter(prefix="/orders", tags=["Orders"])
+router = APIRouter(
+    prefix="/orders",
+    dependencies=[Depends(get_current_user)],
+    tags=["orders"],
+)
 
 def get_db():
     db = SessionLocal()

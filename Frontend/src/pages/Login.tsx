@@ -3,28 +3,19 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
-import { getAuth, signOut } from "firebase/auth";
-import { useAuth } from "../auth/AuthProvider";
+import { signOut, signInWithPopup, signInWithRedirect, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
+import { auth } from "../firebase";
 import api from "../api/api";
 
-interface FormData {
-  email: string;
-  password: string;
-}
+interface FormData { email: string; password: string; }
 
 const Login: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
-  const { loginWithEmail, loginWithGoogle, loginWithApple } = useAuth();
   const navigate = useNavigate();
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>();
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>();
 
-  // Clear any lingering session so we start fresh
+  // Clear session on mount
   useEffect(() => {
-    const auth = getAuth();
     if (auth.currentUser) signOut(auth).catch(console.warn);
   }, []);
 
@@ -32,54 +23,50 @@ const Login: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setAuthError(null);
     try {
-      await loginWithEmail(data.email, data.password);
-      await api.get("/auth/me");
+      await api.post("/auth/login", data);         // your backend login endpoint
       navigate("/", { replace: true });
     } catch (err: any) {
       if (err.response?.status === 404) {
-        return navigate("/signup", { replace: true });
-      }
-      switch (err.code) {
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-        case "auth/invalid-credential":
-          setAuthError("The email and password provided are incorrect.");
-          break;
-        case "auth/too-many-requests":
-          setAuthError("Too many attempts. Please try again later.");
-          break;
-        default:
-          setAuthError(err.message || "Login failed. Please try again.");
+        setAuthError("Email is not registered. Please sign up first.");
+      } else {
+        setAuthError("Email/password login failed.");
       }
     }
   };
 
-  // Social login
-  const handleSocialLogin = async (
-    signInFn: () => Promise<any>,
-    providerName: "Google" | "Apple"
-  ) => {
+  // Social sign-in
+  const handleSocialLogin = async (providerName: "Google" | "Apple") => {
     setAuthError(null);
+    let provider;
+    if (providerName === "Google") provider = new GoogleAuthProvider();
+    else provider = new OAuthProvider("apple.com");
+
     try {
-      await signInFn();
+      await signInWithPopup(auth, provider);
     } catch (e: any) {
+      // Apple disabled?
+      if (providerName === "Apple" && e.code === "auth/operation-not-allowed") {
+        return setAuthError("Apple login not enabled. Please use another method.");
+      }
+      // fallback to redirect if popup blocked
+      if (e.code === "auth/operation-not-supported-in-this-environment" || e.code === "auth/popup-blocked") {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       console.error(`${providerName} sign-in failed`, e);
-      return setAuthError(
-        `${providerName} login failed. Please try again or use email/password.`
-      );
+      return setAuthError(`${providerName} login failed.`);
     }
 
+    // check registration status
     try {
       await api.get("/auth/me");
       navigate("/", { replace: true });
     } catch (e: any) {
       if (e.response?.status === 404) {
-        return navigate("/signup", { replace: true });
+        setAuthError("Email is not registered. Please sign up first.");
+      } else {
+        setAuthError("Social login failed. Please try again.");
       }
-      console.error(`Checking /auth/me after ${providerName} failed`, e);
-      setAuthError(
-        `Could not complete login. Please try again later or use another method.`
-      );
     }
   };
 
@@ -88,7 +75,7 @@ const Login: React.FC = () => {
       <h1 className="text-2xl font-semibold text-center">Log In</h1>
 
       <button
-        onClick={() => handleSocialLogin(loginWithGoogle, "Google")}
+        onClick={() => handleSocialLogin("Google")}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/google.svg" alt="G" className="h-5 w-5 mr-2" />
@@ -96,7 +83,7 @@ const Login: React.FC = () => {
       </button>
 
       <button
-        onClick={() => handleSocialLogin(loginWithApple, "Apple")}
+        onClick={() => handleSocialLogin("Apple")}
         className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
       >
         <img src="/icons/apple.svg" alt="" className="h-5 w-5 mr-2" />
@@ -114,34 +101,17 @@ const Login: React.FC = () => {
           type="email"
           placeholder="Email"
           className="w-full border rounded px-3 py-2"
-          {...register("email", {
-            required: "Email is required",
-            pattern: {
-              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-              message: "Enter a valid email address",
-            },
-          })}
+          {...register("email", { required: true })}
         />
-        {errors.email && (
-          <p className="text-red-500 text-sm">{errors.email.message}</p>
-        )}
+        {errors.email && <p className="text-red-500 text-sm">Email required</p>}
 
         <input
           type="password"
           placeholder="Password"
           className="w-full border rounded px-3 py-2"
-          {...register("password", {
-            required: "Password is required",
-            minLength: { value: 8, message: "Must be at least 8 characters" },
-            pattern: {
-              value: /(?=.*[A-Z])(?=.*\d).+/,
-              message: "Password must include an uppercase letter and a number",
-            },
-          })}
+          {...register("password", { required: true })}
         />
-        {errors.password && (
-          <p className="text-red-500 text-sm">{errors.password.message}</p>
-        )}
+        {errors.password && <p className="text-red-500 text-sm">Password required</p>}
 
         <button
           type="submit"
@@ -151,16 +121,12 @@ const Login: React.FC = () => {
           Log in
         </button>
 
-        {authError && (
-          <p className="text-red-500 text-center text-sm">{authError}</p>
-        )}
+        {authError && <p className="text-red-500 text-center text-sm">{authError}</p>}
       </form>
 
       <p className="text-center text-sm">
         Don’t have an account?{" "}
-        <Link to="/signup" className="text-blue-600 underline">
-          Sign up
-        </Link>
+        <Link to="/signup" className="text-blue-600 underline">Sign up</Link>
       </p>
     </div>
   );

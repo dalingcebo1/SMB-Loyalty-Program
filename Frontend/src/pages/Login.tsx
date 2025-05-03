@@ -3,27 +3,63 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
-import { signOut, signInWithPopup, signInWithRedirect, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
+import {
+  signOut,
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider,
+  OAuthProvider,
+} from "firebase/auth";
 import { auth } from "../firebase";
 import api from "../api/api";
 
-interface FormData { email: string; password: string; }
+interface FormData {
+  email: string;
+  password: string;
+}
 
 const Login: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>();
 
-  // Clear session on mount
+  // 1) clear any lingering session & handle redirect result
   useEffect(() => {
-    if (auth.currentUser) signOut(auth).catch(console.warn);
-  }, []);
+    if (auth.currentUser) {
+      signOut(auth).catch(console.warn);
+    }
+
+    // if we just got redirected back from Google/Apple…
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          try {
+            await api.get("/auth/me");
+            navigate("/", { replace: true });
+          } catch (err: any) {
+            if (err.response?.status === 404) {
+              setAuthError("Email is not registered. Please sign up first.");
+            } else {
+              setAuthError("Social login failed. Please try again.");
+            }
+          }
+        }
+      })
+      .catch((e) => {
+        console.error("Redirect login failed", e);
+        setAuthError("Social login failed. Please try again.");
+      });
+  }, [navigate]);
 
   // Email/password login
   const onSubmit = async (data: FormData) => {
     setAuthError(null);
     try {
-      await api.post("/auth/login", data);         // your backend login endpoint
+      await api.post("/auth/login", data);
       navigate("/", { replace: true });
     } catch (err: any) {
       if (err.response?.status === 404) {
@@ -34,40 +70,20 @@ const Login: React.FC = () => {
     }
   };
 
-  // Social sign-in
-  const handleSocialLogin = async (providerName: "Google" | "Apple") => {
+  // Social redirect
+  const handleSocialLogin = (providerName: "Google" | "Apple") => {
     setAuthError(null);
-    let provider;
-    if (providerName === "Google") provider = new GoogleAuthProvider();
-    else provider = new OAuthProvider("apple.com");
+    let provider =
+      providerName === "Google"
+        ? new GoogleAuthProvider()
+        : new OAuthProvider("apple.com");
 
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (e: any) {
-      // Apple disabled?
-      if (providerName === "Apple" && e.code === "auth/operation-not-allowed") {
-        return setAuthError("Apple login not enabled. Please use another method.");
-      }
-      // fallback to redirect if popup blocked
-      if (e.code === "auth/operation-not-supported-in-this-environment" || e.code === "auth/popup-blocked") {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-      console.error(`${providerName} sign-in failed`, e);
-      return setAuthError(`${providerName} login failed.`);
+    // if Apple not enabled, show friendly
+    if (providerName === "Apple") {
+      // we let Firebase return 'auth/operation-not-allowed' in the redirect attempt if Apple is not enabled
     }
 
-    // check registration status
-    try {
-      await api.get("/auth/me");
-      navigate("/", { replace: true });
-    } catch (e: any) {
-      if (e.response?.status === 404) {
-        setAuthError("Email is not registered. Please sign up first.");
-      } else {
-        setAuthError("Social login failed. Please try again.");
-      }
-    }
+    signInWithRedirect(auth, provider);
   };
 
   return (
@@ -101,17 +117,30 @@ const Login: React.FC = () => {
           type="email"
           placeholder="Email"
           className="w-full border rounded px-3 py-2"
-          {...register("email", { required: true })}
+          {...register("email", {
+            required: "Email is required",
+            pattern: {
+              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              message: "Enter a valid email address",
+            },
+          })}
         />
-        {errors.email && <p className="text-red-500 text-sm">Email required</p>}
+        {errors.email && (
+          <p className="text-red-500 text-sm">{errors.email.message}</p>
+        )}
 
         <input
           type="password"
           placeholder="Password"
           className="w-full border rounded px-3 py-2"
-          {...register("password", { required: true })}
+          {...register("password", {
+            required: "Password is required",
+            minLength: { value: 8, message: "Must be at least 8 chars" },
+          })}
         />
-        {errors.password && <p className="text-red-500 text-sm">Password required</p>}
+        {errors.password && (
+          <p className="text-red-500 text-sm">{errors.password.message}</p>
+        )}
 
         <button
           type="submit"
@@ -121,12 +150,16 @@ const Login: React.FC = () => {
           Log in
         </button>
 
-        {authError && <p className="text-red-500 text-center text-sm">{authError}</p>}
+        {authError && (
+          <p className="text-red-500 text-center text-sm">{authError}</p>
+        )}
       </form>
 
       <p className="text-center text-sm">
         Don’t have an account?{" "}
-        <Link to="/signup" className="text-blue-600 underline">Sign up</Link>
+        <Link to="/signup" className="text-blue-600 underline">
+          Sign up
+        </Link>
       </p>
     </div>
   );

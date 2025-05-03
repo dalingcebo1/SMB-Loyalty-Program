@@ -1,3 +1,5 @@
+// src/pages/Login.tsx
+
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
@@ -10,8 +12,11 @@ interface FormData {
 
 const Login: React.FC = () => {
   const { login } = useAuth();
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
+
+  // track any auth error & the last credentials we tried
   const [authError, setAuthError] = useState<string | null>(null);
+  const [lastCreds, setLastCreds] = useState<FormData | null>(null);
 
   const {
     register,
@@ -20,7 +25,6 @@ const Login: React.FC = () => {
   } = useForm<FormData>();
 
   useEffect(() => {
-    // clear any stale error on mount
     setAuthError(null);
   }, []);
 
@@ -30,14 +34,15 @@ const Login: React.FC = () => {
       await login(data.email, data.password);
       navigate("/", { replace: true });
     } catch (err: any) {
-      const status = err.response?.status;
-      if (status === 403) {
-        // user exists but hasn’t finished OTP/onboarding
-        setAuthError("Please complete phone verification first.");
-      } else if (status === 401) {
+      // save what they just tried, so we can re-use it
+      setLastCreds(data);
+
+      if (err.response?.status === 404) {
+        setAuthError("Email is not registered. Please sign up first.");
+      } else if (err.response?.status === 401) {
         setAuthError("Incorrect email or password.");
-      } else if (status === 404) {
-        setAuthError("Email not registered. Please sign up first.");
+      } else if (err.response?.status === 403) {
+        setAuthError("Please complete onboarding before logging in.");
       } else {
         setAuthError("Unable to log in right now. Please try again later.");
       }
@@ -76,11 +81,29 @@ const Login: React.FC = () => {
         >
           {isSubmitting ? "Logging in…" : "Log in"}
         </button>
-
-        {authError && (
-          <p className="text-red-500 text-center text-sm">{authError}</p>
-        )}
       </form>
+
+      {authError && (
+        <div className="text-center space-y-2">
+          <p className="text-red-500 text-sm">{authError}</p>
+          {/** If they just hit the 403 case, let them jump back to onboarding */}
+          {authError.includes("onboarding") && lastCreds && (
+            <button
+              onClick={() =>
+                navigate("/onboarding", {
+                  state: {
+                    email: lastCreds.email,
+                    password: lastCreds.password,
+                  },
+                })
+              }
+              className="text-blue-600 underline text-sm"
+            >
+              Complete onboarding →
+            </button>
+          )}
+        </div>
+      )}
 
       <p className="text-center text-sm">
         Don’t have an account?{" "}

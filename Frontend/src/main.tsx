@@ -1,5 +1,5 @@
 // src/main.tsx
-
+import "./firebase";    // ← initialises Firebase app & auth
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";

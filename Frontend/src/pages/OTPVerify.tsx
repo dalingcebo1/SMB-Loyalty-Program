@@ -1,169 +1,136 @@
-// src/pages/OTPVerify.tsx
-
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthProvider";
-import api from "../api/api";
+import { useNavigate, useLocation }       from "react-router-dom";
+import api                              from "../api/api";
+import { auth }                         from "../firebase";
+import { confirmationRef }              from "./Onboarding";
 
 interface LocationState {
-  sessionId: string;
+  email:     string;
+  password:  string;
   firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
+  lastName:  string;
+  phone:     string;
+  subscribe: boolean;
 }
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
-  const { loginWithToken } = useAuth();
-  const { state } = useLocation() as { state: LocationState };
+  const { state } = useLocation() as { state?: LocationState };
+  const confirmation = confirmationRef.current;
 
-  // Guard: if someone lands here without a sessionId, bounce them back
+  // if we never got a ConfirmationResult, go back one step
   useEffect(() => {
-    if (!state?.sessionId) {
-      navigate("/signup", { replace: true });
+    if (!confirmation) {
+      navigate("/onboarding", {
+        replace: true,
+        state: { email: state?.email, password: state?.password },
+      });
     }
-  }, [state, navigate]);
+  }, [confirmation, navigate, state]);
 
-  const [sessionId, setSessionId] = useState(state?.sessionId ?? "");
-  const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
-  const [error, setError] = useState<string | null>(null);
-  const [timer, setTimer] = useState(60);
   const inputsRef = useRef<HTMLInputElement[]>([]);
+  const [otp,   setOtp]   = useState<string[]>(Array(6).fill(""));
+  const [timer, setTimer] = useState(60);
 
-  // countdown
   useEffect(() => {
     if (timer <= 0) return;
     const id = setTimeout(() => setTimer((t) => t - 1), 1000);
     return () => clearTimeout(id);
   }, [timer]);
 
-  // handle digit change + auto-focus next
-  const onChange = (idx: number, val: string) => {
-    if (!/^\d?$/.test(val)) return;
-    const next = [...digits];
-    next[idx] = val;
-    setDigits(next);
-    if (val && idx < 5) {
-      inputsRef.current[idx + 1]?.focus();
-    }
+  const handleChange = (i: number, v: string) => {
+    if (!/^\d?$/.test(v)) return;
+    const next = [...otp];
+    next[i] = v;
+    setOtp(next);
+    if (v && i < 5) inputsRef.current[i+1]?.focus();
   };
 
-  // backspace behaviour
-  const onKeyDown = (
+  const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
-    idx: number
+    i: number
   ) => {
     if (e.key === "Backspace") {
       e.preventDefault();
-      const next = [...digits];
-      if (next[idx] === "") {
-        if (idx > 0) {
-          next[idx - 1] = "";
-          setDigits(next);
-          inputsRef.current[idx - 1]?.focus();
+      const next = [...otp];
+      if (next[i]==="") {
+        if (i>0) {
+          next[i-1] = "";
+          setOtp(next);
+          inputsRef.current[i-1]?.focus();
         }
       } else {
-        next[idx] = "";
-        setDigits(next);
+        next[i] = "";
+        setOtp(next);
       }
     }
   };
 
-  // submit OTP
-  const handleVerify = async () => {
-    const code = digits.join("");
+  const submitOTP = async () => {
+    if (!confirmation) return;
+    const code = otp.join("");
     if (code.length < 6) {
-      setError("Please enter all 6 digits");
+      alert("Enter all 6 digits");
       return;
     }
-    setError(null);
 
     try {
-      const res = await api.post<{ access_token: string }>(
-        "/auth/confirm-otp",
-        {
-          session_id: sessionId,
-          code,
-          first_name: state.firstName,
-          last_name: state.lastName,
-        }
-      );
-      // login with returned JWT
-      await loginWithToken(res.data.access_token);
+      await confirmation.confirm(code);
+      // now persist on your backend
+      await api.post("/users", {
+        uid:       auth.currentUser!.uid,
+        firstName: state!.firstName,
+        lastName:  state!.lastName,
+        phone:     state!.phone,
+        subscribe: state!.subscribe,
+      });
       navigate("/", { replace: true });
     } catch (err: any) {
-      if (err.response?.status === 400) {
-        setError("Invalid or expired code. Please try again.");
-      } else {
-        setError("Failed to verify OTP. Please try again later.");
-      }
+      alert(err.message || "Invalid OTP, please try again.");
     }
   };
 
-  // resend code
-  const handleResend = async () => {
-    if (timer > 0) return;
-    setError(null);
-    try {
-      const res = await api.post<{ session_id: string }>("/auth/send-otp", {
-        email: state.email,
-        phone: state.phone,
-      });
-      setSessionId(res.data.session_id);
-      setDigits(Array(6).fill(""));
-      inputsRef.current[0]?.focus();
-      setTimer(60);
-    } catch (err: any) {
-      setError(
-        err.response?.data?.detail ||
-          "Unable to resend OTP. Please try again later."
-      );
-    }
+  const resend = () => {
+    if (timer>0) return;
+    navigate("/onboarding", {
+      state: { email: state!.email, password: state!.password },
+    });
   };
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
-      <h2 className="text-xl font-semibold text-center">Enter OTP</h2>
+    <div className="p-6 max-w-sm mx-auto">
+      <h1 className="text-xl mb-4">Enter OTP</h1>
 
-      <div className="flex justify-center space-x-2">
-        {digits.map((d, i) => (
+      <div className="flex space-x-2 mb-4">
+        {otp.map((d,i) => (
           <input
             key={i}
-            ref={(el) => {
-              if (el) inputsRef.current[i] = el;
-            }}
-            className="w-10 h-12 text-center border rounded"
             type="text"
             inputMode="numeric"
             maxLength={1}
             value={d}
-            onChange={(e) => onChange(i, e.target.value)}
-            onKeyDown={(e) => onKeyDown(e, i)}
+            onChange={(e)=>handleChange(i,e.target.value)}
+            onKeyDown={(e)=>handleKeyDown(e,i)}
+            ref={el => { if (el) inputsRef.current[i] = el; }}
+            className="w-10 h-12 text-center border rounded"
           />
         ))}
       </div>
 
-      {error && <p className="text-red-500 text-center">{error}</p>}
-
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <button
-          onClick={handleResend}
-          disabled={timer > 0}
+          onClick={resend}
+          disabled={timer>0}
           className="text-blue-600 underline disabled:opacity-50"
         >
-          {timer > 0
-            ? `Resend in ${Math.floor(timer / 60)}:${(timer % 60)
-                .toString()
-                .padStart(2, "0")}`
-            : "Resend code"}
+          Resend in {`${Math.floor(timer/60)}:${(timer%60).toString().padStart(2,'0')}`}
         </button>
 
         <button
-          onClick={handleVerify}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          onClick={submitOTP}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
         >
-          Verify & Finish
+          Verify
         </button>
       </div>
     </div>

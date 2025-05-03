@@ -1,10 +1,12 @@
+// src/components/NavTabs.tsx
+
 import React from "react";
 import { NavLink } from "react-router-dom";
 
 const tabs = [
   { to: "/rewards", label: "Rewards" },
-  { to: "/claimed",  label: "Claimed" },
-  { to: "/history",  label: "History" },
+  { to: "/claimed",  label: "Claimed"  },
+  { to: "/history",  label: "History"  },
 ];
 
 const NavTabs: React.FC = () => (

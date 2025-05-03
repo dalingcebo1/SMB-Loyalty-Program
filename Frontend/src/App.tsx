@@ -1,6 +1,13 @@
 // src/App.tsx
+
 import React from "react";
-import { Routes, Route, Navigate, useNavigate, Outlet } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  Outlet,
+} from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
 
 import Signup            from "./pages/Signup";
@@ -24,31 +31,39 @@ function RequireAuth() {
   }, [loading, user, navigate]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen"><p>Loading…</p></div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Loading…</p>
+      </div>
+    );
   }
+
   return <Outlet />;
 }
 
 export default function App() {
   return (
     <Routes>
-      {/* public */}
-      <Route path="/signup"   element={<Signup />} />
-      <Route path="/login"    element={<Login  />} />
-      <Route path="/onboarding"       element={<Onboarding />} />
+      {/* PUBLIC */}
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/onboarding/verify" element={<OTPVerify />} />
 
-      {/* protected */}
+      {/* PROTECTED */}
       <Route element={<RequireAuth />}>
         <Route path="/" element={<DashboardLayout />}>
+          {/* default dashboard view */}
           <Route index element={<MyLoyalty />} />
-          <Route path="order"            element={<OrderForm         />} />
-          <Route path="order/payment"    element={<PaymentPage       />} />
+
+          {/* nested flows */}
+          <Route path="order"              element={<OrderForm />} />
+          <Route path="order/payment"      element={<PaymentPage />} />
           <Route path="order/confirmation" element={<OrderConfirmation />} />
         </Route>
       </Route>
 
-      {/* catch-all */}
+      {/* FALLBACK */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

@@ -1,59 +1,51 @@
 // src/pages/OTPVerify.tsx
-
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
 
 interface LocationState {
-  sessionId: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
+  sessionId:  string;
+  firstName:  string;
+  lastName:   string;
+  phone:      string;
+  email:      string;
 }
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: LocationState };
   const { loginWithToken } = useAuth();
-
-  // sessionId in local state so we can update on resend
-  const [sessionId, setSessionId] = useState(state?.sessionId);
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [timer, setTimer] = useState(60);
+  const [error, setError] = useState<string | null>(null);
   const inputsRef = useRef<HTMLInputElement[]>([]);
 
-  // Redirect back if no sessionId
+  // redirect if no sessionId
   useEffect(() => {
-    if (!sessionId) {
+    if (!state?.sessionId) {
       navigate("/signup", { replace: true });
     }
-  }, [sessionId, navigate]);
+  }, [state, navigate]);
 
-  // Countdown timer
+  // countdown
   useEffect(() => {
     if (timer <= 0) return;
     const id = setTimeout(() => setTimer((t) => t - 1), 1000);
     return () => clearTimeout(id);
   }, [timer]);
 
-  // Handle OTP digit entry
+  // handle digit entry
   const handleChange = (idx: number, val: string) => {
     if (!/^\d?$/.test(val)) return;
     const next = [...otp];
     next[idx] = val;
     setOtp(next);
-    if (val && idx < 5) {
-      inputsRef.current[idx + 1]?.focus();
-    }
+    if (val && idx < 5) inputsRef.current[idx + 1]?.focus();
   };
 
-  // Handle backspace for intuitive navigation
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    idx: number
-  ) => {
+  // backspace behavior
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
     if (e.key === "Backspace") {
       e.preventDefault();
       const next = [...otp];
@@ -70,51 +62,46 @@ const OTPVerify: React.FC = () => {
     }
   };
 
-  // Submit OTP code
   const handleSubmit = async () => {
+    setError(null);
     const code = otp.join("");
     if (code.length < 6) {
-      alert("Enter all 6 digits");
+      setError("Enter all 6 digits");
       return;
     }
     try {
       const res = await api.post<{ token: string }>("/auth/confirm-otp", {
-        session_id: sessionId,
+        session_id: state.sessionId,
         code,
         firstName: state.firstName,
         lastName: state.lastName,
       });
-
-      // Use context helper to set token & fetch user
       await loginWithToken(res.data.token);
-
-      // Navigate into the app
       navigate("/", { replace: true });
     } catch (err: any) {
-      alert(err.response?.data?.detail || err.message || "Invalid OTP");
+      setError(err.response?.data?.detail || "Invalid OTP, please try again.");
     }
   };
 
-  // Resend OTP
   const resend = async () => {
     if (timer > 0) return;
     try {
-      const res = await api.post<{ session_id: string }>("/auth/send-otp", {
+      await api.post("/auth/send-otp", {
         email: state.email,
         phone: state.phone,
       });
-      setSessionId(res.data.session_id);
       setTimer(60);
       setOtp(Array(6).fill(""));
       inputsRef.current[0]?.focus();
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to resend OTP");
+      setError(err.response?.data?.detail || "Failed to resend OTP");
     }
   };
 
   return (
     <div className="p-6 max-w-sm mx-auto">
       <h1 className="text-xl mb-4">Enter OTP</h1>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
 
       <div className="flex space-x-2 mb-4">
         {otp.map((digit, i) => (
@@ -140,9 +127,11 @@ const OTPVerify: React.FC = () => {
           disabled={timer > 0}
           className="text-blue-600 underline disabled:opacity-50"
         >
-          Resend in {`${Math.floor(timer / 60)}:${(timer % 60)
-            .toString()
-            .padStart(2, "0")}`}
+          {timer > 0
+            ? `Resend in ${Math.floor(timer / 60)}:${(timer % 60)
+                .toString()
+                .padStart(2, "0")}`
+            : "Resend OTP"}
         </button>
         <button
           onClick={handleSubmit}

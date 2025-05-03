@@ -1,13 +1,6 @@
 // src/App.tsx
-
 import React from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  Outlet,
-  useLocation,
-} from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, Outlet } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
 
 import Signup            from "./pages/Signup";
@@ -17,54 +10,46 @@ import OTPVerify         from "./pages/OTPVerify";
 import OrderForm         from "./pages/OrderForm";
 import PaymentPage       from "./pages/PaymentPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
-
-import DashboardLayout from "./components/DashboardLayout";
+import MyLoyalty         from "./pages/MyLoyalty";
+import DashboardLayout   from "./components/DashboardLayout";
 
 function RequireAuth() {
   const { user, loading } = useAuth();
-  const location = useLocation();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login", { replace: true });
+    }
+  }, [loading, user, navigate]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-500">Loading…</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-screen"><p>Loading…</p></div>;
   }
-
-  if (!user) {
-    // not logged in → send to /login, remember where they were going
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  // logged in & onboarded → render the protected routes
   return <Outlet />;
 }
 
-const App: React.FC = () => (
-  <Routes>
-    {/* PUBLIC */}
-    <Route path="/signup" element={<Signup />} />
-    <Route path="/login" element={<Login />} />
-    <Route path="/onboarding" element={<Onboarding />} />
-    <Route path="/onboarding/verify" element={<OTPVerify />} />
+export default function App() {
+  return (
+    <Routes>
+      {/* public */}
+      <Route path="/signup"   element={<Signup />} />
+      <Route path="/login"    element={<Login  />} />
+      <Route path="/onboarding"       element={<Onboarding />} />
+      <Route path="/onboarding/verify" element={<OTPVerify />} />
 
-    {/* PROTECTED: dashboard & order flows */}
-    <Route element={<RequireAuth />}>
-      <Route path="/" element={<DashboardLayout />} />
+      {/* protected */}
+      <Route element={<RequireAuth />}>
+        <Route path="/" element={<DashboardLayout />}>
+          <Route index element={<MyLoyalty />} />
+          <Route path="order"            element={<OrderForm         />} />
+          <Route path="order/payment"    element={<PaymentPage       />} />
+          <Route path="order/confirmation" element={<OrderConfirmation />} />
+        </Route>
+      </Route>
 
-      {/* Order flow */}
-      <Route path="order"            element={<OrderForm />} />
-      <Route path="order/payment"    element={<PaymentPage />} />
-      <Route
-        path="order/confirmation"
-        element={<OrderConfirmation />}
-      />
-    </Route>
-
-    {/* FALLBACK */}
-    <Route path="*" element={<Navigate to="/login" replace />} />
-  </Routes>
-);
-
-export default App;
+      {/* catch-all */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+}

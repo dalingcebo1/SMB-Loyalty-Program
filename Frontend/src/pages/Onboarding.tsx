@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
 
 interface LocationState {
@@ -14,22 +15,21 @@ interface FormData {
   firstName: string;
   lastName: string;
   phone: string;
-  subscribe: boolean;
 }
 
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: LocationState };
+  const { signup } = useAuth();
   const [error, setError] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({
-    defaultValues: { subscribe: false },
-  });
+  } = useForm<FormData>();
 
-  // Guard: if we don't have email/password, go back to signup
+  // If we don’t have email/password, go back to signup
   useEffect(() => {
     if (!state?.email || !state?.password) {
       navigate("/signup", { replace: true });
@@ -39,20 +39,17 @@ const Onboarding: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setError(null);
 
-    // Basic validation (react-hook-form handles required, pattern, etc.)
     try {
-      // Create pending user & send OTP
-      await api.post("/auth/signup", {
-        email: state.email,
-        password: state.password,
-      });
+      // 1) create pending user
+      await signup(state.email, state.password);
 
+      // 2) send OTP
       const res = await api.post<{ session_id: string }>("/auth/send-otp", {
         email: state.email,
         phone: data.phone,
       });
 
-      // Navigate to OTP verify, passing along all data
+      // 3) navigate to OTP verification
       navigate("/onboarding/verify", {
         state: {
           sessionId: res.data.session_id,
@@ -75,18 +72,13 @@ const Onboarding: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">
-        Complete Your Onboarding
-      </h2>
+      <h2 className="text-xl font-semibold mb-4">Complete Your Onboarding</h2>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label
-            htmlFor="firstName"
-            className="block text-sm font-medium"
-          >
+          <label htmlFor="firstName" className="block text-sm font-medium">
             First Name
           </label>
           <input
@@ -104,10 +96,7 @@ const Onboarding: React.FC = () => {
         </div>
 
         <div>
-          <label
-            htmlFor="lastName"
-            className="block text-sm font-medium"
-          >
+          <label htmlFor="lastName" className="block text-sm font-medium">
             Last Name
           </label>
           <input
@@ -146,18 +135,6 @@ const Onboarding: React.FC = () => {
               {errors.phone.message}
             </p>
           )}
-        </div>
-
-        <div className="flex items-center">
-          <input
-            id="subscribe"
-            type="checkbox"
-            {...register("subscribe")}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="subscribe" className="ml-2 block text-sm">
-            Subscribe to newsletter
-          </label>
         </div>
 
         <button

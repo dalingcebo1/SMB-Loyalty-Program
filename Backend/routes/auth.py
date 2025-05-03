@@ -1,135 +1,153 @@
+# backend/routes/auth.py
 
-
-    # Backend/auth.py
-from fastapi import APIRouter, HTTPException, Header
-from pydantic import BaseModel
-from typing import Optional, Dict
-from datetime import datetime
 import random
+import uuid
+from datetime import datetime, timedelta
+from typing import Dict
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr
 
+# ─── CONFIG ────────────────────────────────────────────────────────────────
+SECRET_KEY = "CHANGE_THIS_TO_A_STRONG_RANDOM_SECRET"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
-class SignupRequest(BaseModel):
-    email: str
-    password: str
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+# ─── IN‐MEMORY DB (POC) ─────────────────────────────────────────────────────
+# Replace with your real database models in production
+fake_users: Dict[str, Dict] = {}
+otp_sessions: Dict[str, Dict] = {}
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
+# ─── SCHEMAS ────────────────────────────────────────────────────────────────
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
-
-class LoginResponse(BaseModel):
-    token: str
-
-
-class SendOTPRequest(BaseModel):
-    email: str
+class UserOut(BaseModel):
+    email: EmailStr
+    first_name: str
+    last_name: str
     phone: str
 
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class SendOTPRequest(BaseModel):
+    email: EmailStr
+    phone: str
 
 class SendOTPResponse(BaseModel):
     session_id: str
 
-
 class ConfirmOTPRequest(BaseModel):
     session_id: str
     code: str
-    firstName: str
-    lastName: str
+    first_name: str
+    last_name: str
 
+# ─── HELPERS ────────────────────────────────────────────────────────────────
+def get_password_hash(password: str) -> str:
+    return pwd_ctx.hash(password)
 
-# Shape of the in-memory user record:
-# {
-#   email: str,
-#   password: str,
-#   onboarded: bool,
-#   firstName: str,
-#   lastName: str,
-#   phone: Optional[str],
-#   id: int
-# }
-users_db: Dict[str, dict] = {}
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_ctx.verify(plain, hashed)
 
-# OTP store: session_id → { code, email, phone }
-otp_db: Dict[str, dict] = {}
+def create_access_token(subject: str) -> str:
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"sub": subject, "exp": expire}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if not email or email not in fake_users:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        user = fake_users[email]
+        if not user["onboarded"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not onboarded")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+# ─── ROUTER ─────────────────────────────────────────────────────────────────
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/signup", status_code=201)
 def signup(req: SignupRequest):
-    if req.email in users_db:
-        raise HTTPException(400, "Email already registered")
-    users_db[req.email] = {
+    if req.email in fake_users:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    fake_users[req.email] = {
         "email": req.email,
-        "password": req.password,
+        "hashed_password": get_password_hash(req.password),
         "onboarded": False,
-        "firstName": "",
-        "lastName": "",
-        "phone": None,
-        "id": len(users_db) + 1,
+        "first_name": "",
+        "last_name": "",
+        "phone": "",
     }
-    return {"message": "Signup successful"}
+    return {"message": "Signup successful; please complete onboarding via OTP"}
 
-
-@router.post("/login", response_model=LoginResponse)
-def login(req: LoginRequest):
-    user = users_db.get(req.email)
-    if not user:
-        # not even signed up yet
-        raise HTTPException(404, "User not found")
+@router.post("/login", response_model=Token)
+def login(form: OAuth2PasswordRequestForm = Depends()):
+    user = fake_users.get(form.username)
+    if not user or not verify_password(form.password, user["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user["onboarded"]:
-        # prompt frontend to send them back to onboarding
-        raise HTTPException(404, "Not onboarded")
-    if user["password"] != req.password:
-        raise HTTPException(401, "Incorrect credentials")
-    # stub “token” is just the email
-    return {"token": req.email}
+        raise HTTPException(status_code=403, detail="User not onboarded")
+    token = create_access_token(form.username)
+    return {"access_token": token}
 
-
-@router.get("/me")
-def me(authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Unauthorized")
-    token = authorization.split(" ", 1)[1]
-    user = users_db.get(token)
-    if not user:
-        raise HTTPException(401, "Invalid token")
-    if not user["onboarded"]:
-        raise HTTPException(404, "Not onboarded")
+@router.get("/me", response_model=UserOut)
+def me(current: Dict = Depends(get_current_user)):
     return {
-        "id": user["id"],
-        "firstName": user["firstName"],
-        "lastName": user["lastName"],
-        "email": user["email"],
-        "phone": user["phone"],
+        "email": current["email"],
+        "first_name": current["first_name"],
+        "last_name": current["last_name"],
+        "phone": current["phone"],
     }
-
 
 @router.post("/send-otp", response_model=SendOTPResponse)
 def send_otp(req: SendOTPRequest):
-    user = users_db.get(req.email)
-    if not user:
-        raise HTTPException(404, "User not found")
-    # generate a unique session ID + a 6-digit code
-    session_id = f"{req.email}-{int(datetime.utcnow().timestamp())}"
-    code = f"{random.randint(100000, 999999)}"
-    otp_db[session_id] = {"code": code, "email": req.email, "phone": req.phone}
-    # in real life you'd SMS the code; here we just log it
-    print(f"[OTP] → {req.phone}: code={code}, session={session_id}")
+    if req.email not in fake_users:
+        raise HTTPException(status_code=404, detail="User not found")
+    session_id = str(uuid.uuid4())
+    code = f"{random.randint(0, 999999):06d}"
+    otp_sessions[session_id] = {
+        "email": req.email,
+        "phone": req.phone,
+        "code": code,
+        "expires": datetime.utcnow() + timedelta(minutes=10),
+    }
+    # TODO: integrate real SMS provider here
+    print(f"[DEBUG] OTP for {req.phone}: {code} (session {session_id})")
     return {"session_id": session_id}
 
-
-@router.post("/confirm-otp", response_model=LoginResponse)
+@router.post("/confirm-otp", response_model=Token)
 def confirm_otp(req: ConfirmOTPRequest):
-    rec = otp_db.get(req.session_id)
-    if not rec or rec["code"] != req.code:
-        raise HTTPException(401, "Invalid session or code")
-    # mark the user onboarded
-    user = users_db[rec["email"]]
-    user["onboarded"] = True
-    user["firstName"] = req.firstName
-    user["lastName"] = req.lastName
-    user["phone"] = rec["phone"]
-    # return the same “token” we use elsewhere
-    return {"token": user["email"]}
+    sess = otp_sessions.get(req.session_id)
+    if (
+        not sess
+        or sess["code"] != req.code
+        or sess["expires"] < datetime.utcnow()
+    ):
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    user = fake_users[sess["email"]]
+    user.update({
+        "onboarded": True,
+        "first_name": req.first_name,
+        "last_name": req.last_name,
+        "phone": sess["phone"],
+    })
+    # consume session
+    del otp_sessions[req.session_id]
+
+    token = create_access_token(sess["email"])
+    return {"access_token": token}

@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Boot: look for token in localStorage
+  // On mount, check for stored token
   useEffect(() => {
     const t = localStorage.getItem("token");
     if (t) {
@@ -52,6 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
+  // Email/password login
   const login = async (email: string, password: string) => {
     const res = await api.post<{ token: string }>("/auth/login", {
       email,
@@ -60,19 +61,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     const token = res.data.token;
     localStorage.setItem("token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-    // fetch user
     const me = await api.get<User>("/auth/me");
     setUser(me.data);
   };
 
+  // Start signup (creates pending user)
   const signup = async (email: string, password: string) => {
     await api.post("/auth/signup", { email, password });
-    // do not login yet—Onboarding will call send-otp then OTPVerify → loginWithToken
   };
 
+  // Finalize login after OTP confirm
   const loginWithToken = async (token: string) => {
-    // used after OTP confirmation
     localStorage.setItem("token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     const me = await api.get<User>("/auth/me");
@@ -96,8 +95,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
 export const useAuth = (): AuthContextType => {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 };

@@ -1,5 +1,3 @@
-// src/auth/AuthProvider.tsx
-
 import React, {
   createContext,
   useContext,
@@ -43,6 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         .get<User>("/auth/me")
         .then((res) => setUser(res.data))
         .catch(() => {
+          // invalid token / expired → clear
           localStorage.removeItem("token");
           delete api.defaults.headers.common["Authorization"];
         })
@@ -52,20 +51,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-  // Email/password login
+  // Email/password login (form-encoded for FastAPI OAuth2PasswordRequestForm)
   const login = async (email: string, password: string) => {
-    const res = await api.post<{ token: string }>("/auth/login", {
-      email,
-      password,
-    });
-    const token = res.data.token;
+    const form = new URLSearchParams();
+    form.append("grant_type", "password");
+    form.append("username",   email);
+    form.append("password",   password);
+
+    const res = await api.post<{ access_token: string }>(
+      "/auth/login",
+      form,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    const token = res.data.access_token;
     localStorage.setItem("token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+    // fetch profile
     const me = await api.get<User>("/auth/me");
     setUser(me.data);
   };
 
-  // Start signup (creates pending user)
+  // Start signup (creates pending user; OTP flow completes onboarding)
   const signup = async (email: string, password: string) => {
     await api.post("/auth/signup", { email, password });
   };

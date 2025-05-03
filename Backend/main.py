@@ -4,12 +4,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routes import catalog, loyalty, orders, auth
 from routes.payments import router as payments
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 app = FastAPI(
     title="SMB Loyalty Program",
     version="0.1",
     openapi_url="/api/openapi.json",
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content=jsonable_encoder({"validation_errors": exc.errors()}),
+    )
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 origins = os.getenv("ALLOWED_ORIGINS", "")

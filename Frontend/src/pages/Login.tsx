@@ -1,20 +1,26 @@
-// src/pages/Login.tsx
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
-interface FormData { email: string; password: string }
+interface FormData {
+  email: string;
+  password: string;
+}
 
 const Login: React.FC = () => {
   const { login } = useAuth();
-  const navigate = useNavigate();
+  const navigate   = useNavigate();
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>();
 
   useEffect(() => {
-    // clear any stale error
+    // clear any stale error on mount
     setAuthError(null);
   }, []);
 
@@ -24,10 +30,14 @@ const Login: React.FC = () => {
       await login(data.email, data.password);
       navigate("/", { replace: true });
     } catch (err: any) {
-      if (err.response?.status === 404) {
-        setAuthError("Email is not registered. Please sign up first.");
-      } else if (err.response?.status === 401) {
+      const status = err.response?.status;
+      if (status === 403) {
+        // user exists but hasn’t finished OTP/onboarding
+        setAuthError("Please complete phone verification first.");
+      } else if (status === 401) {
         setAuthError("Incorrect email or password.");
+      } else if (status === 404) {
+        setAuthError("Email not registered. Please sign up first.");
       } else {
         setAuthError("Unable to log in right now. Please try again later.");
       }
@@ -45,7 +55,9 @@ const Login: React.FC = () => {
           className="w-full border rounded px-3 py-2"
           {...register("email", { required: "Email is required" })}
         />
-        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+        {errors.email && (
+          <p className="text-red-500 text-sm">{errors.email.message}</p>
+        )}
 
         <input
           type="password"
@@ -53,7 +65,9 @@ const Login: React.FC = () => {
           className="w-full border rounded px-3 py-2"
           {...register("password", { required: "Password is required" })}
         />
-        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+        {errors.password && (
+          <p className="text-red-500 text-sm">{errors.password.message}</p>
+        )}
 
         <button
           type="submit"
@@ -63,12 +77,16 @@ const Login: React.FC = () => {
           {isSubmitting ? "Logging in…" : "Log in"}
         </button>
 
-        {authError && <p className="text-red-500 text-center text-sm">{authError}</p>}
+        {authError && (
+          <p className="text-red-500 text-center text-sm">{authError}</p>
+        )}
       </form>
 
       <p className="text-center text-sm">
         Don’t have an account?{" "}
-        <Link to="/signup" className="text-blue-600 underline">Sign up</Link>
+        <Link to="/signup" className="text-blue-600 underline">
+          Sign up
+        </Link>
       </p>
     </div>
   );

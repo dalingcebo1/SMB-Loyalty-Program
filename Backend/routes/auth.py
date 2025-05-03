@@ -1,145 +1,135 @@
-# Backend/routes/auth.py
-
-from fastapi import APIRouter, Depends, HTTPException, status, Header
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-
-from model import user
-from utils.firebase_admin import admin_auth
-from database import get_db
-from models import User  # your SQLAlchemy User model
-
-router = APIRouter()
 
 
-# --- Dependency to verify Firebase ID token ---
-async def get_current_user(authorization: str = Header(...)):
-    """
-    Extract Bearer <token> from header, verify with Firebase Admin,
-    and return the decoded token (including uid, email, phone_number, etc).
-    """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Bearer token",
-        )
-    id_token = authorization.split(" ", 1)[1]
-    try:
-        decoded = admin_auth.verify_id_token(id_token)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid auth token",
-        )
-    return decoded
+    # Backend/auth.py
+from fastapi import APIRouter, HTTPException, Header
+from pydantic import BaseModel
+from typing import Optional, Dict
+from datetime import datetime
+import random
+
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# --- Request schemas ---
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    token: str
+
+
 class SendOTPRequest(BaseModel):
-    phone: str = Field(..., example="+27731234567")
+    email: str
+    phone: str
 
 
-class VerifyOTPRequest(BaseModel):
-    phone: str = Field(..., example="+27731234567")
-    code: str = Field(..., min_length=6, max_length=6, example="123456")
+class SendOTPResponse(BaseModel):
+    session_id: str
 
 
-class OnboardRequest(BaseModel):
-    first_name: str = Field(..., example="Jane")
-    last_name:  str = Field(..., example="Doe")
-    subscribe:  bool
+class ConfirmOTPRequest(BaseModel):
+    session_id: str
+    code: str
+    firstName: str
+    lastName: str
 
 
-# --- Stub endpoints for frontend to hit ---
-@router.post(
-    "/auth/send-otp",
-    status_code=status.HTTP_200_OK,
-    summary="(Stub) Trigger sending an OTP",
-)
-async def send_otp(req: SendOTPRequest):
-    """
-    Frontend uses Firebase JS SDK to actually send SMS.
-    This stub just returns 200 so the call no longer 404s.
-    """
-    return {"status": "ok"}
+# Shape of the in-memory user record:
+# {
+#   email: str,
+#   password: str,
+#   onboarded: bool,
+#   firstName: str,
+#   lastName: str,
+#   phone: Optional[str],
+#   id: int
+# }
+users_db: Dict[str, dict] = {}
+
+# OTP store: session_id → { code, email, phone }
+otp_db: Dict[str, dict] = {}
 
 
-@router.post(
-    "/auth/verify-otp",
-    status_code=status.HTTP_200_OK,
-    summary="(Stub) Verify an OTP code",
-)
-async def verify_otp(req: VerifyOTPRequest):
-    """
-    Frontend uses Firebase JS SDK (`confirmationRef.confirm(code)`)
-    to actually verify the code. This stub returns 200.
-    """
-    return {"status": "ok"}
-
-
-# --- Onboarding: create user in our DB after Firebase auth ---
-@router.post(
-    "/auth/onboard",
-    status_code=status.HTTP_201_CREATED,
-    summary="Create user profile after Firebase authentication",
-)
-async def onboard_user(
-    body: OnboardRequest,
-    decoded_token: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Verifies the Firebase ID token, then creates a user record
-    in our database using the Firebase UID as the primary key.
-    """
-    uid = decoded_token["uid"]
-    # Prevent double‐onboarding
-    existing = db.query(User).filter(User.firebase_uid == uid).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User already onboarded.",
-        )
-
-    # Extract email/phone from the decoded token
-    email = decoded_token.get("email")
-    phone = decoded_token.get("phone_number")
-
-    user = User(
-        firebase_uid=uid,
-        email=email,
-        phone=phone,
-        first_name=body.first_name,
-        last_name=body.last_name,
-        subscribed=body.subscribe,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    return {"user_id": user.id}
-
-from fastapi import Depends
-
-#  --- Get onboarded user profile ---
-@router.get("/auth/me", status_code=200)
-async def get_my_user(
-    decoded_token: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Verify the Firebase ID token, look up the user by firebase_uid.
-    If not found, return 404.
-    """
-    uid = decoded_token["uid"]
-    user = db.query(User).filter(User.firebase_uid == uid).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not onboarded")
-    return {
-        "user_id":    user.id,
-        "first_name": user.first_name,
-        "last_name":  user.last_name,
-        "email":      user.email,
-        "phone":      user.phone,
-        "subscribed": user.subscribed,
+@router.post("/signup", status_code=201)
+def signup(req: SignupRequest):
+    if req.email in users_db:
+        raise HTTPException(400, "Email already registered")
+    users_db[req.email] = {
+        "email": req.email,
+        "password": req.password,
+        "onboarded": False,
+        "firstName": "",
+        "lastName": "",
+        "phone": None,
+        "id": len(users_db) + 1,
     }
+    return {"message": "Signup successful"}
+
+
+@router.post("/login", response_model=LoginResponse)
+def login(req: LoginRequest):
+    user = users_db.get(req.email)
+    if not user:
+        # not even signed up yet
+        raise HTTPException(404, "User not found")
+    if not user["onboarded"]:
+        # prompt frontend to send them back to onboarding
+        raise HTTPException(404, "Not onboarded")
+    if user["password"] != req.password:
+        raise HTTPException(401, "Incorrect credentials")
+    # stub “token” is just the email
+    return {"token": req.email}
+
+
+@router.get("/me")
+def me(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Unauthorized")
+    token = authorization.split(" ", 1)[1]
+    user = users_db.get(token)
+    if not user:
+        raise HTTPException(401, "Invalid token")
+    if not user["onboarded"]:
+        raise HTTPException(404, "Not onboarded")
+    return {
+        "id": user["id"],
+        "firstName": user["firstName"],
+        "lastName": user["lastName"],
+        "email": user["email"],
+        "phone": user["phone"],
+    }
+
+
+@router.post("/send-otp", response_model=SendOTPResponse)
+def send_otp(req: SendOTPRequest):
+    user = users_db.get(req.email)
+    if not user:
+        raise HTTPException(404, "User not found")
+    # generate a unique session ID + a 6-digit code
+    session_id = f"{req.email}-{int(datetime.utcnow().timestamp())}"
+    code = f"{random.randint(100000, 999999)}"
+    otp_db[session_id] = {"code": code, "email": req.email, "phone": req.phone}
+    # in real life you'd SMS the code; here we just log it
+    print(f"[OTP] → {req.phone}: code={code}, session={session_id}")
+    return {"session_id": session_id}
+
+
+@router.post("/confirm-otp", response_model=LoginResponse)
+def confirm_otp(req: ConfirmOTPRequest):
+    rec = otp_db.get(req.session_id)
+    if not rec or rec["code"] != req.code:
+        raise HTTPException(401, "Invalid session or code")
+    # mark the user onboarded
+    user = users_db[rec["email"]]
+    user["onboarded"] = True
+    user["firstName"] = req.firstName
+    user["lastName"] = req.lastName
+    user["phone"] = rec["phone"]
+    # return the same “token” we use elsewhere
+    return {"token": user["email"]}

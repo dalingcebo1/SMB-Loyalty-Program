@@ -1,17 +1,9 @@
 // src/pages/Login.tsx
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  signOut,
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider,
-  OAuthProvider,
-} from "firebase/auth";
-import { auth } from "../firebase";
-import api from "../api/api";
+import { useAuth } from "../auth/AuthProvider";
 
 interface FormData {
   email: string;
@@ -19,135 +11,69 @@ interface FormData {
 }
 
 const Login: React.FC = () => {
-  const [authError, setAuthError] = useState<string | null>(null);
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const [authError, setAuthError] = useState<string>("");
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormData>();
 
-  // 1) clear any lingering session & handle redirect result
-  useEffect(() => {
-    if (auth.currentUser) {
-      signOut(auth).catch(console.warn);
-    }
-
-    // if we just got redirected back from Google/Apple…
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result?.user) {
-          try {
-            await api.get("/auth/me");
-            navigate("/", { replace: true });
-          } catch (err: any) {
-            if (err.response?.status === 404) {
-              setAuthError("Email is not registered. Please sign up first.");
-            } else {
-              setAuthError("Social login failed. Please try again.");
-            }
-          }
-        }
-      })
-      .catch((e) => {
-        console.error("Redirect login failed", e);
-        setAuthError("Social login failed. Please try again.");
-      });
-  }, [navigate]);
-
-  // Email/password login
   const onSubmit = async (data: FormData) => {
-    setAuthError(null);
+    setAuthError("");
     try {
-      await api.post("/auth/login", data);
+      await login(data.email, data.password);
       navigate("/", { replace: true });
     } catch (err: any) {
       if (err.response?.status === 404) {
-        setAuthError("Email is not registered. Please sign up first.");
+        setAuthError("Email not recognized. Please sign up to continue.");
+      } else if (err.response?.status === 401) {
+        setAuthError("Incorrect email or password. Please try again.");
       } else {
-        setAuthError("Email/password login failed.");
+        setAuthError("Unable to log in right now. Please try again later.");
       }
     }
-  };
-
-  // Social redirect
-  const handleSocialLogin = (providerName: "Google" | "Apple") => {
-    setAuthError(null);
-    let provider =
-      providerName === "Google"
-        ? new GoogleAuthProvider()
-        : new OAuthProvider("apple.com");
-
-    // if Apple not enabled, show friendly
-    if (providerName === "Apple") {
-      // we let Firebase return 'auth/operation-not-allowed' in the redirect attempt if Apple is not enabled
-    }
-
-    signInWithRedirect(auth, provider);
   };
 
   return (
     <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
       <h1 className="text-2xl font-semibold text-center">Log In</h1>
 
-      <button
-        onClick={() => handleSocialLogin("Google")}
-        className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
-      >
-        <img src="/icons/google.svg" alt="G" className="h-5 w-5 mr-2" />
-        Continue with Google
-      </button>
-
-      <button
-        onClick={() => handleSocialLogin("Apple")}
-        className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
-      >
-        <img src="/icons/apple.svg" alt="" className="h-5 w-5 mr-2" />
-        Continue with Apple
-      </button>
-
-      <div className="flex items-center">
-        <hr className="flex-grow" />
-        <span className="px-3 text-gray-500 text-sm">Or</span>
-        <hr className="flex-grow" />
-      </div>
-
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border rounded px-3 py-2"
-          {...register("email", {
-            required: "Email is required",
-            pattern: {
-              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-              message: "Enter a valid email address",
-            },
-          })}
-        />
-        {errors.email && (
-          <p className="text-red-500 text-sm">{errors.email.message}</p>
-        )}
+        <div>
+          <label className="block text-sm font-medium">Email</label>
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full border rounded px-3 py-2"
+            {...register("email", { required: "Email is required" })}
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm">{errors.email.message}</p>
+          )}
+        </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border rounded px-3 py-2"
-          {...register("password", {
-            required: "Password is required",
-            minLength: { value: 8, message: "Must be at least 8 chars" },
-          })}
-        />
-        {errors.password && (
-          <p className="text-red-500 text-sm">{errors.password.message}</p>
-        )}
+        <div>
+          <label className="block text-sm font-medium">Password</label>
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full border rounded px-3 py-2"
+            {...register("password", { required: "Password is required" })}
+          />
+          {errors.password && (
+            <p className="text-red-500 text-sm">{errors.password.message}</p>
+          )}
+        </div>
 
         <button
           type="submit"
           disabled={isSubmitting}
           className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
         >
-          Log in
+          {isSubmitting ? "Logging in…" : "Log In"}
         </button>
 
         {authError && (

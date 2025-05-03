@@ -1,4 +1,5 @@
 // src/auth/AuthProvider.tsx
+
 import React, {
   createContext,
   useContext,
@@ -6,150 +7,97 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInAnonymously,
-  sendPasswordResetEmail,
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onIdTokenChanged,
-  signOut as fbSignOut,
-  User as FirebaseUser,
-  UserCredential,
-} from "firebase/auth";
-import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 
-// 1) Initialize Firebase
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FB_API_KEY,
-  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FB_PROJECT_ID,
-};
-initializeApp(firebaseConfig);
-const auth = getAuth();
-
-interface User {
-  uid: string;
-  name: string;
+export interface User {
+  id: number;
   email: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
 }
 
-interface AuthCtxType {
+interface AuthContextType {
   user: User | null;
-
-  /** Anonymous sign-in */
-  signInAnon(): Promise<UserCredential>;
-
-  /** Social sign-ins return the user credential */
-  loginWithGoogle(): Promise<UserCredential>;
-  loginWithApple(): Promise<UserCredential>;
-
-  /** Email/password returns void (we only care that it succeeded) */
-  signupWithEmail(email: string, password: string): Promise<void>;
-  loginWithEmail(email: string, password: string): Promise<void>;
-
-  resetPassword(email: string): Promise<void>;
-  logout(): Promise<void>;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
-const AuthCtx = createContext<AuthCtxType>(null!);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [, setOnboardingRequired] = useState(false);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
 
-  // Single listener for token changes (login / logout / token refresh)
+  // Boot: look for token in localStorage
   useEffect(() => {
-    return onIdTokenChanged(auth, async (fbUser: FirebaseUser | null) => {
-      // 1) signed out
-      if (!fbUser) {
-        setUser(null);
-        delete api.defaults.headers.common.Authorization;
-        return;
-      }
+    const t = localStorage.getItem("token");
+    if (t) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
+      api
+        .get<User>("/auth/me")
+        .then((res) => setUser(res.data))
+        .catch(() => {
+          localStorage.removeItem("token");
+          delete api.defaults.headers.common["Authorization"];
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
-      // 2) set Firebase token on axios
-      const token = await fbUser.getIdToken();
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-
-      // 3) check our backend for the onboarded profile
-      try {
-        const res = await api.get("/auth/me");
-        const me = res.data;
-        setUser({
-          uid: fbUser.uid,
-          name: `${me.first_name} ${me.last_name}`,
-          email: me.email,
-        });
-        setOnboardingRequired(false);
-      } catch (err: any) {
-        // not yet onboarded? bounce them into onboarding
-        if (err.response?.status === 404) {
-          setUser(null);
-          setOnboardingRequired(true);
-          navigate("/onboarding");
-        } else {
-          setOnboardingRequired(false);
-          console.error("Could not fetch /auth/me:", err);
-        }
-      }
+  const login = async (email: string, password: string) => {
+    const res = await api.post<{ token: string }>("/auth/login", {
+      email,
+      password,
     });
-  }, [navigate]);
+    const token = res.data.token;
+    localStorage.setItem("token", token);
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-  // 4) Implement each method
-
-  const signInAnon = () => signInAnonymously(auth);
-
-  const loginWithGoogle = () =>
-    signInWithPopup(auth, new GoogleAuthProvider());
-
-  const loginWithApple = () =>
-    signInWithPopup(auth, new OAuthProvider("apple.com"));
-
-  const signupWithEmail = async (
-    email: string,
-    password: string
-  ): Promise<void> => {
-    // await so that this truly returns Promise<void>
-    await createUserWithEmailAndPassword(auth, email, password);
+    // fetch user
+    const me = await api.get<User>("/auth/me");
+    setUser(me.data);
   };
 
-  const loginWithEmail = async (
-    email: string,
-    password: string
-  ): Promise<void> => {
-    await signInWithEmailAndPassword(auth, email, password);
+  const signup = async (email: string, password: string) => {
+    await api.post("/auth/signup", { email, password });
+    // do not login yet—Onboarding will call send-otp then OTPVerify → loginWithToken
   };
 
-  const resetPassword = (email: string) =>
-    sendPasswordResetEmail(auth, email);
+  const loginWithToken = async (token: string) => {
+    // used after OTP confirmation
+    localStorage.setItem("token", token);
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    const me = await api.get<User>("/auth/me");
+    setUser(me.data);
+  };
 
-  const logout = () => fbSignOut(auth);
+  const logout = async () => {
+    localStorage.removeItem("token");
+    delete api.defaults.headers.common["Authorization"];
+    setUser(null);
+  };
 
   return (
-    <AuthCtx.Provider
-      value={{
-        user,
-        signInAnon,
-        loginWithGoogle,
-        loginWithApple,
-        signupWithEmail,
-        loginWithEmail,
-        resetPassword,
-        logout,
-      }}
+    <AuthContext.Provider
+      value={{ user, loading, login, signup, loginWithToken, logout }}
     >
       {children}
-    </AuthCtx.Provider>
+    </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthCtx);
+export const useAuth = (): AuthContextType => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+  return ctx;
+};

@@ -1,15 +1,9 @@
 // src/pages/Signup.tsx
 
-import React, { useEffect } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  signOut,
-  signInWithRedirect,
-  GoogleAuthProvider,
-  OAuthProvider,
-} from "firebase/auth";
-import { auth } from "../firebase";
+import api from "../api/api";
 
 type FormData = {
   email: string;
@@ -18,101 +12,86 @@ type FormData = {
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
+  const [signUpError, setSignUpError] = useState<string>("");
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormData>();
 
-  // clear any existing session
-  useEffect(() => {
-    if (auth.currentUser) signOut(auth).catch(console.warn);
-  }, []);
-
-  // Email → onboarding
-  const onEmail = (data: FormData) => {
-    navigate("/onboarding", {
-      state: { mode: "email", email: data.email, password: data.password },
-    });
-  };
-
-  // Social redirect flow
-  const handleSocialSignup = (providerName: "google" | "apple") => {
-    let provider =
-      providerName === "google"
-        ? new GoogleAuthProvider()
-        : new OAuthProvider("apple.com");
-
-    signInWithRedirect(auth, provider);
+  const onEmail = async (data: FormData) => {
+    setSignUpError("");
+    try {
+      await api.post("/auth/signup", {
+        email: data.email,
+        password: data.password,
+      });
+      navigate("/onboarding", {
+        state: { email: data.email, password: data.password },
+      });
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        setSignUpError(
+          "That email is already registered. Try logging in instead."
+        );
+      } else {
+        setSignUpError("Unable to sign up right now. Please try again later.");
+      }
+    }
   };
 
   return (
     <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
-      <h1 className="text-2xl font-semibold text-center">
-        Welcome to Sparkle Car Wash
-      </h1>
-
-      <button
-        onClick={() => handleSocialSignup("google")}
-        className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
-      >
-        <img src="/icons/google.svg" alt="G" className="h-5 w-5 mr-2" />
-        Continue with Google
-      </button>
-
-      <button
-        onClick={() => handleSocialSignup("apple")}
-        className="w-full flex items-center justify-center border rounded px-4 py-2 hover:bg-gray-100"
-      >
-        <img src="/icons/apple.svg" alt="" className="h-5 w-5 mr-2" />
-        Continue with Apple
-      </button>
-
-      <div className="flex items-center">
-        <hr className="flex-grow" />
-        <span className="px-3 text-gray-500 text-sm">
-          Or sign up with email
-        </span>
-        <hr className="flex-grow" />
-      </div>
+      <h1 className="text-2xl font-semibold text-center">Sign Up</h1>
 
       <form onSubmit={handleSubmit(onEmail)} className="space-y-4">
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border rounded px-3 py-2"
-          {...register("email", {
-            required: "Email is required",
-            pattern: {
-              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-              message: "Enter a valid email address",
-            },
-          })}
-        />
-        {errors.email && (
-          <p className="text-red-500 text-sm">{errors.email.message}</p>
-        )}
+        <div>
+          <label className="block text-sm font-medium">Email</label>
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full border rounded px-3 py-2"
+            {...register("email", {
+              required: "Email is required",
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: "Enter a valid email address",
+              },
+            })}
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm">{errors.email.message}</p>
+          )}
+        </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border rounded px-3 py-2"
-          {...register("password", {
-            required: "Password is required",
-            minLength: { value: 8, message: "Must be 8+ chars" },
-          })}
-        />
-        {errors.password && (
-          <p className="text-red-500 text-sm">{errors.password.message}</p>
-        )}
+        <div>
+          <label className="block text-sm font-medium">Password</label>
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full border rounded px-3 py-2"
+            {...register("password", {
+              required: "Password is required",
+              minLength: { value: 8, message: "Must be at least 8 characters" },
+            })}
+          />
+          {errors.password && (
+            <p className="text-red-500 text-sm">{errors.password.message}</p>
+          )}
+        </div>
 
         <button
           type="submit"
           disabled={isSubmitting}
           className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
         >
-          {isSubmitting ? "Signing up…" : "Sign up"}
+          {isSubmitting ? "Signing up…" : "Sign Up"}
         </button>
+
+        {signUpError && (
+          <p className="text-red-500 text-center text-sm">{signUpError}</p>
+        )}
       </form>
 
       <p className="text-center text-sm">

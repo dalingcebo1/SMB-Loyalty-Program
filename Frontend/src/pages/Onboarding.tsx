@@ -1,124 +1,127 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  getAuth,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-} from "firebase/auth";
+// src/pages/Onboarding.tsx
 
-// Keep the existing styling and structure as in your repo;
-// all new error cases are handled below.
-export const confirmationRef = React.createRef<ConfirmationResult>();
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import api from "../api/api";
+
+interface LocationState {
+  email: string;
+  password: string;
+}
+
+interface FormData {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  subscribe: boolean;
+}
 
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
-  const auth = getAuth();
-  const recaptchaContainer = useRef<HTMLDivElement>(null);
+  const { state } = useLocation() as { state: LocationState };
+  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({
+    defaultValues: { subscribe: false },
+  });
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [subscribe, setSubscribe] = useState(false);
-  const [error, setError] = useState("");
-
-  // Initialize reCAPTCHA on mount
+  // Guard: if we don't have email/password, go back to signup
   useEffect(() => {
-    if (recaptchaContainer.current) {
-      try {
-        // Assuming you have firebase/auth loaded globally
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(
-          auth,
-          "recaptcha-container",
-          { size: "invisible" }
-        );
-      } catch (err) {
-        console.error("Recaptcha init error", err);
-        setError(
-          "Failed to initialize reCAPTCHA. Please refresh the page and try again."
-        );
-      }
+    if (!state?.email || !state?.password) {
+      navigate("/signup", { replace: true });
     }
-  }, [auth]);
+  }, [state, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  const onSubmit = async (data: FormData) => {
+    setError(null);
 
-    // Basic form validations
-    if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
-      setError("All fields are required.");
-      return;
-    }
-
-    // Send OTP
+    // Basic validation (react-hook-form handles required, pattern, etc.)
     try {
-      const appVerifier = (window as any).recaptchaVerifier;
-      if (!appVerifier) throw new Error("reCAPTCHA verifier not found");
+      // Create pending user & send OTP
+      await api.post("/auth/signup", {
+        email: state.email,
+        password: state.password,
+      });
 
-      const confirmationResult: ConfirmationResult = await signInWithPhoneNumber(
-        auth,
-        phone,
-        appVerifier
-      );
-      confirmationRef.current = confirmationResult;
+      const res = await api.post<{ session_id: string }>("/auth/send-otp", {
+        email: state.email,
+        phone: data.phone,
+      });
 
-      // Pass profile data into OTPVerify
+      // Navigate to OTP verify, passing along all data
       navigate("/onboarding/verify", {
-        state: { firstName, lastName, phone, subscribe },
+        state: {
+          sessionId: res.data.session_id,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          email: state.email,
+        },
       });
     } catch (err: any) {
-      console.error("Error sending OTP:", err);
-      // Handle common Firebase Auth errors
-      switch (err.code) {
-        case "auth/invalid-phone-number":
-          setError("That phone number is invalid. Please check and try again.");
-          break;
-        case "auth/quota-exceeded":
-          setError(
-            "SMS quota exceeded for today. Please try again later."
-          );
-          break;
-        default:
-          setError(
-            "Unable to send OTP right now. Please check your network or try again later."
-          );
-      }
+      console.error("Onboarding error:", err);
+      const msg =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to send OTP. Please try again.";
+      setError(msg);
     }
   };
 
   return (
     <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Complete Your Onboarding</h2>
+      <h2 className="text-xl font-semibold mb-4">
+        Complete Your Onboarding
+      </h2>
+
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label htmlFor="firstName" className="block text-sm font-medium">
+          <label
+            htmlFor="firstName"
+            className="block text-sm font-medium"
+          >
             First Name
           </label>
           <input
             id="firstName"
-            type="text"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            {...register("firstName", {
+              required: "First name is required",
+            })}
             className="mt-1 block w-full border border-gray-300 rounded p-2"
-            required
           />
+          {errors.firstName && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.firstName.message}
+            </p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="lastName" className="block text-sm font-medium">
+          <label
+            htmlFor="lastName"
+            className="block text-sm font-medium"
+          >
             Last Name
           </label>
           <input
             id="lastName"
-            type="text"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            {...register("lastName", {
+              required: "Last name is required",
+            })}
             className="mt-1 block w-full border border-gray-300 rounded p-2"
-            required
           />
+          {errors.lastName && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.lastName.message}
+            </p>
+          )}
         </div>
 
         <div>
@@ -128,20 +131,28 @@ const Onboarding: React.FC = () => {
           <input
             id="phone"
             type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            {...register("phone", {
+              required: "Phone number is required",
+              pattern: {
+                value: /^\+\d{1,3}\s?\d{4,}$/,
+                message: "Enter a valid international phone number",
+              },
+            })}
+            placeholder="+1 5550123456"
             className="mt-1 block w-full border border-gray-300 rounded p-2"
-            placeholder="+1 555-0123"
-            required
           />
+          {errors.phone && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.phone.message}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center">
           <input
             id="subscribe"
             type="checkbox"
-            checked={subscribe}
-            onChange={(e) => setSubscribe(e.target.checked)}
+            {...register("subscribe")}
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
           <label htmlFor="subscribe" className="ml-2 block text-sm">
@@ -149,14 +160,12 @@ const Onboarding: React.FC = () => {
           </label>
         </div>
 
-        {/* Invisible reCAPTCHA mount point */}
-        <div id="recaptcha-container" ref={recaptchaContainer} />
-
         <button
           type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+          disabled={isSubmitting}
+          className="w-full flex justify-center py-2 px-4 border border-transparent rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
         >
-          Send OTP
+          {isSubmitting ? "Sending OTP…" : "Send OTP"}
         </button>
       </form>
     </div>

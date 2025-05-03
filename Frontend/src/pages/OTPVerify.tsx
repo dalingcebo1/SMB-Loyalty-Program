@@ -1,33 +1,35 @@
 // src/pages/OTPVerify.tsx
 
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { auth } from "../firebase";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
-// confirmationRef is set in Onboarding.tsx when signInWithPhoneNumber succeeds
-import { confirmationRef } from "./Onboarding";
 
 interface LocationState {
+  sessionId: string;
   firstName: string;
   lastName: string;
   phone: string;
-  subscribe: boolean;
+  email: string;
 }
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: LocationState };
+  const { loginWithToken } = useAuth();
 
-  // If there's no pending SMS confirmation, send them back to signup
-  useEffect(() => {
-    if (!confirmationRef.current) {
-      navigate("/signup", { replace: true });
-    }
-  }, [navigate]);
-
-  const inputsRef = useRef<HTMLInputElement[]>([]);
+  // sessionId in local state so we can update on resend
+  const [sessionId, setSessionId] = useState(state?.sessionId);
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [timer, setTimer] = useState(60);
+  const inputsRef = useRef<HTMLInputElement[]>([]);
+
+  // Redirect back if no sessionId
+  useEffect(() => {
+    if (!sessionId) {
+      navigate("/signup", { replace: true });
+    }
+  }, [sessionId, navigate]);
 
   // Countdown timer
   useEffect(() => {
@@ -36,7 +38,7 @@ const OTPVerify: React.FC = () => {
     return () => clearTimeout(id);
   }, [timer]);
 
-  // Handle digit entry and auto-advance
+  // Handle OTP digit entry
   const handleChange = (idx: number, val: string) => {
     if (!/^\d?$/.test(val)) return;
     const next = [...otp];
@@ -47,7 +49,7 @@ const OTPVerify: React.FC = () => {
     }
   };
 
-  // Handle backspace navigation & deletion
+  // Handle backspace for intuitive navigation
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
     idx: number
@@ -56,21 +58,19 @@ const OTPVerify: React.FC = () => {
       e.preventDefault();
       const next = [...otp];
       if (next[idx] === "") {
-        // move to previous and clear it
         if (idx > 0) {
           next[idx - 1] = "";
           setOtp(next);
           inputsRef.current[idx - 1]?.focus();
         }
       } else {
-        // clear current
         next[idx] = "";
         setOtp(next);
       }
     }
   };
 
-  // Verify OTP and submit profile
+  // Submit OTP code
   const handleSubmit = async () => {
     const code = otp.join("");
     if (code.length < 6) {
@@ -78,25 +78,20 @@ const OTPVerify: React.FC = () => {
       return;
     }
     try {
-      // 1) Confirm with Firebase
-      await confirmationRef.current!.confirm(code);
-
-      // 2) Persist profile to your backend
-      const user = auth.currentUser;
-      if (!user) throw new Error("No authenticated user.");
-
-      await api.post("/users", {
-        uid: user.uid,
+      const res = await api.post<{ token: string }>("/auth/confirm-otp", {
+        session_id: sessionId,
+        code,
         firstName: state.firstName,
         lastName: state.lastName,
-        phone: state.phone,
-        subscribe: state.subscribe,
       });
 
-      // 3) Enter the app
+      // Use context helper to set token & fetch user
+      await loginWithToken(res.data.token);
+
+      // Navigate into the app
       navigate("/", { replace: true });
     } catch (err: any) {
-      alert(err.message || "Invalid OTP, please try again.");
+      alert(err.response?.data?.detail || err.message || "Invalid OTP");
     }
   };
 
@@ -104,12 +99,16 @@ const OTPVerify: React.FC = () => {
   const resend = async () => {
     if (timer > 0) return;
     try {
-      await api.post("/auth/send-otp", { phone: state.phone });
+      const res = await api.post<{ session_id: string }>("/auth/send-otp", {
+        email: state.email,
+        phone: state.phone,
+      });
+      setSessionId(res.data.session_id);
       setTimer(60);
       setOtp(Array(6).fill(""));
       inputsRef.current[0]?.focus();
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to resend OTP");
+      alert(err.response?.data?.detail || "Failed to resend OTP");
     }
   };
 
@@ -145,7 +144,6 @@ const OTPVerify: React.FC = () => {
             .toString()
             .padStart(2, "0")}`}
         </button>
-
         <button
           onClick={handleSubmit}
           className="px-4 py-2 bg-blue-600 text-white rounded"

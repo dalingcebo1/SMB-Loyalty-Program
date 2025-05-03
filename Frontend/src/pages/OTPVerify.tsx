@@ -130,7 +130,9 @@ const OTPVerify: React.FC = () => {
         {digits.map((d, i) => (
           <input
             key={i}
-            ref={(el) => el && (inputsRef.current[i] = el)}
+            ref={(el) => {
+              if (el) inputsRef.current[i] = el;
+            }}
             className="w-10 h-12 text-center border rounded"
             type="text"
             inputMode="numeric"

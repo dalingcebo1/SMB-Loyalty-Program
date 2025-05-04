@@ -1,7 +1,10 @@
-// src/pages/Onboarding.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { signInWithPhoneNumber, ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
+import { useNavigate, useLocation }       from "react-router-dom";
+import {
+  signInWithPhoneNumber,
+  ConfirmationResult,
+  RecaptchaVerifier,
+} from "firebase/auth";
 import { auth, makeRecaptcha } from "../firebase";
 
 export const confirmationRef = React.createRef<ConfirmationResult>();
@@ -11,7 +14,7 @@ interface LocationState {
   password: string;
 }
 
-// Validate E.164 phone format: +{countrycode}{number} (10-15 digits)
+// E.164 format validator
 const validateE164 = (num: string) => /^\+\d{10,15}$/.test(num);
 
 const Onboarding: React.FC = () => {
@@ -20,21 +23,21 @@ const Onboarding: React.FC = () => {
   const recaptchaDiv = useRef<HTMLDivElement>(null);
 
   const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [lastName,  setLastName]  = useState("");
+  const [phone,     setPhone]     = useState("");
   const [subscribe, setSubscribe] = useState(false);
-  const [error, setError] = useState("");
-  const [sending, setSending] = useState(false);
-  const [verifier, setVerifier] = useState<RecaptchaVerifier | null>(null);
+  const [error,     setError]     = useState("");
+  const [sending,   setSending]   = useState(false);
+  const [verifier,  setVerifier]  = useState<RecaptchaVerifier | null>(null);
 
-  // Redirect back if email/password missing
+  // Redirect back if email/password is missing
   useEffect(() => {
     if (!state?.email || !state?.password) {
       navigate("/signup", { replace: true });
     }
   }, [state, navigate]);
 
-  // Initialize the invisible reCAPTCHA once after div mounts
+  // Initialize the invisible reCAPTCHA once on mount
   useEffect(() => {
     if (verifier || !recaptchaDiv.current) return;
     makeRecaptcha(recaptchaDiv.current)
@@ -43,41 +46,45 @@ const Onboarding: React.FC = () => {
         console.error("reCAPTCHA init failed", e);
         setError("Could not initialize reCAPTCHA. Check your network or disable blockers.");
       });
-  }, []);
+  }, []); // only once
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Field validation
+    // Basic validation
     if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
-      setError("All fields are required.");
-      return;
+      return setError("All fields are required.");
     }
     if (!validateE164(phone.trim())) {
-      setError("Phone number must be in E.164 format, e.g. +27821234567.");
-      return;
+      return setError("Phone must be in E.164 format, e.g. +27821234567.");
     }
     if (!verifier) {
-      setError("reCAPTCHA not ready. Please wait a moment and try again.");
-      return;
+      return setError("reCAPTCHA not ready. Please wait a moment.");
     }
 
     setSending(true);
     try {
+      // 1) Grab a fresh token from the reCAPTCHA widget
+      const token = await verifier.verify();
+      console.log("✅ reCAPTCHA token:", token);
+
+      // 2) Now trigger the SMS
       const confirmation: ConfirmationResult = await signInWithPhoneNumber(
         auth,
         phone.trim(),
         verifier
       );
       confirmationRef.current = confirmation;
+
+      // 3) Move to the OTP entry screen
       navigate("/onboarding/verify", {
         state: {
-          email: state!.email,
+          email:    state!.email,
           password: state!.password,
           firstName,
           lastName,
-          phone: phone.trim(),
+          phone:    phone.trim(),
           subscribe,
         },
       });
@@ -85,13 +92,13 @@ const Onboarding: React.FC = () => {
       console.error("Send OTP failed", err);
       switch (err.code) {
         case "auth/invalid-phone-number":
-          setError("The phone number you entered is invalid.");
+          setError("That phone number is invalid.");
           break;
         case "auth/quota-exceeded":
           setError("SMS quota exceeded; please try again later.");
           break;
         default:
-          setError("Could not send OTP. Please check your network and try again.");
+          setError("Could not send OTP. Check your network and try again.");
       }
     } finally {
       setSending(false);
@@ -104,6 +111,17 @@ const Onboarding: React.FC = () => {
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Read-only Email */}
+        <div>
+          <label className="block text-sm font-medium">Email Address</label>
+          <input
+            type="email"
+            value={state?.email || ""}
+            disabled
+            className="mt-1 block w-full border rounded p-2 bg-gray-100"
+          />
+        </div>
+
         {/* First Name */}
         <div>
           <label className="block text-sm font-medium">First Name</label>
@@ -139,7 +157,7 @@ const Onboarding: React.FC = () => {
           />
         </div>
 
-        {/* Subscribe to Newsletter */}
+        {/* Subscribe */}
         <div className="flex items-center">
           <input
             id="subscribe"
@@ -153,7 +171,7 @@ const Onboarding: React.FC = () => {
           </label>
         </div>
 
-        {/* Invisible reCAPTCHA mount point */}
+        {/* Invisible reCAPTCHA container */}
         <div id="recaptcha-container" ref={recaptchaDiv} />
 
         <button

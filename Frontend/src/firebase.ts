@@ -2,7 +2,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, RecaptchaVerifier } from "firebase/auth";
 
-// Your Firebase config, wired up from VITE_… env vars
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -12,7 +11,6 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize or reuse existing app
 const app = getApps().length === 0
   ? initializeApp(firebaseConfig)
   : getApps()[0];
@@ -20,22 +18,25 @@ const app = getApps().length === 0
 export const auth = getAuth(app);
 
 /**
- * Idempotently render an invisible reCAPTCHA widget 
- * against the real Firebase endpoints (no emulator).
+ * container: either the DIV’s ID _or_ the actual HTMLElement.
  */
-export async function makeRecaptcha(containerId: string): Promise<RecaptchaVerifier> {
-  // Clear any prior widget
-  const existing = (window as any).recaptchaVerifier as RecaptchaVerifier|undefined;
-  if (existing) {
-    try { existing.clear(); } catch {}
-    const el = document.getElementById(containerId);
-    if (el) el.innerHTML = "";
+export async function makeRecaptcha(
+  container: string | HTMLElement
+): Promise<RecaptchaVerifier> {
+  // tear down any old widget
+  const old = (window as any).recaptchaVerifier as RecaptchaVerifier | undefined;
+  if (old) {
+    try { old.clear(); } catch {}
+    if (typeof container === "string") {
+      const el = document.getElementById(container);
+      if (el) el.innerHTML = "";
+    }
   }
 
-  // Render a fresh invisible reCAPTCHA
+  // v9 modular signature: (auth, container, parameters)
   const verifier = new RecaptchaVerifier(
     auth,
-    containerId,
+    container,
     { size: "invisible", badge: "bottomright" }
   );
   await verifier.render();

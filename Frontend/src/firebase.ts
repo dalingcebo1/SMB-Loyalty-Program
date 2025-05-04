@@ -1,10 +1,6 @@
 // src/firebase.ts
 import { initializeApp, getApps } from "firebase/app";
-import {
-  getAuth,
-  connectAuthEmulator,
-  RecaptchaVerifier,
-} from "firebase/auth";
+import { getAuth, RecaptchaVerifier } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,40 +17,26 @@ const app = getApps().length === 0
 
 export const auth = getAuth(app);
 
-// DEV → point at local emulator
-if (import.meta.env.DEV) {
-  connectAuthEmulator(auth, "http://127.0.0.1:9199", { disableWarnings: true });
-}
-
 /**
- * Renders invisible reCAPTCHA.
- * DEV → stubbed so no network call.
- * PROD → real invisible reCAPTCHA.
+ * Always clears any previously-rendered widget,
+ * then instantiates & renders a fresh invisible reCAPTCHA.
  */
-export async function makeRecaptcha(containerId: string) {
-  if (import.meta.env.DEV) {
-    // fake verifier that satisfies Firebase’s internal expectations:
-    const fakeVerifier = {
-      render: () => Promise.resolve(0),
-      clear: () => {},
-      verify: () => Promise.resolve(""),
-      _reset: () => {},       // <— this is critical
-      type: "invisible" as const
-    };
-    ;(window as any).recaptchaVerifier = fakeVerifier;
-    return fakeVerifier;
+export async function makeRecaptcha(containerId: string): Promise<RecaptchaVerifier> {
+  // clear old widget if present
+  const old = (window as any).recaptchaVerifier as RecaptchaVerifier | undefined;
+  if (old) {
+    try { old.clear(); } catch {}
+    const el = document.getElementById(containerId);
+    if (el) el.innerHTML = "";
   }
 
-  // production: real recaptcha
+  // create & render new
   const verifier = new RecaptchaVerifier(
     auth,
     containerId,
-    {
-      size: "invisible",
-      siteKey: import.meta.env.VITE_FIREBASE_RECAPTCHA_SITE_KEY,
-    }
+    { size: "invisible" }
   );
   await verifier.render();
-  ;(window as any).recaptchaVerifier = verifier;
+  (window as any).recaptchaVerifier = verifier;
   return verifier;
 }

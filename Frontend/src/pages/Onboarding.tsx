@@ -1,12 +1,15 @@
 // src/pages/Onboarding.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { signInWithPhoneNumber, ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
 import { auth, makeRecaptcha } from "../firebase";
 
 export const confirmationRef = React.createRef<ConfirmationResult>();
 
-interface LocationState { email: string; password: string; }
+interface LocationState {
+  email: string;
+  password: string;
+}
 
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
@@ -18,40 +21,52 @@ const Onboarding: React.FC = () => {
   const [phone,     setPhone]     = useState("");
   const [subscribe, setSubscribe] = useState(false);
   const [error,     setError]     = useState("");
+  const [verifier,  setVerifier]  = useState<RecaptchaVerifier | null>(null);
 
+  // Redirect back if email/password missing
   useEffect(() => {
     if (!state?.email || !state?.password) {
       navigate("/signup", { replace: true });
     }
   }, [state, navigate]);
 
+  // Initialize the invisible reCAPTCHA
   useEffect(() => {
     if (!recaptchaRef.current) return;
-    makeRecaptcha("recaptcha-container").catch((e) => {
-      console.error("recaptcha init failed", e);
-      setError("Could not initialize reCAPTCHA. Please refresh & try again.");
-    });
+    makeRecaptcha("recaptcha-container")
+      .then((v) => setVerifier(v))
+      .catch((e) => {
+        console.error("reCAPTCHA init failed", e);
+        setError("Could not initialize reCAPTCHA. Please reload and try again.");
+      });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
       setError("All fields are required.");
       return;
     }
+    if (!verifier) {
+      setError("reCAPTCHA not ready. Please wait a moment and try again.");
+      return;
+    }
+
     try {
-      const verifier = (window as any).recaptchaVerifier;
-      if (!verifier) throw new Error("reCAPTCHA not ready");
-
-      const confirmation: ConfirmationResult =
-        await signInWithPhoneNumber(auth, phone, verifier);
-
+      const confirmation: ConfirmationResult = await signInWithPhoneNumber(
+        auth,
+        phone,
+        verifier
+      );
       confirmationRef.current = confirmation;
+
+      // Pass all collected data to the OTP verification page
       navigate("/onboarding/verify", {
         state: {
-          email:    state!.email,
-          password: state!.password,
+          email:     state!.email,
+          password:  state!.password,
           firstName,
           lastName,
           phone,
@@ -59,16 +74,16 @@ const Onboarding: React.FC = () => {
         },
       });
     } catch (err: any) {
-      console.error("send OTP failed", err);
+      console.error("Send OTP failed", err);
       switch (err.code) {
         case "auth/invalid-phone-number":
-          setError("That phone number is invalid.");
+          setError("The phone number you entered is invalid.");
           break;
         case "auth/quota-exceeded":
-          setError("SMS quota exceeded; try again later.");
+          setError("SMS quota exceeded; please try again later.");
           break;
         default:
-          setError("Could not send OTP. Check your network or try again later.");
+          setError("Could not send OTP. Please check your network and try again.");
       }
     }
   };
@@ -84,40 +99,43 @@ const Onboarding: React.FC = () => {
           <label className="block text-sm font-medium">First Name</label>
           <input
             value={firstName}
-            onChange={e => setFirstName(e.target.value)}
+            onChange={(e) => setFirstName(e.target.value)}
             className="mt-1 block w-full border rounded p-2"
             required
           />
         </div>
+
         {/* Last Name */}
         <div>
           <label className="block text-sm font-medium">Last Name</label>
           <input
             value={lastName}
-            onChange={e => setLastName(e.target.value)}
+            onChange={(e) => setLastName(e.target.value)}
             className="mt-1 block w-full border rounded p-2"
             required
           />
         </div>
+
         {/* Phone Number */}
         <div>
           <label className="block text-sm font-medium">Phone Number</label>
           <input
             type="tel"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={(e) => setPhone(e.target.value)}
             placeholder="+1 555-012-3456"
             className="mt-1 block w-full border rounded p-2"
             required
           />
         </div>
-        {/* Subscribe opt-in */}
+
+        {/* Subscribe to Newsletter */}
         <div className="flex items-center">
           <input
             id="subscribe"
             type="checkbox"
             checked={subscribe}
-            onChange={e => setSubscribe(e.target.checked)}
+            onChange={(e) => setSubscribe(e.target.checked)}
             className="h-4 w-4 text-blue-600 border-gray-300 rounded"
           />
           <label htmlFor="subscribe" className="ml-2 block text-sm">
@@ -125,7 +143,7 @@ const Onboarding: React.FC = () => {
           </label>
         </div>
 
-        {/* invisible reCAPTCHA mount point */}
+        {/* Invisible reCAPTCHA mount point */}
         <div id="recaptcha-container" ref={recaptchaRef} />
 
         <button

@@ -11,6 +11,9 @@ interface LocationState {
   password: string;
 }
 
+// Validate E.164 phone format: +{countrycode}{number} (10-15 digits)
+const validateE164 = (num: string) => /^\+\d{10,15}$/.test(num);
+
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: LocationState };
@@ -23,50 +26,64 @@ const Onboarding: React.FC = () => {
   const [error,     setError]     = useState("");
   const [verifier,  setVerifier]  = useState<RecaptchaVerifier | null>(null);
 
-  // Redirect back if email/password missing
+  // 1) Redirect back if email/password missing
   useEffect(() => {
     if (!state?.email || !state?.password) {
       navigate("/signup", { replace: true });
     }
   }, [state, navigate]);
 
-  // Initialize the invisible reCAPTCHA
+  // 2) Initialize the invisible reCAPTCHA only once
   useEffect(() => {
-    if (!recaptchaRef.current) return;
+    if (verifier || !recaptchaRef.current) return;
+
     makeRecaptcha("recaptcha-container")
       .then((v) => setVerifier(v))
       .catch((e) => {
         console.error("reCAPTCHA init failed", e);
-        setError("Could not initialize reCAPTCHA. Please reload and try again.");
+        setError(
+          "Could not initialize reCAPTCHA. Check your network or disable blockers."
+        );
       });
-  }, []);
+  }, [verifier]);
 
+  // 3) Handle form submission and send OTP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
+    // Basic field validation
     if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
       setError("All fields are required.");
       return;
     }
+
+    // E.164 phone format validation
+    if (!validateE164(phone.trim())) {
+      setError("Phone number must be in E.164 format, e.g. +27821234567.");
+      return;
+    }
+
+    // Ensure reCAPTCHA is ready
     if (!verifier) {
       setError("reCAPTCHA not ready. Please wait a moment and try again.");
       return;
     }
 
     try {
+      // Send OTP
       const confirmation: ConfirmationResult = await signInWithPhoneNumber(
         auth,
-        phone,
+        phone.trim(),
         verifier
       );
       confirmationRef.current = confirmation;
 
-      // Pass all collected data to the OTP verification page
+      // Pass data to OTP verification page
       navigate("/onboarding/verify", {
         state: {
-          email:     state!.email,
-          password:  state!.password,
+          email:    state!.email,
+          password: state!.password,
           firstName,
           lastName,
           phone,
@@ -123,7 +140,7 @@ const Onboarding: React.FC = () => {
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1 555-012-3456"
+            placeholder="+27821234567"
             className="mt-1 block w-full border rounded p-2"
             required
           />

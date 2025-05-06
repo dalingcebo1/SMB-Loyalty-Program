@@ -32,7 +32,8 @@ def get_db():
 # ─── Schemas ────────────────────────────────────────────────────────────────────
 
 class UserInfo(BaseModel):
-    name: str
+    first_name: str
+    last_name: Optional[str] = None
     phone: str
     email: Optional[str] = None
 
@@ -42,7 +43,8 @@ class AuthResponse(BaseModel):
     user: Optional[UserInfo] = None
 
 class RegisterUser(BaseModel):
-    name: str
+    first_name: str
+    last_name: Optional[str] = None
     phone: str
     email: Optional[str] = None
 
@@ -90,7 +92,8 @@ def register_user(user: RegisterUser, db: Session = Depends(get_db)):
             message="User already registered, token re-issued",
             token=token,
             user=UserInfo(
-                name=db_user.name,
+                first_name=db_user.first_name,
+                last_name=db_user.last_name,
                 phone=db_user.phone,
                 email=db_user.email,
             ),
@@ -99,7 +102,8 @@ def register_user(user: RegisterUser, db: Session = Depends(get_db)):
     # brand-new user
     db_user = User(
         phone=user.phone,
-        name=user.name,
+        first_name=user.first_name,
+        last_name=user.last_name,
         email=user.email,
         tenant_id=tenant.id,
         created_at=datetime.datetime.utcnow(),
@@ -113,7 +117,8 @@ def register_user(user: RegisterUser, db: Session = Depends(get_db)):
         message="User registered successfully",
         token=token,
         user=UserInfo(
-            name=db_user.name,
+            first_name=db_user.first_name,
+            last_name=db_user.last_name,
             phone=db_user.phone,
             email=db_user.email,
         ),
@@ -211,7 +216,7 @@ def get_profile(
     ]
 
     return {
-        "name": db_user.name,
+        "name": f"{db_user.first_name or ''} {db_user.last_name or ''}".strip(),
         "email": db_user.email,
         "phone": db_user.phone,
         "total_visits": visits,

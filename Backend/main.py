@@ -14,6 +14,7 @@ from routes.catalog import router as catalog_router
 from routes.loyalty import router as loyalty_router
 from routes.orders  import router as orders_router
 from routes.payments import router as payments_router
+from routes import auth
 
 app = FastAPI(
     title="SMB Loyalty Program",
@@ -47,6 +48,7 @@ app.include_router(catalog_router,  prefix="/api")
 app.include_router(loyalty_router,  prefix="/api")
 app.include_router(orders_router,   prefix="/api")
 app.include_router(payments_router, prefix="/api")
+app.include_router(auth.router, prefix="/api/auth")
 
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")

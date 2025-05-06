@@ -6,6 +6,7 @@ import api                                 from "../api/api";
 import { auth }                           from "../firebase";
 import { confirmationRef }                from "./Onboarding";
 import { useAuth }                        from "../auth/AuthProvider";  // ← fix path
+import { toast }                          from "react-toastify";
 
 interface LocationState {
   email:     string;
@@ -16,10 +17,29 @@ interface LocationState {
   subscribe: boolean;
 }
 
+const ONBOARDING_KEY = "onboardingData";
+
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: LocationState };
   const { loginWithToken } = useAuth();
+
+  // Fallback to localStorage if state is missing
+  const onboardingData: LocationState | undefined = state || (() => {
+    try {
+      const raw = localStorage.getItem(ONBOARDING_KEY);
+      return raw ? JSON.parse(raw) : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+
+  // Save onboarding data to localStorage if present in state
+  useEffect(() => {
+    if (state) {
+      localStorage.setItem(ONBOARDING_KEY, JSON.stringify(state));
+    }
+  }, [state]);
 
   const confirmation = confirmationRef.current;
   const inputsRef    = useRef<HTMLInputElement[]>([]);
@@ -28,16 +48,23 @@ const OTPVerify: React.FC = () => {
   const [error,   setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
+  // If onboardingData is missing, redirect to signup
+  useEffect(() => {
+    if (!onboardingData) {
+      navigate("/signup", { replace: true });
+    }
+  }, [onboardingData, navigate]);
+
   // If we never got a ConfirmationResult, bounce back
   useEffect(() => {
     if (!confirmation) {
       setError("Session expired. Please restart onboarding.");
       navigate("/onboarding", {
         replace: true,
-        state: { email: state?.email, password: state?.password },
+        state: { email: onboardingData?.email, password: onboardingData?.password },
       });
     }
-  }, [confirmation, navigate, state]);
+  }, [confirmation, navigate, onboardingData]);
 
   // Countdown until Resend
   useEffect(() => {
@@ -48,6 +75,7 @@ const OTPVerify: React.FC = () => {
 
   // Handle each digit input
   const handleChange = (i: number, v: string) => {
+    if (error) setError("");
     if (!/^\d?$/.test(v)) return;
     const next = [...otp];
     next[i] = v;
@@ -95,8 +123,11 @@ const OTPVerify: React.FC = () => {
         {
           session_id:   confirmation.verificationId,
           code,
-          first_name:   state!.firstName,
-          last_name:    state!.lastName,
+          first_name:   onboardingData!.firstName,
+          last_name:    onboardingData!.lastName,
+          phone:        onboardingData!.phone,
+          email:        onboardingData!.email,
+          tenant_id:    "default", // <-- Add this line
         }
       );
       const token = data.access_token;
@@ -108,28 +139,34 @@ const OTPVerify: React.FC = () => {
       // 4) Create your application user
       await api.post("/users", {
         uid:       auth.currentUser!.uid,
-        firstName: state!.firstName,
-        lastName:  state!.lastName,
-        phone:     state!.phone,
-        subscribe: state!.subscribe,
+        firstName: onboardingData!.firstName,
+        lastName:  onboardingData!.lastName,
+        phone:     onboardingData!.phone,
+        subscribe: onboardingData!.subscribe,
       });
 
       // 5) Register in loyalty subsystem
       await api.post("/loyalty/register", {
-        name:  `${state!.firstName} ${state!.lastName}`,
-        phone: state!.phone,
-        email: state!.email,
+        name:  `${onboardingData!.firstName} ${onboardingData!.lastName}`,
+        phone: onboardingData!.phone,
+        email: onboardingData!.email,
       });
 
       // 6) Done! Redirect home
       navigate("/", { replace: true });
     } catch (err: any) {
       console.error("OTP confirm failed", err);
-      setError(
+      if (!err.response) {
+        toast.error("Network error. Please check your connection and try again.");
+        setError("Network error. Please check your connection and try again.");
+        return;
+      }
+      const msg =
         err.response?.data?.detail ??
         err.message ??
-        "Invalid OTP or network error."
-      );
+        "Invalid OTP or network error.";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -139,7 +176,7 @@ const OTPVerify: React.FC = () => {
   const resend = () => {
     if (timer > 0) return;
     navigate("/onboarding", {
-      state: { email: state!.email, password: state!.password },
+      state: { email: onboardingData!.email, password: onboardingData!.password },
     });
   };
 

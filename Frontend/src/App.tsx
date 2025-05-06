@@ -9,6 +9,8 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import Signup            from "./pages/Signup";
 import Login             from "./pages/Login";
@@ -19,6 +21,8 @@ import PaymentPage       from "./pages/PaymentPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import MyLoyalty         from "./pages/MyLoyalty";
 import DashboardLayout   from "./components/DashboardLayout";
+import ForgotPassword    from "./pages/ForgotPassword";
+import ResetPassword     from "./pages/ResetPassword";
 
 function RequireAuth() {
   const { user, loading } = useAuth();
@@ -43,28 +47,33 @@ function RequireAuth() {
 
 export default function App() {
   return (
-    <Routes>
-      {/* PUBLIC */}
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/onboarding" element={<Onboarding />} />
-      <Route path="/onboarding/verify" element={<OTPVerify />} />
+    <>
+      <Routes>
+        {/* PUBLIC */}
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/onboarding/verify" element={<OTPVerify />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* PROTECTED */}
-      <Route element={<RequireAuth />}>
-        <Route path="/" element={<DashboardLayout />}>
-          {/* default dashboard view */}
-          <Route index element={<MyLoyalty />} />
+        {/* PROTECTED */}
+        <Route element={<RequireAuth />}>
+          <Route path="/" element={<DashboardLayout />}>
+            {/* default dashboard view */}
+            <Route index element={<MyLoyalty />} />
 
-          {/* nested flows */}
-          <Route path="order"              element={<OrderForm />} />
-          <Route path="order/payment"      element={<PaymentPage />} />
-          <Route path="order/confirmation" element={<OrderConfirmation />} />
+            {/* nested flows */}
+            <Route path="order"              element={<OrderForm />} />
+            <Route path="order/payment"      element={<PaymentPage />} />
+            <Route path="order/confirmation" element={<OrderConfirmation />} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* FALLBACK */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        {/* FALLBACK */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+      <ToastContainer position="top-center" />
+    </>
   );
 }

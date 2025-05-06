@@ -8,8 +8,10 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     UniqueConstraint,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from database import Base
 
 
@@ -38,12 +40,15 @@ class Extra(Base):
 
 class User(Base):
     __tablename__ = "users"
-    id         = Column(Integer, primary_key=True)
-    phone      = Column(String, nullable=False, unique=True)
-    name       = Column(String, nullable=False)
-    email      = Column(String)
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, index=True)
+    phone = Column(String, unique=True, index=True)
+    hashed_password = Column(String, nullable=True)  # For password login
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    onboarded = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
     tenant_id  = Column(String, ForeignKey("tenants.id"), nullable=False)
-    created_at = Column(DateTime)
 
     tenant = relationship("Tenant", back_populates="users")
 

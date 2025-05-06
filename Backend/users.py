@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 class UserCreate(BaseModel):
     uid:        str
-    firstName:  str
-    lastName:   str
+    first_name: str
+    last_name:  Optional[str] = None
     phone:      str
     subscribe:  bool
 
@@ -19,8 +20,8 @@ def create_user(payload: UserCreate):
     # TODO: replace with real DB persistence
     return {
         "id":        payload.uid,
-        "firstName": payload.firstName,
-        "lastName":  payload.lastName,
-        "phone":     payload.phone,
-        "subscribe": payload.subscribe,
+        "first_name": payload.first_name,
+        "last_name":  payload.last_name,
+        "phone":      payload.phone,
+        "subscribe":  payload.subscribe,
     }

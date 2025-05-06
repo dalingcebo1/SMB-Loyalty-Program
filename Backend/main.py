@@ -1,12 +1,19 @@
+# backend/main.py
+
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from routes import catalog, loyalty, orders, auth
-from routes.payments import router as payments
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+
+# Explicitly import each router
+from routes.auth    import router as auth_router
+from users   import router as users_router
+from routes.catalog import router as catalog_router
+from routes.loyalty import router as loyalty_router
+from routes.orders  import router as orders_router
+from routes.payments import router as payments_router
 
 app = FastAPI(
     title="SMB Loyalty Program",
@@ -14,6 +21,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# ─── Validation Error Handler ────────────────────────────────────────────────
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc: RequestValidationError):
     return JSONResponse(
@@ -32,17 +40,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── ROUTERS ──────────────────────────────────────────────────────────────────
-# All of these routers have their own prefix (e.g. auth.router prefix="/auth"),
-# so mounting them under "/api" yields endpoints like "/api/auth/signup", etc.
-app.include_router(auth.router,     prefix="/api")
-app.include_router(catalog.router,  prefix="/api")
-app.include_router(loyalty.router,  prefix="/api")
-app.include_router(orders.router,   prefix="/api")
-app.include_router(payments,        prefix="/api")
+# ─── Mount routers under /api ─────────────────────────────────────────────────
+app.include_router(auth_router,     prefix="/api")
+app.include_router(users_router,    prefix="/api")
+app.include_router(catalog_router,  prefix="/api")
+app.include_router(loyalty_router,  prefix="/api")
+app.include_router(orders_router,   prefix="/api")
+app.include_router(payments_router, prefix="/api")
 
+# ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")
 def on_startup():
-    # create any missing tables
     from database import Base, engine
     Base.metadata.create_all(bind=engine)

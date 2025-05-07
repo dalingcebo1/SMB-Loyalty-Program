@@ -134,8 +134,13 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 async def confirm_otp(req: ConfirmOtpRequest, db: Session = Depends(get_db)):
     # TODO: Verify OTP with Firebase using req.session_id and req.code
 
-    user = db.query(User).filter_by(email=req.email).first()
-    if not user:
+    existing_by_email = db.query(User).filter_by(email=req.email).first()
+    existing_by_phone = db.query(User).filter_by(phone=req.phone).first()
+    if existing_by_email and existing_by_email.phone and existing_by_email.phone != req.phone:
+        raise HTTPException(status_code=400, detail="Email already registered with a different phone.")
+    if existing_by_phone and existing_by_phone.email and existing_by_phone.email != req.email:
+        raise HTTPException(status_code=400, detail="Phone already registered with a different email.")
+    if not existing_by_email and not existing_by_phone:
         user = User(
             email=req.email,
             phone=req.phone,
@@ -147,6 +152,7 @@ async def confirm_otp(req: ConfirmOtpRequest, db: Session = Depends(get_db)):
         )
         db.add(user)
     else:
+        user = existing_by_email or existing_by_phone
         user.phone = req.phone
         user.first_name = req.first_name
         user.last_name = req.last_name

@@ -1,12 +1,20 @@
 // src/pages/OTPVerify.tsx
 
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation }       from "react-router-dom";
-import api                                 from "../api/api";
-import { auth }                           from "../firebase";
-import { confirmationRef }                from "./Onboarding";
-import { useAuth }                        from "../auth/AuthProvider";  // ← fix path
-import { toast }                          from "react-toastify";
+import { useNavigate, useLocation }           from "react-router-dom";
+import api                                    from "../api/api";
+import { auth }                               from "../firebase";
+import { signInWithPhoneNumber }              from "firebase/auth";
+import { confirmationRef }                    from "./Onboarding";
+import { useAuth }                            from "../auth/AuthProvider";  // ← fix path
+import { toast }                              from "react-toastify";
+
+// Extend the Window interface to include recaptchaVerifier
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}
 
 interface LocationState {
   email:     string;
@@ -138,18 +146,19 @@ const OTPVerify: React.FC = () => {
 
       // 4) Create your application user
       await api.post("/users", {
-        uid:       auth.currentUser!.uid,
-        firstName: onboardingData!.firstName,
-        lastName:  onboardingData!.lastName,
-        phone:     onboardingData!.phone,
-        subscribe: onboardingData!.subscribe,
+        uid:        auth.currentUser!.uid,
+        first_name: onboardingData!.firstName,
+        last_name:  onboardingData!.lastName,
+        phone:      onboardingData!.phone,
+        subscribe:  onboardingData!.subscribe,
       });
 
       // 5) Register in loyalty subsystem
       await api.post("/loyalty/register", {
-        name:  `${onboardingData!.firstName} ${onboardingData!.lastName}`,
-        phone: onboardingData!.phone,
-        email: onboardingData!.email,
+        first_name: onboardingData!.firstName,
+        last_name:  onboardingData!.lastName,
+        phone:      onboardingData!.phone,
+        email:      onboardingData!.email,
       });
 
       // 6) Done! Redirect home
@@ -173,11 +182,16 @@ const OTPVerify: React.FC = () => {
   };
 
   // Restart signup on resend
-  const resend = () => {
+  const resend = async () => {
     if (timer > 0) return;
-    navigate("/onboarding", {
-      state: { email: onboardingData!.email, password: onboardingData!.password },
-    });
+    try {
+      // Use the phone number from onboardingData or state
+      const confirmation = await signInWithPhoneNumber(auth, onboardingData!.phone, window.recaptchaVerifier);
+      confirmationRef.current = confirmation; // update your confirmation object
+      toast.success("OTP resent!");
+    } catch (err) {
+      toast.error("Failed to resend OTP.");
+    }
   };
 
   return (

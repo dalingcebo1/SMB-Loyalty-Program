@@ -23,6 +23,7 @@ import MyLoyalty         from "./pages/MyLoyalty";
 import DashboardLayout   from "./components/DashboardLayout";
 import ForgotPassword    from "./pages/ForgotPassword";
 import ResetPassword     from "./pages/ResetPassword";
+import Welcome           from "./pages/Welcome";
 
 function RequireAuth() {
   const { user, loading } = useAuth();
@@ -59,11 +60,9 @@ export default function App() {
 
         {/* PROTECTED */}
         <Route element={<RequireAuth />}>
-          <Route path="/" element={<DashboardLayout />}>
-            {/* default dashboard view */}
-            <Route index element={<MyLoyalty />} />
-
-            {/* nested flows */}
+          <Route element={<DashboardLayout />}>
+            <Route path="/" element={<Welcome />} />
+            <Route path="/myloyalty" element={<MyLoyalty />} />
             <Route path="order"              element={<OrderForm />} />
             <Route path="order/payment"      element={<PaymentPage />} />
             <Route path="order/confirmation" element={<OrderConfirmation />} />

@@ -38,8 +38,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     if (t) {
       api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
       api
-        .get<User>("/auth/me")
-        .then((res) => setUser(res.data))
+        .get("/auth/me")
+        .then((res) => {
+          const u = res.data;
+          setUser({
+            ...u,
+            firstName: u.first_name,
+            lastName: u.last_name,
+          });
+        })
         .catch(() => {
           localStorage.removeItem("token");
           delete api.defaults.headers.common["Authorization"];
@@ -93,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
   };
-
+  
   return (
     <AuthContext.Provider
       value={{ user, loading, login, signup, loginWithToken, logout }}

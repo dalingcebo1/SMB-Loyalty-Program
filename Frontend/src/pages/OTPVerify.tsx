@@ -1,5 +1,6 @@
 // src/pages/OTPVerify.tsx
 
+
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation }           from "react-router-dom";
 import api                                    from "../api/api";
@@ -9,12 +10,14 @@ import { confirmationRef }                    from "./Onboarding";
 import { useAuth }                            from "../auth/AuthProvider";  // ← fix path
 import { toast }                              from "react-toastify";
 
+
 // Extend the Window interface to include recaptchaVerifier
 declare global {
   interface Window {
     recaptchaVerifier: any;
   }
 }
+
 
 interface LocationState {
   email:     string;
@@ -25,12 +28,15 @@ interface LocationState {
   subscribe: boolean;
 }
 
+
 const ONBOARDING_KEY = "onboardingData";
+
 
 const OTPVerify: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: LocationState };
   const { loginWithToken } = useAuth();
+
 
   // Fallback to localStorage if state is missing
   const onboardingData: LocationState | undefined = state || (() => {
@@ -42,12 +48,14 @@ const OTPVerify: React.FC = () => {
     }
   })();
 
+
   // Save onboarding data to localStorage if present in state
   useEffect(() => {
     if (state) {
       localStorage.setItem(ONBOARDING_KEY, JSON.stringify(state));
     }
   }, [state]);
+
 
   const confirmation = confirmationRef.current;
   const inputsRef    = useRef<HTMLInputElement[]>([]);
@@ -56,12 +64,14 @@ const OTPVerify: React.FC = () => {
   const [error,   setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
+
   // If onboardingData is missing, redirect to signup
   useEffect(() => {
     if (!onboardingData) {
       navigate("/signup", { replace: true });
     }
   }, [onboardingData, navigate]);
+
 
   // If we never got a ConfirmationResult, bounce back
   useEffect(() => {
@@ -74,12 +84,14 @@ const OTPVerify: React.FC = () => {
     }
   }, [confirmation, navigate, onboardingData]);
 
+
   // Countdown until Resend
   useEffect(() => {
     if (timer <= 0) return;
     const id = setTimeout(() => setTimer(t => t - 1), 1000);
     return () => clearTimeout(id);
   }, [timer]);
+
 
   // Handle each digit input
   const handleChange = (i: number, v: string) => {
@@ -90,6 +102,7 @@ const OTPVerify: React.FC = () => {
     setOtp(next);
     if (v && i < 5) inputsRef.current[i + 1]?.focus();
   };
+
 
   // Backspace navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, i: number) => {
@@ -107,6 +120,7 @@ const OTPVerify: React.FC = () => {
     }
   };
 
+
   // Verify & finalize
   const submitOTP = async () => {
     setError("");
@@ -120,10 +134,12 @@ const OTPVerify: React.FC = () => {
       return;
     }
 
+
     setLoading(true);
     try {
       // 1) Confirm the Firebase SMS OTP
       await confirmation.confirm(code);
+
 
       // 2) Exchange session+code for backend JWT
       const { data } = await api.post<{ access_token: string }>(
@@ -140,9 +156,11 @@ const OTPVerify: React.FC = () => {
       );
       const token = data.access_token;
 
+
       // 3) Configure Axios + AuthContext
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       await loginWithToken(token);
+
 
       // 4) Create your application user
       await api.post("/users", {
@@ -153,6 +171,7 @@ const OTPVerify: React.FC = () => {
         subscribe:  onboardingData!.subscribe,
       });
 
+
       // 5) Register in loyalty subsystem
       await api.post("/loyalty/register", {
         first_name: onboardingData!.firstName,
@@ -161,7 +180,9 @@ const OTPVerify: React.FC = () => {
         email:      onboardingData!.email,
       });
 
-      // 6) Done! Redirect home
+
+      // 6) Done! Set justOnboarded flag and redirect home
+      localStorage.setItem("justOnboarded", "true");
       navigate("/", { replace: true });
     } catch (err: any) {
       console.error("OTP confirm failed", err);
@@ -181,6 +202,7 @@ const OTPVerify: React.FC = () => {
     }
   };
 
+
   // Restart signup on resend
   const resend = async () => {
     if (timer > 0) return;
@@ -194,10 +216,12 @@ const OTPVerify: React.FC = () => {
     }
   };
 
+
   return (
     <div className="p-6 max-w-sm mx-auto">
       <h1 className="text-xl font-semibold mb-4">Enter Verification Code</h1>
       {error && <p className="text-red-600 mb-4">{error}</p>}
+
 
       <div className="flex space-x-2 mb-6">
         {otp.map((d, i) => (
@@ -215,6 +239,7 @@ const OTPVerify: React.FC = () => {
           />
         ))}
       </div>
+
 
       <div className="flex items-center justify-between">
         <button
@@ -237,5 +262,6 @@ const OTPVerify: React.FC = () => {
     </div>
   );
 };
+
 
 export default OTPVerify;

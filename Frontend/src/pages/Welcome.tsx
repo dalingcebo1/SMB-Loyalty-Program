@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
 
@@ -7,8 +6,8 @@ const VISIT_MILESTONE = 5;
 
 const Welcome: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [visits, setVisits] = useState(0);
+  const [justOnboarded, setJustOnboarded] = useState(false);
 
   useEffect(() => {
     if (user?.phone) {
@@ -19,46 +18,52 @@ const Welcome: React.FC = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (localStorage.getItem("justOnboarded") === "true") {
+      setJustOnboarded(true);
+      localStorage.removeItem("justOnboarded");
+    }
+  }, []);
+
   const name =
     user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`
       : user?.firstName || "";
 
+  if (!user) return null;
+
   return (
-    <div className="flex flex-col items-center justify-center h-full space-y-6 px-4">
-      <h1 className="text-3xl font-bold text-center mt-6">
-        Welcome,<br />
-        {name}!
-      </h1>
-      <p className="text-center text-gray-700 max-w-md mt-2">
-        Thank you for registering, welcome to your full—<br />
-        service loyalty program.
-      </p>
-      <div className="flex flex-col items-center mt-4">
-        <div className="border-2 border-gray-400 rounded-full w-36 h-36 flex flex-col items-center justify-center">
-          <span className="text-4xl font-bold">{visits}/{VISIT_MILESTONE}</span>
-          <span className="text-lg mt-1">Visits</span>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
+      {/* Welcome message card */}
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 mb-8 text-center">
+        <div className="font-semibold text-base mb-1">
+          Welcome {name}!
         </div>
-        <p className="text-center text-gray-700 max-w-md mt-4">
-          You’re just {VISIT_MILESTONE - visits} visits away from gaining a free full wash on us
-        </p>
+        <div className="text-gray-600 text-sm">
+          {justOnboarded
+            ? "Thank you for registering, welcome to your full service car wash application."
+            : "Glad to see you again. Check out your rewards or book a service!"}
+        </div>
       </div>
-      <div className="flex flex-col space-y-4 w-full mt-6">
-        <button
-          onClick={() => navigate("/myloyalty")}
-          className="w-full px-6 py-3 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 text-lg font-semibold"
-        >
-          View Rewards
-        </button>
-        <button
-          onClick={() => navigate("/order")}
-          className="w-full px-6 py-3 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 text-lg font-semibold"
-        >
-          View Services
-        </button>
+
+      {/* Visit counter */}
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-40 h-40 rounded-full border-4 border-gray-300 flex flex-col items-center justify-center text-center bg-white shadow-inner mx-auto">
+          <span className="text-2xl font-bold text-blue-700">{visits}/{VISIT_MILESTONE}</span>
+          <span className="text-lg text-gray-600 mt-1">Visits</span>
+        </div>
+      </div>
+
+      {/* Loyalty message card */}
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 text-center mb-8">
+        <div className="text-gray-700 text-sm">
+          At x car wash, we like to acknowledge your continued support, that is why we are giving you the 6th Full Wash on us.
+        </div>
       </div>
     </div>
   );
 };
 
 export default Welcome;
+
+

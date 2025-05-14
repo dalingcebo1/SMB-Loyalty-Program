@@ -87,3 +87,22 @@ class ExistsResponse(BaseModel):
     Returned by GET /users/{uid}/exists.
     """
     exists: bool
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    phone: Optional[str]
+    role: str  # <-- Add this line
+
+    class Config:
+        orm_mode = True
+
+class StaffRegisterRequest(BaseModel):
+    email: str
+    password: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    phone: Optional[str]
+    tenant_id: Optional[str] = "default"

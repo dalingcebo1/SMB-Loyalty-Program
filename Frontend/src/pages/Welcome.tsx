@@ -10,12 +10,22 @@ const Welcome: React.FC = () => {
   const [justOnboarded, setJustOnboarded] = useState(false);
 
   useEffect(() => {
-    if (user?.phone) {
+    let interval: NodeJS.Timeout | undefined;
+    const fetchVisits = () => {
       api
-        .get("/loyalty/me", { params: { phone: user.phone } })
+        .get("/loyalty/me")
         .then((res) => setVisits(res.data.visits || 0))
         .catch(() => setVisits(0));
+    };
+
+    if (user) {
+      fetchVisits();
+      interval = setInterval(fetchVisits, 3000);
     }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [user]);
 
   useEffect(() => {

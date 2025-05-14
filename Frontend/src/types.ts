@@ -14,6 +14,9 @@ export interface Extra {
 }
 
 export interface CartItem {
+  price: number;
+  quantity: ReactNode;
+  name: ReactNode;
   service_id: number;
   category: string;
   qty: number;

@@ -10,7 +10,7 @@ import api from "../api/api";
 
 interface LocationState {
   orderId: number;
-  total: number;
+  total: number; // in Rands
 }
 
 interface User {
@@ -45,7 +45,7 @@ const PaystackPayment: React.FC = () => {
 
   if (userQuery.isLoading) {
     return (
-      <div style={{ padding: "1rem", textAlign: "center" }}>
+      <div className="flex items-center justify-center min-h-[60vh]">
         Loading user…
       </div>
     );
@@ -81,21 +81,20 @@ const PaystackPayment: React.FC = () => {
   const initializePayment = usePaystackPayment(config);
 
   return (
-    <div style={{ padding: "1rem", maxWidth: 600, margin: "0 auto" }}>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
       <ToastContainer position="top-right" />
-      <h1>Complete Your Payment</h1>
-      <p style={{ fontWeight: "bold" }}>Total: R {total}</p>
-      <button
-        onClick={() => initializePayment({})}
-        style={{
-          marginTop: "1rem",
-          padding: "0.75rem 1.5rem",
-          fontSize: "1rem",
-          cursor: "pointer",
-        }}
-      >
-        Pay Now
-      </button>
+      <div className="w-full sm:max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
+        <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">Complete Your Payment</h2>
+        <div className="text-lg font-semibold text-center mb-6">
+          Amount: <span className="text-black font-bold">R {total.toFixed(2)}</span>
+        </div>
+        <button
+          onClick={() => initializePayment({})}
+          className="w-full mt-4 py-2 rounded text-white font-semibold transition bg-blue-600 hover:bg-blue-700"
+        >
+          Pay Now
+        </button>
+      </div>
     </div>
   );
 };

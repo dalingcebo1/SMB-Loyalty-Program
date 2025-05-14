@@ -49,6 +49,7 @@ class User(Base):
     onboarded = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     tenant_id  = Column(String, ForeignKey("tenants.id"), nullable=False)
+    role = Column(String, nullable=False, default="user")
 
     tenant = relationship("Tenant", back_populates="users")
 

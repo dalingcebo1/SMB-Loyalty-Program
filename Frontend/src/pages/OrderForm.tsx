@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
-import { useAuth } from "../auth/AuthProvider";   // ⭐ NEW
+import { useAuth } from "../auth/AuthProvider";
 
 interface Service {
   id: number;
@@ -18,11 +18,10 @@ interface Extra {
 }
 
 const OrderForm: React.FC = () => {
-  const { user } = useAuth();                     // ⭐ NEW
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  /* ---------- 1.  Fetch catalog data ---------- */
-
+  // Fetch catalog data
   const servicesQuery = useQuery({
     queryKey: ["services"],
     queryFn: async (): Promise<Record<string, Service[]>> => {
@@ -41,64 +40,65 @@ const OrderForm: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  /* ---------- 2.  Error toast helpers ---------- */
-
+  // Error toast helpers
   useEffect(() => { if (servicesQuery.error) toast.error("Failed to load services"); },
-            [servicesQuery.error]);
+    [servicesQuery.error]);
   useEffect(() => { if (extrasQuery.error) toast.error("Failed to load extras"); },
-            [extrasQuery.error]);
+    [extrasQuery.error]);
 
-  /* ---------- 3.  Type-safe fall-backs ---------- */
-
+  // Type-safe fall-backs
   const servicesByCategory = servicesQuery.data ?? {};
-  const extras                = extrasQuery.data ?? [];
+  const extras = extrasQuery.data ?? [];
 
-  /* ---------- 4.  UI state ---------- */
-
+  // UI state
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
-  const [serviceQuantity,  setServiceQuantity ]   = useState(1);
-  const [extraQuantities,  setExtraQuantities ]   = useState<Record<number, number>>({});
-  const [isSubmitting,     setIsSubmitting   ]    = useState(false);
+  const [serviceQuantity, setServiceQuantity] = useState(1);
+  const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /* ---------- 5.  Default to first category / service ---------- */
-
+  // Default to first category/service (fixes infinite loop)
   useEffect(() => {
     const cats = Object.keys(servicesByCategory);
-    if (cats.length) {
+    if (
+      cats.length &&
+      (!selectedCategory || !cats.includes(selectedCategory))
+    ) {
       setSelectedCategory(cats[0]);
       setSelectedServiceId(servicesByCategory[cats[0]][0]?.id ?? null);
     }
-  }, [servicesByCategory]);
+    // eslint-disable-next-line
+  }, [servicesByCategory, selectedCategory]);
 
-  /* ---------- 6.  Init extra counters ---------- */
-
+  // Init extra counters
   useEffect(() => {
     const init: Record<number, number> = {};
     extras.forEach((e) => (init[e.id] = 0));
     setExtraQuantities(init);
   }, [extras]);
 
-  /* ---------- 7.  Reset service on category switch ---------- */
-
+  // Reset service on category switch
   useEffect(() => {
-    if (selectedCategory && servicesByCategory[selectedCategory]?.length) {
+    if (
+      selectedCategory &&
+      servicesByCategory[selectedCategory]?.length &&
+      selectedServiceId !== servicesByCategory[selectedCategory][0].id
+    ) {
       setServiceQuantity(1);
       setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
     }
+    // eslint-disable-next-line
   }, [selectedCategory, servicesByCategory]);
 
-  /* ---------- 8.  Increment / decrement helpers ---------- */
-
-  const incService        = () => setServiceQuantity((q) => q + 1);
-  const decService        = () => setServiceQuantity((q) => Math.max(1, q - 1));
+  // Increment/decrement helpers
+  const incService = () => setServiceQuantity((q) => q + 1);
+  const decService = () => setServiceQuantity((q) => Math.max(1, q - 1));
   const incExtra = (id: number) =>
     setExtraQuantities((q) => ({ ...q, [id]: (q[id] || 0) + 1 }));
   const decExtra = (id: number) =>
     setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, (q[id] || 0) - 1) }));
 
-  /* ---------- 9.  Re-calculate total ---------- */
-
+  // Re-calculate total
   const total = useMemo(() => {
     let sum = 0;
     if (selectedCategory && selectedServiceId != null) {
@@ -123,8 +123,7 @@ const OrderForm: React.FC = () => {
     extras,
   ]);
 
-  /* ---------- 10.  Submit order ---------- */
-
+  // Submit order
   const handleSubmit = () => {
     if (!selectedServiceId) {
       toast.warning("Please select a service");
@@ -134,7 +133,7 @@ const OrderForm: React.FC = () => {
     setIsSubmitting(true);
 
     const payload = {
-      email: user!.email,                // ⭐ auto-injected
+      email: user!.email,
       service_id: selectedServiceId,
       quantity: serviceQuantity,
       extras: Object.entries(extraQuantities)
@@ -145,15 +144,15 @@ const OrderForm: React.FC = () => {
     api
       .post("/orders/create", payload)
       .then((res) => {
-      const { order_id, qr_data } = res.data;
+        const { order_id, qr_data } = res.data;
         toast.success("Order placed!");
         navigate("/order/payment", {
-        state: {
-        orderId: order_id,
-          qrData: qr_data,
-          amount: total * 100,  // in kobo
-        },
-      });
+          state: {
+            orderId: order_id,
+            qrData: qr_data,
+            amount: total * 100,
+          },
+        });
       })
       .catch((err: any) => {
         const msg =
@@ -166,98 +165,128 @@ const OrderForm: React.FC = () => {
       .finally(() => setIsSubmitting(false));
   };
 
-  /* ---------- 11.  Block anonymous users ---------- */
-
+  // Block anonymous users
   if (!user) return <Navigate to="/login" replace />;
 
-  /* ---------- 12.  Loading skeleton ---------- */
-
+  // Loading skeleton
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
-    return <div style={{ padding: "1rem", textAlign: "center" }}>Loading…</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <span className="text-gray-500 text-lg">Loading…</span>
+      </div>
+    );
   }
 
-  /* ---------- 13.  Render ---------- */
-
+  // Render
   return (
-    <div style={{ padding: "1rem", maxWidth: 600, margin: "0 auto" }}>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-0 py-4 overflow-x-hidden w-full">
       <ToastContainer position="top-right" />
+      <div className="w-full max-w-full sm:max-w-md bg-white rounded-2xl shadow-md p-2 sm:p-6 mb-8">
+        <h1 className="text-xl font-bold mb-2 text-gray-800 text-center">Book a Service</h1>
+        <p className="text-gray-600 mb-4 text-center">
+          Select your service and extras below to book your next car wash.
+        </p>
 
-      <h1>Book a Service</h1>
-
-      {/* 1. Pick a Category */}
-      <section>
-        <h2>1. Pick a Category</h2>
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-        >
-          {Object.keys(servicesByCategory).map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-      </section>
-
-      {/* 2. Pick a Service */}
-      <section style={{ marginTop: "1rem" }}>
-        <h2>2. Pick a Service</h2>
-        <div style={{ display: "flex", alignItems: "center" }}>
+        {/* 1. Pick a Category */}
+        <section className="mb-4">
+          <label className="block text-gray-700 font-medium mb-1 text-sm">1. Pick a Category</label>
           <select
-            value={selectedServiceId ?? undefined}
-            onChange={(e) => setSelectedServiceId(Number(e.target.value))}
+            className="w-full border rounded px-3 py-2 text-sm"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
           >
-            {servicesByCategory[selectedCategory]?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} — R{s.base_price}
+            {Object.keys(servicesByCategory).map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
               </option>
             ))}
           </select>
-          <button onClick={decService} style={{ margin: "0 8px" }}>
-            −
-          </button>
-          <span>{serviceQuantity}</span>
-          <button onClick={incService} style={{ margin: "0 8px" }}>
-            +
-          </button>
-        </div>
-      </section>
+        </section>
 
-      {/* 3. Extras */}
-      <section style={{ marginTop: "1rem" }}>
-        <h2>3. Extras</h2>
-        {extras.map((e) => (
-          <div
-            key={e.id}
-            style={{ display: "flex", alignItems: "center", margin: "0.5rem 0" }}
-          >
-            <div style={{ flex: 1 }}>
-              {e.name} — R{e.price_map[selectedCategory] ?? 0}
-            </div>
-            <button onClick={() => decExtra(e.id)}>−</button>
-            <span style={{ margin: "0 8px" }}>{extraQuantities[e.id]}</span>
-            <button onClick={() => incExtra(e.id)}>+</button>
+        {/* 2. Pick a Service */}
+        <section className="mb-4">
+          <label className="block text-gray-700 font-medium mb-1 text-xs">2. Pick a Service</label>
+          <div className="flex items-center space-x-2 overflow-x-auto">
+            <select
+              className="flex-1 border rounded px-3 py-2 text-xs"
+              value={selectedServiceId ?? undefined}
+              onChange={(e) => setSelectedServiceId(Number(e.target.value))}
+            >
+              {servicesByCategory[selectedCategory]?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — R{s.base_price}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={decService}
+              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+            >
+              −
+            </button>
+            <span className="w-6 text-center">{serviceQuantity}</span>
+            <button
+              type="button"
+              onClick={incService}
+              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+            >
+              +
+            </button>
           </div>
-        ))}
-      </section>
+        </section>
 
-      {/* 4.  Live total & submit */}
-      <div style={{ marginTop: "1rem", fontWeight: "bold" }}>
-        Total: R {total}
+        {/* 3. Extras */}
+        <section className="mb-4">
+          <label className="block text-gray-700 font-medium mb-1 text-sm">3. Extras</label>
+          {extras.length === 0 && (
+            <div className="text-gray-400 text-xs">No extras available for this category.</div>
+          )}
+          {extras.map((e) => (
+            <div
+              key={e.id}
+              className="flex items-center justify-between py-1"
+            >
+              <div className="text-sm break-words max-w-[90vw]">
+                {e.name} — R{e.price_map[selectedCategory] ?? 0}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => decExtra(e.id)}
+                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                >
+                  −
+                </button>
+                <span className="w-6 text-center">{extraQuantities[e.id]}</span>
+                <button
+                  type="button"
+                  onClick={() => incExtra(e.id)}
+                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* 4.  Live total & submit */}
+        <div className="mt-6 font-bold text-lg text-center">
+          Total: R {total}
+        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className={`w-full mt-4 py-2 rounded text-white font-semibold transition ${
+            isSubmitting
+              ? "bg-blue-300 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {isSubmitting ? "Submitting…" : "Confirm & Pay"}
+        </button>
       </div>
-      <button
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        style={{
-          marginTop: "1rem",
-          padding: "0.75rem 1.5rem",
-          fontSize: "1rem",
-          opacity: isSubmitting ? 0.6 : 1,
-          cursor: isSubmitting ? "not-allowed" : "pointer",
-        }}
-      >
-        {isSubmitting ? "Submitting…" : "Confirm & Pay"}
-      </button>
     </div>
   );
 };

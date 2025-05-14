@@ -7,15 +7,14 @@ import React, {
 } from "react";
 import api from "../api/api";
 
-
 export interface User {
   id: number;
   email: string;
   phone: string;
   firstName: string;
   lastName: string;
+  role: string; // <-- must be present
 }
-
 
 interface AuthContextType {
   user: User | null;
@@ -26,16 +25,13 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
 
   // On mount, check for stored token
   useEffect(() => {
@@ -52,6 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             phone: u.phone,
             firstName: u.first_name,
             lastName: u.last_name,
+            role: u.role, // <-- must be present
           });
         })
         .catch(() => {
@@ -64,14 +61,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-
   // Email/password login → OAuth2 form/urlencoded
   const login = async (email: string, password: string) => {
     // build a URLSearchParams body
     const form = new URLSearchParams();
     form.append("username", email);
     form.append("password", password);
-
 
     const res = await api.post<{ access_token: string }>(
       "/auth/login",
@@ -83,11 +78,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
     );
 
-
     const token = res.data.access_token;
     localStorage.setItem("token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
 
     const me = await api.get("/auth/me");
     const u = me.data;
@@ -97,15 +90,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       phone: u.phone,
       firstName: u.first_name,
       lastName: u.last_name,
+      role: u.role, // <-- must be present
     });
   };
-
 
   // Start signup (creates pending user)
   const signup = async (email: string, password: string) => {
     await api.post("/auth/signup", { email, password });
   };
-
 
   // Finalize login after OTP confirm
   const loginWithToken = async (token: string) => {
@@ -119,16 +111,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       phone: u.phone,
       firstName: u.first_name,
       lastName: u.last_name,
+      role: u.role, // <-- must be present
     });
   };
-
 
   const logout = async () => {
     localStorage.removeItem("token");
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
   };
- 
+
   return (
     <AuthContext.Provider
       value={{ user, loading, login, signup, loginWithToken, logout }}
@@ -137,7 +129,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     </AuthContext.Provider>
   );
 };
-
 
 export const useAuth = (): AuthContextType => {
   const ctx = useContext(AuthContext);

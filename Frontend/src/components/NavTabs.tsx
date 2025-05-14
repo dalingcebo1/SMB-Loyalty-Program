@@ -4,16 +4,27 @@ import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
-const navOptions = [
-  { to: "/", label: "Home" },
-  { to: "/services", label: "Services" },
-  { to: "/myloyalty", label: "Loyalty" },
-  { to: "/account", label: "Account" },
-];
-
 const NavTabs: React.FC = () => {
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuth();
+
+  const navOptions = [
+    { to: "/services", label: "Services" },
+    { to: "/myloyalty", label: "Loyalty" },
+    { to: "/account", label: "Account" },
+    ...((user?.role === "staff" || user?.role === "admin")
+      ? [
+          { to: "/staff", label: "Verify Payment" },
+          { to: "/staff/manual-visit", label: "Manual Visits" },
+          { to: "/staff/vehicle-manager", label: "Vehicle Manager" },
+        ]
+      : []),
+    ...(user?.role === "admin"
+      ? [
+          { to: "/admin/register-staff", label: "Register Staff" },
+        ]
+      : []),
+  ];
 
   return (
     <>
@@ -39,8 +50,6 @@ const NavTabs: React.FC = () => {
         </div>
         {/* Logout Button */}
         <div className="flex items-center space-x-2">
-          {/* Optionally show greeting here, or remove if not needed */}
-          {/* <span className="text-gray-700 text-sm">Hi, {user?.firstName} {user?.lastName}</span> */}
           <button
             onClick={logout}
             className="text-red-600 hover:underline text-sm font-medium"

@@ -2,17 +2,18 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from database import get_db
-from models import User
+from models import User, VisitCount
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from sqlalchemy import or_
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("JWT_SECRET", "CHANGE_THIS_TO_A_STRONG_RANDOM_SECRET")
@@ -57,6 +58,7 @@ class UserOut(BaseModel):
     phone: Optional[str]
     onboarded: Optional[bool]
     tenant_id: str
+    role: str  # <-- Added role to the response model
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
@@ -73,6 +75,14 @@ class PasswordResetEmailRequest(BaseModel):
 class PasswordResetTokenRequest(BaseModel):
     token: str
     new_password: str
+
+class StaffRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    phone: str
+    tenant_id: str
 
 # ─── UTILS ────────────────────────────────────────────────────────────────
 def get_password_hash(password: str) -> str:
@@ -102,6 +112,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         return user
     except JWTError:
         raise credentials_exception
+
+def require_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    return current_user
 
 # ─── ENDPOINTS ─────────────────────────────────────────────────────────────
 
@@ -178,6 +193,7 @@ def me(current: User = Depends(get_current_user)):
         phone=current.phone,
         onboarded=current.onboarded,
         tenant_id=current.tenant_id,
+        role=current.role,  # <-- Now included in the response
     )
 
 @router.put("/me", response_model=UserOut)
@@ -200,6 +216,7 @@ def update_me(
         phone=current.phone,
         onboarded=current.onboarded,
         tenant_id=current.tenant_id,
+        role=current.role,  # <-- Now included in the response
     )
 
 @router.post("/reset-password", status_code=200)
@@ -256,3 +273,135 @@ def reset_password_confirm(req: PasswordResetTokenRequest, db: Session = Depends
     user.hashed_password = get_password_hash(req.new_password)
     db.commit()
     return {"message": "Password reset successful"}
+
+@router.post("/register-staff", status_code=201)
+def register_staff(
+    req: StaffRegisterRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    if db.query(User).filter_by(email=req.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = User(
+        email=req.email,
+        hashed_password=get_password_hash(req.password),
+        first_name=req.first_name,
+        last_name=req.last_name,
+        phone=req.phone,
+        onboarded=True,
+        created_at=datetime.utcnow(),
+        tenant_id=req.tenant_id,
+        role="staff",
+    )
+    db.add(user)
+    db.commit()
+    return {"message": "Staff registered successfully"}
+
+@router.patch("/users/{user_id}/role", status_code=200)
+def update_user_role(
+    user_id: int,
+    new_role: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if new_role not in ["user", "staff", "admin"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    user.role = new_role
+    db.commit()
+    return {"message": f"User role updated to {new_role}"}
+
+@router.get("/payments/verify/{ref}")
+def verify_payment(
+    ref: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Implement your payment verification logic here
+    # For now, just simulate:
+    if ref == "valid":
+        return {"status": "ok"}
+    raise HTTPException(status_code=404, detail="Invalid or unpaid reference")
+
+@router.post("/visits/manual")
+def log_manual_visit(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    cellphone = data.get("cellphone")
+    if not cellphone or not cellphone.isdigit() or len(cellphone) != 10:
+        raise HTTPException(status_code=400, detail="Invalid cellphone number")
+
+    norm_cell = "+27" + cellphone[1:] if cellphone.startswith("0") else cellphone
+
+    user = db.query(User).filter(
+        or_(
+            User.phone == cellphone,
+            User.phone == norm_cell,
+        )
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update visit_counts table
+    visit_count = db.query(VisitCount).filter_by(user_id=user.id, tenant_id=user.tenant_id).first()
+    if visit_count:
+        visit_count.count += 1
+        visit_count.updated_at = datetime.utcnow()
+    else:
+        visit_count = VisitCount(
+            user_id=user.id,
+            tenant_id=user.tenant_id,
+            count=1,
+            updated_at=datetime.utcnow()
+        )
+        db.add(visit_count)
+    db.commit()
+
+    return {"message": f"Visit logged for {user.first_name} {user.last_name} ({user.phone})"}
+
+@router.get("/users/search")
+def search_users(
+    query: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Normalize phone for SA numbers
+    norm_query = query
+    if query.isdigit() and len(query) == 10 and query.startswith("0"):
+        norm_query = "+27" + query[1:]
+
+    users = db.query(User).filter(
+        or_(
+            User.first_name.ilike(f"%{query}%"),
+            User.last_name.ilike(f"%{query}%"),
+            User.phone.ilike(f"%{query}%"),
+            User.phone.ilike(f"%{norm_query}%"),
+        )
+    ).all()
+    return [
+        {
+            "id": u.id,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "phone": u.phone,
+            "email": u.email,
+            "role": u.role,
+        }
+        for u in users
+    ]
+
+@router.get("/loyalty/me")
+def loyalty_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    print("Current user id:", current_user.id)
+    visit_count = db.query(VisitCount).filter_by(
+        user_id=current_user.id,
+        tenant_id=current_user.tenant_id
+    ).first()
+    return {"visits": visit_count.count if visit_count else 0}

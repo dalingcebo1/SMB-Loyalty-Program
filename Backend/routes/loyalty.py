@@ -21,7 +21,6 @@ router = APIRouter(
     tags=["loyalty"],
 )
 
-
 def get_db():
     db = SessionLocal()
     try:
@@ -151,79 +150,7 @@ def log_visit(body: PhoneIn, db: Session = Depends(get_db)):
 
     return {"message": "Visit logged", "total_visits": vc.count}
 
-@router.get(
-    "/me",
-    summary="Get profile, visits, ready/upcoming rewards, redeemed history",
-)
-def get_profile(
-    phone: str = Query(..., description="User phone number"),
-    db: Session = Depends(get_db),
-):
-    db_user = (
-        db.query(User)
-        .filter_by(phone=phone, tenant_id=DEFAULT_TENANT)
-        .first()
-    )
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    vc = (
-        db.query(VisitCount)
-        .filter_by(user_id=db_user.id, tenant_id=db_user.tenant_id)
-        .first()
-    )
-    visits = vc.count if vc else 0
-
-    # load milestone rewards
-    rewards = (
-        db.query(Reward)
-        .filter_by(tenant_id=db_user.tenant_id, type="milestone")
-        .order_by(Reward.milestone)
-        .all()
-    )
-    redeemed_ids = {
-        rec.reward_id
-        for rec in db.query(Redemption).filter_by(user_id=db_user.id)
-    }
-
-    ready, upcoming = [], []
-    for r in rewards:
-        if r.id in redeemed_ids:
-            continue
-        if visits >= r.milestone:
-            ready.append({"milestone": r.milestone, "reward": r.title})
-        else:
-            upcoming.append(
-                {
-                    "milestone": r.milestone,
-                    "reward": r.title,
-                    "visits_needed": r.milestone - visits,
-                }
-            )
-
-    history = [
-        {
-            "milestone": rec.reward.milestone,
-            "reward": rec.reward.title,
-            "timestamp": rec.created_at.isoformat(),
-        }
-        for rec in (
-            db.query(Redemption)
-            .filter_by(user_id=db_user.id)
-            .order_by(Redemption.created_at.desc())
-            .all()
-        )
-    ]
-
-    return {
-        "name": f"{db_user.first_name or ''} {db_user.last_name or ''}".strip(),
-        "email": db_user.email,
-        "phone": db_user.phone,
-        "total_visits": visits,
-        "rewards_ready_to_claim": ready,
-        "upcoming_rewards": upcoming,
-        "redeemed_history": history,
-    }
+# Removed /me endpoint to avoid duplication with auth.py
 
 @router.post(
     "/reward",

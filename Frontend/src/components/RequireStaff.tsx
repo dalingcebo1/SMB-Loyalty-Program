@@ -10,7 +10,9 @@ const RequireStaff: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   });
 
   if (isLoading) return <div>Loading...</div>;
-  if (!user || user.role !== "staff") return <Navigate to="/login" replace />;
+  if (!user || (user.role !== "staff" && user.role !== "admin")) {
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 };
 

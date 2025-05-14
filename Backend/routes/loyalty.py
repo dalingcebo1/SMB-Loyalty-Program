@@ -70,6 +70,20 @@ def _create_jwt(payload: dict, minutes: int) -> str:
 
 # ─── Endpoints ──────────────────────────────────────────────────────────────────
 
+@router.get(
+    "/me",
+    summary="Get loyalty/visit info for the current user",
+)
+def loyalty_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    visit_count = db.query(VisitCount).filter_by(
+        user_id=current_user.id,
+        tenant_id=current_user.tenant_id
+    ).first()
+    return {"visits": visit_count.count if visit_count else 0}
+
 @router.post(
     "/register",
     response_model=AuthResponse,
@@ -149,8 +163,6 @@ def log_visit(body: PhoneIn, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Visit logged", "total_visits": vc.count}
-
-# Removed /me endpoint to avoid duplication with auth.py
 
 @router.post(
     "/reward",

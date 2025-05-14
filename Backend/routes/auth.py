@@ -9,11 +9,15 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from database import get_db
-from models import User, VisitCount
+from models import User, VisitCount, Vehicle
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from sqlalchemy import or_
+import logging
+
+logger = logging.getLogger("vehicle_manager")
+logging.basicConfig(level=logging.INFO)
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("JWT_SECRET", "CHANGE_THIS_TO_A_STRONG_RANDOM_SECRET")
@@ -84,6 +88,17 @@ class StaffRegisterRequest(BaseModel):
     phone: str
     tenant_id: str
 
+class VehicleIn(BaseModel):
+    plate: str
+    make: str
+    model: str
+
+class VehicleOut(BaseModel):
+    id: int
+    plate: str
+    make: str
+    model: str
+
 # ─── UTILS ────────────────────────────────────────────────────────────────
 def get_password_hash(password: str) -> str:
     return pwd_ctx.hash(password)
@@ -116,6 +131,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 def require_admin(current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
+    return current_user
+
+def require_staff(current_user: User = Depends(get_current_user)):
+    if current_user.role not in ("staff", "admin"):
+        raise HTTPException(status_code=403, detail="Staff only")
     return current_user
 
 # ─── ENDPOINTS ─────────────────────────────────────────────────────────────
@@ -329,7 +349,7 @@ def verify_payment(
 def log_manual_visit(
     data: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),  # <-- restrict to staff
 ):
     cellphone = data.get("cellphone")
     if not cellphone or not cellphone.isdigit() or len(cellphone) != 10:
@@ -346,7 +366,6 @@ def log_manual_visit(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Update visit_counts table
     visit_count = db.query(VisitCount).filter_by(user_id=user.id, tenant_id=user.tenant_id).first()
     if visit_count:
         visit_count.count += 1
@@ -361,19 +380,20 @@ def log_manual_visit(
         db.add(visit_count)
     db.commit()
 
-    return {"message": f"Visit logged for {user.first_name} {user.last_name} ({user.phone})"}
+    return {
+        "message": f"Visit logged for {user.first_name} {user.last_name} ({user.phone})",
+        "phone": user.phone,
+        "name": f"{user.first_name} {user.last_name}".strip(),
+        "count": visit_count.count,
+    }
 
 @router.get("/users/search")
 def search_users(
     query: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),  # <-- restricts to staff/admin
 ):
-    # Normalize phone for SA numbers
-    norm_query = query
-    if query.isdigit() and len(query) == 10 and query.startswith("0"):
-        norm_query = "+27" + query[1:]
-
+    norm_query = "+27" + query[1:] if query.startswith("0") and len(query) == 10 else query
     users = db.query(User).filter(
         or_(
             User.first_name.ilike(f"%{query}%"),
@@ -382,6 +402,7 @@ def search_users(
             User.phone.ilike(f"%{norm_query}%"),
         )
     ).all()
+    logger.info(f"User search by staff/admin {current_user.email} (id={current_user.id}): query='{query}', found={len(users)}")
     return [
         {
             "id": u.id,
@@ -394,14 +415,59 @@ def search_users(
         for u in users
     ]
 
-@router.get("/loyalty/me")
-def loyalty_me(
-    current_user: User = Depends(get_current_user),
+@router.get("/users/{user_id}/vehicles", response_model=list[VehicleOut])
+def get_user_vehicles(
+    user_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff),
 ):
-    print("Current user id:", current_user.id)
-    visit_count = db.query(VisitCount).filter_by(
-        user_id=current_user.id,
-        tenant_id=current_user.tenant_id
-    ).first()
-    return {"visits": visit_count.count if visit_count else 0}
+    vehicles = db.query(Vehicle).filter_by(user_id=user_id).all()
+    return vehicles
+
+@router.post("/users/{user_id}/vehicles", status_code=201)
+def add_vehicle(
+    user_id: int,
+    vehicle: VehicleIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff),
+):
+    v = Vehicle(user_id=user_id, plate=vehicle.plate, make=vehicle.make, model=vehicle.model)
+    db.add(v)
+    db.commit()
+    db.refresh(v)
+    logger.info(f"Vehicle added by {current_user.email} (id={current_user.id}) for user_id={user_id}: {vehicle.plate}, {vehicle.make}, {vehicle.model}")
+    return {"message": "Vehicle added", "id": v.id}
+
+@router.patch("/users/{user_id}/vehicles/{vehicle_id}")
+def update_vehicle(
+    user_id: int,
+    vehicle_id: int,
+    vehicle: VehicleIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff),
+):
+    v = db.query(Vehicle).filter_by(id=vehicle_id, user_id=user_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    v.plate = vehicle.plate
+    v.make = vehicle.make
+    v.model = vehicle.model
+    db.commit()
+    logger.info(f"Vehicle updated by {current_user.email} (id={current_user.id}) for user_id={user_id}, vehicle_id={vehicle_id}: {vehicle.plate}, {vehicle.make}, {vehicle.model}")
+    return {"message": "Vehicle updated"}
+
+@router.delete("/users/{user_id}/vehicles/{vehicle_id}")
+def delete_vehicle(
+    user_id: int,
+    vehicle_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff),
+):
+    v = db.query(Vehicle).filter_by(id=vehicle_id, user_id=user_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    db.delete(v)
+    db.commit()
+    logger.info(f"Vehicle deleted by {current_user.email} (id={current_user.id}) for user_id={user_id}, vehicle_id={vehicle_id}")
+    return {"message": "Vehicle deleted"}
+

@@ -1,16 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
+// Types for vehicles and users
+interface Vehicle {
+  id: number;
+  reg: string;
+  make: string;
+  model: string;
+}
+
+interface User {
+  id: number;
+  first_name: string;
+  last_name: string;
+  phone: string;
+}
+
+const PAGE_SIZE = 5;
+
 const VehicleManager: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [reg, setReg] = useState("");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const token = localStorage.getItem("token");
   const axiosAuth = axios.create({
@@ -29,11 +48,12 @@ const VehicleManager: React.FC = () => {
     return input;
   };
 
-  // Live search effect
+  // Live search effect with pagination
   useEffect(() => {
     if (!search.trim()) {
       setSearchResults([]);
       setError(null);
+      setCurrentPage(1);
       return;
     }
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
@@ -44,15 +64,15 @@ const VehicleManager: React.FC = () => {
   }, [search]);
 
   const handleSearch = async () => {
-    // Don't set loading to true here to avoid UI flicker or input jump
     setError(null);
     let query = search.trim();
     if (/^0\d{9}$/.test(query)) {
       query = normalizePhone(query);
     }
     try {
-      const res = await axiosAuth.get(`/api/users/search?query=${encodeURIComponent(query)}`);
+      const res = await axiosAuth.get(`/api/auth/users/search?query=${encodeURIComponent(query)}`);
       setSearchResults(res.data);
+      setCurrentPage(1);
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError("Not authenticated. Please log in again.");
@@ -64,17 +84,17 @@ const VehicleManager: React.FC = () => {
         setSearchResults([]);
       }
     }
-    // Don't set loading to false here either
   };
 
-  const selectUser = async (user: any) => {
+  const selectUser = async (user: User) => {
     setSelectedUser(user);
     setSearchResults([]);
     setSearch("");
     setError(null);
+    setStatus(null);
     setLoading(true);
     try {
-      const res = await axiosAuth.get(`/api/users/${user.id}/vehicles`);
+      const res = await axiosAuth.get(`/api/auth/users/${user.id}/vehicles`);
       setVehicles(res.data);
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
@@ -89,19 +109,25 @@ const VehicleManager: React.FC = () => {
 
   const addVehicle = async () => {
     if (!selectedUser) return;
-    setLoading(true);
+    setStatus(null);
     setError(null);
+    const confirmed = window.confirm(
+      `Add vehicle ${reg} (${make} ${model}) for ${selectedUser.first_name} ${selectedUser.last_name}?`
+    );
+    if (!confirmed) return;
+    setLoading(true);
     try {
-      await axiosAuth.post(`/api/users/${selectedUser.id}/vehicles`, {
-        reg,
+      await axiosAuth.post(`/api/auth/users/${selectedUser.id}/vehicles`, {
+        plate: reg, // or rename your state variable to plate for clarity
         make,
         model,
       });
-      const res = await axiosAuth.get(`/api/users/${selectedUser.id}/vehicles`);
+      const res = await axiosAuth.get(`/api/auth/users/${selectedUser.id}/vehicles`);
       setVehicles(res.data);
       setReg("");
       setMake("");
       setModel("");
+      setStatus("✅ Vehicle added successfully!");
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError("Not authenticated. Please log in again.");
@@ -112,11 +138,89 @@ const VehicleManager: React.FC = () => {
     setLoading(false);
   };
 
+  const deleteVehicle = async (vehicleId: number) => {
+    if (!selectedUser) return;
+    const confirmed = window.confirm("Are you sure you want to delete this vehicle?");
+    if (!confirmed) return;
+    setLoading(true);
+    setError(null);
+    setStatus(null);
+    try {
+      await axiosAuth.delete(`/api/auth/users/${selectedUser.id}/vehicles/${vehicleId}`);
+      const res = await axiosAuth.get(`/api/auth/users/${selectedUser.id}/vehicles`);
+      setVehicles(res.data);
+      setStatus("✅ Vehicle deleted.");
+    } catch (err: any) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError("Not authenticated. Please log in again.");
+      } else {
+        setError("Failed to delete vehicle.");
+      }
+    }
+    setLoading(false);
+  };
+
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editReg, setEditReg] = useState("");
+  const [editMake, setEditMake] = useState("");
+  const [editModel, setEditModel] = useState("");
+
+  const startEdit = (v: Vehicle, idx: number) => {
+    setEditIdx(idx);
+    setEditReg(v.reg);
+    setEditMake(v.make);
+    setEditModel(v.model);
+    setStatus(null);
+    setError(null);
+  };
+
+  const cancelEdit = () => {
+    setEditIdx(null);
+    setEditReg("");
+    setEditMake("");
+    setEditModel("");
+  };
+
+  const saveEdit = async (vehicleId: number) => {
+    if (!selectedUser) return;
+    setLoading(true);
+    setError(null);
+    setStatus(null);
+    try {
+      await axiosAuth.patch(`/api/auth/users/${selectedUser.id}/vehicles/${vehicleId}`, {
+        reg: editReg,
+        make: editMake,
+        model: editModel,
+      });
+      const res = await axiosAuth.get(`/api/auth/users/${selectedUser.id}/vehicles`);
+      setVehicles(res.data);
+      setStatus("✅ Vehicle updated.");
+      cancelEdit();
+    } catch (err: any) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError("Not authenticated. Please log in again.");
+      } else {
+        setError("Failed to update vehicle.");
+      }
+    }
+    setLoading(false);
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(searchResults.length / PAGE_SIZE);
+  const paginatedResults = searchResults.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   return (
     <section style={{ margin: "32px auto", maxWidth: 600, padding: 24, background: "#fafbfc", borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
       <h2 style={{ marginBottom: 24 }}>Vehicle Manager</h2>
       {error && (
         <div style={{ color: "red", marginBottom: 16 }}>{error}</div>
+      )}
+      {status && (
+        <div style={{ color: "green", marginBottom: 16 }}>{status}</div>
       )}
       {!selectedUser && (
         <div style={{ marginBottom: 16 }}>
@@ -130,10 +234,10 @@ const VehicleManager: React.FC = () => {
             />
           </div>
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {search.trim() && searchResults.length === 0 && (
+            {search.trim() && paginatedResults.length === 0 && (
               <li style={{ color: "#888", marginBottom: 8 }}>No users found.</li>
             )}
-            {searchResults.map((user, idx) => (
+            {paginatedResults.map((user, idx) => (
               <li key={user.id || idx} style={{ marginBottom: 8, background: "#f1f1f1", padding: 8, borderRadius: 4 }}>
                 <span>
                   <strong>{user.first_name} {user.last_name}</strong> ({user.phone})
@@ -147,6 +251,23 @@ const VehicleManager: React.FC = () => {
               </li>
             ))}
           </ul>
+          {totalPages > 1 && (
+            <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </button>
+              <span>Page {currentPage} of {totalPages}</span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -156,7 +277,7 @@ const VehicleManager: React.FC = () => {
             <strong>User:</strong>
             <span>{selectedUser.first_name} {selectedUser.last_name} ({selectedUser.phone})</span>
             <button
-              onClick={() => { setSelectedUser(null); setVehicles([]); setError(null); }}
+              onClick={() => { setSelectedUser(null); setVehicles([]); setError(null); setStatus(null); }}
               style={{ marginLeft: "auto", padding: "4px 12px" }}
             >
               Change User
@@ -197,8 +318,42 @@ const VehicleManager: React.FC = () => {
             ) : (
               <ul style={{ listStyle: "none", padding: 0 }}>
                 {vehicles.map((v, idx) => (
-                  <li key={v.id || idx} style={{ background: "#e9ecef", marginBottom: 6, padding: 8, borderRadius: 4 }}>
-                    <strong>{v.reg}</strong> - {v.make} {v.model}
+                  <li key={v.id || idx} style={{ background: "#e9ecef", marginBottom: 6, padding: 8, borderRadius: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                    {editIdx === idx ? (
+                      <>
+                        <input
+                          value={editReg}
+                          onChange={e => setEditReg(e.target.value)}
+                          style={{ width: 80, padding: 4, borderRadius: 4, border: "1px solid #ccc" }}
+                        />
+                        <input
+                          value={editMake}
+                          onChange={e => setEditMake(e.target.value)}
+                          style={{ width: 80, padding: 4, borderRadius: 4, border: "1px solid #ccc" }}
+                        />
+                        <input
+                          value={editModel}
+                          onChange={e => setEditModel(e.target.value)}
+                          style={{ width: 80, padding: 4, borderRadius: 4, border: "1px solid #ccc" }}
+                        />
+                        <button onClick={() => saveEdit(v.id)} disabled={loading || !editReg || !editMake || !editModel} style={{ padding: "4px 10px" }}>
+                          Save
+                        </button>
+                        <button onClick={cancelEdit} style={{ padding: "4px 10px" }}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <strong>{v.reg}</strong> - {v.make} {v.model}
+                        <button onClick={() => startEdit(v, idx)} style={{ marginLeft: 8, padding: "4px 10px" }}>
+                          Edit
+                        </button>
+                        <button onClick={() => deleteVehicle(v.id)} style={{ marginLeft: 8, padding: "4px 10px", color: "red" }}>
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -16,11 +16,11 @@ const PaymentVerification: React.FC = () => {
     },
   });
 
-  const verify = async (reference: string) => {
+  const verify = async (referenceOrPin: string) => {
     setStatus("");
     setLoading(true);
     try {
-      await axiosAuth.get(`/api/payments/verify/${reference}`);
+      await axiosAuth.get(`/api/payments/verify/${referenceOrPin}`);
       setStatus("✅ Payment OK—start the wash!");
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {

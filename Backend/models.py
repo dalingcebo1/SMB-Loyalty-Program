@@ -80,6 +80,8 @@ class Order(Base):
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
     quantity   = Column(Integer, nullable=False, default=1)
     extras     = Column(JSON, nullable=False, default=[])  # [{id,quantity},...]
+    payment_pin = Column(String(4), nullable=True, unique=True)  # <-- NEW
+    status     = Column(String, default="pending")  # e.g. pending, paid, etc.
 
     service = relationship("Service")
 
@@ -164,8 +166,12 @@ class Payment(Base):
     id            = Column(Integer, primary_key=True)
     order_id      = Column(String, ForeignKey("orders.id"), nullable=False)
     amount        = Column(Integer, nullable=False)
-    method        = Column(String, nullable=False)
+    method        = Column(String, nullable=False)  # e.g. "paystack", "yoco", "manual"
     transaction_id= Column(String)
-    created_at    = Column(DateTime)
+    reference     = Column(String, unique=True)
+    status        = Column(String, default="initialized")
+    raw_response  = Column(JSON, nullable=True)
+    created_at    = Column(DateTime, default=datetime.utcnow)
+    card_brand    = Column(String(32))  # <-- Add this line
 
     order = relationship("Order")

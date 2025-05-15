@@ -7,7 +7,7 @@
 // interface LocationState {
 //   orderId: number;
 //   qrData: string;
-//   amount: number; // in kobo
+//   amount: number; // in cents
 // }
 
 // const PaymentPage: React.FC = () => {

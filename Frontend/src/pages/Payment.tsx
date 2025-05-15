@@ -1,5 +1,5 @@
 // Frontend/src/pages/Payment.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast, ToastContainer } from "react-toastify";
@@ -7,10 +7,11 @@ import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
 
 interface LocationState {
-  orderId: number;
-  total: number; // in Rands
+  orderId: string;
+  total: number; // in cents
   summary?: string[];
   qrData?: string;
+  paymentPin?: string;
 }
 
 interface User {
@@ -18,7 +19,6 @@ interface User {
   email: string;
 }
 
-// Add this to TypeScript to avoid type errors
 declare global {
   interface Window {
     YocoSDK: any;
@@ -28,7 +28,10 @@ declare global {
 const Payment: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const { orderId, total, summary = [], qrData } = (state as LocationState) || {};
+  const { orderId, total, summary = [], paymentPin } = (state as LocationState) || {};
+
+  const [paying, setPaying] = useState(false);
+  const [yocoLoaded, setYocoLoaded] = useState(false);
 
   // Fetch user info
   const userQuery = useQuery<User, Error, User>({
@@ -41,11 +44,36 @@ const Payment: React.FC = () => {
   }, [userQuery.isError]);
 
   useEffect(() => {
+    // Validate all required state fields
     if (!orderId || typeof total !== "number" || isNaN(total)) {
       toast.error("Missing payment details");
       navigate("/", { replace: true });
     }
   }, [orderId, total, navigate]);
+
+  // Dynamically load Yoco SDK if not already loaded
+  useEffect(() => {
+    if (window.YocoSDK) {
+      setYocoLoaded(true);
+      return;
+    }
+    const scriptId = "yoco-sdk";
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://js.yoco.com/sdk/v1/yoco-sdk-web.js";
+      script.async = true;
+      script.onload = () => setYocoLoaded(true);
+      script.onerror = () => {
+        toast.error("Failed to load Yoco SDK. Please check your connection.");
+      };
+      document.body.appendChild(script);
+    } else {
+      // If script exists but not loaded yet, wait for onload
+      const script = document.getElementById(scriptId) as HTMLScriptElement;
+      script.onload = () => setYocoLoaded(true);
+    }
+  }, []);
 
   if (userQuery.isLoading) {
     return (
@@ -59,27 +87,59 @@ const Payment: React.FC = () => {
 
   const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY!;
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!window.YocoSDK) {
-      toast.error("Yoco SDK not loaded");
+      toast.error("Yoco SDK not loaded. Please refresh the page.");
       return;
     }
-    const yoco = new window.YocoSDK({ publicKey });
-    yoco.showPopup({
-      amountInCents: Math.round(total * 100),
-      currency: "ZAR",
-      name: "SMB Loyalty Payment",
-      description: `Order #${orderId}`,
-      callback: (result: any) => {
-        if (result.error) {
-          toast.error(result.error.message);
-        } else {
-          toast.success("Payment successful!");
-          // Send result.id (the token) to your backend to complete the charge
-          navigate("/order/confirmation", { state: { orderId, qrData } });
-        }
-      },
-    });
+    setPaying(true);
+    try {
+      const yoco = new window.YocoSDK({ publicKey });
+      yoco.showPopup({
+        amountInCents: total,
+        currency: "ZAR",
+        name: "SMB Loyalty Payment",
+        description: `Order #${orderId}`,
+        callback: async (result: any) => {
+          if (result.error) {
+            setPaying(false);
+            toast.error(result.error.message || "Payment failed. Please try again.");
+          } else {
+            toast.success("Payment successful! Finalizing...");
+            try {
+              await api.post("/payments/charge", {
+                token: result.id,
+                orderId,
+                amount: total,
+              });
+              // Fetch QR data for this order
+              const qrResp = await api.get(`/payments/qr/${orderId}`);
+              const qrData = qrResp.data.qr_code_base64 || qrResp.data.reference || orderId;
+
+              console.log("Navigating to order-confirmation", { orderId, qrData, amount: total, paymentPin, summary });
+              navigate("/order-confirmation", {
+                state: {
+                  orderId,
+                  qrData,
+                  amount: total, // Use 'amount' for consistency with OrderConfirmation
+                  paymentPin,
+                  summary,
+                },
+              });
+            } catch (err: any) {
+              setPaying(false);
+              toast.error(
+                err?.response?.data?.detail ||
+                  "Payment could not be completed. Please contact support."
+              );
+            }
+          }
+        },
+      });
+    } catch (e: any) {
+      setPaying(false);
+      toast.error("Unexpected error: " + (e.message || e));
+    }
   };
 
   return (
@@ -88,7 +148,7 @@ const Payment: React.FC = () => {
       <div className="w-full sm:max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
         <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">Complete Your Payment</h2>
         <div className="text-lg font-semibold text-center mb-6">
-          Amount: <span className="text-black font-bold">R {total.toFixed(2)}</span>
+          Amount: <span className="text-black font-bold">R {(total / 100).toFixed(2)}</span>
         </div>
         {summary.length > 0 && (
           <div className="mb-4">
@@ -102,10 +162,16 @@ const Payment: React.FC = () => {
         )}
         <button
           onClick={handlePay}
-          className="w-full mt-4 py-2 rounded text-white font-semibold transition bg-blue-600 hover:bg-blue-700"
+          disabled={paying || !yocoLoaded}
+          className={`w-full mt-4 py-2 rounded text-white font-semibold transition ${
+            paying || !yocoLoaded ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
-          Pay Now
+          {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay Now"}
         </button>
+        <div className="mt-6 text-xs text-gray-400 text-center">
+          Secured by <span className="font-bold text-blue-500">YOCO</span>
+        </div>
       </div>
     </div>
   );

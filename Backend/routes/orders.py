@@ -1,6 +1,7 @@
 # Backend/routes/orders.py
 
 import uuid
+import random
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from routes.auth import get_current_user
@@ -39,6 +40,12 @@ def get_db():
     finally:
         db.close()
 
+def generate_payment_pin(db):
+    # Ensure uniqueness
+    while True:
+        pin = f"{random.randint(1000, 9999)}"
+        if not db.query(Order).filter_by(payment_pin=pin).first():
+            return pin
 
 @router.post(
     "/create",
@@ -49,30 +56,30 @@ def create_order(
     req: OrderCreateRequest,
     db: Session = Depends(get_db),
 ):
-    print(">>> create_order payload:", req.dict())   # <–– log it
+    print(">>> create_order payload:", req.dict())
     try:
-        # optional: verify each extra exists in your extras table
-        from models import Extra  
+        from models import Extra
         for e in req.extras:
             if not db.query(Extra).filter(Extra.id == e.id).first():
                 raise HTTPException(status_code=400, detail=f"Invalid extra id {e.id}")
 
+        pin = generate_payment_pin(db)
         new_order = Order(
             id=str(uuid.uuid4()),
             service_id=req.service_id,
             quantity=req.quantity,
             extras=[{"id": e.id, "quantity": e.quantity} for e in req.extras],
+            payment_pin=pin,
         )
         db.add(new_order)
         db.commit()
         db.refresh(new_order)
-        return OrderCreateResponse(order_id=new_order.id, qr_data=new_order.id)
+        return OrderCreateResponse(order_id=new_order.id, qr_data=new_order.id, payment_pin=pin)
     except HTTPException:
         raise
     except Exception as e:
         import traceback; traceback.print_exc()
-        # return the raw exception text so the front‐end alert shows it
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Order creation failed: {str(e)}")
 
 @router.get("", response_model=List[OrderResponse])
 def list_orders(

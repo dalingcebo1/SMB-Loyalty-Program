@@ -1,52 +1,170 @@
 // src/pages/OrderConfirmation.tsx
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import QRCode from "react-qr-code";
+import axios from "axios";
+import { useAuth } from "../auth/AuthProvider";
 
 interface LocationState {
-  orderId: number;
+  orderId: string; // should match backend (uuid string)
   qrData: string;
-  amount: number; // in kobo
+  amount: number; // in cents
+  paymentPin?: string;
+  error?: string;
 }
-
-interface PaystackPaymentProps {
-  orderId: number;
-  amount: number;
-}
-
-const PaystackPayment: React.FC<PaystackPaymentProps> = ({ orderId, amount }) => {
-  // your component logic
-  return (
-    <div>
-      {/* Paystack payment button or logic goes here */}
-      <button disabled>
-        Pay ₦{(amount / 100).toFixed(2)} for Order #{orderId} (Coming Soon)
-      </button>
-    </div>
-  );
-};
 
 const OrderConfirmation: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const { orderId, qrData, amount } = state as LocationState;
+  const { orderId: paramOrderId } = useParams<{ orderId: string }>();
+  const { user } = useAuth();
+  console.log("user in OrderConfirmation", user);
+
+  // Local state to support reload/direct access
+  const [orderId, setOrderId] = useState<string>("");
+  const [qrData, setQrData] = useState<string>("");
+  const [amount, setAmount] = useState<number>(0);
+  const [paymentPin, setPaymentPin] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // On mount: try to get state from navigation or fallback to URL param
+  useEffect(() => {
+    let didSet = false;
+    if (state && typeof state === "object") {
+      const s = state as LocationState;
+      if (s.orderId && s.qrData && typeof s.amount === "number") {
+        setOrderId(s.orderId);
+        setQrData(s.qrData);
+        setAmount(s.amount);
+        setPaymentPin(s.paymentPin);
+        setError(s.error);
+        setLoading(false);
+        didSet = true;
+      }
+    }
+    // Fallback: if state is missing or incomplete, try to fetch QR by orderId from URL
+    if (!didSet && paramOrderId) {
+      setLoading(true);
+      axios
+        .get(`/payments/qr/${paramOrderId}`)
+        .then((resp) => {
+          setOrderId(paramOrderId);
+          setQrData(resp.data.qr_code_base64 || resp.data.reference || paramOrderId);
+          setAmount(0); // Amount is unknown unless you fetch order details
+          setPaymentPin(undefined);
+          setError(undefined);
+        })
+        .catch(() => {
+          setError("Could not find order or QR code.");
+          setOrderId("");
+          setQrData("");
+        })
+        .finally(() => setLoading(false));
+    } else if (!didSet) {
+      setLoading(false);
+    }
+    // eslint-disable-next-line
+  }, [state, paramOrderId]);
+
+  useEffect(() => {
+    // If after all attempts, we still don't have orderId or qrData, redirect home
+    if (!loading && (!orderId || !qrData)) {
+      navigate("/", { replace: true });
+    }
+  }, [orderId, qrData, loading, navigate]);
+
+  if (loading) {
+    return (
+      <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
+        <h1 style={{ marginBottom: 16 }}>Loading your order…</h1>
+      </section>
+    );
+  }
 
   return (
-    <div style={{ padding: "1rem", maxWidth: 600, margin: "0 auto" }}>
-      <h1>Your Order Is Confirmed!</h1>
-      <div style={{ margin: "1rem 0" }}>
-        <QRCode value={qrData} size={200} />
+    <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
+      <h1 style={{ marginBottom: 16 }}>Your Order Is Confirmed!</h1>
+      {error && (
+        <div style={{
+          background: "#ffeaea",
+          color: "#b00020",
+          padding: "12px 18px",
+          borderRadius: 6,
+          marginBottom: 16,
+          fontWeight: "bold"
+        }}>
+          {error}
+        </div>
+      )}
+      <div style={{ margin: "1rem 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {qrData ? (
+          <QRCode value={qrData} size={200} />
+        ) : (
+          <div style={{ color: "#b00020", marginBottom: 12 }}>No QR code available.</div>
+        )}
+        {paymentPin && (
+          <div style={{
+            marginTop: 16,
+            padding: "12px 24px",
+            background: "#e9ecef",
+            borderRadius: 6,
+            fontSize: 22,
+            fontWeight: "bold",
+            letterSpacing: 4,
+            color: "#333"
+          }}>
+            Payment PIN: <span style={{ color: "#007bff" }}>{paymentPin}</span>
+          </div>
+        )}
+        {/* Show amount paid if available */}
+        {amount > 0 && (
+          <div style={{
+            marginTop: 12,
+            fontSize: 18,
+            color: "#222"
+          }}>
+            Amount Paid: <span style={{ fontWeight: "bold" }}>R{(amount / 100).toFixed(2)}</span>
+          </div>
+        )}
       </div>
-      <p>Save this QR code to redeem your service.</p>
-      <button onClick={() => navigate("/claimed")}>
+      <p style={{ margin: "16px 0" }}>
+        Save this QR code or PIN to redeem your service at the wash bay.
+      </p>
+      <button
+        onClick={() => navigate("/claimed")}
+        style={{
+          marginBottom: 24,
+          padding: "10px 24px",
+          borderRadius: 6,
+          background: "#007bff",
+          color: "#fff",
+          border: "none",
+          fontWeight: "bold",
+          cursor: "pointer"
+        }}
+      >
         View My Active Rewards
       </button>
-
-      <h2 style={{ marginTop: "2rem" }}>Complete Payment</h2>
-      {/* drop in your Paystack button */}
-      <PaystackPayment orderId={orderId} amount={amount} />
-    </div>
+      <div className="mt-6 text-xs text-gray-400 text-center">
+        Secured by <span className="font-bold text-blue-500">YOCO</span>
+      </div>
+    </section>
   );
+};
+
+export const createOrder = async (orderPayload: any, navigate: any) => {
+  const response = await axios.post("/api/orders/create", orderPayload);
+  const { order_id, qr_data, amount, payment_pin } = response.data;
+
+  navigate("/order/payment", {
+    state: {
+      orderId: order_id,        // string (uuid)
+      qrData: qr_data,          // string (could be order_id or payment.reference)
+      total: amount,            // number (cents), renamed to 'total' for consistency
+      paymentPin: payment_pin   // string (4-digit pin)
+    }
+  });
 };
 
 export default OrderConfirmation;

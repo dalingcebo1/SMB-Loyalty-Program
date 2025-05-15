@@ -54,7 +54,7 @@ class AssignVehicleRequest(BaseModel):
 ### ─── Payments ────────────────────────────────────────────────────────────────
 
 class PaymentInitRequest(BaseModel):
-    order_id: int
+    order_id: str  # was int
     email: Optional[str] = None  # if not stored on the user
 
 class PaymentInitResponse(BaseModel):
@@ -79,6 +79,20 @@ class OrderCreateResponse(BaseModel):
     order_id: str
     qr_data: str
 
+class PaymentRead(BaseModel):
+    id: int
+    order_id: str  # was int
+    amount: int
+    method: str
+    transaction_id: str
+    reference: str
+    status: str
+    created_at: datetime
+    card_brand: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
 
 ### ─── New: User‐exists check ────────────────────────────────────────────────────
 
@@ -94,7 +108,7 @@ class UserOut(BaseModel):
     first_name: Optional[str]
     last_name: Optional[str]
     phone: Optional[str]
-    role: str  # <-- Add this line
+    role: str
 
     class Config:
         orm_mode = True

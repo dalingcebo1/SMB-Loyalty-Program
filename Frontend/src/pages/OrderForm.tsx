@@ -150,7 +150,7 @@ const OrderForm: React.FC = () => {
           state: {
             orderId: order_id,
             qrData: qr_data,
-            amount: total * 100,
+            total: total * 100, // <-- change 'amount' to 'total'
           },
         });
       })

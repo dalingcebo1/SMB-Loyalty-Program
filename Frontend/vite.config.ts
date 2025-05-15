@@ -7,8 +7,8 @@ export default defineConfig({
   server: {
     // ✨ Add these headers so popups can close themselves cleanly
     headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
+     // "Cross-Origin-Opener-Policy": "same-origin",
+     // "Cross-Origin-Embedder-Policy": "require-corp",
     },
     proxy: {
       // your existing API proxy

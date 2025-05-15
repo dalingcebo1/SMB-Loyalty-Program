@@ -13,7 +13,7 @@ export interface User {
   phone: string;
   firstName: string;
   lastName: string;
-  role: string; // <-- must be present
+  role: string;
 }
 
 interface AuthContextType {
@@ -33,7 +33,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, check for stored token
+  // Always attach token to every request
+  useEffect(() => {
+    const interceptor = api.interceptors.request.use((config) => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+    return () => {
+      api.interceptors.request.eject(interceptor);
+    };
+  }, []);
+
+  // On mount, check for stored token and fetch user
   useEffect(() => {
     const t = localStorage.getItem("token");
     if (t) {
@@ -42,28 +57,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         .get("/auth/me")
         .then((res) => {
           const u = res.data;
+          console.log("auth/me response", u); // <-- Add this
           setUser({
             id: u.id,
             email: u.email,
             phone: u.phone,
-            firstName: u.first_name,
-            lastName: u.last_name,
-            role: u.role, // <-- must be present
+            firstName: u.first_name || u.firstName || "",
+            lastName: u.last_name || u.lastName || "",
+            role: u.role,
           });
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("Failed to fetch /auth/me", err);
           localStorage.removeItem("token");
           delete api.defaults.headers.common["Authorization"];
+          setUser(null);
         })
         .finally(() => setLoading(false));
     } else {
+      setUser(null);
       setLoading(false);
     }
   }, []);
 
-  // Email/password login → OAuth2 form/urlencoded
   const login = async (email: string, password: string) => {
-    // build a URLSearchParams body
     const form = new URLSearchParams();
     form.append("username", email);
     form.append("password", password);
@@ -88,18 +105,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       id: u.id,
       email: u.email,
       phone: u.phone,
-      firstName: u.first_name,
-      lastName: u.last_name,
-      role: u.role, // <-- must be present
+      firstName: u.first_name || u.firstName || "",
+      lastName: u.last_name || u.lastName || "",
+      role: u.role,
     });
   };
 
-  // Start signup (creates pending user)
   const signup = async (email: string, password: string) => {
     await api.post("/auth/signup", { email, password });
   };
 
-  // Finalize login after OTP confirm
   const loginWithToken = async (token: string) => {
     localStorage.setItem("token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -109,9 +124,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       id: u.id,
       email: u.email,
       phone: u.phone,
-      firstName: u.first_name,
-      lastName: u.last_name,
-      role: u.role, // <-- must be present
+      firstName: u.first_name || u.firstName || "",
+      lastName: u.last_name || u.lastName || "",
+      role: u.role,
     });
   };
 
@@ -120,6 +135,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
   };
+
+  // Only render children when loading is false
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider

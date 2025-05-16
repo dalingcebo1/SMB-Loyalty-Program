@@ -56,13 +56,14 @@ class Token(BaseModel):
     access_token: str
 
 class UserOut(BaseModel):
+    id: int
     email: EmailStr
     first_name: Optional[str]
     last_name: Optional[str]
     phone: Optional[str]
     onboarded: Optional[bool]
     tenant_id: str
-    role: str  # <-- Added role to the response model
+    role: str
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
@@ -207,13 +208,14 @@ def me(current: User = Depends(get_current_user)):
     if not current.onboarded:
         raise HTTPException(status_code=403, detail="User not onboarded")
     return UserOut(
+        id=current.id,
         email=current.email,
         first_name=current.first_name,
         last_name=current.last_name,
         phone=current.phone,
         onboarded=current.onboarded,
         tenant_id=current.tenant_id,
-        role=current.role,  # <-- Now included in the response
+        role=current.role,
     )
 
 @router.put("/me", response_model=UserOut)
@@ -230,13 +232,14 @@ def update_me(
         current.phone = req.phone
     db.commit()
     return UserOut(
+        id=current.id,
         email=current.email,
         first_name=current.first_name,
         last_name=current.last_name,
         phone=current.phone,
         onboarded=current.onboarded,
         tenant_id=current.tenant_id,
-        role=current.role,  # <-- Now included in the response
+        role=current.role,
     )
 
 @router.post("/reset-password", status_code=200)

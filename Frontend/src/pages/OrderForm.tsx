@@ -64,11 +64,12 @@ const OrderForm: React.FC = () => {
       cats.length &&
       (!selectedCategory || !cats.includes(selectedCategory))
     ) {
-      setSelectedCategory(cats[0]);
-      setSelectedServiceId(servicesByCategory[cats[0]][0]?.id ?? null);
+      if (selectedCategory !== cats[0]) setSelectedCategory(cats[0]);
+      if (selectedServiceId !== servicesByCategory[cats[0]][0]?.id)
+        setSelectedServiceId(servicesByCategory[cats[0]][0]?.id ?? null);
     }
-    // eslint-disable-next-line
-  }, [servicesByCategory, selectedCategory]);
+    // Only run when servicesByCategory changes
+  }, [servicesByCategory]);
 
   // Init extra counters
   useEffect(() => {
@@ -87,8 +88,7 @@ const OrderForm: React.FC = () => {
       setServiceQuantity(1);
       setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
     }
-    // eslint-disable-next-line
-  }, [selectedCategory, servicesByCategory]);
+  }, [selectedCategory, servicesByCategory, selectedServiceId]);
 
   // Increment/decrement helpers
   const incService = () => setServiceQuantity((q) => q + 1);

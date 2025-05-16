@@ -1,6 +1,6 @@
 // src/pages/OrderConfirmation.tsx
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-router-dom";
 import QRCode from "react-qr-code";
 import axios from "axios";
 import { useAuth } from "../auth/AuthProvider";
@@ -16,9 +16,17 @@ interface LocationState {
 const OrderConfirmation: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
+  let confirmation = state as LocationState | undefined;
+
+  if (!confirmation) {
+    const stored = localStorage.getItem("lastOrderConfirmation");
+    if (stored) {
+      confirmation = JSON.parse(stored);
+    }
+  }
+
   const { orderId: paramOrderId } = useParams<{ orderId: string }>();
-  const { user } = useAuth();
-  console.log("user in OrderConfirmation", user);
+  const { user, loading } = useAuth();
 
   // Local state to support reload/direct access
   const [orderId, setOrderId] = useState<string>("");
@@ -26,7 +34,7 @@ const OrderConfirmation: React.FC = () => {
   const [amount, setAmount] = useState<number>(0);
   const [paymentPin, setPaymentPin] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // On mount: try to get state from navigation or fallback to URL param
   useEffect(() => {
@@ -39,13 +47,13 @@ const OrderConfirmation: React.FC = () => {
         setAmount(s.amount);
         setPaymentPin(s.paymentPin);
         setError(s.error);
-        setLoading(false);
+        setIsLoading(false);
         didSet = true;
       }
     }
     // Fallback: if state is missing or incomplete, try to fetch QR by orderId from URL
     if (!didSet && paramOrderId) {
-      setLoading(true);
+      setIsLoading(true);
       axios
         .get(`/payments/qr/${paramOrderId}`)
         .then((resp) => {
@@ -60,21 +68,26 @@ const OrderConfirmation: React.FC = () => {
           setOrderId("");
           setQrData("");
         })
-        .finally(() => setLoading(false));
+        .finally(() => setIsLoading(false));
     } else if (!didSet) {
-      setLoading(false);
+      setIsLoading(false);
     }
     // eslint-disable-next-line
   }, [state, paramOrderId]);
 
   useEffect(() => {
     // If after all attempts, we still don't have orderId or qrData, redirect home
-    if (!loading && (!orderId || !qrData)) {
+    if (!isLoading && (!orderId || !qrData)) {
       navigate("/", { replace: true });
     }
-  }, [orderId, qrData, loading, navigate]);
+  }, [orderId, qrData, isLoading, navigate]);
 
-  if (loading) {
+  if (loading) return <div>Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+
+  console.log("OrderConfirmation user:", user, "loading:", loading, "state:", state);
+
+  if (isLoading) {
     return (
       <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
         <h1 style={{ marginBottom: 16 }}>Loading your order…</h1>
@@ -132,7 +145,18 @@ const OrderConfirmation: React.FC = () => {
         Save this QR code or PIN to redeem your service at the wash bay.
       </p>
       <button
-        onClick={() => navigate("/claimed")}
+        onClick={async () => {
+          if (orderId) {
+            try {
+              await axios.post(`/api/orders/${orderId}/redeem`);
+              localStorage.removeItem("lastOrderConfirmation");
+            } catch (e) {
+              alert("Could not mark order as redeemed. Please try again.");
+              return;
+            }
+          }
+          navigate("/claimed");
+        }}
         style={{
           marginBottom: 24,
           padding: "10px 24px",
@@ -149,6 +173,7 @@ const OrderConfirmation: React.FC = () => {
       <div className="mt-6 text-xs text-gray-400 text-center">
         Secured by <span className="font-bold text-blue-500">YOCO</span>
       </div>
+      <Outlet />
     </section>
   );
 };

@@ -176,8 +176,17 @@ def get_payment_qr(order_id: str, db: Session = Depends(get_db)):
     if not pay:
         raise HTTPException(404, "No successful payment found for this order")
 
+    order = db.query(Order).filter_by(id=order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+
     qr = generate_qr_code(pay.reference)
-    return {"reference": pay.reference, "qr_code_base64": qr}
+    return {
+        "reference": pay.reference,
+        "qr_code_base64": qr,
+        "payment_pin": order.payment_pin,   # <-- Add this line
+        "amount": pay.amount                # <-- Add this line (in cents)
+    }
 
 
 @router.get("/verify/{reference}")

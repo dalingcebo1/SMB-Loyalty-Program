@@ -1,10 +1,10 @@
 // Frontend/src/pages/Payment.tsx
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
+import { useAuth } from "../auth/AuthProvider";
 
 interface LocationState {
   orderId: string;
@@ -12,11 +12,6 @@ interface LocationState {
   summary?: string[];
   qrData?: string;
   paymentPin?: string;
-}
-
-interface User {
-  id: number;
-  email: string;
 }
 
 declare global {
@@ -28,20 +23,12 @@ declare global {
 const Payment: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const { orderId, total, summary = [], paymentPin } = (state as LocationState) || {};
+  const { orderId, total, summary = [] } = (state as LocationState) || {};
 
   const [paying, setPaying] = useState(false);
   const [yocoLoaded, setYocoLoaded] = useState(false);
 
-  // Fetch user info
-  const userQuery = useQuery<User, Error, User>({
-    queryKey: ["me"],
-    queryFn: async () => (await api.get("/auth/me")).data,
-  });
-
-  useEffect(() => {
-    if (userQuery.isError) toast.error("Failed to load user");
-  }, [userQuery.isError]);
+  const { refreshUser, user } = useAuth(); // <-- Add user here
 
   useEffect(() => {
     // Validate all required state fields
@@ -75,16 +62,6 @@ const Payment: React.FC = () => {
     }
   }, []);
 
-  if (userQuery.isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        Loading user…
-      </div>
-    );
-  }
-
-  if (!userQuery.data) return <Navigate to="/login" replace />;
-
   const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY!;
 
   const handlePay = async () => {
@@ -115,17 +92,25 @@ const Payment: React.FC = () => {
               // Fetch QR data for this order
               const qrResp = await api.get(`/payments/qr/${orderId}`);
               const qrData = qrResp.data.qr_code_base64 || qrResp.data.reference || orderId;
+              const paymentPin = qrResp.data.payment_pin; // <-- Use the pin from backend
+              const amount = qrResp.data.amount || total; // <-- Use amount from backend if present
 
-              console.log("Navigating to order-confirmation", { orderId, qrData, amount: total, paymentPin, summary });
-              navigate("/order-confirmation", {
-                state: {
-                  orderId,
-                  qrData,
-                  amount: total, // Use 'amount' for consistency with OrderConfirmation
-                  paymentPin,
-                  summary,
-                },
-              });
+              console.log("Navigating to order-confirmation", { orderId, qrData, amount, paymentPin, summary });
+              console.log("Before refreshUser, user:", user);
+              await refreshUser();
+              console.log("After refreshUser, user:", user);
+
+              const confirmationData = {
+                orderId,
+                qrData,
+                amount,
+                paymentPin,
+                summary,
+                timestamp: Date.now(),
+              };
+              localStorage.setItem("lastOrderConfirmation", JSON.stringify(confirmationData));
+
+              navigate("/order/confirmation", { state: confirmationData });
             } catch (err: any) {
               setPaying(false);
               toast.error(

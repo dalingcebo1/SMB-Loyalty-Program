@@ -211,3 +211,13 @@ def complete_wash(order_id: int, db: Session = Depends(get_db)):
     resp = OrderDetailResponse.from_orm(order).dict()
     resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
     return resp
+
+
+@router.post("/{order_id}/redeem")
+def redeem_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(Order).filter_by(id=order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+    order.redeemed = True
+    db.commit()
+    return {"status": "ok"}

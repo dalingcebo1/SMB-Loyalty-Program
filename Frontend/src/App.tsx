@@ -1,11 +1,9 @@
 // src/App.tsx
 
-import React from "react";
 import {
   Routes,
   Route,
   Navigate,
-  useNavigate,
   Outlet,
 } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
@@ -33,13 +31,6 @@ import VehicleManager from "./pages/staff/VehicleManager";
 
 function RequireAuth() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
-
-  React.useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login", { replace: true });
-    }
-  }, [loading, user, navigate]);
 
   if (loading) {
     return (
@@ -47,6 +38,10 @@ function RequireAuth() {
         <p>Loading…</p>
       </div>
     );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;

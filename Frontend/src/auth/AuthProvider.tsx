@@ -23,6 +23,7 @@ interface AuthContextType {
   signup: (email: string, password: string) => Promise<void>;
   loginWithToken: (token: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,6 +137,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    const t = localStorage.getItem("token");
+    if (t) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
+      try {
+        const res = await api.get("/auth/me");
+        const u = res.data;
+        setUser({
+          id: u.id,
+          email: u.email,
+          phone: u.phone,
+          firstName: u.first_name || u.firstName || "",
+          lastName: u.last_name || u.lastName || "",
+          role: u.role,
+        });
+      } catch (err) {
+        localStorage.removeItem("token");
+        delete api.defaults.headers.common["Authorization"];
+        setUser(null);
+      }
+    } else {
+      setUser(null);
+    }
+  };
+
   // Only render children when loading is false
   if (loading) {
     return (
@@ -147,7 +173,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, signup, loginWithToken, logout }}
+      value={{ user, loading, login, signup, loginWithToken, logout, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

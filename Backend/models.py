@@ -116,7 +116,12 @@ class Redemption(Base):
     tenant_id    = Column(String, ForeignKey("tenants.id"),   nullable=False)
     user_id      = Column(Integer, ForeignKey("users.id"),    nullable=False)
     reward_id    = Column(Integer, ForeignKey("rewards.id"),  nullable=False)
-    created_at   = Column(DateTime)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    status       = Column(String, default="pending")  # "pending", "used", "expired"
+    pin          = Column(String, nullable=True)      # Store the voucher PIN/token
+    milestone    = Column(Integer, nullable=True)     # Optional: milestone number
+    redeemed_at  = Column(DateTime, nullable=True)    # When voucher was used
+    qr_code      = Column(Text, nullable=True)        # base64 or URL
 
     tenant = relationship("Tenant")
     user   = relationship("User")

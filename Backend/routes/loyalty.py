@@ -72,17 +72,56 @@ def _create_jwt(payload: dict, minutes: int) -> str:
 
 @router.get(
     "/me",
-    summary="Get loyalty/visit info for the current user",
+    summary="Get loyalty/visit info and unlocked/upcoming rewards for the current user",
 )
 def loyalty_me(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Get visit count
     visit_count = db.query(VisitCount).filter_by(
         user_id=current_user.id,
         tenant_id=current_user.tenant_id
     ).first()
-    return {"visits": visit_count.count if visit_count else 0}
+    visits = visit_count.count if visit_count else 0
+
+    # Get all milestone rewards for this tenant
+    rewards = (
+        db.query(Reward)
+        .filter_by(tenant_id=current_user.tenant_id, type="milestone")
+        .order_by(Reward.milestone.asc())
+        .all()
+    )
+
+    # Get all redemptions for this user
+    redemptions = db.query(Redemption).filter_by(user_id=current_user.id).all()
+    redeemed_milestones = {r.milestone for r in redemptions if r.status in ("pending", "used")}
+
+    # Unlocked rewards: milestones reached but not yet redeemed or still pending
+    rewards_ready = [
+        {"milestone": r.milestone, "reward": r.title}
+        for r in rewards
+        if r.milestone and r.milestone <= visits and r.milestone not in redeemed_milestones
+    ]
+
+    # Upcoming rewards: next milestones not yet reached
+    upcoming_rewards = [
+        {
+            "milestone": r.milestone,
+            "visits_needed": r.milestone - visits if r.milestone > visits else 0,
+            "reward": r.title,
+        }
+        for r in rewards
+        if r.milestone and r.milestone > visits
+    ]
+
+    return {
+        "name": current_user.first_name,
+        "phone": current_user.phone,
+        "visits": visits,
+        "rewards_ready": rewards_ready,
+        "upcoming_rewards": upcoming_rewards,
+    }
 
 @router.post(
     "/register",
@@ -241,25 +280,84 @@ def redeem(body: RedeemIn, db: Session = Depends(get_db)):
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    already = (
+    rec = (
         db.query(Redemption)
-        .filter_by(user_id=user_id, reward_id=reward_id)
+        .filter_by(user_id=user_id, reward_id=reward_id, status="pending")
         .first()
     )
-    if already:
-        raise HTTPException(status_code=400, detail="Reward already redeemed")
+    if not rec:
+        raise HTTPException(status_code=400, detail="No pending voucher found or already used")
 
-    rec = Redemption(
-        tenant_id=db_user.tenant_id,
-        user_id=user_id,
-        reward_id=reward_id,
-        created_at=datetime.datetime.utcnow(),
-    )
-    db.add(rec)
+    # Expiry check: 10 days (864000 seconds) after created_at
+    expiry_days = 10
+    if rec.created_at and (datetime.datetime.utcnow() - rec.created_at).total_seconds() > expiry_days * 86400:
+        rec.status = "expired"
+        db.commit()
+        raise HTTPException(status_code=400, detail="Voucher expired")
+
+    rec.status = "used"
+    rec.redeemed_at = datetime.datetime.utcnow()
     db.commit()
 
     return {
-        "message": f"Redeemed reward '{payload['reward']}'",
+        "message": f"Voucher for reward '{payload['reward']}' marked as used.",
         "milestone": payload["milestone"],
         "reward": payload["reward"],
+        "status": rec.status,
+        "redeemed_at": rec.redeemed_at,
     }
+
+@router.get(
+    "/history",
+    summary="Get redemption history for the current user",
+)
+def get_redemption_history(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    from datetime import timedelta
+    expiry_days = 10
+    history = (
+        db.query(Redemption)
+        .filter(Redemption.user_id == user.id)
+        .order_by(Redemption.redeemed_at.desc())
+        .all()
+    )
+    return [
+        {
+            "reward": r.reward_name,
+            "milestone": r.milestone,
+            "redeemed_at": r.redeemed_at.isoformat() if r.redeemed_at else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "expiry_at": (r.created_at + timedelta(days=expiry_days)).isoformat() if r.created_at else None,
+            "status": r.status,
+            "pin": r.pin,
+        }
+        for r in history
+    ]
+
+@router.get(
+    "/rewards",
+    summary="Get all available rewards for the current tenant",
+)
+def get_rewards(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    rewards = (
+        db.query(Reward)
+        .filter(Reward.tenant_id == user.tenant_id)
+        .order_by(Reward.milestone.asc().nullslast())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "name": r.title,
+            "description": r.description,
+            "points_required": r.cost,
+            "image_url": None,  # Add r.image_url if you have this field
+            "milestone": r.milestone,
+        }
+        for r in rewards
+    ]

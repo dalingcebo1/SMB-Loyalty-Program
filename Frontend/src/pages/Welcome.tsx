@@ -40,6 +40,12 @@ const Welcome: React.FC = () => {
       ? `${user.firstName} ${user.lastName}`
       : user?.firstName || "";
 
+  // --- Progress logic ---
+  const milestoneSize = VISIT_MILESTONE;
+  const progress = visits % milestoneSize;
+  const nextMilestone = milestoneSize;
+  const visitsToNext = nextMilestone - progress === 0 ? milestoneSize : nextMilestone - progress;
+
   if (!user) return null;
 
   return (
@@ -59,8 +65,18 @@ const Welcome: React.FC = () => {
       {/* Visit counter */}
       <div className="flex flex-col items-center mb-8">
         <div className="w-40 h-40 rounded-full border-4 border-gray-300 flex flex-col items-center justify-center text-center bg-white shadow-inner mx-auto">
-          <span className="text-2xl font-bold text-blue-700">{visits}/{VISIT_MILESTONE}</span>
+          <span className="text-2xl font-bold text-blue-700">
+            {progress}/{nextMilestone}
+          </span>
           <span className="text-lg text-gray-600 mt-1">Visits</span>
+          <div className="mt-1 text-xs text-gray-500">
+            Total visits: {visits}
+          </div>
+        </div>
+        <div className="mt-2 text-gray-500">
+          {visitsToNext > 0 && visitsToNext !== milestoneSize
+            ? `Only ${visitsToNext} more visit${visitsToNext > 1 ? "s" : ""} to your next reward!`
+            : "You've reached a milestone!"}
         </div>
       </div>
 

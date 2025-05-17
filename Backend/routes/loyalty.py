@@ -249,7 +249,7 @@ def claim_reward(body: PhoneIn, db: Session = Depends(get_db)):
             },
             minutes=10,
         )
-        qr = generate_qr_code(token)
+        qr = generate_qr_code(token)["qr_code_base64"]
         out.append(
             {
                 "milestone": r.milestone,

@@ -104,6 +104,29 @@ const ManualVisitLogger: React.FC = () => {
           <strong>Client:</strong> {lastVisit.name} <br />
           <strong>Phone:</strong> {lastVisit.phone} <br />
           <strong>Total Visits:</strong> {lastVisit.count}
+          <button
+            style={{
+              marginTop: 12,
+              padding: "8px 16px",
+              background: "#007bff",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              cursor: "pointer"
+            }}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await axiosAuth.post(`/api/payments/start-wash/manual/${lastVisit.phone}`);
+                setStatus("🚗 Wash started for POS client!");
+              } catch {
+                setStatus("❌ Could not start wash for POS client.");
+              }
+              setLoading(false);
+            }}
+          >
+            Start Wash
+          </button>
         </div>
       )}
       {history.length > 0 && (

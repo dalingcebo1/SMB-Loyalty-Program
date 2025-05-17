@@ -25,10 +25,10 @@ const DashboardLayout: React.FC = () => {
   // 3) Authenticated layout
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Only NavTabs handles the top bar now */}
+      {/* Top navigation bar */}
       <NavTabs />
 
-      {/* page content */}
+      {/* Main page content */}
       <main className="flex-grow max-w-6xl mx-auto p-6">
         <Outlet />
       </main>

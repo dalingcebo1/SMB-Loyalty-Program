@@ -1,48 +1,91 @@
 # Backend/schemas.py
 
-from typing import List, Optional
-from datetime import datetime
 from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
 
-### ─── Order & Items ────────────────────────────────────────────────────────────
+# ─── Order Schemas ──────────────────────────────────────────────────────────────
 
-class OrderItemCreate(BaseModel):
+class OrderBase(BaseModel):
+    id: str
     service_id: int
-    category: str
-    qty: int
-    extras: Optional[List[int]] = []
+    quantity: int
+    extras: list
+    payment_pin: Optional[str]
+    status: str
+    user_id: int
+    created_at: datetime
+    redeemed: bool
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
 
 class OrderCreate(BaseModel):
-    user_id: int
-    items: List[OrderItemCreate]
+    # ...fields for creating an order...
+    pass
 
-class OrderItemRead(BaseModel):
+class Order(OrderBase):
+    class Config:
+        from_attributes = True
+
+class OrderResponse(Order):
+    pass
+
+class OrderDetailResponse(Order):
+    pass
+
+# ─── Vehicle Schemas ────────────────────────────────────────────────────────────
+
+class VehicleBase(BaseModel):
     id: int
-    service_id: int
-    category: str
-    qty: int
-    extras: List[int]
-    line_total: int
-
-    model_config = { "from_attributes": True }
-
-class OrderResponse(BaseModel):
-    id: int
     user_id: int
-    total_amount: int
+    plate: str
+    make: Optional[str]
+    model: Optional[str]
+
+class Vehicle(VehicleBase):
+    class Config:
+        from_attributes = True
+
+# ─── OrderVehicle Schemas ───────────────────────────────────────────────────────
+
+class OrderVehicleBase(BaseModel):
+    id: int
+    order_id: str
+    vehicle_id: int
+
+class OrderVehicle(OrderVehicleBase):
+    class Config:
+        from_attributes = True
+
+# ─── User Schemas ───────────────────────────────────────────────────────────────
+
+class UserBase(BaseModel):
+    id: int
+    email: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
+    phone: Optional[str]
+    role: Optional[str]
+
+class User(UserBase):
+    class Config:
+        from_attributes = True
+
+# ─── Active Wash Schema (for frontend active washes list) ───────────────────────
+
+class ActiveWash(BaseModel):
+    order_id: str
+    user: Optional[User]
+    vehicle: Optional[Vehicle]
+    payment_pin: Optional[str]
+    started_at: Optional[datetime]
+    ended_at: Optional[datetime]
     status: str
 
-    model_config = { "from_attributes": True }
+    class Config:
+        from_attributes = True
 
-class OrderDetailResponse(OrderResponse):
-    created_at: datetime
-    items:     List[OrderItemRead]
-    vehicles:  List[int]
-
-    model_config = { "from_attributes": True }
-
-
-### ─── Vehicle Assignment ───────────────────────────────────────────────────────
+# ─── Vehicle Assignment ─────────────────────────────────────────────────────────
 
 class AssignVehicleRequest(BaseModel):
     vehicle_id: Optional[int] = None
@@ -50,8 +93,7 @@ class AssignVehicleRequest(BaseModel):
     make:        Optional[str] = None
     model:       Optional[str] = None
 
-
-### ─── Payments ────────────────────────────────────────────────────────────────
+# ─── Payments ───────────────────────────────────────────────────────────────────
 
 class PaymentInitRequest(BaseModel):
     order_id: str  # was int
@@ -89,12 +131,18 @@ class PaymentRead(BaseModel):
     status: str
     created_at: datetime
     card_brand: Optional[str] = None
+    qr_code_base64: Optional[str] = None  # <-- PATCH: add this field
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
+class PaymentVerifyResponse(BaseModel):
+    status: str
+    order_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    redeemed: Optional[bool] = None
 
-### ─── New: User‐exists check ────────────────────────────────────────────────────
+# ─── New: User‐exists check ─────────────────────────────────────────────────────
 
 class ExistsResponse(BaseModel):
     """
@@ -102,16 +150,8 @@ class ExistsResponse(BaseModel):
     """
     exists: bool
 
-class UserOut(BaseModel):
-    id: int
-    email: str
-    first_name: Optional[str]
-    last_name: Optional[str]
-    phone: Optional[str]
-    role: str
-
-    class Config:
-        orm_mode = True
+class UserOut(UserBase):
+    pass
 
 class StaffRegisterRequest(BaseModel):
     email: str

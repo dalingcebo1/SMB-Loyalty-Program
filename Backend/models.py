@@ -79,11 +79,18 @@ class Order(Base):
     id         = Column(String, primary_key=True)  # uuid4
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
     quantity   = Column(Integer, nullable=False, default=1)
-    extras     = Column(JSON, nullable=False, default=[])  # [{id,quantity},...]
-    payment_pin = Column(String(4), nullable=True, unique=True)  # <-- NEW
-    status     = Column(String, default="pending")  # e.g. pending, paid, etc.
+    extras     = Column(JSON, nullable=False, default=[])
+    payment_pin = Column(String(4), nullable=True, unique=True)
+    status     = Column(String, default="pending")
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    redeemed   = Column(Boolean, default=False)
+    started_at = Column(DateTime, nullable=True)
+    ended_at   = Column(DateTime, nullable=True)
 
     service = relationship("Service")
+    user    = relationship("User")
+    items = relationship("OrderItem", back_populates="order")
 
 
 class VisitCount(Base):
@@ -151,7 +158,7 @@ class OrderItem(Base):
     extras     = Column(JSON)
     line_total = Column(Integer, nullable=False)
 
-    order   = relationship("Order")
+    order   = relationship("Order", back_populates="items")
     service = relationship("Service")
 
 
@@ -178,5 +185,6 @@ class Payment(Base):
     raw_response  = Column(JSON, nullable=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
     card_brand    = Column(String(32))  # <-- Add this line
+    qr_code_base64 = Column(Text, nullable=True)  # <-- Add this line
 
     order = relationship("Order")

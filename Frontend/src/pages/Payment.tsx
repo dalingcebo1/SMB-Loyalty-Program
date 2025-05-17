@@ -91,9 +91,10 @@ const Payment: React.FC = () => {
               });
               // Fetch QR data for this order
               const qrResp = await api.get(`/payments/qr/${orderId}`);
-              const qrData = qrResp.data.qr_code_base64 || qrResp.data.reference || orderId;
-              const paymentPin = qrResp.data.payment_pin; // <-- Use the pin from backend
-              const amount = qrResp.data.amount || total; // <-- Use amount from backend if present
+              const qrData = qrResp.data.reference || orderId; // This is the reference string
+              const qrCodeBase64 = qrResp.data.qr_code_base64; // This is the image
+              const paymentPin = qrResp.data.payment_pin;
+              const amount = qrResp.data.amount || total;
 
               console.log("Navigating to order-confirmation", { orderId, qrData, amount, paymentPin, summary });
               console.log("Before refreshUser, user:", user);
@@ -103,6 +104,7 @@ const Payment: React.FC = () => {
               const confirmationData = {
                 orderId,
                 qrData,
+                qrCodeBase64,
                 amount,
                 paymentPin,
                 summary,

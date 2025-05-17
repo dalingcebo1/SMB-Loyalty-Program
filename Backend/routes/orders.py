@@ -8,10 +8,10 @@ from routes.auth import get_current_user
 from sqlalchemy.orm import Session
 from database import SessionLocal
 
-
 from models import (
     Order,
     OrderItem,
+    Payment,
     Vehicle,
     OrderVehicle,
     Service,
@@ -55,6 +55,7 @@ def generate_payment_pin(db):
 def create_order(
     req: OrderCreateRequest,
     db: Session = Depends(get_db),
+    user=Depends(get_current_user),  # <-- add this
 ):
     print(">>> create_order payload:", req.dict())
     try:
@@ -70,6 +71,7 @@ def create_order(
             quantity=req.quantity,
             extras=[{"id": e.id, "quantity": e.quantity} for e in req.extras],
             payment_pin=pin,
+            user_id=user.id,  # <-- set user_id from authenticated user
         )
         db.add(new_order)
         db.commit()
@@ -84,7 +86,7 @@ def create_order(
 @router.get("", response_model=List[OrderResponse])
 def list_orders(
     status: Optional[str] = None,
-    db:     Session     = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     """
     List all orders, optionally filtered by their status:
@@ -95,9 +97,8 @@ def list_orders(
         q = q.filter(Order.status == status)
     return q.all()
 
-
 @router.post("", response_model=OrderResponse)
-def create_order(data: OrderCreate, db: Session = Depends(get_db)):
+def create_order_legacy(data: OrderCreate, db: Session = Depends(get_db)):
     total = 0
     items_to_add = []
     for it in data.items:
@@ -132,16 +133,81 @@ def create_order(data: OrderCreate, db: Session = Depends(get_db)):
     db.refresh(order)
     return order
 
+# --- IMPORTANT: Place this route BEFORE /{order_id} ---
+@router.get("/my-past-orders")
+def my_past_orders(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    orders = (
+        db.query(Order)
+        .filter_by(user_id=user.id)
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+    result = []
+    for order in orders:
+        payment = (
+            db.query(Payment)
+            .filter_by(order_id=order.id, status="success")
+            .order_by(Payment.created_at.desc())
+            .first()
+        )
+        service_name = order.service.name if order.service else "Service"
+        # If you store extras as IDs, resolve their names:
+        extras_names = []
+        if order.extras:
+            for e in order.extras:
+                extra = db.query(Extra).filter_by(id=e["id"]).first()
+                if extra:
+                    extras_names.append(extra.name)
+        result.append({
+            "orderId": order.id,
+            "serviceName": service_name,
+            "extras": extras_names,
+            "qrData": payment.qr_code_base64 if payment else order.id,
+            "amount": payment.amount if payment else None,
+            "paymentPin": order.payment_pin,
+            "createdAt": order.created_at,
+            "status": order.status,
+            "redeemed": getattr(order, "redeemed", False),
+        })
+    return result
 
-@router.get("/{order_id}", response_model=OrderDetailResponse)
-def get_order(order_id: int, db: Session = Depends(get_db)):
-    order = db.query(Order).filter_by(id=order_id).first()
+@router.get("/{order_id}")
+def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    order = db.query(Order).filter_by(id=order_id, user_id=user.id).first()
     if not order:
         raise HTTPException(404, "Order not found")
-    resp = OrderDetailResponse.from_orm(order).dict()
-    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
-    return resp
 
+    payment = (
+        db.query(Payment)
+        .filter_by(order_id=order.id, status="success")
+        .order_by(Payment.created_at.desc())
+        .first()
+    )
+    service_name = order.service.name if order.service else "Service"
+    # Get category from first order item (adjust as needed)
+    category = None
+    if hasattr(order, "items") and order.items:
+        category = order.items[0].category
+
+    extras_names = []
+    if order.extras:
+        for e in order.extras or []:
+            extra = db.query(Extra).filter_by(id=e["id"]).first()
+            if extra:
+                extras_names.append(extra.name)
+
+    return {
+        "orderId": order.id,
+        "serviceName": service_name,
+        "category": category,
+        "extras": extras_names,
+        "qrData": payment.qr_code_base64 if payment else order.id,
+        "amount": payment.amount if payment else None,
+        "paymentPin": order.payment_pin,
+        "createdAt": order.created_at,
+        "status": order.status,
+        "redeemed": getattr(order, "redeemed", False),
+    }
 
 @router.post("/{order_id}/assign-vehicle", response_model=OrderDetailResponse)
 def assign_vehicle(order_id: int, req: AssignVehicleRequest, db: Session = Depends(get_db)):
@@ -171,7 +237,6 @@ def assign_vehicle(order_id: int, req: AssignVehicleRequest, db: Session = Depen
     resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
     return resp
 
-
 @router.post("/{order_id}/start-wash", response_model=OrderDetailResponse)
 def start_wash(order_id: int, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
@@ -184,7 +249,6 @@ def start_wash(order_id: int, db: Session = Depends(get_db)):
     resp = OrderDetailResponse.from_orm(order).dict()
     resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
     return resp
-
 
 @router.post("/{order_id}/complete-wash", response_model=OrderDetailResponse)
 def complete_wash(order_id: int, db: Session = Depends(get_db)):
@@ -211,7 +275,6 @@ def complete_wash(order_id: int, db: Session = Depends(get_db)):
     resp = OrderDetailResponse.from_orm(order).dict()
     resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
     return resp
-
 
 @router.post("/{order_id}/redeem")
 def redeem_order(order_id: str, db: Session = Depends(get_db)):

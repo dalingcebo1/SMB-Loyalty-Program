@@ -22,12 +22,11 @@ import ForgotPassword    from "./pages/ForgotPassword";
 import ResetPassword     from "./pages/ResetPassword";
 import Welcome           from "./pages/Welcome";
 import Payment           from "./pages/Payment";
-import RequireStaff      from "./components/RequireStaff";
 import StaffRegisterForm from "./pages/admin/StaffRegisterForm";
-import RequireAdmin      from "./components/RequireAdmin";
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
+import PastOrders from "./pages/PastOrders"; // <-- Add this import
 
 function RequireAuth() {
   const { user, loading } = useAuth();
@@ -64,48 +63,21 @@ export default function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<Welcome />} />
             <Route path="/myloyalty" element={<MyLoyalty />} />
+            <Route path="/past-orders" element={<PastOrders />} />
             <Route path="/order" element={<OrderForm />} />
             <Route path="/services" element={<OrderForm />} />
             <Route path="/order/payment" element={<Payment />} />
             <Route path="/order/confirmation" element={<OrderConfirmation />} />
+
+            {/* STAFF */}
+            <Route path="/staff" element={<PaymentVerification />} />
+            <Route path="/staff/manual-visit" element={<ManualVisitLogger />} />
+            <Route path="/staff/vehicle-manager" element={<VehicleManager />} />
+
+            {/* ADMIN */}
+            <Route path="/admin/register-staff" element={<StaffRegisterForm />} />
           </Route>
         </Route>
-
-        {/* STAFF */}
-        <Route
-          path="/staff"
-          element={
-            <RequireStaff>
-              <PaymentVerification />
-            </RequireStaff>
-          }
-        />
-        <Route
-          path="/staff/manual-visit"
-          element={
-            <RequireStaff>
-              <ManualVisitLogger />
-            </RequireStaff>
-          }
-        />
-        <Route
-          path="/staff/vehicle-manager"
-          element={
-            <RequireStaff>
-              <VehicleManager />
-            </RequireStaff>
-          }
-        />
-
-        {/* ADMIN */}
-        <Route
-          path="/admin/register-staff"
-          element={
-            <RequireAdmin>
-              <StaffRegisterForm />
-            </RequireAdmin>
-          }
-        />
 
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/login" replace />} />

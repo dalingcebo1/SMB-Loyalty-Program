@@ -4,11 +4,13 @@ import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-rou
 import QRCode from "react-qr-code";
 import axios from "axios";
 import { useAuth } from "../auth/AuthProvider";
+import api from "../api/api";
 
 interface LocationState {
-  orderId: string; // should match backend (uuid string)
-  qrData: string;
-  amount: number; // in cents
+  orderId: string;
+  qrData: string; // This should be the payment reference, not the base64 image
+  qrCodeBase64?: string; // Optionally, the backend can send the base64 image
+  amount: number;
   paymentPin?: string;
   error?: string;
 }
@@ -28,15 +30,14 @@ const OrderConfirmation: React.FC = () => {
   const { orderId: paramOrderId } = useParams<{ orderId: string }>();
   const { user, loading } = useAuth();
 
-  // Local state to support reload/direct access
   const [orderId, setOrderId] = useState<string>("");
   const [qrData, setQrData] = useState<string>("");
+  const [qrCodeBase64, setQrCodeBase64] = useState<string | undefined>(undefined);
   const [amount, setAmount] = useState<number>(0);
   const [paymentPin, setPaymentPin] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // On mount: try to get state from navigation or fallback to URL param
   useEffect(() => {
     let didSet = false;
     if (state && typeof state === "object") {
@@ -44,6 +45,7 @@ const OrderConfirmation: React.FC = () => {
       if (s.orderId && s.qrData && typeof s.amount === "number") {
         setOrderId(s.orderId);
         setQrData(s.qrData);
+        setQrCodeBase64(s.qrCodeBase64);
         setAmount(s.amount);
         setPaymentPin(s.paymentPin);
         setError(s.error);
@@ -51,16 +53,16 @@ const OrderConfirmation: React.FC = () => {
         didSet = true;
       }
     }
-    // Fallback: if state is missing or incomplete, try to fetch QR by orderId from URL
     if (!didSet && paramOrderId) {
       setIsLoading(true);
       axios
         .get(`/payments/qr/${paramOrderId}`)
         .then((resp) => {
           setOrderId(paramOrderId);
-          setQrData(resp.data.qr_code_base64 || resp.data.reference || paramOrderId);
-          setAmount(0); // Amount is unknown unless you fetch order details
-          setPaymentPin(undefined);
+          setQrData(resp.data.reference || paramOrderId);
+          setQrCodeBase64(resp.data.qr_code_base64);
+          setAmount(resp.data.amount || 0);
+          setPaymentPin(resp.data.payment_pin);
           setError(undefined);
         })
         .catch(() => {
@@ -76,7 +78,6 @@ const OrderConfirmation: React.FC = () => {
   }, [state, paramOrderId]);
 
   useEffect(() => {
-    // If after all attempts, we still don't have orderId or qrData, redirect home
     if (!isLoading && (!orderId || !qrData)) {
       navigate("/", { replace: true });
     }
@@ -84,8 +85,6 @@ const OrderConfirmation: React.FC = () => {
 
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-
-  console.log("OrderConfirmation user:", user, "loading:", loading, "state:", state);
 
   if (isLoading) {
     return (
@@ -111,7 +110,13 @@ const OrderConfirmation: React.FC = () => {
         </div>
       )}
       <div style={{ margin: "1rem 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        {qrData ? (
+        {qrCodeBase64 ? (
+          <img
+            src={`data:image/png;base64,${qrCodeBase64}`}
+            alt="Payment QR Code"
+            style={{ width: 200, height: 200 }}
+          />
+        ) : qrData ? (
           <QRCode value={qrData} size={200} />
         ) : (
           <div style={{ color: "#b00020", marginBottom: 12 }}>No QR code available.</div>
@@ -130,7 +135,6 @@ const OrderConfirmation: React.FC = () => {
             Payment PIN: <span style={{ color: "#007bff" }}>{paymentPin}</span>
           </div>
         )}
-        {/* Show amount paid if available */}
         {amount > 0 && (
           <div style={{
             marginTop: 12,
@@ -148,7 +152,7 @@ const OrderConfirmation: React.FC = () => {
         onClick={async () => {
           if (orderId) {
             try {
-              await axios.post(`/api/orders/${orderId}/redeem`);
+              await api.post(`/orders/${orderId}/redeem`);
               localStorage.removeItem("lastOrderConfirmation");
             } catch (e) {
               alert("Could not mark order as redeemed. Please try again.");

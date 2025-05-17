@@ -11,6 +11,7 @@ const NavTabs: React.FC = () => {
   const navOptions = [
     { to: "/services", label: "Services" },
     { to: "/myloyalty", label: "Loyalty" },
+    { to: "/past-orders", label: "Past Orders" }, // <-- Add this line
     { to: "/account", label: "Account" },
     ...((user?.role === "staff" || user?.role === "admin")
       ? [

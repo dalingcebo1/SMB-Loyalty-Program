@@ -49,6 +49,7 @@ const PaymentVerification: React.FC = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [activeWashes, setActiveWashes] = useState<Wash[]>([]);
   const [confirmEndWash, setConfirmEndWash] = useState<string | null>(null); // order_id to confirm
+  const [rewardInfo, setRewardInfo] = useState<{ reward_name?: string } | null>(null);
 
   // Use a ref for hasScanned to prevent race conditions
   const hasScannedRef = useRef(false);
@@ -99,10 +100,16 @@ const PaymentVerification: React.FC = () => {
     setUser(null);
     setVehicles([]);
     setSelectedVehicle(null);
+    setRewardInfo(null);
     try {
       const res = await axiosAuth.get(`/api/payments/verify/${referenceOrPin}`);
       if (res.data.status === "ok") {
-        setStatus("✅ Payment OK—start the wash!");
+        if (res.data.type === "loyalty") {
+          setStatus(`🎁 Loyalty Reward: ${res.data.reward_name || "Reward"} — start the wash!`);
+          setRewardInfo({ reward_name: res.data.reward_name });
+        } else {
+          setStatus("✅ Payment OK—start the wash!");
+        }
         setVerifiedOrder({
           order_id: res.data.order_id,
           payment_pin: res.data.payment_pin,
@@ -110,7 +117,7 @@ const PaymentVerification: React.FC = () => {
         // Fetch user and vehicles for this order
         fetchUserAndVehicles(res.data.order_id);
       } else if (res.data.status === "already_redeemed") {
-        setStatus("❌ This payment has already been redeemed.");
+        setStatus("❌ This payment or reward has already been redeemed.");
       } else {
         setStatus("❌ Invalid or unpaid reference");
       }
@@ -264,9 +271,14 @@ const PaymentVerification: React.FC = () => {
           </div>
 
           <div className="mb-4 text-center">
-            <span className={`text-base font-medium ${status.startsWith("✅") || status.startsWith("🚗") ? "text-green-600" : status.startsWith("❌") ? "text-red-600" : "text-gray-700"}`}>
+            <span className={`text-base font-medium ${status.startsWith("✅") || status.startsWith("🚗") || status.startsWith("🎁") ? "text-green-600" : status.startsWith("❌") ? "text-red-600" : "text-gray-700"}`}>
               {status}
             </span>
+            {rewardInfo && (
+              <div className="mt-2 text-purple-700 font-semibold">
+                Reward: {rewardInfo.reward_name}
+              </div>
+            )}
           </div>
 
           {/* User and vehicle selection */}

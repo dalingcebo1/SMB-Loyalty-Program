@@ -4,6 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
+import { FiGift } from "react-icons/fi";
+import QRCode from "react-qr-code";
 
 // Add a simple toast component
 const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
@@ -13,14 +17,6 @@ const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, on
   </div>
 );
 
-interface Reward {
-  id: number;
-  name: string;
-  description: string;
-  points_required: number;
-  image_url?: string;
-  claimed?: boolean;
-}
 interface ReadyReward {
   milestone: number;
   reward: string;
@@ -42,13 +38,9 @@ const MyLoyalty: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [] = useState<Reward[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Redemption state per milestone
-  const [redeeming, setRedeeming] = useState<number | null>(null);
-  const [redeemErrors, setRedeemErrors] = useState<Record<number, string>>({});
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalQR, setModalQR] = useState<{ qr: string; pin: string; reward: string; milestone?: number } | null>(null);
@@ -60,13 +52,22 @@ const MyLoyalty: React.FC = () => {
   // Toast state
   const [toast, setToast] = useState<string | null>(null);
 
-  // Fetch profile and rewards
+  // --- Progress bar state for instant UI ---
+  const milestoneSize = 5;
+  const [visits, setVisits] = useState(() => {
+    const stored = localStorage.getItem("visits");
+    return stored ? parseInt(stored, 10) : 0;
+  });
+
+  // Fetch profile and rewards, and update visits in localStorage
   const fetchLoyalty = () => {
     setLoading(true);
     setError(null);
     api.get<Profile>("/loyalty/me", { params: { phone: user?.phone } })
       .then((profileRes) => {
         setProfile(profileRes.data);
+        setVisits(profileRes.data.visits || 0);
+        localStorage.setItem("visits", String(profileRes.data.visits || 0));
         setLoading(false);
       })
       .catch((err) => {
@@ -109,34 +110,20 @@ const MyLoyalty: React.FC = () => {
     }
   }, []);
 
-  // Progress calculation
-  const milestoneSize = 5; // or VISIT_MILESTONE
-  const visits = profile?.visits ?? 0;
+  // Progress calculation (use visits from state for instant UI)
   const progress = visits % milestoneSize;
   const nextMilestone = milestoneSize;
 
-  // Redeem handler per milestone
-  const handleRedeem = async (
-    milestone: number,
-    rewardName: string,
-    options?: { showQR?: boolean }
-  ) => {
-    if (!user) {
-      setRedeemErrors((prev) => ({
-        ...prev,
-        [milestone]: "User not found. Please log in again.",
-      }));
-      return;
-    }
-    setRedeeming(milestone);
-    setRedeemErrors((prev) => ({ ...prev, [milestone]: "" }));
+  // Show QR modal for a reward
+  const handleShowQR = async (milestone: number, rewardName: string) => {
+    if (!user) return;
     try {
       const { data } = await api.post("/loyalty/reward", { phone: user.phone });
-      // Find the correct reward for this milestone
       const found = data.rewards?.find((rw: any) => rw.milestone === milestone);
-      if (found && options?.showQR !== false) {
+      if (found) {
+        // Use reference string for QR code, not image
         const voucherData = {
-          qr: found.qr_code_base64,
+          qr: found.token || "", // Use the reference/token for QR code
           pin: found.token?.slice(0, 8) || "",
           reward: rewardName,
           milestone,
@@ -145,23 +132,13 @@ const MyLoyalty: React.FC = () => {
         setModalOpen(true);
         localStorage.setItem("lastVoucher", JSON.stringify(voucherData));
       }
-      // Auto-refresh profile after short delay so UI updates
-      setTimeout(fetchLoyalty, 1200);
-    } catch (err: any) {
-      setRedeemErrors((prev) => ({
-        ...prev,
-        [milestone]:
-          err.response?.data?.detail ||
-          err.response?.data?.message ||
-          "Failed to redeem reward",
-      }));
+    } catch (err) {
+      setToast("Failed to load QR code for reward.");
     }
-    setRedeeming(null);
   };
 
   const handleCloseModal = () => {
     setModalOpen(false);
-    // Optionally: localStorage.removeItem("lastVoucher");
   };
 
   if (authLoading || loading) {
@@ -205,11 +182,9 @@ const MyLoyalty: React.FC = () => {
             </button>
             <div className="font-semibold mb-2 text-center text-lg">{modalQR.reward}</div>
             {modalQR.qr && (
-              <img
-                src={`data:image/png;base64,${modalQR.qr}`}
-                alt="QR Code"
-                className="w-56 h-56 mb-4" // bigger QR code
-              />
+              <div className="w-56 h-56 mb-4 flex items-center justify-center">
+                <QRCode value={modalQR.qr} size={220} />
+              </div>
             )}
             <div className="mt-2 text-base break-all">
               PIN: <span className="font-mono">{modalQR.pin}</span>
@@ -229,14 +204,21 @@ const MyLoyalty: React.FC = () => {
 
       <h1 className="text-2xl font-bold mb-2 text-center">Welcome back, {profile?.name ?? "User"}!</h1>
       <div className="flex flex-col items-center my-6">
-        <div className="w-40 h-40 rounded-full border-4 border-gray-300 flex flex-col items-center justify-center text-center bg-white shadow-inner mx-auto">
-          <span className="text-2xl font-bold text-blue-700">
-            {progress}/{nextMilestone}
-          </span>
-          <span className="text-lg text-gray-600 mt-1">Visits</span>
-          <div className="mt-1 text-xs text-gray-500">
-            Total visits: {visits}
-          </div>
+        <div className="w-40 h-40">
+          <CircularProgressbar
+            value={progress === 0 && visits > 0 ? nextMilestone : progress}
+            maxValue={nextMilestone}
+            text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
+            styles={buildStyles({
+              textSize: "18px",
+              pathColor: "#2563eb",
+              textColor: "#2563eb",
+              trailColor: "#e5e7eb",
+            })}
+          />
+        </div>
+        <div className="mt-2 text-gray-500 text-lg">
+          Total visits: {visits}
         </div>
         <div className="mt-2 text-gray-500">
           {nextMilestone - progress > 0
@@ -246,7 +228,7 @@ const MyLoyalty: React.FC = () => {
       </div>
 
       <div className="bg-white rounded shadow p-4 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Unlocked Rewards</h2>
+        <h2 className="text-lg font-semibold mb-4 text-center">Unlocked Rewards</h2>
         {profile && profile.rewards_ready && profile.rewards_ready.length ? (
           profile.rewards_ready.map((r) => (
             <div
@@ -254,50 +236,21 @@ const MyLoyalty: React.FC = () => {
               className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4 border border-purple-200 bg-purple-50 rounded-lg p-4 shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <span className="text-3xl">🎁</span>
+                <FiGift className="text-3xl text-purple-500" />
                 <span className="font-medium text-base">{r.reward}</span>
               </div>
               <div className="flex gap-2 mt-2 md:mt-0">
-                {/* Redeem for online payment */}
-                <button
-                  className="px-4 py-2 bg-purple-200 text-purple-800 rounded font-medium text-sm shadow hover:bg-purple-300 transition min-w-[120px]"
-                  onClick={async () => {
-                    await handleRedeem(r.milestone, r.reward, { showQR: false });
-                    setToast("Your voucher has been redeemed for your next full house wash for online payments.");
-                  }}
-                  disabled={redeeming === r.milestone}
-                >
-                  {redeeming === r.milestone ? "Processing..." : "Redeem"}
-                </button>
                 {/* View QR code for in-person/staff */}
                 <button
                   className="px-4 py-2 bg-purple-200 text-purple-800 rounded font-medium text-sm shadow hover:bg-purple-300 border border-purple-300 transition min-w-[120px]"
-                  onClick={() => {
-                    api.post("/loyalty/reward", { phone: user?.phone }).then(({ data }) => {
-                      const found = data.rewards?.find((rw: any) => rw.milestone === r.milestone);
-                      if (found) {
-                        const voucherData = {
-                          qr: found.qr_code_base64,
-                          pin: found.token?.slice(0, 8) || "",
-                          reward: r.reward,
-                          milestone: r.milestone,
-                        };
-                        setModalQR(voucherData);
-                        setModalOpen(true);
-                        localStorage.setItem("lastVoucher", JSON.stringify(voucherData));
-                      }
-                    });
-                  }}
+                  onClick={() => handleShowQR(r.milestone, r.reward)}
                 >
                   View QR Code
                 </button>
               </div>
               <div className="text-xs text-gray-500 mt-2 md:mt-0 md:ml-8">
-                Redeem to apply voucher to your next wash.
+                Show this QR code or PIN to staff to redeem your reward.
               </div>
-              {redeemErrors[r.milestone] && (
-                <div className="text-red-500 text-xs mt-1">{redeemErrors[r.milestone]}</div>
-              )}
             </div>
           ))
         ) : (
@@ -306,7 +259,7 @@ const MyLoyalty: React.FC = () => {
       </div>
 
       <div className="bg-white rounded shadow p-4 mb-6">
-        <h2 className="text-lg font-semibold mb-2">Redemption History</h2>
+        <h2 className="text-lg font-semibold mb-2 text-center">Redemption History</h2>
         {historyLoading ? (
           <div className="text-gray-500">Loading history…</div>
         ) : history.length ? (

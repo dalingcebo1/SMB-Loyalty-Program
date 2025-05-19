@@ -27,8 +27,11 @@ const Payment: React.FC = () => {
 
   const [paying, setPaying] = useState(false);
   const [yocoLoaded, setYocoLoaded] = useState(false);
+  const [rewardApplied, setRewardApplied] = useState(false);
+  const [rewardDiscount, setRewardDiscount] = useState(0);
+  const [rewardInfo, setRewardInfo] = useState<{ reward: string; expiry?: string; milestone?: number } | null>(null);
 
-  const { refreshUser, user } = useAuth(); // <-- Add user here
+  const { refreshUser, user } = useAuth();
 
   useEffect(() => {
     // Validate all required state fields
@@ -64,7 +67,63 @@ const Payment: React.FC = () => {
 
   const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY!;
 
+  // Check if user has a reward available for this order
+  useEffect(() => {
+    if (!user) return;
+    api.get("/loyalty/me", { params: { phone: user.phone } })
+      .then(res => {
+        // Find a ready reward for this user (milestone reward, e.g. "Full House" or "Free Wash")
+        const reward = res.data.rewards_ready?.find(
+          (r: any) =>
+            r.reward.toLowerCase().includes("full house") ||
+            r.reward.toLowerCase().includes("free wash")
+        );
+        if (reward) {
+          setRewardInfo({
+            reward: reward.reward,
+            expiry: reward.expiry,
+            milestone: reward.milestone,
+          });
+        }
+      });
+  }, [user]);
+
+  const handleApplyReward = async () => {
+    setPaying(true);
+    try {
+      // Use the new /loyalty/reward/apply endpoint
+      const res = await api.post("/loyalty/reward/apply", { orderId, phone: user?.phone });
+      if (res.data && res.data.discount) {
+        setRewardDiscount(res.data.discount);
+        setRewardApplied(true);
+        toast.success(`Reward applied! Discount: R${(res.data.discount / 100).toFixed(2)}`);
+      } else {
+        toast.error("No valid reward found.");
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Could not apply reward.");
+    }
+    setPaying(false);
+  };
+
   const handlePay = async () => {
+    if (amountToPay <= 0) {
+      toast.success("No payment needed! Reward covers the full amount.");
+      // Optionally, mark order as paid in your backend here
+      // Redirect to confirmation page
+      navigate("/order/confirmation", {
+        state: {
+          orderId,
+          qrData: orderId,
+          qrCodeBase64: null,
+          amount: 0,
+          paymentPin: null,
+          summary,
+          timestamp: Date.now(),
+        },
+      });
+      return;
+    }
     if (!window.YocoSDK) {
       toast.error("Yoco SDK not loaded. Please refresh the page.");
       return;
@@ -73,7 +132,7 @@ const Payment: React.FC = () => {
     try {
       const yoco = new window.YocoSDK({ publicKey });
       yoco.showPopup({
-        amountInCents: total,
+        amountInCents: total - rewardDiscount,
         currency: "ZAR",
         name: "SMB Loyalty Payment",
         description: `Order #${orderId}`,
@@ -87,7 +146,7 @@ const Payment: React.FC = () => {
               await api.post("/payments/charge", {
                 token: result.id,
                 orderId,
-                amount: total,
+                amount: total - rewardDiscount,
               });
               // Fetch QR data for this order
               const qrResp = await api.get(`/payments/qr/${orderId}`);
@@ -96,10 +155,7 @@ const Payment: React.FC = () => {
               const paymentPin = qrResp.data.payment_pin;
               const amount = qrResp.data.amount || total;
 
-              console.log("Navigating to order-confirmation", { orderId, qrData, amount, paymentPin, summary });
-              console.log("Before refreshUser, user:", user);
               await refreshUser();
-              console.log("After refreshUser, user:", user);
 
               const confirmationData = {
                 orderId,
@@ -129,14 +185,28 @@ const Payment: React.FC = () => {
     }
   };
 
+  const amountToPay = total - rewardDiscount;
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
       <ToastContainer position="top-right" />
       <div className="w-full sm:max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
         <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">Complete Your Payment</h2>
         <div className="text-lg font-semibold text-center mb-6">
-          Amount: <span className="text-black font-bold">R {(total / 100).toFixed(2)}</span>
+          Amount: <span className="text-black font-bold">R {(amountToPay / 100).toFixed(2)}</span>
         </div>
+        {rewardInfo && (
+          <div className="mb-4 text-center">
+            <div className="text-green-700 font-semibold">
+              Loyalty Reward Available: {rewardInfo.reward}
+            </div>
+            {rewardInfo.expiry && (
+              <div className="text-xs text-gray-500">
+                Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        )}
         {summary.length > 0 && (
           <div className="mb-4">
             <h3 className="font-semibold text-gray-700 mb-2 text-center">Order Summary</h3>
@@ -147,15 +217,31 @@ const Payment: React.FC = () => {
             </ul>
           </div>
         )}
-        <button
-          onClick={handlePay}
-          disabled={paying || !yocoLoaded}
-          className={`w-full mt-4 py-2 rounded text-white font-semibold transition ${
-            paying || !yocoLoaded ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-          }`}
-        >
-          {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay Now"}
-        </button>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={handlePay}
+            disabled={paying || !yocoLoaded}
+            className={`w-full py-2 rounded text-white font-semibold transition ${
+              paying || !yocoLoaded ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
+          </button>
+          {rewardInfo && !rewardApplied && (
+            <button
+              onClick={handleApplyReward}
+              disabled={paying}
+              className="w-full py-2 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition"
+            >
+              Apply Reward
+            </button>
+          )}
+          {rewardApplied && (
+            <div className="text-green-700 text-center font-semibold">
+              Reward applied! New total: R{(amountToPay / 100).toFixed(2)}
+            </div>
+          )}
+        </div>
         <div className="mt-6 text-xs text-gray-400 text-center">
           Secured by <span className="font-bold text-blue-500">YOCO</span>
         </div>

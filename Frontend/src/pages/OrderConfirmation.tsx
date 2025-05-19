@@ -4,7 +4,6 @@ import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-rou
 import QRCode from "react-qr-code";
 import axios from "axios";
 import { useAuth } from "../auth/AuthProvider";
-import api from "../api/api";
 
 interface LocationState {
   orderId: string;
@@ -96,7 +95,7 @@ const OrderConfirmation: React.FC = () => {
 
   return (
     <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
-      <h1 style={{ marginBottom: 16 }}>Your Order Is Confirmed!</h1>
+      <h1 style={{ marginBottom: 16, textAlign: "center" }}>Your Order Is Confirmed!</h1>
       {error && (
         <div style={{
           background: "#ffeaea",
@@ -145,35 +144,26 @@ const OrderConfirmation: React.FC = () => {
           </div>
         )}
       </div>
-      <p style={{ margin: "16px 0" }}>
-        Save this QR code or PIN to redeem your service at the wash bay.
+      <p style={{ margin: "16px 0", textAlign: "center" }}>
+        Show this QR code or pin to staff to verify your payment. You can also find it in the Past Order Tab
       </p>
-      <button
-        onClick={async () => {
-          if (orderId) {
-            try {
-              await api.post(`/orders/${orderId}/redeem`);
-              localStorage.removeItem("lastOrderConfirmation");
-            } catch (e) {
-              alert("Could not mark order as redeemed. Please try again.");
-              return;
-            }
-          }
-          navigate("/claimed");
-        }}
-        style={{
-          marginBottom: 24,
-          padding: "10px 24px",
-          borderRadius: 6,
-          background: "#007bff",
-          color: "#fff",
-          border: "none",
-          fontWeight: "bold",
-          cursor: "pointer"
-        }}
-      >
-        View My Active Rewards
-      </button>
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <button
+          onClick={() => navigate("/past-orders")}
+          style={{
+            marginBottom: 24,
+            padding: "10px 24px",
+            borderRadius: 6,
+            background: "#007bff",
+            color: "#fff",
+            border: "none",
+            fontWeight: "bold",
+            cursor: "pointer"
+          }}
+        >
+          View Orders
+        </button>
+      </div>
       <div className="mt-6 text-xs text-gray-400 text-center">
         Secured by <span className="font-bold text-blue-500">YOCO</span>
       </div>

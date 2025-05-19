@@ -18,6 +18,44 @@ interface User {
 
 const PAGE_SIZE = 5;
 
+const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  return (
+    <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow z-50">
+      {message}
+      <button className="ml-4 text-white font-bold" onClick={onClose}>&times;</button>
+    </div>
+  );
+};
+
+const normalizePhone = (input: string) => {
+  const trimmed = input.replace(/\D/g, "");
+  if (/^0\d{9}$/.test(trimmed)) {
+    return "+27" + trimmed.slice(1);
+  }
+  if (trimmed.startsWith("27") && trimmed.length === 11) {
+    return "+" + trimmed;
+  }
+  if (trimmed.startsWith("+27") && trimmed.length === 12) {
+    return trimmed;
+  }
+  return input;
+};
+
+const localPhone = (input: string) => {
+  // Always return as 073... (South African local format)
+  if (input.startsWith("+27")) {
+    return "0" + input.slice(3);
+  }
+  if (input.startsWith("27")) {
+    return "0" + input.slice(2);
+  }
+  return input;
+};
+
 const VehicleManager: React.FC = () => {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -29,6 +67,7 @@ const VehicleManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const token = localStorage.getItem("token");
@@ -39,14 +78,6 @@ const VehicleManager: React.FC = () => {
   });
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  const normalizePhone = (input: string) => {
-    const trimmed = input.replace(/\D/g, "");
-    if (/^0\d{9}$/.test(trimmed)) {
-      return "+27" + trimmed.slice(1);
-    }
-    return input;
-  };
 
   // Live search effect with pagination
   useEffect(() => {
@@ -118,7 +149,7 @@ const VehicleManager: React.FC = () => {
     setLoading(true);
     try {
       await axiosAuth.post(`/api/auth/users/${selectedUser.id}/vehicles`, {
-        plate: reg, // or rename your state variable to plate for clarity
+        plate: reg,
         make,
         model,
       });
@@ -127,7 +158,7 @@ const VehicleManager: React.FC = () => {
       setReg("");
       setMake("");
       setModel("");
-      setStatus("✅ Vehicle added successfully!");
+      setToast("Vehicle added successfully!");
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError("Not authenticated. Please log in again.");
@@ -149,7 +180,7 @@ const VehicleManager: React.FC = () => {
       await axiosAuth.delete(`/api/auth/users/${selectedUser.id}/vehicles/${vehicleId}`);
       const res = await axiosAuth.get(`/api/auth/users/${selectedUser.id}/vehicles`);
       setVehicles(res.data);
-      setStatus("✅ Vehicle deleted.");
+      setToast("Vehicle deleted.");
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError("Not authenticated. Please log in again.");
@@ -194,7 +225,7 @@ const VehicleManager: React.FC = () => {
       });
       const res = await axiosAuth.get(`/api/auth/users/${selectedUser.id}/vehicles`);
       setVehicles(res.data);
-      setStatus("✅ Vehicle updated.");
+      setToast("Vehicle updated.");
       cancelEdit();
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
@@ -215,7 +246,8 @@ const VehicleManager: React.FC = () => {
 
   return (
     <section style={{ margin: "32px auto", maxWidth: 600, padding: 24, background: "#fafbfc", borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
-      <h2 style={{ marginBottom: 24 }}>Vehicle Manager</h2>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      <h2 className="text-2xl font-bold mb-6 text-center">Vehicle Manager</h2>
       {error && (
         <div style={{ color: "red", marginBottom: 16 }}>{error}</div>
       )}
@@ -238,9 +270,9 @@ const VehicleManager: React.FC = () => {
               <li style={{ color: "#888", marginBottom: 8 }}>No users found.</li>
             )}
             {paginatedResults.map((user, idx) => (
-              <li key={user.id || idx} style={{ marginBottom: 8, background: "#f1f1f1", padding: 8, borderRadius: 4 }}>
+              <li key={user.id || idx} style={{ marginBottom: 8, background: "#f1f1f1", padding: 8, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>
-                  <strong>{user.first_name} {user.last_name}</strong> ({user.phone})
+                  <strong>{user.first_name} {user.last_name}</strong> ({localPhone(user.phone)})
                 </span>
                 <button
                   onClick={() => selectUser(user)}
@@ -275,7 +307,7 @@ const VehicleManager: React.FC = () => {
         <div>
           <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
             <strong>User:</strong>
-            <span>{selectedUser.first_name} {selectedUser.last_name} ({selectedUser.phone})</span>
+            <span>{selectedUser.first_name} {selectedUser.last_name} ({localPhone(selectedUser.phone)})</span>
             <button
               onClick={() => { setSelectedUser(null); setVehicles([]); setError(null); setStatus(null); }}
               style={{ marginLeft: "auto", padding: "4px 12px" }}
@@ -283,8 +315,8 @@ const VehicleManager: React.FC = () => {
               Change User
             </button>
           </div>
-          <div style={{ marginBottom: 24, background: "#f6f8fa", padding: 16, borderRadius: 6 }}>
-            <h4 style={{ margin: "0 0 12px 0" }}>Add Vehicle</h4>
+          <div className="w-full mt-4 bg-blue-50 p-4 rounded shadow text-center" style={{ marginBottom: 24 }}>
+            <h4 className="font-semibold text-lg mb-2">Add Vehicle</h4>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               <input
                 placeholder="Registration"

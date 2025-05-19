@@ -17,6 +17,7 @@ from models import (
     Service,
     Extra,
     VisitCount,
+    User,
 )
 from schemas import (
     OrderCreate,
@@ -135,47 +136,24 @@ def create_order_legacy(data: OrderCreate, db: Session = Depends(get_db)):
 
 # --- IMPORTANT: Place this route BEFORE /{order_id} ---
 @router.get("/my-past-orders")
-def my_past_orders(db: Session = Depends(get_db), user=Depends(get_current_user)):
+def my_past_orders(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Only return orders with status 'paid'
     orders = (
         db.query(Order)
-        .filter_by(user_id=user.id)
+        .filter(Order.user_id == user.id, Order.status == "paid")
         .order_by(Order.created_at.desc())
         .all()
     )
-    result = []
-    for order in orders:
-        payment = (
-            db.query(Payment)
-            .filter_by(order_id=order.id, status="success")
-            .order_by(Payment.created_at.desc())
-            .first()
-        )
-        service_name = order.service.name if order.service else "Service"
-        # If you store extras as IDs, resolve their names:
-        extras_names = []
-        if order.extras:
-            for e in order.extras:
-                extra = db.query(Extra).filter_by(id=e["id"]).first()
-                if extra:
-                    extras_names.append(extra.name)
-        result.append({
-            "orderId": order.id,
-            "serviceName": service_name,
-            "extras": extras_names,
-            "qrData": payment.qr_code_base64 if payment else order.id,
-            "amount": payment.amount if payment else None,
-            "paymentPin": order.payment_pin,
-            "createdAt": order.created_at,
-            "status": order.status,
-            "redeemed": getattr(order, "redeemed", False),
-        })
-    return result
+    return [OrderResponse.from_orm(order) for order in orders]
 
 @router.get("/{order_id}")
 def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
     order = db.query(Order).filter_by(id=order_id, user_id=user.id).first()
     if not order:
         raise HTTPException(404, "Order not found")
+    # Only allow access if order is paid
+    if order.status != "paid":
+        raise HTTPException(403, "Order not paid")
 
     payment = (
         db.query(Payment)
@@ -184,7 +162,6 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
         .first()
     )
     service_name = order.service.name if order.service else "Service"
-    # Get category from first order item (adjust as needed)
     category = None
     if hasattr(order, "items") and order.items:
         category = order.items[0].category

@@ -3,13 +3,13 @@ import datetime
 from typing import Optional, List
 
 import jwt
-from fastapi import APIRouter, HTTPException, Depends, Query, status
+from fastapi import APIRouter, HTTPException, Depends, Query, status, Body
 from routes.auth import get_current_user
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import Tenant, User, VisitCount, Reward, Redemption
+from models import Tenant, User, VisitCount, Reward, Redemption, Order
 from utils.qr import generate_qr_code  # your existing QR util
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-VERY-secure-secret")
@@ -78,14 +78,12 @@ def loyalty_me(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Get visit count
     visit_count = db.query(VisitCount).filter_by(
         user_id=current_user.id,
         tenant_id=current_user.tenant_id
     ).first()
     visits = visit_count.count if visit_count else 0
 
-    # Get all milestone rewards for this tenant
     rewards = (
         db.query(Reward)
         .filter_by(tenant_id=current_user.tenant_id, type="milestone")
@@ -95,16 +93,43 @@ def loyalty_me(
 
     # Get all redemptions for this user
     redemptions = db.query(Redemption).filter_by(user_id=current_user.id).all()
-    redeemed_milestones = {r.milestone for r in redemptions if r.status in ("pending", "used")}
+    # Only exclude "used" rewards from unlocked
+    redeemed_milestones = {r.milestone for r in redemptions if r.status == "used"}
 
-    # Unlocked rewards: milestones reached but not yet redeemed or still pending
-    rewards_ready = [
-        {"milestone": r.milestone, "reward": r.title}
-        for r in rewards
-        if r.milestone and r.milestone <= visits and r.milestone not in redeemed_milestones
-    ]
+    # Find pending redemptions for unlocked rewards
+    pending_redemptions = {r.milestone: r for r in redemptions if r.status == "pending"}
 
-    # Upcoming rewards: next milestones not yet reached
+    # Unlocked rewards: milestones reached but not yet redeemed (pending or not yet issued)
+    rewards_ready = []
+    for r in rewards:
+        if r.milestone and r.milestone <= visits and r.milestone not in redeemed_milestones:
+            redemption = pending_redemptions.get(r.milestone)
+            qr_code = None
+            pin = None
+            if redemption:
+                # Generate QR code if not present
+                if redemption.qr_code:
+                    qr_code = redemption.qr_code
+                else:
+                    # Generate a JWT token for this reward
+                    token = _create_jwt(
+                        {
+                            "user_id": current_user.id,
+                            "reward_id": r.id,
+                            "milestone": r.milestone,
+                            "reward": r.title,
+                        },
+                        minutes=10,
+                    )
+                    qr_code = generate_qr_code(token)["qr_code_base64"]
+                pin = redemption.pin or str(redemption.id)[-6:]
+            rewards_ready.append({
+                "milestone": r.milestone,
+                "reward": r.title,
+                "qr_code_base64": qr_code,
+                "pin": pin,
+            })
+
     upcoming_rewards = [
         {
             "milestone": r.milestone,
@@ -197,11 +222,54 @@ def log_visit(body: PhoneIn, db: Session = Depends(get_db)):
     )
     if not vc:
         vc = VisitCount(user_id=db_user.id, tenant_id=db_user.tenant_id, count=0)
+        db.add(vc)
     vc.count += 1
-    db.add(vc)
     db.commit()
 
-    return {"message": "Visit logged", "total_visits": vc.count}
+    visits = vc.count
+    rewards = (
+        db.query(Reward)
+        .filter_by(tenant_id=db_user.tenant_id, type="milestone")
+        .order_by(Reward.milestone.asc())
+        .all()
+    )
+    redemptions = db.query(Redemption).filter_by(user_id=db_user.id).all()
+    redeemed_milestones = {r.milestone for r in redemptions if r.status == "used"}
+    # Only create a new Redemption if there is NOT already a pending one for this milestone
+    unlocked = next(
+        (r for r in rewards if r.milestone and r.milestone <= visits and r.milestone not in redeemed_milestones),
+        None
+    )
+    reward_issued = None
+    if unlocked:
+        existing = db.query(Redemption).filter_by(
+            user_id=db_user.id, milestone=unlocked.milestone, status="pending"
+        ).first()
+        if not existing:
+            redemption = Redemption(
+                tenant_id=db_user.tenant_id,
+                user_id=db_user.id,
+                reward_id=unlocked.id,
+                milestone=unlocked.milestone,
+                reward_name=unlocked.title,
+                status="pending",
+                created_at=datetime.datetime.utcnow(),
+                redeemed_at=None,
+                order_id=None,
+            )
+            db.add(redemption)
+            db.commit()
+            reward_issued = {
+                "milestone": unlocked.milestone,
+                "reward": unlocked.title,
+                "expiry": (redemption.created_at + datetime.timedelta(days=10)).isoformat(),
+            }
+
+    return {
+        "message": "Visit logged",
+        "total_visits": vc.count,
+        "reward_issued": reward_issued,
+    }
 
 @router.post(
     "/reward",
@@ -229,9 +297,12 @@ def claim_reward(body: PhoneIn, db: Session = Depends(get_db)):
         .filter(Reward.milestone <= visits)
         .all()
     )
+    # Only allow claim for pending (not used) rewards
+    redemptions = db.query(Redemption).filter_by(user_id=db_user.id).all()
     redeemed_ids = {
         rec.reward_id
-        for rec in db.query(Redemption).filter_by(user_id=db_user.id)
+        for rec in redemptions
+        if rec.status == "used"
     }
     to_issue = [r for r in rewards if r.id not in redeemed_ids]
 
@@ -240,24 +311,36 @@ def claim_reward(body: PhoneIn, db: Session = Depends(get_db)):
 
     out = []
     for r in to_issue:
-        token = _create_jwt(
-            {
-                "user_id": db_user.id,
-                "reward_id": r.id,
-                "milestone": r.milestone,
-                "reward": r.title,
-            },
-            minutes=10,
-        )
-        qr = generate_qr_code(token)["qr_code_base64"]
-        out.append(
-            {
-                "milestone": r.milestone,
-                "reward": r.title,
-                "token": token,
-                "qr_code_base64": qr,
-            }
-        )
+        # Find the pending redemption for this reward
+        redemption = db.query(Redemption).filter_by(
+            user_id=db_user.id, reward_id=r.id, status="pending"
+        ).first()
+        if redemption:
+            token = _create_jwt(
+                {
+                    "user_id": db_user.id,
+                    "reward_id": r.id,
+                    "milestone": r.milestone,
+                    "reward": r.title,
+                },
+                minutes=10,
+            )
+            qr = generate_qr_code(token)["qr_code_base64"]
+            # Optionally store QR code in DB
+            redemption.qr_code = qr
+            # Generate a simple PIN if not present
+            if not redemption.pin:
+                redemption.pin = str(redemption.id)[-6:]
+            db.commit()
+            out.append(
+                {
+                    "milestone": r.milestone,
+                    "reward": r.title,
+                    "token": token,
+                    "qr_code_base64": qr,
+                    "pin": redemption.pin,
+                }
+            )
 
     return {"message": "Rewards issued", "rewards": out}
 
@@ -301,8 +384,8 @@ def redeem(body: RedeemIn, db: Session = Depends(get_db)):
 
     return {
         "message": f"Voucher for reward '{payload['reward']}' marked as used.",
-        "milestone": payload["milestone"],
-        "reward": payload["reward"],
+        "milestone": payload['milestone'],
+        "reward": payload['reward'],
         "status": rec.status,
         "redeemed_at": rec.redeemed_at,
     }
@@ -361,3 +444,126 @@ def get_rewards(
         }
         for r in rewards
     ]
+
+@router.post(
+    "/reward/apply",
+    summary="Apply a loyalty reward to an order (online) or issue a manual voucher (in-person)",
+)
+def apply_or_issue_reward(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    body: dict = Body(...),
+):
+    """
+    If orderId is provided, apply the reward to the order and return discount.
+    If not, issue a manual voucher (PIN) for in-person redemption.
+    """
+    import datetime
+
+    order_id = body.get("orderId")
+    phone = body.get("phone")  # fallback for manual
+    # Get user
+    user = current_user
+    if phone:
+        user = db.query(User).filter_by(phone=phone, tenant_id=current_user.tenant_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+    # Get visit count
+    vc = db.query(VisitCount).filter_by(user_id=user.id, tenant_id=user.tenant_id).first()
+    visits = vc.count if vc else 0
+
+    # Get all milestone rewards for this tenant
+    rewards = (
+        db.query(Reward)
+        .filter_by(tenant_id=user.tenant_id, type="milestone")
+        .order_by(Reward.milestone.asc())
+        .all()
+    )
+
+    # Get all redemptions for this user
+    redemptions = db.query(Redemption).filter_by(user_id=user.id).all()
+    redeemed_milestones = {r.milestone for r in redemptions if r.status == "used"}
+
+    # Find first unlocked reward
+    unlocked = next(
+        (r for r in rewards if r.milestone and r.milestone <= visits and r.milestone not in redeemed_milestones),
+        None
+    )
+    if not unlocked:
+        raise HTTPException(status_code=400, detail="No valid reward found.")
+
+    # --- ONLINE FLOW: Apply to order ---
+    if order_id:
+        # Try to load order and its items
+        order = db.query(Order).filter_by(id=order_id, user_id=user.id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        # Try to find a "Full House" or "Free Wash" in order summary or items
+        discount = None
+        # If you have order.items relationship:
+        if hasattr(order, "items") and order.items:
+            for item in order.items:
+                if "full house" in item.name.lower() or "free wash" in item.name.lower():
+                    discount = int(item.price * 100)
+                    break
+        # Fallback: try order.serviceName or summary
+        if discount is None and hasattr(order, "serviceName"):
+            if "full house" in order.serviceName.lower() or "free wash" in order.serviceName.lower():
+                discount = int(order.amount * 100)
+        if discount is None and hasattr(order, "summary") and order.summary:
+            for s in order.summary:
+                if "full house" in s.lower() or "free wash" in s.lower():
+                    # You may need to parse price from summary if available
+                    discount = 12000  # fallback to R120
+                    break
+        if discount is None:
+            # fallback to a default value (e.g. R120)
+            discount = 12000
+
+        # Mark reward as used for this order
+        redemption = Redemption(
+            tenant_id=user.tenant_id,  # <-- Make sure this is set!
+            user_id=user.id,
+            reward_id=unlocked.id,
+            milestone=unlocked.milestone,
+            reward_name=unlocked.title,
+            status="used",  # <-- only if actually applied to an order!
+            created_at=datetime.datetime.utcnow(),
+            redeemed_at=datetime.datetime.utcnow(),
+            order_id=order_id,
+        )
+        db.add(redemption)
+        db.commit()
+
+        return {
+            "success": True,
+            "discount": discount,
+            "reward": unlocked.title,
+            "expiry": (redemption.created_at + datetime.timedelta(days=10)).isoformat(),
+        }
+
+    # --- MANUAL FLOW: Issue PIN for in-person ---
+    else:
+        redemption = Redemption(
+            tenant_id=user.tenant_id,  # <-- Make sure this is set!
+            user_id=user.id,
+            reward_id=unlocked.id,
+            milestone=unlocked.milestone,
+            reward_name=unlocked.title,
+            status="pending",  # <-- must be pending!
+            created_at=datetime.datetime.utcnow(),
+            redeemed_at=None,
+            order_id=None,
+        )
+        db.add(redemption)
+        db.commit()
+        # Generate a simple PIN
+        pin = str(redemption.id)[-6:]
+        return {
+            "success": True,
+            "reward": unlocked.title,
+            "pin": pin,
+            "expiry": (redemption.created_at + datetime.timedelta(days=10)).isoformat(),
+        }

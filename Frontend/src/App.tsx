@@ -26,7 +26,8 @@ import StaffRegisterForm from "./pages/admin/StaffRegisterForm";
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
-import PastOrders from "./pages/PastOrders"; // <-- Add this import
+import PastOrders from "./pages/PastOrders";
+import Account from "./pages/Account"; // <-- Add this import
 
 function RequireAuth() {
   const { user, loading } = useAuth();
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="/services" element={<OrderForm />} />
             <Route path="/order/payment" element={<Payment />} />
             <Route path="/order/confirmation" element={<OrderConfirmation />} />
+            <Route path="/account" element={<Account />} /> {/* <-- Add this line */}
 
             {/* STAFF */}
             <Route path="/staff" element={<PaymentVerification />} />

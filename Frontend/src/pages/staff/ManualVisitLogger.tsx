@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 // Types for backend response and log history
@@ -16,12 +16,37 @@ interface VisitLog {
   count: number;
 }
 
+const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  return (
+    <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow z-50">
+      {message}
+      <button className="ml-4 text-white font-bold" onClick={onClose}>&times;</button>
+    </div>
+  );
+};
+
+const normalizePhone = (phone: string) => {
+  // Always return as 073... (South African local format)
+  if (phone.startsWith("+27")) {
+    return "0" + phone.slice(3);
+  }
+  if (phone.startsWith("27")) {
+    return "0" + phone.slice(2);
+  }
+  return phone;
+};
+
 const ManualVisitLogger: React.FC = () => {
   const [cell, setCell] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastVisit, setLastVisit] = useState<VisitResponse | null>(null);
   const [history, setHistory] = useState<VisitLog[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
 
   const token = localStorage.getItem("token");
   const axiosAuth = axios.create({
@@ -36,7 +61,7 @@ const ManualVisitLogger: React.FC = () => {
   const confirmAndLog = async () => {
     setStatus(null);
     if (!isValidCell) {
-      setStatus("❌ Invalid cellphone number");
+      setStatus("Invalid cellphone number");
       return;
     }
     const confirmed = window.confirm(
@@ -53,7 +78,7 @@ const ManualVisitLogger: React.FC = () => {
       const res = await axiosAuth.post("/api/auth/visits/manual", { cellphone: cell });
       // Expecting backend to return: { message, phone, name, count }
       const data: VisitResponse = res.data;
-      setStatus(`✅ ${data.message}`);
+      setStatus(`Visit logged for ${data.name} (${normalizePhone(data.phone)})`);
       setLastVisit(data);
       setHistory(prev => [
         {
@@ -65,85 +90,100 @@ const ManualVisitLogger: React.FC = () => {
         ...prev.slice(0, 4), // Keep last 5 logs
       ]);
       setCell("");
+      setToast("Visit logged! You can now start a wash for this client.");
     } catch (err: any) {
       setLastVisit(null);
       if (err.response?.status === 401 || err.response?.status === 403) {
-        setStatus("❌ Not authenticated. Please log in again.");
+        setStatus("Not authenticated. Please log in again.");
       } else if (err.response?.data?.message) {
-        setStatus(`❌ ${err.response.data.message}`);
+        setStatus(err.response.data.message);
       } else {
-        setStatus("❌ Could not log visit");
+        setStatus("Could not log visit");
       }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleStartWash = async () => {
+    setLoading(true);
+    setStatus(null);
+    try {
+      await axiosAuth.post("/api/payments/start-manual-wash", { phone: normalizePhone(lastVisit?.phone || "") });
+      setToast("Wash started for POS client!");
+      setStatus(null);
+    } catch {
+      setStatus("Could not start wash for POS client.");
+    }
+    setLoading(false);
+  };
+
   return (
-    <section style={{ marginBottom: 32, maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
-      <h2>Manual Visit Logging (POS)</h2>
-      <input
-        placeholder="Client Cellphone"
-        value={cell}
-        onChange={e => setCell(e.target.value)}
-        style={{ marginRight: 8, padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-        disabled={loading}
-        maxLength={10}
-        inputMode="numeric"
-      />
-      <button onClick={confirmAndLog} disabled={!isValidCell || loading} style={{ padding: "8px 16px" }}>
-        {loading ? "Logging..." : "Log Visit"}
-      </button>
-      {status && (
-        <p style={{ color: status.startsWith("✅") ? "green" : "red", marginTop: 8 }}>
-          {status}
-        </p>
-      )}
-      {lastVisit && status?.startsWith("✅") && (
-        <div style={{ marginTop: 12, background: "#e6f7e6", padding: 12, borderRadius: 6 }}>
-          <strong>Client:</strong> {lastVisit.name} <br />
-          <strong>Phone:</strong> {lastVisit.phone} <br />
-          <strong>Total Visits:</strong> {lastVisit.count}
-          <button
-            style={{
-              marginTop: 12,
-              padding: "8px 16px",
-              background: "#007bff",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
-              cursor: "pointer"
-            }}
-            onClick={async () => {
-              setLoading(true);
-              try {
-                await axiosAuth.post(`/api/payments/start-wash/manual/${lastVisit.phone}`);
-                setStatus("🚗 Wash started for POS client!");
-              } catch {
-                setStatus("❌ Could not start wash for POS client.");
-              }
-              setLoading(false);
-            }}
-          >
-            Start Wash
-          </button>
-        </div>
-      )}
-      {history.length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <h4 style={{ marginBottom: 8 }}>Recent Visit Logs</h4>
-          <ul style={{ paddingLeft: 0, listStyle: "none" }}>
-            {history.map((log, idx) => (
-              <li key={idx} style={{ background: "#f6f8fa", marginBottom: 6, padding: 8, borderRadius: 4, fontSize: 14 }}>
-                <span style={{ color: "#888" }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
-                {" — "}
-                <strong>{log.name}</strong> ({log.phone}) — Visits: {log.count}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
+    <div className="max-w-md mx-auto p-6 bg-white rounded shadow mt-10">
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      <h1 className="text-2xl font-bold mb-4 text-center">Manual Visit Logging</h1>
+      <p className="text-gray-600 mb-6 text-center">
+        For clients paying at the till (POS). Enter the customer's phone number to log a visit and start a wash. No payment or QR code required.
+      </p>
+      <div className="flex flex-col items-center gap-4">
+        <input
+          type="tel"
+          placeholder="Client Cellphone (e.g. 0731234567)"
+          value={cell}
+          onChange={e => setCell(e.target.value.replace(/[^0-9]/g, ""))}
+          className="w-full px-4 py-2 border border-gray-300 rounded text-lg"
+          disabled={loading}
+          maxLength={10}
+          inputMode="numeric"
+        />
+        <button
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded font-medium text-lg hover:bg-blue-700 transition"
+          onClick={confirmAndLog}
+          disabled={!isValidCell || loading}
+        >
+          {loading ? "Logging..." : "Log Visit"}
+        </button>
+        {status && (
+          <div className="text-center text-base text-green-700">
+            {status}
+          </div>
+        )}
+        {lastVisit && status?.startsWith("Visit logged") && (
+          <div className="w-full mt-4 bg-blue-50 p-4 rounded shadow text-center">
+            <div className="font-semibold text-lg mb-2">Client: {lastVisit.name}</div>
+            <div className="mb-1 text-base">Phone: {normalizePhone(lastVisit.phone)}</div>
+            <div className="mb-2 text-base">Total Visits: {lastVisit.count}</div>
+            <button
+              className="mt-2 px-4 py-2 bg-green-600 text-white rounded font-medium text-base hover:bg-green-700 transition"
+              onClick={handleStartWash}
+              disabled={loading}
+            >
+              {loading ? "Starting..." : "Start Wash"}
+            </button>
+          </div>
+        )}
+        {history.length > 0 && (
+          <div className="w-full mt-8">
+            <h4 className="font-semibold mb-2 text-center">Recent Visit Logs</h4>
+            <ul className="space-y-2">
+              {history.map((log, idx) => (
+                <li
+                  key={idx}
+                  className="bg-gray-100 rounded px-3 py-2 flex flex-col md:flex-row md:items-center md:justify-between text-base"
+                >
+                  <span className="text-gray-500 mb-1 md:mb-0 md:mr-2" style={{ minWidth: 80 }}>
+                    {new Date(log.timestamp).toLocaleTimeString()}
+                  </span>
+                  <span className="flex-1 text-center md:text-left">
+                    <strong>{log.name}</strong> ({normalizePhone(log.phone)}) — Visits: {log.count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

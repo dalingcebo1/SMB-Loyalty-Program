@@ -127,6 +127,19 @@ def upsert_from_pivot(rows: list[dict], headers: list[str]) -> tuple[int,int]:
 
     return svc_count, extra_count
 
+def drop_all_prices():
+    """
+    Delete all Service and Extra rows before reloading prices.
+    """
+    db = SessionLocal()
+    try:
+        db.query(Service).delete()
+        db.query(Extra).delete()
+        db.commit()
+        print("🗑️  Dropped all existing Service and Extra records.")
+    finally:
+        db.close()
+
 def main():
     url = get_price_csv_url()
     print(f"▶️  Fetching price list from: {url!r}")
@@ -135,6 +148,9 @@ def main():
     if not rows:
         print("⚠️  No rows found – check your PRICE_CSV_URL")
         return
+
+    # Drop all existing prices before upserting new ones
+    drop_all_prices()
 
     hdrs = set(headers)
     # -- If it's the kind-based sheet, collapse extras by name first --

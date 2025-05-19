@@ -129,10 +129,13 @@ class Redemption(Base):
     milestone    = Column(Integer, nullable=True)     # Optional: milestone number
     redeemed_at  = Column(DateTime, nullable=True)    # When voucher was used
     qr_code      = Column(Text, nullable=True)        # base64 or URL
+    reward_name  = Column(String, nullable=True)
+    order_id     = Column(String, ForeignKey("orders.id"), nullable=True)  # <-- Add this line
 
     tenant = relationship("Tenant")
     user   = relationship("User")
     reward = relationship("Reward")
+    order  = relationship("Order")
 
 
 class Vehicle(Base):

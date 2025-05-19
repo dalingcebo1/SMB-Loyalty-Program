@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 from database import SessionLocal, get_db
-from models import Order, Payment, User, Vehicle, OrderVehicle
+from models import Order, Payment, User, Vehicle, OrderVehicle, Redemption, Reward
 from utils.qr import generate_qr_code  # Make sure this returns dict with qr_code_base64
 
 YOCO_SECRET_KEY = os.getenv("YOCO_SECRET_KEY")
@@ -195,39 +195,63 @@ def get_payment_qr(order_id: str, db: Session = Depends(get_db)):
 @router.get("/verify/{reference_or_pin}")
 def verify_payment(reference_or_pin: str, db: Session = Depends(get_db)):
     order = None
+    redemption = None
+    reward = None
 
-    # 1. If it's a 4-digit PIN, search by payment_pin
+    # 1. If it's a 4-digit PIN, search by payment_pin (payment) or Redemption.pin (loyalty)
     if reference_or_pin.isdigit() and len(reference_or_pin) == 4:
         order = db.query(Order).filter_by(payment_pin=reference_or_pin).first()
+        if not order:
+            redemption = db.query(Redemption).filter_by(pin=reference_or_pin, status="used").first()
     else:
-        # 2. Try by order ID
+        # 2. Try by order ID (payment)
         order = db.query(Order).filter_by(id=reference_or_pin).first()
-        # 3. If not found, try by Payment reference or transaction_id (Yoco charge ID)
+        # 3. Try by Payment reference or transaction_id (payment)
         if not order:
             payment = db.query(Payment).filter_by(reference=reference_or_pin, status="success").first()
             if not payment:
                 payment = db.query(Payment).filter_by(transaction_id=reference_or_pin, status="success").first()
             if payment:
                 order = db.query(Order).filter_by(id=payment.order_id).first()
+        # 4. Try by Redemption QR code (loyalty)
+        if not order:
+            redemption = db.query(Redemption).filter(
+                (Redemption.qr_code == reference_or_pin) | (Redemption.order_id == reference_or_pin)
+            ).filter(Redemption.status == "used").first()
 
+    # Loyalty reward verification
+    if redemption:
+        if redemption.status == "redeemed":
+            return {"status": "already_redeemed", "type": "loyalty"}
+        redemption.status = "redeemed"
+        db.commit()
+        reward = db.query(Reward).filter_by(id=redemption.reward_id).first()
+        return {
+            "status": "ok",
+            "type": "loyalty",
+            "order_id": redemption.order_id,
+            "reward_name": redemption.reward_name or (reward.title if reward else None),
+            "created_at": redemption.created_at,
+            "redeemed": True,
+        }
+
+    # Payment verification
     if not order:
         raise HTTPException(404, "Invalid PIN or QR code")
 
     if order.redeemed:
-        return {"status": "already_redeemed"}
+        return {"status": "already_redeemed", "type": "payment"}
 
     # Mark as redeemed
     order.redeemed = True
     db.commit()
     return {
         "status": "ok",
+        "type": "payment",
         "order_id": order.id,
         "created_at": order.created_at,
         "redeemed": order.redeemed
     }
-
-# Simple in-memory store for demo (replace with DB in production)
-wash_sessions = {}
 
 @router.post("/start-wash/{order_id}")
 def start_wash(order_id: str, data: dict = Body(...), db: Session = Depends(get_db)):
@@ -256,6 +280,47 @@ def end_wash(order_id: str, db: Session = Depends(get_db)):
     order.status = "ended"
     db.commit()
     return {"status": "ended", "order_id": order_id, "ended_at": order.ended_at}
+
+@router.post("/start-manual-wash")
+def start_manual_wash(
+    data: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Start a wash for a client who paid at the POS (manual visit logging).
+    Expects: { "phone": "0731234567" }
+    """
+    phone = data.get("phone")
+    if not phone:
+        raise HTTPException(400, "Phone number required")
+    # Normalize phone (handle +27, 27, 0)
+    if phone.startswith("+27"):
+        phone = "0" + phone[3:]
+    elif phone.startswith("27"):
+        phone = "0" + phone[2:]
+    # Find user
+    user = db.query(User).filter(
+        (User.phone == phone) | (User.phone == "+27" + phone[1:]) | (User.phone == "27" + phone[1:])
+    ).first()
+    if not user:
+        raise HTTPException(404, "User not found for this phone number")
+    # Create a new Order for this user (status = started, no payment)
+    order = Order(
+        user_id=user.id,
+        status="started",
+        started_at=datetime.utcnow(),
+        redeemed=False,
+        payment_pin=None,
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return {
+        "status": "started",
+        "order_id": order.id,
+        "user_id": user.id,
+        "started_at": order.started_at,
+    }
 
 @router.get("/order-user/{order_id}")
 def get_order_user(order_id: str, db: Session = Depends(get_db)):
@@ -359,3 +424,41 @@ def wash_history(date: str, db: Session = Depends(get_db)):
             "status": "ended" if order.ended_at else "started",
         })
     return result
+
+@router.get("/user-wash-status")
+def user_wash_status(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    today = datetime.utcnow().date()
+    tomorrow = today + timedelta(days=1)
+
+    # Active wash for this user
+    active = (
+        db.query(Order)
+        .filter(
+            Order.user_id == user.id,
+            Order.started_at != None,
+            Order.started_at >= today,
+            Order.started_at < tomorrow,
+            Order.ended_at == None,
+        )
+        .order_by(Order.started_at.desc())
+        .first()
+    )
+    if active:
+        return {"status": "active", "order_id": active.id}
+
+    # Recently ended wash for this user
+    ended = (
+        db.query(Order)
+        .filter(
+            Order.user_id == user.id,
+            Order.ended_at != None,
+            Order.ended_at >= today,
+            Order.ended_at < tomorrow,
+        )
+        .order_by(Order.ended_at.desc())
+        .first()
+    )
+    if ended:
+        return {"status": "ended", "order_id": ended.id}
+
+    return {"status": "none"}

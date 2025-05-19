@@ -160,3 +160,21 @@ class StaffRegisterRequest(BaseModel):
     last_name: Optional[str]
     phone: Optional[str]
     tenant_id: Optional[str] = "default"
+
+# ─── Redemption Schemas ─────────────────────────────────────────────────────────
+
+class RedemptionBase(BaseModel):
+    id: int
+    tenant_id: str
+    user_id: int
+    reward_id: int
+    created_at: datetime
+    status: str
+    pin: Optional[str]
+    milestone: Optional[int]
+    redeemed_at: Optional[datetime]
+    qr_code: Optional[str]
+    reward_name: Optional[str] = None  # <-- Add this line
+
+    class Config:
+        from_attributes = True

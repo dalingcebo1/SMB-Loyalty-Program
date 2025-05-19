@@ -1,26 +1,69 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
 
 const VISIT_MILESTONE = 5;
 
 const Welcome: React.FC = () => {
   const { user } = useAuth();
-  const [visits, setVisits] = useState(0);
-  const [justOnboarded, setJustOnboarded] = useState(false);
 
+  // Initialize from localStorage if available
+  const [visits, setVisits] = useState(() => {
+    const stored = localStorage.getItem("visits");
+    return stored ? parseInt(stored, 10) : 0;
+  });
+  const [justOnboarded, setJustOnboarded] = useState(false);
+  const [activeWashes, setActiveWashes] = useState<any[]>(() => {
+    const stored = localStorage.getItem("activeWashes");
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [recentlyEnded, setRecentlyEnded] = useState<any | null>(() => {
+    const stored = localStorage.getItem("recentlyEnded");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  // Fetch both visits and wash status every 3 seconds
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
-    const fetchVisits = () => {
-      api
-        .get("/loyalty/me")
-        .then((res) => setVisits(res.data.visits || 0))
-        .catch(() => setVisits(0));
+
+    const fetchAll = () => {
+      Promise.all([
+        api.get("/loyalty/me"),
+        api.get("/payments/user-wash-status"),
+      ])
+        .then(([visitsRes, washRes]) => {
+          setVisits(visitsRes.data.visits || 0);
+          localStorage.setItem("visits", String(visitsRes.data.visits || 0));
+
+          if (washRes.data.status === "active") {
+            setActiveWashes([washRes.data]);
+            setRecentlyEnded(null);
+            localStorage.setItem("activeWashes", JSON.stringify([washRes.data]));
+            localStorage.removeItem("recentlyEnded");
+          } else if (washRes.data.status === "ended") {
+            setActiveWashes([]);
+            setRecentlyEnded(washRes.data);
+            localStorage.removeItem("activeWashes");
+            localStorage.setItem("recentlyEnded", JSON.stringify(washRes.data));
+          } else {
+            setActiveWashes([]);
+            setRecentlyEnded(null);
+            localStorage.removeItem("activeWashes");
+            localStorage.removeItem("recentlyEnded");
+          }
+        })
+        .catch(() => {
+          setVisits(0);
+          setActiveWashes([]);
+          setRecentlyEnded(null);
+        });
     };
 
     if (user) {
-      fetchVisits();
-      interval = setInterval(fetchVisits, 3000);
+      fetchAll();
+      interval = setInterval(fetchAll, 3000);
     }
 
     return () => {
@@ -40,13 +83,28 @@ const Welcome: React.FC = () => {
       ? `${user.firstName} ${user.lastName}`
       : user?.firstName || "";
 
-  // --- Progress logic ---
   const milestoneSize = VISIT_MILESTONE;
   const progress = visits % milestoneSize;
   const nextMilestone = milestoneSize;
-  const visitsToNext = nextMilestone - progress === 0 ? milestoneSize : nextMilestone - progress;
+  const hasMilestone = progress === 0 && visits > 0;
 
   if (!user) return null;
+
+  // Status message logic
+  let statusMessage = null;
+  if (activeWashes.length > 0) {
+    statusMessage = (
+      <div className="w-full max-w-md bg-blue-100 rounded-2xl shadow-md p-4 mb-8 text-center text-blue-800 font-semibold">
+        Your vehicles are currently being wash, you will be notified when ready for collection.
+      </div>
+    );
+  } else if (recentlyEnded) {
+    statusMessage = (
+      <div className="w-full max-w-md bg-green-100 rounded-2xl shadow-md p-4 mb-8 text-center text-green-800 font-semibold">
+        Your car is ready for collection.
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
@@ -62,30 +120,38 @@ const Welcome: React.FC = () => {
         </div>
       </div>
 
-      {/* Visit counter */}
+      {/* Visit counter with circular progress */}
       <div className="flex flex-col items-center mb-8">
-        <div className="w-40 h-40 rounded-full border-4 border-gray-300 flex flex-col items-center justify-center text-center bg-white shadow-inner mx-auto">
-          <span className="text-2xl font-bold text-blue-700">
-            {progress}/{nextMilestone}
-          </span>
-          <span className="text-lg text-gray-600 mt-1">Visits</span>
-          <div className="mt-1 text-xs text-gray-500">
-            Total visits: {visits}
+        <div className="w-40 h-40">
+          <CircularProgressbar
+            value={progress === 0 && visits > 0 ? nextMilestone : progress}
+            maxValue={nextMilestone}
+            text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
+            styles={buildStyles({
+              textSize: "18px",
+              pathColor: "#2563eb",
+              textColor: "#2563eb",
+              trailColor: "#e5e7eb",
+            })}
+          />
+        </div>
+        {hasMilestone && (
+          <div className="mt-2 text-green-600 font-semibold">
+            You've reached a milestone!
           </div>
-        </div>
-        <div className="mt-2 text-gray-500">
-          {visitsToNext > 0 && visitsToNext !== milestoneSize
-            ? `Only ${visitsToNext} more visit${visitsToNext > 1 ? "s" : ""} to your next reward!`
-            : "You've reached a milestone!"}
-        </div>
+        )}
       </div>
 
-      {/* Loyalty message card */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 text-center mb-8">
-        <div className="text-gray-700 text-sm">
-          At x car wash, we like to acknowledge your continued support, that is why we are giving you the 6th Full Wash on us.
+      {/* Status message or Engen Car Wash message */}
+      {statusMessage ? (
+        statusMessage
+      ) : (
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 text-center mb-8">
+          <div className="text-gray-700 text-sm">
+            At Engen Car Wash, we like to acknowledge your continued support, that is why we are giving you the 6th Full Wash on us.
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

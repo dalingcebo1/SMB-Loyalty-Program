@@ -57,19 +57,32 @@ const OrderForm: React.FC = () => {
   const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Default to first category/service (fixes infinite loop)
+  // Set default category when services load
   useEffect(() => {
     const cats = Object.keys(servicesByCategory);
-    if (
-      cats.length &&
-      (!selectedCategory || !cats.includes(selectedCategory))
-    ) {
-      if (selectedCategory !== cats[0]) setSelectedCategory(cats[0]);
-      if (selectedServiceId !== servicesByCategory[cats[0]][0]?.id)
-        setSelectedServiceId(servicesByCategory[cats[0]][0]?.id ?? null);
+    if (cats.length && (!selectedCategory || !cats.includes(selectedCategory))) {
+      setSelectedCategory(cats[0]);
     }
-    // Only run when servicesByCategory changes
+    // eslint-disable-next-line
   }, [servicesByCategory]);
+
+  // Set default service when category changes
+  useEffect(() => {
+    if (
+      selectedCategory &&
+      servicesByCategory[selectedCategory]?.length
+    ) {
+      const serviceList = servicesByCategory[selectedCategory];
+      if (
+        selectedServiceId == null ||
+        !serviceList.some((s) => s.id === selectedServiceId)
+      ) {
+        setSelectedServiceId(serviceList[0]?.id ?? null);
+        setServiceQuantity(1);
+      }
+    }
+    // eslint-disable-next-line
+  }, [selectedCategory, servicesByCategory]);
 
   // Init extra counters
   useEffect(() => {
@@ -77,18 +90,6 @@ const OrderForm: React.FC = () => {
     extras.forEach((e) => (init[e.id] = 0));
     setExtraQuantities(init);
   }, [extras]);
-
-  // Reset service on category switch
-  useEffect(() => {
-    if (
-      selectedCategory &&
-      servicesByCategory[selectedCategory]?.length &&
-      selectedServiceId !== servicesByCategory[selectedCategory][0].id
-    ) {
-      setServiceQuantity(1);
-      setSelectedServiceId(servicesByCategory[selectedCategory][0].id);
-    }
-  }, [selectedCategory, servicesByCategory, selectedServiceId]);
 
   // Increment/decrement helpers
   const incService = () => setServiceQuantity((q) => q + 1);
@@ -150,7 +151,7 @@ const OrderForm: React.FC = () => {
           state: {
             orderId: order_id,
             qrData: qr_data,
-            total: total * 100, // <-- change 'amount' to 'total'
+            total: total * 100,
           },
         });
       })
@@ -172,26 +173,26 @@ const OrderForm: React.FC = () => {
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <span className="text-gray-500 text-lg">Loading…</span>
+        <span className="text-gray-500 text-base">Loading…</span>
       </div>
     );
   }
 
   // Render
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-0 py-4 overflow-x-hidden w-full">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-0 py-4 w-full overflow-x-hidden">
       <ToastContainer position="top-right" />
-      <div className="w-full max-w-full sm:max-w-md bg-white rounded-2xl shadow-md p-2 sm:p-6 mb-8">
-        <h1 className="text-xl font-bold mb-2 text-gray-800 text-center">Book a Service</h1>
-        <p className="text-gray-600 mb-4 text-center">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-2 sm:p-4 mb-8">
+        <h1 className="text-lg font-bold mb-2 text-gray-800 text-center">Book a Service</h1>
+        <p className="text-gray-600 mb-4 text-center text-xs">
           Select your service and extras below to book your next car wash.
         </p>
 
         {/* 1. Pick a Category */}
-        <section className="mb-4">
-          <label className="block text-gray-700 font-medium mb-1 text-sm">1. Pick a Category</label>
+        <section className="mb-3">
+          <label className="block text-gray-700 font-medium mb-1 text-xs">1. Category</label>
           <select
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border rounded px-2 py-1 text-sm bg-gray-50"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
@@ -204,11 +205,11 @@ const OrderForm: React.FC = () => {
         </section>
 
         {/* 2. Pick a Service */}
-        <section className="mb-4">
-          <label className="block text-gray-700 font-medium mb-1 text-xs">2. Pick a Service</label>
-          <div className="flex items-center space-x-2 overflow-x-auto">
+        <section className="mb-3">
+          <label className="block text-gray-700 font-medium mb-1 text-xs">2. Service</label>
+          <div className="flex items-center space-x-2 w-full">
             <select
-              className="flex-1 border rounded px-3 py-2 text-xs"
+              className="flex-1 border rounded px-2 py-1 text-sm bg-gray-50"
               value={selectedServiceId ?? undefined}
               onChange={(e) => setSelectedServiceId(Number(e.target.value))}
             >
@@ -221,15 +222,17 @@ const OrderForm: React.FC = () => {
             <button
               type="button"
               onClick={decService}
-              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
+              aria-label="Decrease quantity"
             >
               −
             </button>
-            <span className="w-6 text-center">{serviceQuantity}</span>
+            <span className="w-6 text-center text-sm">{serviceQuantity}</span>
             <button
               type="button"
               onClick={incService}
-              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
+              aria-label="Increase quantity"
             >
               +
             </button>
@@ -237,48 +240,52 @@ const OrderForm: React.FC = () => {
         </section>
 
         {/* 3. Extras */}
-        <section className="mb-4">
-          <label className="block text-gray-700 font-medium mb-1 text-sm">3. Extras</label>
-          {extras.length === 0 && (
-            <div className="text-gray-400 text-xs">No extras available for this category.</div>
-          )}
-          {extras.map((e) => (
-            <div
-              key={e.id}
-              className="flex items-center justify-between py-1"
-            >
-              <div className="text-sm break-words max-w-[90vw]">
-                {e.name} — R{e.price_map[selectedCategory] ?? 0}
+        <section className="mb-3">
+          <label className="block text-gray-700 font-medium mb-1 text-xs">3. Extras</label>
+          <div>
+            {extras.length === 0 && (
+              <div className="text-gray-400 text-xs">No extras available for this category.</div>
+            )}
+            {extras.map((e) => (
+              <div
+                key={e.id}
+                className="flex items-center justify-between py-2 border-b last:border-b-0"
+              >
+                <div className="text-sm break-words pr-2">
+                  {e.name} — R{e.price_map[selectedCategory] ?? 0}
+                </div>
+                <div className="flex items-center space-x-1">
+                  <button
+                    type="button"
+                    onClick={() => decExtra(e.id)}
+                    className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
+                    aria-label={`Decrease ${e.name}`}
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center text-sm">{extraQuantities[e.id]}</span>
+                  <button
+                    type="button"
+                    onClick={() => incExtra(e.id)}
+                    className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
+                    aria-label={`Increase ${e.name}`}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => decExtra(e.id)}
-                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
-                >
-                  −
-                </button>
-                <span className="w-6 text-center">{extraQuantities[e.id]}</span>
-                <button
-                  type="button"
-                  onClick={() => incExtra(e.id)}
-                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
 
         {/* 4.  Live total & submit */}
-        <div className="mt-6 font-bold text-lg text-center">
+        <div className="mt-4 font-bold text-base text-center">
           Total: R {total}
         </div>
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className={`w-full mt-4 py-2 rounded text-white font-semibold transition ${
+          className={`w-full mt-3 py-2 rounded text-white font-semibold transition text-base ${
             isSubmitting
               ? "bg-blue-300 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-700"

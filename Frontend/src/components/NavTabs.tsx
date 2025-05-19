@@ -11,13 +11,13 @@ const NavTabs: React.FC = () => {
   const navOptions = [
     { to: "/services", label: "Services" },
     { to: "/myloyalty", label: "Loyalty" },
-    { to: "/past-orders", label: "Past Orders" }, // <-- Add this line
+    { to: "/past-orders", label: "Past Orders" },
     { to: "/account", label: "Account" },
     ...((user?.role === "staff" || user?.role === "admin")
       ? [
-          { to: "/staff", label: "Verify Payment" },
-          { to: "/staff/manual-visit", label: "Manual Visits" },
-          { to: "/staff/vehicle-manager", label: "Vehicle Manager" },
+          { to: "/staff", label: "Car Wash" },
+          { to: "/staff/manual-visit", label: "Log a visit" },
+          { to: "/staff/vehicle-manager", label: "Manage Vehicles" },
         ]
       : []),
     ...(user?.role === "admin"

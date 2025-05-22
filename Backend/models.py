@@ -21,14 +21,16 @@ class Tenant(Base):
     name         = Column(String, nullable=False)
     loyalty_type = Column(String, nullable=False)
     created_at   = Column(DateTime)
+    rewards      = relationship("Reward", back_populates="tenant")
 
 
 class Service(Base):
     __tablename__ = "services"
-    id         = Column(Integer, primary_key=True, index=True)
-    category   = Column(String, nullable=False, index=True)
-    name       = Column(String, nullable=False)
-    base_price = Column(Integer, nullable=False)
+    id             = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    category       = Column(String, nullable=False, index=True)
+    name           = Column(String, nullable=False)
+    base_price     = Column(Integer, nullable=False)
+    loyalty_eligible = Column(Boolean, default=False)  # NEW COLUMN
 
 
 class Extra(Base):
@@ -40,7 +42,7 @@ class Extra(Base):
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String, unique=True, index=True)
     phone = Column(String, unique=True, index=True)
     hashed_password = Column(String, nullable=True)  # For password login
@@ -59,7 +61,7 @@ Tenant.users = relationship("User", back_populates="tenant")
 
 class Reward(Base):
     __tablename__ = "rewards"
-    id           = Column(Integer, primary_key=True)
+    id           = Column(Integer, primary_key=True, index=True, autoincrement=True)
     tenant_id    = Column(String, ForeignKey("tenants.id"), nullable=False)
     title        = Column(String, nullable=False)
     description  = Column(Text)
@@ -67,16 +69,14 @@ class Reward(Base):
     milestone    = Column(Integer)
     cost         = Column(Integer)
     created_at   = Column(DateTime)
+    service_id   = Column(Integer, ForeignKey("services.id"), nullable=True)
 
     tenant = relationship("Tenant", back_populates="rewards")
 
 
-Tenant.rewards = relationship("Reward", back_populates="tenant")
-
-
 class Order(Base):
     __tablename__ = "orders"
-    id         = Column(String, primary_key=True)  # uuid4
+    id         = Column(Integer, primary_key=True, index=True, autoincrement=True)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
     quantity   = Column(Integer, nullable=False, default=1)
     extras     = Column(JSON, nullable=False, default=[])
@@ -87,6 +87,8 @@ class Order(Base):
     redeemed   = Column(Boolean, default=False)
     started_at = Column(DateTime, nullable=True)
     ended_at   = Column(DateTime, nullable=True)
+    type       = Column(String, default="paid")  # "paid" or "loyalty"
+    amount     = Column(Integer, default=0)      # 0 for loyalty orders
 
     service = relationship("Service")
     user    = relationship("User")
@@ -130,7 +132,10 @@ class Redemption(Base):
     redeemed_at  = Column(DateTime, nullable=True)    # When voucher was used
     qr_code      = Column(Text, nullable=True)        # base64 or URL
     reward_name  = Column(String, nullable=True)
-    order_id     = Column(String, ForeignKey("orders.id"), nullable=True)  # <-- Add this line
+    order_id     = Column(String, ForeignKey("orders.id"), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("user_id", "milestone", "status", name="uq_redemption_user_milestone_status"),
+    )
 
     tenant = relationship("Tenant")
     user   = relationship("User")
@@ -153,7 +158,6 @@ class Vehicle(Base):
 class OrderItem(Base):
     __tablename__ = "order_items"
     id         = Column(Integer, primary_key=True)
-    # <--- changed to String to match orders.id
     order_id   = Column(String, ForeignKey("orders.id"), nullable=False)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
     category   = Column(String, nullable=False)
@@ -187,7 +191,8 @@ class Payment(Base):
     status        = Column(String, default="initialized")
     raw_response  = Column(JSON, nullable=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
-    card_brand    = Column(String(32))  # <-- Add this line
-    qr_code_base64 = Column(Text, nullable=True)  # <-- Add this line
+    card_brand    = Column(String(32))
+    qr_code_base64 = Column(Text, nullable=True)
+    source        = Column(String, default="yoco")  # "yoco" or "loyalty"
 
     order = relationship("Order")

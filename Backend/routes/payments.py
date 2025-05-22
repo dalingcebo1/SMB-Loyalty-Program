@@ -4,18 +4,24 @@ import os
 import hmac
 import hashlib
 import requests
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body, Query
 from routes.auth import get_current_user
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 from database import SessionLocal, get_db
-from models import Order, Payment, User, Vehicle, OrderVehicle, Redemption, Reward
+from models import Order, Payment, User, Vehicle, OrderVehicle, Redemption, Reward, Service
 from utils.qr import generate_qr_code  # Make sure this returns dict with qr_code_base64
+from routes.loyalty import _create_jwt, SECRET_KEY  # Import for loyalty reward verification
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 YOCO_SECRET_KEY = os.getenv("YOCO_SECRET_KEY")
 YOCO_WEBHOOK_SECRET = os.getenv("YOCO_WEBHOOK_SECRET")  # Set this in your backend .env
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(
     prefix="/payments",
@@ -117,6 +123,7 @@ def charge_yoco(
         created_at=datetime.utcnow(),
         card_brand=card_brand,
         qr_code_base64=qr_code_base64,  # <-- Store QR code
+        source="yoco",  # <-- Mark payment source
     )
     db.add(payment)
     order.status = "paid"
@@ -192,57 +199,28 @@ def get_payment_qr(order_id: str, db: Session = Depends(get_db)):
         "category": category,
     }
 
-@router.get("/verify/{reference_or_pin}")
-def verify_payment(reference_or_pin: str, db: Session = Depends(get_db)):
+# --- Payment Verification (PIN or QR) ---
+@router.get("/verify-payment")
+def verify_payment(
+    pin: str = Query(None, description="Payment PIN"),
+    qr: str = Query(None, description="Payment QR code"),
+    db: Session = Depends(get_db)
+):
     order = None
-    redemption = None
-    reward = None
-
-    # 1. If it's a 4-digit PIN, search by payment_pin (payment) or Redemption.pin (loyalty)
-    if reference_or_pin.isdigit() and len(reference_or_pin) == 4:
-        order = db.query(Order).filter_by(payment_pin=reference_or_pin).first()
-        if not order:
-            redemption = db.query(Redemption).filter_by(pin=reference_or_pin, status="used").first()
-    else:
-        # 2. Try by order ID (payment)
-        order = db.query(Order).filter_by(id=reference_or_pin).first()
-        # 3. Try by Payment reference or transaction_id (payment)
-        if not order:
-            payment = db.query(Payment).filter_by(reference=reference_or_pin, status="success").first()
-            if not payment:
-                payment = db.query(Payment).filter_by(transaction_id=reference_or_pin, status="success").first()
-            if payment:
-                order = db.query(Order).filter_by(id=payment.order_id).first()
-        # 4. Try by Redemption QR code (loyalty)
-        if not order:
-            redemption = db.query(Redemption).filter(
-                (Redemption.qr_code == reference_or_pin) | (Redemption.order_id == reference_or_pin)
-            ).filter(Redemption.status == "used").first()
-
-    # Loyalty reward verification
-    if redemption:
-        if redemption.status == "redeemed":
-            return {"status": "already_redeemed", "type": "loyalty"}
-        redemption.status = "redeemed"
-        db.commit()
-        reward = db.query(Reward).filter_by(id=redemption.reward_id).first()
-        return {
-            "status": "ok",
-            "type": "loyalty",
-            "order_id": redemption.order_id,
-            "reward_name": redemption.reward_name or (reward.title if reward else None),
-            "created_at": redemption.created_at,
-            "redeemed": True,
-        }
-
-    # Payment verification
+    # By PIN
+    if pin:
+        order = db.query(Order).filter_by(payment_pin=pin).first()
+    # By QR (payment reference or transaction_id)
+    elif qr:
+        payment = db.query(Payment).filter_by(reference=qr, status="success").first()
+        if not payment:
+            payment = db.query(Payment).filter_by(transaction_id=qr, status="success").first()
+        if payment:
+            order = db.query(Order).filter_by(id=payment.order_id).first()
     if not order:
-        raise HTTPException(404, "Invalid PIN or QR code")
-
+        raise HTTPException(404, "Invalid payment PIN or QR code")
     if order.redeemed:
         return {"status": "already_redeemed", "type": "payment"}
-
-    # Mark as redeemed
     order.redeemed = True
     db.commit()
     return {
@@ -250,7 +228,116 @@ def verify_payment(reference_or_pin: str, db: Session = Depends(get_db)):
         "type": "payment",
         "order_id": order.id,
         "created_at": order.created_at,
-        "redeemed": order.redeemed
+        "redeemed": order.redeemed,
+        "payment_pin": order.payment_pin,
+    }
+
+# --- Loyalty Verification (PIN or QR/JWT) ---
+@router.get("/verify-loyalty")
+def verify_loyalty(
+    pin: str = Query(None, description="Loyalty PIN"),
+    qr: str = Query(None, description="Loyalty QR code or JWT"),
+    db: Session = Depends(get_db)
+):
+    redemption = None
+    reward = None
+
+    # By PIN
+    if pin:
+        redemption = db.query(Redemption).filter_by(pin=pin).first()
+    # By QR/JWT
+    elif qr:
+        try:
+            import jwt
+            payload = jwt.decode(qr, SECRET_KEY, algorithms=["HS256"])
+            user_id = payload.get("user_id")
+            reward_id = payload.get("reward_id")
+            milestone = payload.get("milestone")
+            reward_name = payload.get("reward")
+            redemption = db.query(Redemption).filter_by(
+                user_id=user_id, reward_id=reward_id, milestone=milestone
+            ).first()
+        except Exception:
+            redemption = db.query(Redemption).filter_by(qr_code=qr).first()
+
+    if not redemption:
+        raise HTTPException(404, "Invalid loyalty PIN or QR code")
+
+    if redemption.status in ("used", "redeemed"):
+        return {"status": "already_redeemed", "type": "loyalty"}
+
+    redemption.status = "used"
+    redemption.redeemed_at = datetime.utcnow()
+
+    # Ensure order_id exists and all required fields are set
+    if not redemption.order_id:
+        reward = db.query(Reward).filter_by(id=redemption.reward_id).first()
+        # Use the reward's service_id if it is loyalty-eligible, else pick any eligible service
+        service_id = None
+        if reward and reward.service_id:
+            service = db.query(Service).filter_by(id=reward.service_id, loyalty_eligible=True).first()
+            if service:
+                service_id = service.id
+        if not service_id:
+            # fallback: pick any loyalty-eligible service
+            service = db.query(Service).filter_by(loyalty_eligible=True).first()
+            if not service:
+                raise HTTPException(500, "No loyalty-eligible service configured")
+            service_id = service.id
+        order = Order(
+            service_id=service_id,
+            quantity=1,
+            extras=[],
+            payment_pin=None,
+            status="pending",
+            user_id=redemption.user_id,
+            created_at=datetime.utcnow(),
+            redeemed=True,
+            type="loyalty",
+            amount=0,
+        )
+        db.add(order)
+        db.commit()
+        db.refresh(order)
+        redemption.order_id = order.id
+
+    db.commit()
+    reward = reward or db.query(Reward).filter_by(id=redemption.reward_id).first()
+    return {
+        "status": "ok",
+        "type": "loyalty",
+        "order_id": redemption.order_id,
+        "reward_name": redemption.reward_name or (reward.title if reward else None),
+        "created_at": redemption.created_at,
+        "redeemed": True,
+        "qr_reference": qr,
+        "pin": redemption.pin,
+    }
+
+# --- POS/Manual Verification (Receipt Number) ---
+@router.get("/verify-pos")
+def verify_pos(
+    receipt: str = Query(..., description="Receipt number from POS"),
+    db: Session = Depends(get_db)
+):
+    # For POS, assume receipt number is stored as Payment.reference with method="pos"
+    payment = db.query(Payment).filter_by(reference=receipt, method="pos", status="success").first()
+    if not payment:
+        raise HTTPException(404, "Invalid or unpaid POS receipt")
+    order = db.query(Order).filter_by(id=payment.order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found for this receipt")
+    if order.redeemed:
+        return {"status": "already_redeemed", "type": "pos"}
+    order.redeemed = True
+    db.commit()
+    return {
+        "status": "ok",
+        "type": "pos",
+        "order_id": order.id,
+        "created_at": order.created_at,
+        "redeemed": order.redeemed,
+        "receipt": receipt,
     }
 
 @router.post("/start-wash/{order_id}")

@@ -51,17 +51,25 @@ const OrderForm: React.FC = () => {
   const extras = extrasQuery.data ?? [];
 
   // UI state
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(""); // will set default in useEffect
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [serviceQuantity, setServiceQuantity] = useState(1);
   const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Set default category when services load
+  // Set default category to "Fullhouse" (case-insensitive) when services load
   useEffect(() => {
     const cats = Object.keys(servicesByCategory);
-    if (cats.length && (!selectedCategory || !cats.includes(selectedCategory))) {
-      setSelectedCategory(cats[0]);
+    if (cats.length) {
+      // Try to find "Fullhouse" (case-insensitive)
+      const fullhouseCat =
+        cats.find((c) => c.trim().toLowerCase() === "fullhouse") ||
+        cats.find((c) => c.trim().toLowerCase() === "full house");
+      if (fullhouseCat) {
+        setSelectedCategory(fullhouseCat);
+      } else if (!selectedCategory || !cats.includes(selectedCategory)) {
+        setSelectedCategory(cats[0]);
+      }
     }
     // eslint-disable-next-line
   }, [servicesByCategory]);
@@ -73,11 +81,15 @@ const OrderForm: React.FC = () => {
       servicesByCategory[selectedCategory]?.length
     ) {
       const serviceList = servicesByCategory[selectedCategory];
+      // Try to find "FULL HOUSE" (case-insensitive)
+      const fullHouseService = serviceList.find(
+        (s) => s.name.trim().toLowerCase() === "full house"
+      );
       if (
         selectedServiceId == null ||
         !serviceList.some((s) => s.id === selectedServiceId)
       ) {
-        setSelectedServiceId(serviceList[0]?.id ?? null);
+        setSelectedServiceId(fullHouseService?.id ?? serviceList[0]?.id ?? null);
         setServiceQuantity(1);
       }
     }

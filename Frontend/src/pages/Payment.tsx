@@ -20,6 +20,13 @@ declare global {
   }
 }
 
+interface Service {
+  id: number;
+  name: string;
+  loyalty_eligible: boolean;
+  // ...other fields as needed
+}
+
 const Payment: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -30,6 +37,8 @@ const Payment: React.FC = () => {
   const [rewardApplied, setRewardApplied] = useState(false);
   const [rewardDiscount, setRewardDiscount] = useState(0);
   const [rewardInfo, setRewardInfo] = useState<{ reward: string; expiry?: string; milestone?: number } | null>(null);
+  const [, setService] = useState<Service | null>(null);
+  const [canApplyLoyalty, setCanApplyLoyalty] = useState(false);
 
   const { refreshUser, user } = useAuth();
 
@@ -66,6 +75,33 @@ const Payment: React.FC = () => {
   }, []);
 
   const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY!;
+
+  // Fetch the order's service to check loyalty_eligible
+  useEffect(() => {
+    if (!orderId) return;
+    api.get(`/orders/${orderId}`)
+      .then(res => {
+        // Use loyalty_eligible directly from the order response if available
+        if (typeof res.data.loyalty_eligible !== "undefined") {
+          setCanApplyLoyalty(!!res.data.loyalty_eligible);
+          // Optionally, setService with more info if needed
+        } else {
+          // Fallback: fetch service by ID if not present in order response
+          const svcId = res.data.serviceId ?? res.data.service_id;
+          if (svcId) {
+            api.get(`/services/${svcId}`).then(svcRes => {
+              setService(svcRes.data);
+              setCanApplyLoyalty(!!svcRes.data.loyalty_eligible);
+            }).catch(() => {
+              setCanApplyLoyalty(false);
+            });
+          } else {
+            setCanApplyLoyalty(false);
+          }
+        }
+      })
+      .catch(() => setCanApplyLoyalty(false));
+  }, [orderId]);
 
   // Check if user has a reward available for this order
   useEffect(() => {
@@ -109,7 +145,14 @@ const Payment: React.FC = () => {
   const handlePay = async () => {
     if (amountToPay <= 0) {
       toast.success("No payment needed! Reward covers the full amount.");
-      // Optionally, mark order as paid in your backend here
+      // Mark order as redeemed if a reward was applied
+      if (rewardApplied) {
+        try {
+          await api.post(`/orders/${orderId}/redeem`);
+        } catch (e) {
+          // Optionally handle error
+        }
+      }
       // Redirect to confirmation page
       navigate("/order/confirmation", {
         state: {
@@ -148,10 +191,18 @@ const Payment: React.FC = () => {
                 orderId,
                 amount: total - rewardDiscount,
               });
+              // Mark order as redeemed if a reward was applied
+              if (rewardApplied) {
+                try {
+                  await api.post(`/orders/${orderId}/redeem`);
+                } catch (e) {
+                  // Optionally handle error
+                }
+              }
               // Fetch QR data for this order
               const qrResp = await api.get(`/payments/qr/${orderId}`);
-              const qrData = qrResp.data.reference || orderId; // This is the reference string
-              const qrCodeBase64 = qrResp.data.qr_code_base64; // This is the image
+              const qrData = qrResp.data.reference || orderId;
+              const qrCodeBase64 = qrResp.data.qr_code_base64;
               const paymentPin = qrResp.data.payment_pin;
               const amount = qrResp.data.amount || total;
 
@@ -195,7 +246,7 @@ const Payment: React.FC = () => {
         <div className="text-lg font-semibold text-center mb-6">
           Amount: <span className="text-black font-bold">R {(amountToPay / 100).toFixed(2)}</span>
         </div>
-        {rewardInfo && (
+        {rewardInfo && canApplyLoyalty && (
           <div className="mb-4 text-center">
             <div className="text-green-700 font-semibold">
               Loyalty Reward Available: {rewardInfo.reward}
@@ -205,6 +256,13 @@ const Payment: React.FC = () => {
                 Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
               </div>
             )}
+          </div>
+        )}
+        {rewardInfo && !canApplyLoyalty && (
+          <div className="mb-4 text-center">
+            <div className="text-gray-500 font-semibold">
+              Loyalty rewards cannot be applied to this service.
+            </div>
           </div>
         )}
         {summary.length > 0 && (
@@ -227,7 +285,7 @@ const Payment: React.FC = () => {
           >
             {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
           </button>
-          {rewardInfo && !rewardApplied && (
+          {rewardInfo && canApplyLoyalty && !rewardApplied && (
             <button
               onClick={handleApplyReward}
               disabled={paying}

@@ -151,17 +151,11 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
     order = db.query(Order).filter_by(id=order_id, user_id=user.id).first()
     if not order:
         raise HTTPException(404, "Order not found")
-    # Only allow access if order is paid
-    if order.status != "paid":
-        raise HTTPException(403, "Order not paid")
+    # --- Allow access regardless of payment status for payment/loyalty logic ---
+    service = db.query(Service).filter_by(id=order.service_id).first()
+    service_name = service.name if service else "Service"
+    loyalty_eligible = service.loyalty_eligible if service else False
 
-    payment = (
-        db.query(Payment)
-        .filter_by(order_id=order.id, status="success")
-        .order_by(Payment.created_at.desc())
-        .first()
-    )
-    service_name = order.service.name if order.service else "Service"
     category = None
     if hasattr(order, "items") and order.items:
         category = order.items[0].category
@@ -173,9 +167,18 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
             if extra:
                 extras_names.append(extra.name)
 
+    payment = (
+        db.query(Payment)
+        .filter_by(order_id=order.id, status="success")
+        .order_by(Payment.created_at.desc())
+        .first()
+    )
+
     return {
         "orderId": order.id,
+        "serviceId": order.service_id,
         "serviceName": service_name,
+        "loyalty_eligible": loyalty_eligible,
         "category": category,
         "extras": extras_names,
         "qrData": payment.qr_code_base64 if payment else order.id,

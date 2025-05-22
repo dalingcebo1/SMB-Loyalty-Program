@@ -121,10 +121,10 @@ const MyLoyalty: React.FC = () => {
       const { data } = await api.post("/loyalty/reward", { phone: user.phone });
       const found = data.rewards?.find((rw: any) => rw.milestone === milestone);
       if (found) {
-        // Use reference string for QR code, not image
+        // Use qr_reference for QR code and pin for PIN
         const voucherData = {
-          qr: found.token || "", // Use the reference/token for QR code
-          pin: found.token?.slice(0, 8) || "",
+          qr: found.qr_reference || "",
+          pin: found.pin || "",
           reward: rewardName,
           milestone,
         };
@@ -239,8 +239,8 @@ const MyLoyalty: React.FC = () => {
                 <FiGift className="text-3xl text-purple-500" />
                 <span className="font-medium text-base">{r.reward}</span>
               </div>
-              <div className="flex gap-2 mt-2 md:mt-0">
-                {/* View QR code for in-person/staff */}
+              {/* Center the button */}
+              <div className="flex flex-col items-center justify-center mt-2 md:mt-0 w-full">
                 <button
                   className="px-4 py-2 bg-purple-200 text-purple-800 rounded font-medium text-sm shadow hover:bg-purple-300 border border-purple-300 transition min-w-[120px]"
                   onClick={() => handleShowQR(r.milestone, r.reward)}
@@ -248,7 +248,7 @@ const MyLoyalty: React.FC = () => {
                   View QR Code
                 </button>
               </div>
-              <div className="text-xs text-gray-500 mt-2 md:mt-0 md:ml-8">
+              <div className="text-xs text-gray-500 mt-2 md:mt-0 md:ml-8 text-center">
                 Show this QR code or PIN to staff to redeem your reward.
               </div>
             </div>

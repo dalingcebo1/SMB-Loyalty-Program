@@ -49,7 +49,7 @@ const PaymentVerification: React.FC = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [activeWashes, setActiveWashes] = useState<Wash[]>([]);
   const [confirmEndWash, setConfirmEndWash] = useState<string | null>(null); // order_id to confirm
-  const [rewardInfo, setRewardInfo] = useState<{ reward_name?: string } | null>(null);
+  const [paymentType, setPaymentType] = useState<"payment" | "loyalty" | "pos">("payment");
 
   // Use a ref for hasScanned to prevent race conditions
   const hasScannedRef = useRef(false);
@@ -100,22 +100,42 @@ const PaymentVerification: React.FC = () => {
     setUser(null);
     setVehicles([]);
     setSelectedVehicle(null);
-    setRewardInfo(null);
+
     try {
-      const res = await axiosAuth.get(`/api/payments/verify/${referenceOrPin}`);
+      let url = "";
+      if (paymentType === "payment") {
+        // Payment: PIN or QR
+        url = `/api/payments/verify-payment?${/^[a-zA-Z0-9]{4,8}$/.test(referenceOrPin) ? `pin=${referenceOrPin}` : `qr=${referenceOrPin}`}`;
+      } else if (paymentType === "loyalty") {
+        // Loyalty: PIN or QR/JWT
+        url = `/api/payments/verify-loyalty?${/^[a-zA-Z0-9]{4,8}$/.test(referenceOrPin) ? `pin=${referenceOrPin}` : `qr=${referenceOrPin}`}`;
+      } else if (paymentType === "pos") {
+        // POS: Receipt number only
+        url = `/api/payments/verify-pos?receipt=${referenceOrPin}`;
+      }
+      const res = await axiosAuth.get(url);
       if (res.data.status === "ok") {
         if (res.data.type === "loyalty") {
-          setStatus(`🎁 Loyalty Reward: ${res.data.reward_name || "Reward"} — start the wash!`);
-          setRewardInfo({ reward_name: res.data.reward_name });
-        } else {
+          setStatus("🎁 Loyalty reward redeemed! Start the wash.");
+          setVerifiedOrder({
+            order_id: res.data.order_id,
+            payment_pin: res.data.pin,
+          });
+          fetchUserAndVehicles(res.data.order_id);
+        } else if (res.data.type === "payment") {
           setStatus("✅ Payment OK—start the wash!");
+          setVerifiedOrder({
+            order_id: res.data.order_id,
+            payment_pin: res.data.payment_pin,
+          });
+          fetchUserAndVehicles(res.data.order_id);
+        } else if (res.data.type === "pos") {
+          setStatus("✅ POS receipt verified! Start the wash.");
+          setVerifiedOrder({
+            order_id: res.data.order_id,
+          });
+          fetchUserAndVehicles(res.data.order_id);
         }
-        setVerifiedOrder({
-          order_id: res.data.order_id,
-          payment_pin: res.data.payment_pin,
-        });
-        // Fetch user and vehicles for this order
-        fetchUserAndVehicles(res.data.order_id);
       } else if (res.data.status === "already_redeemed") {
         setStatus("❌ This payment or reward has already been redeemed.");
       } else {
@@ -128,10 +148,18 @@ const PaymentVerification: React.FC = () => {
   };
 
   const handleManualVerify = () => {
-    if (ref.length === 4 && /^\d{4}$/.test(ref)) {
+    if (paymentType === "pos") {
+      if (ref.length < 4) {
+        setStatus("❌ Please enter a valid POS receipt number.");
+        return;
+      }
       verify(ref);
     } else {
-      setStatus("❌ Please enter a valid 4-digit PIN.");
+      if (/^[a-zA-Z0-9]{4,8}$/.test(ref) || ref.length > 8) {
+        verify(ref);
+      } else {
+        setStatus("❌ Please enter a valid payment or loyalty PIN/QR.");
+      }
     }
   };
 
@@ -225,6 +253,31 @@ const PaymentVerification: React.FC = () => {
       <div className="bg-white rounded shadow p-6 mb-6">
         <h1 className="text-2xl font-bold mb-4 text-center">Payment Verification</h1>
         <div className="flex flex-col items-center">
+          {/* Payment type selector */}
+          <div className="mb-4 flex gap-2">
+            <button
+              className={`px-3 py-1 rounded ${paymentType === "payment" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+              onClick={() => setPaymentType("payment")}
+              disabled={loading}
+            >
+              Yoco Payment
+            </button>
+            <button
+              className={`px-3 py-1 rounded ${paymentType === "loyalty" ? "bg-purple-600 text-white" : "bg-gray-200"}`}
+              onClick={() => setPaymentType("loyalty")}
+              disabled={loading}
+            >
+              Loyalty Reward
+            </button>
+            <button
+              className={`px-3 py-1 rounded ${paymentType === "pos" ? "bg-green-600 text-white" : "bg-gray-200"}`}
+              onClick={() => setPaymentType("pos")}
+              disabled={loading}
+            >
+              POS/Manual
+            </button>
+          </div>
+
           <button
             onClick={handleOpenScanner}
             className="mb-4 px-4 py-2 bg-blue-600 text-white rounded font-medium text-base hover:bg-blue-700 min-w-[120px]"
@@ -253,20 +306,27 @@ const PaymentVerification: React.FC = () => {
 
           <div className="mb-4 flex flex-col items-center">
             <input
-              placeholder="Enter 4-digit payment PIN"
+              placeholder={
+                paymentType === "payment"
+                  ? "Enter payment PIN or scan QR"
+                  : paymentType === "loyalty"
+                  ? "Enter loyalty PIN or scan QR"
+                  : "Enter POS receipt number"
+              }
               value={ref}
-              onChange={e => setRef(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              className="mb-2 px-4 py-2 border border-gray-300 rounded w-48 text-center"
+              onChange={e => setRef(e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32))}
+              className="mb-2 px-4 py-2 border border-gray-300 rounded w-64 text-center"
               disabled={loading}
-              maxLength={4}
-              inputMode="numeric"
+              maxLength={32}
+              inputMode="text"
+              autoCapitalize="characters"
             />
             <button
               onClick={handleManualVerify}
-              disabled={loading || ref.length !== 4}
+              disabled={loading || ref.length < 4}
               className="px-4 py-2 bg-blue-600 text-white rounded font-medium text-base hover:bg-blue-700 min-w-[120px]"
             >
-              {loading ? "Verifying..." : "Verify PIN"}
+              {loading ? "Verifying..." : "Verify"}
             </button>
           </div>
 
@@ -274,11 +334,6 @@ const PaymentVerification: React.FC = () => {
             <span className={`text-base font-medium ${status.startsWith("✅") || status.startsWith("🚗") || status.startsWith("🎁") ? "text-green-600" : status.startsWith("❌") ? "text-red-600" : "text-gray-700"}`}>
               {status}
             </span>
-            {rewardInfo && (
-              <div className="mt-2 text-purple-700 font-semibold">
-                Reward: {rewardInfo.reward_name}
-              </div>
-            )}
           </div>
 
           {/* User and vehicle selection */}

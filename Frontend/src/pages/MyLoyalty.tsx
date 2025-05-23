@@ -265,21 +265,56 @@ const MyLoyalty: React.FC = () => {
         ) : history.length ? (
           <ul className="divide-y">
             {history.map((h, idx) => (
-              <li key={idx} className="py-2 flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <span className="font-medium">{h.reward}</span>
+              <li
+                key={idx}
+                className="py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Status icon */}
+                  {h.status === "used" && (
+                    <span title="Used" className="text-green-600 text-xl">✔️</span>
+                  )}
+                  {h.status === "pending" && (
+                    <span title="Pending" className="text-yellow-500 text-xl">⏳</span>
+                  )}
+                  {h.status === "expired" && (
+                    <span title="Expired" className="text-gray-400 text-xl">⌛</span>
+                  )}
+                  <span className="font-medium text-base">{h.reward}</span>
                   <span className="ml-2 text-xs text-gray-500">Milestone: {h.milestone}</span>
                 </div>
-                <div className="text-xs text-gray-500 flex flex-col md:items-end">
+                <div className="text-xs text-gray-600 flex flex-col md:items-end">
                   <div>
-                    {h.redeemed_at
-                      ? `Redeemed: ${new Date(h.redeemed_at).toLocaleString()}`
-                      : h.status === "pending" && h.expiry_at
-                        ? `Expires: ${new Date(h.expiry_at).toLocaleString()}`
-                        : ""}
+                    {h.redeemed_at ? (
+                      <>
+                        <span className="font-semibold text-gray-700">Redeemed:</span>{" "}
+                        {new Date(h.redeemed_at).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </>
+                    ) : h.redeemed ? (
+                      <span className="font-semibold text-purple-700">Redeemed online</span>
+                    ) : h.status === "pending" && h.expiry_at ? (
+                      <>
+                        <span className="font-semibold text-gray-700">Expires:</span>{" "}
+                        {new Date(h.expiry_at).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </>
+                    ) : (
+                      <span className="text-red-600">Not redeemed</span>
+                    )}
                   </div>
-                  <div>
-                    <span className={`ml-0 md:ml-2 px-2 py-0.5 rounded
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded font-semibold
                       ${h.status === "used" ? "bg-green-100 text-green-700" : ""}
                       ${h.status === "pending" ? "bg-yellow-100 text-yellow-700" : ""}
                       ${h.status === "expired" ? "bg-gray-200 text-gray-500" : ""}
@@ -287,7 +322,7 @@ const MyLoyalty: React.FC = () => {
                       {h.status.charAt(0).toUpperCase() + h.status.slice(1)}
                     </span>
                     {h.status === "pending" && h.pin && (
-                      <span className="ml-2 font-mono bg-gray-100 px-2 py-0.5 rounded">PIN: {h.pin}</span>
+                      <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">PIN: {h.pin}</span>
                     )}
                   </div>
                 </div>

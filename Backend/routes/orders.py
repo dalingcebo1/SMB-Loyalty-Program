@@ -137,14 +137,32 @@ def create_order_legacy(data: OrderCreate, db: Session = Depends(get_db)):
 # --- IMPORTANT: Place this route BEFORE /{order_id} ---
 @router.get("/my-past-orders")
 def my_past_orders(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Only return orders with status 'paid'
     orders = (
         db.query(Order)
         .filter(Order.user_id == user.id, Order.status == "paid")
         .order_by(Order.created_at.desc())
         .all()
     )
-    return [OrderResponse.from_orm(order) for order in orders]
+    results = []
+    for order in orders:
+        # Get the latest successful payment for this order, if any
+        payment = (
+            db.query(Payment)
+            .filter_by(order_id=order.id, status="success")
+            .order_by(Payment.created_at.desc())
+            .first()
+        )
+        # If paid with loyalty, amount is 0; else use payment amount
+        amount = 0
+        if payment:
+            amount = payment.amount
+        elif hasattr(order, "amount") and order.amount:
+            amount = order.amount
+
+        order_data = OrderResponse.from_orm(order).dict()
+        order_data["amount"] = amount
+        results.append(order_data)
+    return results
 
 @router.get("/{order_id}")
 def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
@@ -262,5 +280,6 @@ def redeem_order(order_id: str, db: Session = Depends(get_db)):
     if not order:
         raise HTTPException(404, "Order not found")
     order.redeemed = True
+    order.status = "paid"  # <-- Add this line
     db.commit()
     return {"status": "ok"}

@@ -21,6 +21,7 @@ interface Order {
   ended_at: string | null;
   amount?: number;
   service_name?: string; // If your backend can provide service name, use it
+  order_redeemed_at?: string | null; // <-- Add this line
 }
 
 const PastOrders: React.FC = () => {
@@ -167,6 +168,28 @@ const PastOrders: React.FC = () => {
                 {modalOrder.status.charAt(0).toUpperCase() +
                   modalOrder.status.slice(1)}
               </span>
+            </div>
+            {/* Redeemed by staff info */}
+            <div className="mt-2 text-base text-gray-600 text-center">
+              {modalOrder.order_redeemed_at ? (
+                <>
+                  <span className="text-green-700 font-semibold">
+                    Redeemed{" "}
+                    {new Date(modalOrder.order_redeemed_at).toLocaleDateString(
+                      undefined,
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }
+                    )}
+                  </span>
+                </>
+              ) : (
+                <span className="text-red-600 font-semibold">Not redeemed</span>
+              )}
             </div>
             <div className="mt-2 text-gray-500 text-center">
               Show this QR code or pin to staff to verify your payment.

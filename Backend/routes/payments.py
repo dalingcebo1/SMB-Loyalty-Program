@@ -219,16 +219,16 @@ def verify_payment(
             order = db.query(Order).filter_by(id=payment.order_id).first()
     if not order:
         raise HTTPException(404, "Invalid payment PIN or QR code")
-    if order.redeemed:
+    if order.order_redeemed_at:
         return {"status": "already_redeemed", "type": "payment"}
-    order.redeemed = True
+    order.order_redeemed_at = datetime.utcnow()  # <-- Set redemption time
     db.commit()
     return {
         "status": "ok",
         "type": "payment",
         "order_id": order.id,
         "created_at": order.created_at,
-        "redeemed": order.redeemed,
+        "order_redeemed_at": order.order_redeemed_at,
         "payment_pin": order.payment_pin,
     }
 
@@ -301,7 +301,14 @@ def verify_loyalty(
         db.refresh(order)
         redemption.order_id = order.id
 
+    order = db.query(Order).filter_by(id=redemption.order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found for this reward")
+    if order.order_redeemed_at:
+        return {"status": "already_redeemed", "type": "loyalty"}
+    order.order_redeemed_at = datetime.utcnow()
     db.commit()
+
     reward = reward or db.query(Reward).filter_by(id=redemption.reward_id).first()
     return {
         "status": "ok",
@@ -312,6 +319,7 @@ def verify_loyalty(
         "redeemed": True,
         "qr_reference": qr,
         "pin": redemption.pin,
+        "order_redeemed_at": order.order_redeemed_at,
     }
 
 # --- POS/Manual Verification (Receipt Number) ---

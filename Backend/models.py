@@ -89,6 +89,7 @@ class Order(Base):
     ended_at   = Column(DateTime, nullable=True)
     type       = Column(String, default="paid")  # "paid" or "loyalty"
     amount     = Column(Integer, default=0)      # 0 for loyalty orders
+    order_redeemed_at = Column(DateTime, nullable=True)  # <-- Add this line
 
     service = relationship("Service")
     user    = relationship("User")

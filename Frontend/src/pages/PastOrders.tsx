@@ -42,21 +42,14 @@ const PastOrders: React.FC = () => {
 
   // Helper to get a user-friendly order summary
   const getOrderSummary = (order: Order) => {
-    // Prefer service_name if available, else fallback
-    let summary = order.service_name || "Full House";
+    let summary = order.service_name || "Full wash";
     if (order.extras && order.extras.length > 0) {
-      const extrasList = order.extras
-        .slice(0, 2)
-        .map(
-          (ex) =>
-            ex.name ||
-            (ex.id === 8
-              ? "Vacuum"
-              : ex.id === 9
-              ? "Tire clean"
-              : `Extra ${ex.id}`)
-        );
-      summary += " with " + extrasList.join(" and ");
+      const firstExtra = order.extras[0]?.name || "Extra";
+      if (order.extras.length === 1) {
+        summary += ` with ${firstExtra}`;
+      } else {
+        summary += ` with ${firstExtra} & Others`;
+      }
     }
     return summary;
   };

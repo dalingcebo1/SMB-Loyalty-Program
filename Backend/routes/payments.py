@@ -210,18 +210,21 @@ def verify_payment(
     # By PIN
     if pin:
         order = db.query(Order).filter_by(payment_pin=pin).first()
-    # By QR (payment reference or transaction_id)
+    # By QR (payment reference, transaction_id, or order id)
     elif qr:
         payment = db.query(Payment).filter_by(reference=qr, status="success").first()
         if not payment:
             payment = db.query(Payment).filter_by(transaction_id=qr, status="success").first()
         if payment:
             order = db.query(Order).filter_by(id=payment.order_id).first()
+        else:
+            # PATCH: Try order ID directly
+            order = db.query(Order).filter_by(id=qr).first()
     if not order:
         raise HTTPException(404, "Invalid payment PIN or QR code")
     if order.order_redeemed_at:
         return {"status": "already_redeemed", "type": "payment"}
-    order.order_redeemed_at = datetime.utcnow()  # <-- Set redemption time
+    order.order_redeemed_at = datetime.utcnow()
     db.commit()
     return {
         "status": "ok",
@@ -231,6 +234,51 @@ def verify_payment(
         "order_redeemed_at": order.order_redeemed_at,
         "payment_pin": order.payment_pin,
     }
+
+def create_loyalty_order_and_payment(db, redemption, reward):
+    # Use the reward's service_id if it is loyalty-eligible, else pick any eligible service
+    service_id = None
+    if reward and reward.service_id:
+        service = db.query(Service).filter_by(id=reward.service_id, loyalty_eligible=True).first()
+        if service:
+            service_id = service.id
+    if not service_id:
+        # fallback: pick any loyalty-eligible service
+        service = db.query(Service).filter_by(loyalty_eligible=True).first()
+        if not service:
+            raise HTTPException(500, "No loyalty-eligible service configured")
+        service_id = service.id
+    order = Order(
+        service_id=service_id,
+        quantity=1,
+        extras=[],
+        payment_pin=None,
+        status="pending",
+        user_id=redemption.user_id,
+        created_at=datetime.utcnow(),
+        redeemed=True,
+        type="loyalty",
+        amount=0,
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    redemption.order_id = order.id
+
+    # Create a Payment record for loyalty orders
+    payment = Payment(
+        order_id=order.id,
+        amount=0,
+        method="loyalty",
+        status="success",
+        created_at=datetime.utcnow(),
+        reference=f"LOYALTY-{order.id}",
+        transaction_id=f"LOYALTY-{order.id}",
+        source="loyalty"
+    )
+    db.add(payment)
+    db.commit()
+    return order
 
 # --- Loyalty Verification (PIN or QR/JWT) ---
 @router.get("/verify-loyalty")
@@ -272,36 +320,25 @@ def verify_loyalty(
     # Ensure order_id exists and all required fields are set
     if not redemption.order_id:
         reward = db.query(Reward).filter_by(id=redemption.reward_id).first()
-        # Use the reward's service_id if it is loyalty-eligible, else pick any eligible service
-        service_id = None
-        if reward and reward.service_id:
-            service = db.query(Service).filter_by(id=reward.service_id, loyalty_eligible=True).first()
-            if service:
-                service_id = service.id
-        if not service_id:
-            # fallback: pick any loyalty-eligible service
-            service = db.query(Service).filter_by(loyalty_eligible=True).first()
-            if not service:
-                raise HTTPException(500, "No loyalty-eligible service configured")
-            service_id = service.id
-        order = Order(
-            service_id=service_id,
-            quantity=1,
-            extras=[],
-            payment_pin=None,
-            status="pending",
-            user_id=redemption.user_id,
-            created_at=datetime.utcnow(),
-            redeemed=True,
-            type="loyalty",
-            amount=0,
-        )
-        db.add(order)
-        db.commit()
-        db.refresh(order)
-        redemption.order_id = order.id
+        order = create_loyalty_order_and_payment(db, redemption, reward)
+    else:
+        order = db.query(Order).filter_by(id=redemption.order_id).first()
+        # --- PATCH: Ensure a Payment row exists for this loyalty order ---
+        payment = db.query(Payment).filter_by(order_id=order.id, method="loyalty").first()
+        if not payment:
+            payment = Payment(
+                order_id=order.id,
+                amount=0,
+                method="loyalty",
+                status="success",
+                created_at=datetime.utcnow(),
+                reference=f"LOYALTY-{order.id}",
+                transaction_id=f"LOYALTY-{order.id}",
+                source="loyalty"
+            )
+            db.add(payment)
+            db.commit()
 
-    order = db.query(Order).filter_by(id=redemption.order_id).first()
     if not order:
         raise HTTPException(404, "Order not found for this reward")
     if order.order_redeemed_at:

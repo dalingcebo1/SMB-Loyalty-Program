@@ -145,22 +145,32 @@ def my_past_orders(user: User = Depends(get_current_user), db: Session = Depends
     )
     results = []
     for order in orders:
-        # Get the latest successful payment for this order, if any
         payment = (
             db.query(Payment)
             .filter_by(order_id=order.id, status="success")
             .order_by(Payment.created_at.desc())
             .first()
         )
-        # If paid with loyalty, amount is 0; else use payment amount
         amount = 0
         if payment:
             amount = payment.amount
         elif hasattr(order, "amount") and order.amount:
             amount = order.amount
 
+        # --- PATCH: Attach extra names ---
+        extras = []
+        for ex in order.extras or []:
+            extra_obj = db.query(Extra).filter_by(id=ex["id"]).first()
+            extras.append({
+                "id": ex["id"],
+                "quantity": ex.get("quantity", 1),
+                "name": extra_obj.name if extra_obj else None
+            })
+
         order_data = OrderResponse.from_orm(order).dict()
         order_data["amount"] = amount
+        order_data["order_redeemed_at"] = getattr(order, "order_redeemed_at", None)
+        order_data["extras"] = extras  # <-- PATCHED LINE
         results.append(order_data)
     return results
 

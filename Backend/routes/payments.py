@@ -393,13 +393,11 @@ def start_wash(order_id: str, data: dict = Body(...), db: Session = Depends(get_
     vehicle_id = data.get("vehicle_id")
     if not vehicle_id:
         raise HTTPException(400, "vehicle_id required")
-    # Link vehicle to order if not already linked
     existing = db.query(OrderVehicle).filter_by(order_id=order_id, vehicle_id=vehicle_id).first()
     if not existing:
         order_vehicle = OrderVehicle(order_id=order_id, vehicle_id=vehicle_id)
         db.add(order_vehicle)
     order.started_at = datetime.utcnow()
-    order.status = "started"
     db.commit()
     return {"status": "started", "order_id": order_id, "started_at": order.started_at}
 
@@ -409,7 +407,6 @@ def end_wash(order_id: str, db: Session = Depends(get_db)):
     if not order:
         raise HTTPException(404, "Order not found")
     order.ended_at = datetime.utcnow()
-    order.status = "ended"
     db.commit()
     return {"status": "ended", "order_id": order_id, "ended_at": order.ended_at}
 

@@ -14,8 +14,16 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set in environment")
 
-# 2) Create the SQLAlchemy engine
-engine = create_engine(DATABASE_URL, echo=True, future=True)
+# 2) Create the SQLAlchemy engine with tuned pool settings
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    future=True,
+    pool_size=20,        # number of persistent connections
+    max_overflow=10,     # additional connections beyond pool_size
+    pool_timeout=30,     # seconds to wait before giving up on getting a connection
+    pool_pre_ping=True,  # checks connections before using to avoid stale ones
+)
 
 # 3) Configure a Session factory
 SessionLocal = sessionmaker(

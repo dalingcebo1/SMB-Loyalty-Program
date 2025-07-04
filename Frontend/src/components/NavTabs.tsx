@@ -21,6 +21,7 @@ const NavTabs: React.FC = () => {
       { to: "/staff/vehicle-manager", label: "Manage Vehicles" },
     ] : []),
     ...(user?.role === "admin" ? [
+      { to: "/admin/users", label: "Users" },
       ...(enableUsers ? [{ to: "/admin/register-staff", label: "Register Staff" }] : []),
       { to: "/admin/modules", label: "Modules" },
     ] : []),

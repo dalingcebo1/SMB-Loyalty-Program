@@ -4,18 +4,41 @@
 // Provides feature flags with persistence in localStorage for plug-and-play modules
 export interface ModuleFlags {
   enableCatalog: boolean;
+  // Catalog submodules
+  catalogServices: boolean;
+  catalogExtras: boolean;
   enableLoyalty: boolean;
+  // Loyalty submodules
+  loyaltyView: boolean;
+  loyaltyRedeem: boolean;
   enableOrders: boolean;
+  // Orders submodules
+  ordersCreate: boolean;
+  ordersHistory: boolean;
   enablePayments: boolean;
+  // Payments submodules
+  paymentsVerify: boolean;
   enableUsers: boolean;
+  // Users submodules
+  usersAccount: boolean;
+  usersAdmin: boolean;
 }
 
 const ENV_FLAGS: ModuleFlags = {
   enableCatalog: import.meta.env.VITE_ENABLE_CATALOG === 'true',
+  catalogServices: false,
+  catalogExtras: false,
   enableLoyalty: import.meta.env.VITE_ENABLE_LOYALTY === 'true',
+  loyaltyView: false,
+  loyaltyRedeem: false,
   enableOrders: import.meta.env.VITE_ENABLE_ORDERS === 'true',
+  ordersCreate: false,
+  ordersHistory: false,
   enablePayments: import.meta.env.VITE_ENABLE_PAYMENTS === 'true',
+  paymentsVerify: false,
   enableUsers: import.meta.env.VITE_ENABLE_USERS === 'true',
+  usersAccount: false,
+  usersAdmin: false,
 };
 
 const STORAGE_KEY = 'moduleFlags';

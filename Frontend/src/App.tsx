@@ -10,7 +10,15 @@ import { useAuth } from "./auth/AuthProvider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { moduleFlags } from "./config/modules";
-import ModuleSettings from "./pages/admin/ModuleSettings";
+import { Suspense, lazy } from "react";
+
+// Lazy-load admin bundle:
+const AdminLayout = lazy(() => import("./components/AdminLayout"));
+const UsersList = lazy(() => import("./pages/admin/UsersList"));
+const StaffRegisterForm = lazy(() => import("./pages/admin/StaffRegisterForm"));
+const ModuleSettings = lazy(() => import("./pages/admin/ModuleSettings"));
+// Edit-user page
+const AdminUserEdit = lazy(() => import("./pages/AdminUserEdit"));
 
 import Signup            from "./pages/Signup";
 import Login             from "./pages/Login";
@@ -24,7 +32,7 @@ import ForgotPassword    from "./pages/ForgotPassword";
 import ResetPassword     from "./pages/ResetPassword";
 import Welcome           from "./pages/Welcome";
 import Payment           from "./pages/Payment";
-import StaffRegisterForm from "./pages/admin/StaffRegisterForm";
+// Removed static StaffRegisterForm import in favor of lazy-loaded version
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
@@ -51,6 +59,13 @@ function RequireAuth() {
 
   return <Outlet />;
 }
+// Guard for admin-only pages
+function RequireAdmin() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex items-center justify-center h-screen"><p>Loading…</p></div>;
+  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
+  return <Outlet />;
+}
 
 export default function App() {
   return (
@@ -64,7 +79,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* PROTECTED */}
+        {/* PROTECTED USER ROUTES */}
         <Route element={<RequireAuth />}>
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<Welcome />} />
@@ -75,15 +90,63 @@ export default function App() {
             {enableOrders && <Route path="/order/confirmation" element={<OrderConfirmation />} />}
             {enableUsers && <Route path="/account" element={<Account />} />}
             {enableOrders && <Route path="/past-orders" element={<PastOrders />} />}
-
-            {/* STAFF */}
+            {/* STAFF PAGES */}
             {enablePayments && <Route path="/staff" element={<PaymentVerification />} />}
             <Route path="/staff/manual-visit" element={<ManualVisitLogger />} />
             <Route path="/staff/vehicle-manager" element={<VehicleManager />} />
+          </Route>
+        </Route>
 
-            {/* ADMIN */}
-            {enableUsers && <Route path="/admin/register-staff" element={<StaffRegisterForm />} />}
-            <Route path="/admin/modules" element={<ModuleSettings />} />
+        {/* PROTECTED ADMIN ROUTES */}
+        <Route element={<RequireAdmin />}>
+          <Route
+            path="/admin"
+            element={
+              <Suspense fallback={<div>Loading admin UI…</div>}>
+                <AdminLayout />
+              </Suspense>
+            }
+          >
+            <Route
+              index
+              element={
+                <Suspense fallback={<div>Loading users…</div>}>
+                  <UsersList />
+                </Suspense>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <Suspense fallback={<div>Loading users…</div>}>
+                  <UsersList />
+                </Suspense>
+              }
+            />
+            <Route
+              path="register-staff"
+              element={
+                <Suspense fallback={<div>Loading staff register…</div>}>
+                  <StaffRegisterForm />
+                </Suspense>
+              }
+            />
+            <Route
+              path="users/:userId/edit"
+              element={
+                <Suspense fallback={<div>Loading editor…</div>}>
+                  <AdminUserEdit />
+                </Suspense>
+              }
+            />
+            <Route
+              path="modules"
+              element={
+                <Suspense fallback={<div>Loading modules…</div>}>
+                  <ModuleSettings />
+                </Suspense>
+              }
+            />
           </Route>
         </Route>
 

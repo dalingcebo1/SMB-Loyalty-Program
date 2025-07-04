@@ -19,6 +19,7 @@ app = FastAPI(
     title="SMB Loyalty Program",
     version="0.1",
     openapi_url="/api/openapi.json",
+    redirect_slashes=False,    # disable automatic 307 redirects on trailing slash
 )
 
 # ─── Validation Error Handler ────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../../api/api";
 import { useAuth } from "../../auth/AuthProvider";
 import { toast } from "react-toastify";
 
@@ -27,10 +27,8 @@ const StaffRegisterForm: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Get token from localStorage (or your auth context if available)
-      const token = localStorage.getItem("token");
-      await axios.post(
-        "/api/auth/register-staff",
+      await api.post(
+        "/auth/register-staff",
         {
           email: form.email,
           password: form.password,
@@ -38,11 +36,6 @@ const StaffRegisterForm: React.FC = () => {
           last_name: form.lastName,
           phone: form.phone,
           tenant_id: form.tenantId,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         }
       );
       toast.success("Staff registered successfully!");

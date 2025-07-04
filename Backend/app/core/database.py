@@ -1,4 +1,3 @@
-import os
 from config import settings
 
 from sqlalchemy import create_engine
@@ -6,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 
-# 1) Use centralized DATABASE_URL
+# 1) Ensure DATABASE_URL is set
 DATABASE_URL = settings.database_url
 
 # 2) Create the SQLAlchemy engine with tuned pool settings

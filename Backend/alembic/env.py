@@ -29,7 +29,9 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from database import Base  # adjust import path as needed
+from app.core.database import Base  # use centralized Base
+# import all models to register them with Base.metadata
+import app.models  # noqa
 target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:

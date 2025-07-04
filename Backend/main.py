@@ -1,6 +1,6 @@
 # backend/main.py
 
-import os
+from config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -8,13 +8,12 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
 # Explicitly import each router
-from routes.auth    import router as auth_router
-from users   import router as users_router
-from routes.catalog import router as catalog_router
-from routes.loyalty import router as loyalty_router
-from routes.orders  import router as orders_router
-from routes.payments import router as payments_router
-from routes import auth
+from app.plugins.auth.routes    import router as auth_router
+from app.plugins.users.routes   import router as users_router
+from app.plugins.catalog.routes import router as catalog_router
+from app.plugins.loyalty.routes import router as loyalty_router
+from app.plugins.orders.routes  import router as orders_router
+from app.plugins.payments.routes import router as payments_router
 
 app = FastAPI(
     title="SMB Loyalty Program",
@@ -30,9 +29,8 @@ async def validation_exception_handler(request, exc: RequestValidationError):
         content=jsonable_encoder({"validation_errors": exc.errors()}),
     )
 
-# ─── CORS ─────────────────────────────────────────────────────────────────────
-origins = os.getenv("ALLOWED_ORIGINS", "")
-allowed = [o.strip() for o in origins.split(",") if o.strip()]
+   # ─── CORS ─────────────────────────────────────────────────────────────────────
+allowed = [o.strip() for o in settings.allowed_origins.split(",")] if settings.allowed_origins else ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed or ["*"],
@@ -41,14 +39,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Mount routers under /api ─────────────────────────────────────────────────
-app.include_router(auth_router,     prefix="/api")
-app.include_router(users_router,    prefix="/api")
-app.include_router(catalog_router,  prefix="/api")
-app.include_router(loyalty_router,  prefix="/api")
-app.include_router(orders_router,   prefix="/api")
-app.include_router(payments_router, prefix="/api")
-app.include_router(auth.router, prefix="/api/auth")
+# ─── Mount plugin routers under /api ────────────────────────────────────────────
+for prefix, router in [
+    ("/api/auth",     auth_router),
+    ("/api/users",    users_router),
+    ("/api/catalog",  catalog_router),
+    ("/api/loyalty",  loyalty_router),
+    ("/api/orders",   orders_router),
+    ("/api/payments", payments_router),
+]:
+    app.include_router(router, prefix=prefix)
 
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")

@@ -75,7 +75,7 @@ const ManualVisitLogger: React.FC = () => {
     setStatus(null);
     setLoading(true);
     try {
-      const res = await axiosAuth.post("/api/auth/visits/manual", { cellphone: cell });
+      const res = await axiosAuth.post("/auth/visits/manual", { cellphone: cell });
       // Expecting backend to return: { message, phone, name, count }
       const data: VisitResponse = res.data;
       setStatus(`Visit logged for ${data.name} (${normalizePhone(data.phone)})`);

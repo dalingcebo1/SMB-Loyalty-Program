@@ -5,6 +5,14 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
 });
 
+// --- AUTH HEADER INTERCEPTOR ---
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token && config.headers) {
+    config.headers["Authorization"] = `Bearer ${token}`;
+  }
+  return config;
+});
 // --- DEBUGGING INTERCEPTORS ---
 api.interceptors.request.use((req) => {
   console.log("[API Request]", {

@@ -9,6 +9,8 @@ import {
 import { useAuth } from "./auth/AuthProvider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { moduleFlags } from "./config/modules";
+import ModuleSettings from "./pages/admin/ModuleSettings";
 
 import Signup            from "./pages/Signup";
 import Login             from "./pages/Login";
@@ -28,6 +30,9 @@ import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
 import PastOrders from "./pages/PastOrders";
 import Account from "./pages/Account"; // <-- Add this import
+
+// Feature flags
+const { enableCatalog, enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
 
 function RequireAuth() {
   const { user, loading } = useAuth();
@@ -63,21 +68,22 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<Welcome />} />
-            <Route path="/myloyalty" element={<MyLoyalty />} />
-            <Route path="/past-orders" element={<PastOrders />} />
-            <Route path="/order" element={<OrderForm />} />
-            <Route path="/services" element={<OrderForm />} />
-            <Route path="/order/payment" element={<Payment />} />
-            <Route path="/order/confirmation" element={<OrderConfirmation />} />
-            <Route path="/account" element={<Account />} /> {/* <-- Add this line */}
+            {enableLoyalty && <Route path="/myloyalty" element={<MyLoyalty />} />}
+            {enableOrders && <Route path="/order" element={<OrderForm />} />}
+            {enableCatalog && <Route path="/services" element={<OrderForm />} />}
+            {enablePayments && <Route path="/order/payment" element={<Payment />} />}
+            {enableOrders && <Route path="/order/confirmation" element={<OrderConfirmation />} />}
+            {enableUsers && <Route path="/account" element={<Account />} />}
+            {enableOrders && <Route path="/past-orders" element={<PastOrders />} />}
 
             {/* STAFF */}
-            <Route path="/staff" element={<PaymentVerification />} />
+            {enablePayments && <Route path="/staff" element={<PaymentVerification />} />}
             <Route path="/staff/manual-visit" element={<ManualVisitLogger />} />
             <Route path="/staff/vehicle-manager" element={<VehicleManager />} />
 
             {/* ADMIN */}
-            <Route path="/admin/register-staff" element={<StaffRegisterForm />} />
+            {enableUsers && <Route path="/admin/register-staff" element={<StaffRegisterForm />} />}
+            <Route path="/admin/modules" element={<ModuleSettings />} />
           </Route>
         </Route>
 

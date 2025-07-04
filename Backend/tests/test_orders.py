@@ -1,0 +1,65 @@
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+from datetime import datetime
+import uuid
+
+from app.models import Service, Extra, Order, Payment, Vehicle
+from schemas import OrderCreateRequest, OrderCreateResponse
+from config import settings
+
+
+def test_create_and_retrieve_order(client: TestClient, db_session: Session):
+    # Seed service and extra
+    service = Service(category="wash", name="Basic Wash", base_price=100, loyalty_eligible=False)
+    extra = Extra(name="Wax", price_map={"standard": 50})
+    db_session.add_all([service, extra])
+    db_session.commit()
+
+    # Create order
+    payload = {"service_id": service.id, "quantity": 2, "extras": [{"id": extra.id, "quantity": 1}]}
+    resp = client.post("/api/orders/create", json=payload)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert "order_id" in data and "qr_data" in data
+    order_id = data["order_id"]
+
+    # Retrieve order details
+    resp = client.get(f"/api/orders/{order_id}")
+    assert resp.status_code == 200
+    detail = resp.json()
+    assert detail["orderId"] == order_id
+    assert detail["serviceName"] == service.name
+    # paymentPin should be present
+    assert "paymentPin" in detail and isinstance(detail["paymentPin"], str)
+
+
+def test_list_orders_and_assign_vehicle(client: TestClient, db_session: Session):
+    # Seed service
+    service = Service(category="wash", name="Deluxe Wash", base_price=150, loyalty_eligible=False)
+    db_session.add(service)
+    db_session.commit()
+
+    # Create order via legacy endpoint
+    create_payload = {"service_id": service.id, "quantity": 1, "extras": []}
+    legacy_resp = client.post("/api/orders", json=create_payload)
+    assert legacy_resp.status_code == 200
+    order = legacy_resp.json()
+    order_id = order["id"]
+
+    # List orders
+    resp = client.get("/api/orders")
+    assert resp.status_code == 200
+    orders = resp.json()
+    assert any(o["id"] == order_id for o in orders)
+
+    # Assign new vehicle
+    assign_payload = {"plate": "XYZ123", "make": "Test", "model": "Car"}
+    resp = client.post(f"/api/orders/{order_id}/assign-vehicle", json=assign_payload)
+    assert resp.status_code == 200
+    out = resp.json()
+    assert order_id == out.get("id") or out.get("order_id") == order_id
+
+    # Verify vehicle assigned in DB
+    veh = db_session.query(Vehicle).filter_by(plate="XYZ123").first()
+    assert veh is not None

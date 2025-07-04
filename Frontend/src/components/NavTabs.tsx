@@ -3,28 +3,27 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import { moduleFlags } from "../config/modules";
 
 const NavTabs: React.FC = () => {
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { enableCatalog, enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
 
   const navOptions = [
-    { to: "/services", label: "Services" },
-    { to: "/myloyalty", label: "Loyalty" },
-    { to: "/past-orders", label: "Past Orders" },
-    { to: "/account", label: "Account" },
-    ...((user?.role === "staff" || user?.role === "admin")
-      ? [
-          { to: "/staff", label: "Car Wash" },
-          { to: "/staff/manual-visit", label: "Log a visit" },
-          { to: "/staff/vehicle-manager", label: "Manage Vehicles" },
-        ]
-      : []),
-    ...(user?.role === "admin"
-      ? [
-          { to: "/admin/register-staff", label: "Register Staff" },
-        ]
-      : []),
+    ...(enableCatalog ? [{ to: "/services", label: "Services" }] : []),
+    ...(enableLoyalty ? [{ to: "/myloyalty", label: "Loyalty" }] : []),
+    ...(enableOrders ? [{ to: "/past-orders", label: "Past Orders" }] : []),
+    ...(enableUsers ? [{ to: "/account", label: "Account" }] : []),
+    ...((user?.role === "staff" || user?.role === "admin") ? [
+      ...(enablePayments ? [{ to: "/staff", label: "Car Wash" }] : []),
+      { to: "/staff/manual-visit", label: "Log a visit" },
+      { to: "/staff/vehicle-manager", label: "Manage Vehicles" },
+    ] : []),
+    ...(user?.role === "admin" ? [
+      ...(enableUsers ? [{ to: "/admin/register-staff", label: "Register Staff" }] : []),
+      { to: "/admin/modules", label: "Modules" },
+    ] : []),
   ];
 
   return (

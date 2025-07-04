@@ -8,4 +8,7 @@ qrcode[pil]
 pydantic
 python-dotenv
 requests
+pytest
+httpx
+pytest-cov
 alembic

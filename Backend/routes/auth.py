@@ -20,21 +20,12 @@ logger = logging.getLogger("vehicle_manager")
 logging.basicConfig(level=logging.INFO)
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
-SECRET_KEY = os.getenv("JWT_SECRET", "CHANGE_THIS_TO_A_STRONG_RANDOM_SECRET")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
-
-RESET_SECRET = os.getenv("RESET_SECRET", "CHANGE_THIS_TO_A_DIFFERENT_SECRET")
-RESET_TOKEN_EXPIRE_SECONDS = 60 * 30  # 30 minutes
-
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-RESET_EMAIL_FROM = os.getenv("RESET_EMAIL_FROM", "no-reply@example.com")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+from config import settings
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-reset_serializer = URLSafeTimedSerializer(RESET_SECRET)
+reset_serializer = URLSafeTimedSerializer(settings.reset_secret)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -108,17 +99,19 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_ctx.verify(plain, hashed)
 
 def create_access_token(email: str):
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode = {"sub": email, "exp": expire}
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.algorithm)
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    from jose.exceptions import ExpiredSignatureError
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.algorithm])
         email: str = payload.get("sub")
         if not email:
             raise credentials_exception
@@ -126,17 +119,29 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         if not user:
             raise credentials_exception
         return user
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except JWTError:
         raise credentials_exception
 
 def require_admin(current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
     return current_user
 
 def require_staff(current_user: User = Depends(get_current_user)):
     if current_user.role not in ("staff", "admin"):
-        raise HTTPException(status_code=403, detail="Staff only")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff privileges required",
+        )
     return current_user
 
 # ─── ENDPOINTS ─────────────────────────────────────────────────────────────
@@ -258,12 +263,12 @@ def request_password_reset(req: PasswordResetEmailRequest, db: Session = Depends
         # Do not reveal if user exists
         return {"message": "If the email exists, a reset link will be sent."}
     token = reset_serializer.dumps(user.email)
-    reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
+    reset_link = f"{settings.frontend_url}/reset-password?token={token}"
 
     # Send email
-    if SENDGRID_API_KEY:
+    if settings.sendgrid_api_key:
         message = Mail(
-            from_email=RESET_EMAIL_FROM,
+            from_email=settings.reset_email_from,
             to_emails=user.email,
             subject="Password Reset Request",
             html_content=f"""
@@ -274,7 +279,7 @@ def request_password_reset(req: PasswordResetEmailRequest, db: Session = Depends
             """
         )
         try:
-            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg = SendGridAPIClient(settings.sendgrid_api_key)
             sg.send(message)
         except Exception as e:
             print("SendGrid error:", e)
@@ -285,7 +290,7 @@ def request_password_reset(req: PasswordResetEmailRequest, db: Session = Depends
 @router.post("/reset-password-confirm")
 def reset_password_confirm(req: PasswordResetTokenRequest, db: Session = Depends(get_db)):
     try:
-        email = reset_serializer.loads(req.token, max_age=RESET_TOKEN_EXPIRE_SECONDS)
+        email = reset_serializer.loads(req.token, max_age=settings.reset_token_expire_seconds)
     except SignatureExpired:
         raise HTTPException(status_code=400, detail="Reset token expired")
     except BadSignature:

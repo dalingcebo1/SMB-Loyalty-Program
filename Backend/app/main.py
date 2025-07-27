@@ -37,3 +37,19 @@ app.add_middleware(
 plugin_manager = PluginManager(app)
 plugin_manager.register_models()
 plugin_manager.register_routes()
+# Legacy user vehicle endpoints for backward compatibility
+from fastapi import Depends
+from app.plugins.users.routes import add_vehicle, delete_vehicle, VehicleOut
+from app.plugins.auth.routes import require_staff
+# POST /api/users/users/{user_id}/vehicles
+app.post(
+    "/api/users/users/{user_id}/vehicles",
+    response_model=VehicleOut,
+    status_code=201,
+    dependencies=[Depends(require_staff)]
+)(add_vehicle)
+# DELETE /api/users/users/{user_id}/vehicles/{vehicle_id}
+app.delete(
+    "/api/users/users/{user_id}/vehicles/{vehicle_id}",
+    dependencies=[Depends(require_staff)]
+)(delete_vehicle)

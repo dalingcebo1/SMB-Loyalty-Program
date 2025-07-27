@@ -23,7 +23,8 @@ def test_signup_and_login_flow(client: TestClient, db_session: Session):
         "code": "0000",
         "first_name": "Alice",
         "last_name": "Smith",
-        "phone": "0812345678",
+        # Use a different phone than seeded test user to avoid conflict
+        "phone": "0821234567",
         "email": email,
         "tenant_id": settings.default_tenant
     }

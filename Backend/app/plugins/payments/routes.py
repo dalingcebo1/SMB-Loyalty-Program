@@ -166,7 +166,15 @@ def verify_payment(
 ):
     order = None
     if pin:
+        # Try matching Order.payment_pin, else fallback to transaction_id or reference
         order = db.query(Order).filter_by(payment_pin=pin).first()
+        if not order:
+            # lookup Payment by transaction_id or reference
+            payment = db.query(Payment).filter_by(transaction_id=pin, status="success").first()
+            if not payment:
+                payment = db.query(Payment).filter_by(reference=pin, status="success").first()
+            if payment:
+                order = db.query(Order).filter_by(id=payment.order_id).first()
     elif qr:
         payment = db.query(Payment).filter_by(reference=qr, status="success").first()
         if not payment:
@@ -209,21 +217,25 @@ def verify_loyalty(
     redemption.status = "used"
     redemption.redeemed_at = datetime.utcnow()
     if not redemption.order_id:
-        # create loyalty order and payment
+        # create loyalty order and payment if a loyalty-eligible service exists
         service = db.query(Service).filter_by(loyalty_eligible=True).first()
-        order = Order(
-            service_id=service.id,
-            quantity=1,
-            extras=[],
-            payment_pin=None,
-            user_id=redemption.user_id,
-            status="paid",
-            type="loyalty",
-            amount=0
-        )
-        db.add(order)
-        db.commit()
-        redemption.order_id = order.id
+        if service:
+            order = Order(
+                service_id=service.id,
+                quantity=1,
+                extras=[],
+                payment_pin=None,
+                user_id=redemption.user_id,
+                status="paid",
+                type="loyalty",
+                amount=0
+            )
+            db.add(order)
+            db.commit()
+            redemption.order_id = order.id
+        else:
+            # no loyalty service configured, skip order creation
+            redemption.order_id = None
     db.commit()
     return {"status": "ok", "type": "loyalty", "order_id": redemption.order_id}
 

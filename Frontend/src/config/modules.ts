@@ -22,6 +22,11 @@ export interface ModuleFlags {
   // Users submodules
   usersAccount: boolean;
   usersAdmin: boolean;
+  // Car Wash module
+  enableCarWash: boolean;
+  carWashVerify: boolean;
+  carWashLogVisit: boolean;
+  carWashManageVehicles: boolean;
 }
 
 const ENV_FLAGS: ModuleFlags = {
@@ -39,6 +44,11 @@ const ENV_FLAGS: ModuleFlags = {
   enableUsers: import.meta.env.VITE_ENABLE_USERS === 'true',
   usersAccount: false,
   usersAdmin: false,
+  // Car Wash flags
+  enableCarWash: import.meta.env.VITE_ENABLE_CAR_WASH === 'true',
+  carWashVerify: false,
+  carWashLogVisit: false,
+  carWashManageVehicles: false,
 };
 
 const STORAGE_KEY = 'moduleFlags';

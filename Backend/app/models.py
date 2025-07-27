@@ -3,15 +3,24 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    JSON,
     DateTime,
     ForeignKey,
     UniqueConstraint,
     Boolean,
+    Table,
+    JSON,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.core.database import Base
+
+# association table for tenant admins
+tenant_admins = Table(
+    "tenant_admins",
+    Base.metadata,
+    Column("tenant_id", String, ForeignKey("tenants.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+)
 
 
 class Tenant(Base):
@@ -19,8 +28,18 @@ class Tenant(Base):
     id           = Column(String, primary_key=True)
     name         = Column(String, nullable=False)
     loyalty_type = Column(String, nullable=False)
+    # New fields for tenant customization
+    subdomain    = Column(String, nullable=True)
+    logo_url     = Column(String, nullable=True)
+    theme_color  = Column(String, nullable=True)
     created_at   = Column(DateTime)
     rewards      = relationship("Reward", back_populates="tenant")
+    # tenant-admin many-to-many
+    admins       = relationship(
+        "User",
+        secondary=tenant_admins,
+        back_populates="tenants",
+    )
 
 
 class Service(Base):
@@ -53,6 +72,12 @@ class User(Base):
     role = Column(String, nullable=False, default="user")
 
     tenant = relationship("Tenant", back_populates="users")
+    # tenants this user administers
+    tenants = relationship(
+        "Tenant",
+        secondary=tenant_admins,
+        back_populates="admins",
+    )
 
 
 Tenant.users = relationship("User", back_populates="tenant")
@@ -75,10 +100,12 @@ class Reward(Base):
 
 class Order(Base):
     __tablename__ = "orders"
-    id         = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
+    # Use UUID string for order IDs
+    id         = Column(String, primary_key=True, index=True)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
     quantity   = Column(Integer, nullable=False, default=1)
-    extras     = Column(JSON, nullable=False, default=[])
+    # Store extras as JSON list in SQLite
+    extras     = Column(JSON, nullable=False)
     payment_pin = Column(String(4), nullable=True, unique=True)
     status     = Column(String, default="pending")
     user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -93,6 +120,8 @@ class Order(Base):
     service = relationship("Service")
     user    = relationship("User")
     items = relationship("OrderItem", back_populates="order")
+    # Vehicles assigned to this order
+    vehicles = relationship("OrderVehicle", back_populates="order", cascade="all, delete-orphan")
 
 
 class VisitCount(Base):
@@ -154,6 +183,18 @@ class Vehicle(Base):
     __table_args__ = (UniqueConstraint("plate", name="uq_vehicle_plate"),)
     user = relationship("User")
 
+# --- Invite tokens for onboarding ---
+class InviteToken(Base):
+    __tablename__ = "invite_tokens"
+    token = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False)
+    email = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+
+    tenant = relationship("Tenant")
+
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -175,7 +216,7 @@ class OrderVehicle(Base):
     order_id     = Column(String, ForeignKey("orders.id"),   nullable=False)
     vehicle_id   = Column(Integer, ForeignKey("vehicles.id"),nullable=False)
 
-    order   = relationship("Order")
+    order   = relationship("Order", back_populates="vehicles")
     vehicle = relationship("Vehicle")
 
 
@@ -183,8 +224,10 @@ class Payment(Base):
     __tablename__ = "payments"
     id            = Column(Integer, primary_key=True)
     order_id      = Column(String, ForeignKey("orders.id"), nullable=False)
-    amount        = Column(Integer, nullable=False)
-    method        = Column(String, nullable=False)
+    # Make amount optional with default to support webhook updates without initial amount
+    amount        = Column(Integer, nullable=True, default=0)
+    # Make method optional with default to support webhook entries without initial method
+    method        = Column(String, nullable=True, default="")
     transaction_id= Column(String)
     reference     = Column(String, unique=True)
     status        = Column(String, default="initialized")

@@ -24,6 +24,11 @@ const moduleGroups: Array<{ title: string; flag: keyof ModuleFlags; subs: Array<
     { key: 'usersAccount', label: 'Account' },
     { key: 'usersAdmin', label: 'Admin' },
   ]},
+  { title: 'Car Wash', flag: 'enableCarWash', subs: [
+    { key: 'carWashVerify', label: 'Verify' },
+    { key: 'carWashLogVisit', label: 'Log Visit' },
+    { key: 'carWashManageVehicles', label: 'Manage Vehicles' },
+  ]},
 ];
 
 const ModuleSettings: React.FC = () => {

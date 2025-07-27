@@ -20,9 +20,9 @@ from app.models import (
 )
 from app.plugins.orders.schemas import (
     OrderCreate,
-    OrderResponse,
     OrderCreateRequest,
     OrderCreateResponse,
+    OrderResponse,
     OrderDetailResponse,
     AssignVehicleRequest,
 )
@@ -54,11 +54,14 @@ def create_order(
             if not db.query(Extra).filter(Extra.id == e.id).first():
                 raise HTTPException(status_code=400, detail=f"Invalid extra id {e.id}")
         pin = generate_payment_pin(db)
+        # Store extras as Python list for JSON column
+        extras_list = [{"id": e.id, "quantity": e.quantity} for e in req.extras]
+        # Store extras list for JSON column
         new_order = Order(
             id=str(uuid.uuid4()),
             service_id=req.service_id,
             quantity=req.quantity,
-            extras=[{"id": e.id, "quantity": e.quantity} for e in req.extras],
+            extras=extras_list,
             payment_pin=pin,
             user_id=user.id,
         )

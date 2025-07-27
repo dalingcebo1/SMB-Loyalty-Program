@@ -11,16 +11,25 @@ const AdminLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow p-6">
+      <aside className="w-64 bg-white shadow p-6 max-h-screen overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Admin Panel</h2>
         <nav className="flex flex-col space-y-2">
-          <NavLink to="/admin/users" className={({ isActive }) => isActive ? 'font-bold' : ''}>
+          <NavLink
+            to="/"
+            className={({ isActive }) => isActive ? 'font-bold text-blue-700' : 'hover:underline'}
+          >
+            Home
+          </NavLink>
+          <hr className="my-2 border-gray-200" />
+          <NavLink to="/admin/users" className={({ isActive }) => isActive ? 'font-bold' : 'hover:underline'}>
             Users
           </NavLink>
-          <NavLink to="/admin/register-staff" className={({ isActive }) => isActive ? 'font-bold' : ''}>
+          <hr className="my-2 border-gray-200" />
+          <NavLink to="/admin/register-staff" className={({ isActive }) => isActive ? 'font-bold' : 'hover:underline'}>
             Register Staff
           </NavLink>
-          <NavLink to="/admin/modules" className={({ isActive }) => isActive ? 'font-bold' : ''}>
+          <hr className="my-2 border-gray-200" />
+          <NavLink to="/admin/modules" className={({ isActive }) => isActive ? 'font-bold' : 'hover:underline'}>
             Modules
           </NavLink>
         </nav>

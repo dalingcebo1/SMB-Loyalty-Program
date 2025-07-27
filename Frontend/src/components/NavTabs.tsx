@@ -72,7 +72,7 @@ const NavTabs: React.FC = () => {
 
           {/* Drawer */}
           <div
-            className="fixed top-0 left-0 h-full z-50 bg-white shadow-lg flex flex-col transition-transform duration-300"
+            className="fixed top-0 left-0 h-full z-50 bg-white shadow-lg flex flex-col overflow-y-auto transition-transform duration-300"
             style={{ width: "70vw", maxWidth: 320, minWidth: 240 }}
           >
             {/* User Info */}

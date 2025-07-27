@@ -9,10 +9,19 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     Boolean,
+    Table,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
+
+# association table for tenant admins
+tenant_admins = Table(
+    "tenant_admins",
+    Base.metadata,
+    Column("tenant_id", String, ForeignKey("tenants.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+)
 
 
 class Tenant(Base):
@@ -20,8 +29,17 @@ class Tenant(Base):
     id           = Column(String, primary_key=True)
     name         = Column(String, nullable=False)
     loyalty_type = Column(String, nullable=False)
+    subdomain    = Column(String, unique=True, nullable=True)
+    logo_url     = Column(String, nullable=True)
+    theme_color  = Column(String, nullable=True)
     created_at   = Column(DateTime)
     rewards      = relationship("Reward", back_populates="tenant")
+    # tenant-admin many-to-many
+    admins       = relationship(
+        "User",
+        secondary=tenant_admins,
+        back_populates="admin_of_tenants",
+    )
 
 
 class Service(Base):
@@ -54,6 +72,12 @@ class User(Base):
     role = Column(String, nullable=False, default="user")
 
     tenant = relationship("Tenant", back_populates="users")
+    # tenants this user administers
+    admin_of_tenants = relationship(
+        "Tenant",
+        secondary=tenant_admins,
+        back_populates="admins",
+    )
 
 
 Tenant.users = relationship("User", back_populates="tenant")
@@ -197,3 +221,15 @@ class Payment(Base):
     source        = Column(String, default="yoco")  # "yoco" or "loyalty"
 
     order = relationship("Order")
+
+# --- Invite token for tenant onboarding wizard
+class InviteToken(Base):
+    __tablename__ = "invite_tokens"
+    token = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False)
+    email = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+
+    tenant = relationship("Tenant")

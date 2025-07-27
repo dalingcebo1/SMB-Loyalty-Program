@@ -31,7 +31,7 @@ def test_vehicle_crud(client: TestClient, db_session: Session):
 
     # Add vehicle
     vehicle_data = {"plate": "ABC123", "make": "Ford", "model": "Fiesta"}
-    resp = client.post(f"/api/users/users/{user_id}/vehicles", json=vehicle_data)
+    resp = client.post(f"/api/users/{user_id}/vehicles", json=vehicle_data)
     assert resp.status_code == 201
     created = resp.json()
     assert created["plate"] == vehicle_data["plate"]
@@ -40,7 +40,7 @@ def test_vehicle_crud(client: TestClient, db_session: Session):
     vid = created["id"]
 
     # Get vehicles
-    resp = client.get(f"/api/users/users/{user_id}/vehicles")
+    resp = client.get(f"/api/users/{user_id}/vehicles")
     assert resp.status_code == 200
     items = resp.json()
     assert isinstance(items, list) and len(items) == 1
@@ -48,7 +48,7 @@ def test_vehicle_crud(client: TestClient, db_session: Session):
 
     # Update vehicle
     update_data = {"plate": "XYZ789", "make": "Toyota", "model": "Corolla"}
-    resp = client.patch(f"/api/users/users/{user_id}/vehicles/{vid}", json=update_data)
+    resp = client.patch(f"/api/users/{user_id}/vehicles/{vid}", json=update_data)
     assert resp.status_code == 200
     assert resp.json()["message"] == "Vehicle updated"
     # Verify update in DB
@@ -58,7 +58,7 @@ def test_vehicle_crud(client: TestClient, db_session: Session):
     assert v.model == update_data["model"]
 
     # Delete vehicle
-    resp = client.delete(f"/api/users/users/{user_id}/vehicles/{vid}")
+    resp = client.delete(f"/api/users/{user_id}/vehicles/{vid}")
     assert resp.status_code == 200
     assert resp.json()["message"] == "Vehicle deleted"
     # Verify deletion
@@ -92,14 +92,14 @@ def test_search_users(client: TestClient, db_session: Session):
     db_session.commit()
 
     # Search by first name
-    resp = client.get("/api/users/users/search", params={"query": "Alice"})
+    resp = client.get("/api/users/search", params={"query": "Alice"})
     assert resp.status_code == 200
     results = resp.json()
     assert len(results) == 1
     assert results[0]["email"] == u1.email
 
     # Search by phone (with 0 prefix)
-    resp = client.get("/api/users/users/search", params={"query": "0812222222"})
+    resp = client.get("/api/users/search", params={"query": "0812222222"})
     assert resp.status_code == 200
     results = resp.json()
     assert len(results) == 1

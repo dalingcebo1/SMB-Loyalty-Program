@@ -19,6 +19,12 @@ const StaffRegisterForm = lazy(() => import("./pages/admin/StaffRegisterForm"));
 const ModuleSettings = lazy(() => import("./pages/admin/ModuleSettings"));
 // Edit-user page
 const AdminUserEdit = lazy(() => import("./pages/AdminUserEdit"));
+// Tenants pages
+const TenantsList = lazy(() => import("./pages/admin/TenantsList"));
+const TenantEdit = lazy(() => import("./pages/admin/TenantEdit"));
+// Developer console bundle
+const DeveloperConsole = lazy(() => import("./pages/dev/DeveloperConsole"));
+const ProvisionWizard = lazy(() => import("./pages/dev/ProvisionWizard"));
 
 import Signup            from "./pages/Signup";
 import Login             from "./pages/Login";
@@ -66,6 +72,13 @@ function RequireAdmin() {
   if (!user || user.role !== "admin") return <Navigate to="/" replace />;
   return <Outlet />;
 }
+// Guard for developer-only pages
+function RequireDeveloper() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex items-center justify-center h-screen"><p>Loading…</p></div>;
+  if (!user || (user.role !== "developer" && user.role !== "admin")) return <Navigate to="/" replace />;
+  return <Outlet />;
+}
 
 export default function App() {
   return (
@@ -76,6 +89,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/onboarding/verify" element={<OTPVerify />} />
+        <Route path="/onboarding/invite" element={<Onboarding />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -144,6 +158,44 @@ export default function App() {
               element={
                 <Suspense fallback={<div>Loading modules…</div>}>
                   <ModuleSettings />
+                </Suspense>
+              }
+            />
+          </Route>
+        </Route>
+
+        {/* PROTECTED DEVELOPER ROUTES */}
+        <Route element={<RequireDeveloper />}>
+          <Route path="/dev" element={<Outlet />}>
+            <Route
+              index
+              element={
+                <Suspense fallback={<div>Loading dev console…</div>}>
+                  <DeveloperConsole />
+                </Suspense>
+              }
+            />
+            <Route
+              path="provision"
+              element={
+                <Suspense fallback={<div>Loading provision wizard…</div>}>
+                  <ProvisionWizard />
+                </Suspense>
+              }
+            />
+            <Route
+              path="tenants"
+              element={
+                <Suspense fallback={<div>Loading tenants…</div>}>
+                  <TenantsList />
+                </Suspense>
+              }
+            />
+            <Route
+              path="tenants/:tenantId"
+              element={
+                <Suspense fallback={<div>Loading tenant…</div>}>
+                  <TenantEdit />
                 </Suspense>
               }
             />

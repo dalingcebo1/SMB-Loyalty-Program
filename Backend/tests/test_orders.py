@@ -5,7 +5,7 @@ from datetime import datetime
 import uuid
 
 from app.models import Service, Extra, Order, Payment, Vehicle
-from schemas import OrderCreateRequest, OrderCreateResponse
+from app.plugins.orders.schemas import OrderCreateRequest, OrderCreateResponse
 from config import settings
 
 

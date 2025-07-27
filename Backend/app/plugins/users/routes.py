@@ -78,8 +78,7 @@ def search_users(query: str = Query(..., min_length=1), db: Session = Depends(ge
         for u in users
     ]
  
-@router.get("/")  # List all users
-@router.get("", response_model=list[UserOut])
+@router.get("", response_model=list[UserOut])  # List all users
 def list_users(db: Session = Depends(get_db)):
     """List all users (admin only)"""
     all_users = db.query(User).all()

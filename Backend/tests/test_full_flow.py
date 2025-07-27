@@ -23,6 +23,7 @@ def test_full_order_payment_loyalty_flow(client: TestClient, db_session: Session
     # Create an order
     order_payload = {"service_id": service.id, "quantity": 1, "extras": [{"id": extra.id, "quantity": 2}]}
     resp = client.post("/api/orders/create", json=order_payload)
+    print('Order creation:', resp.status_code, resp.json())
     assert resp.status_code == 201
     order_id = resp.json()["order_id"]
 

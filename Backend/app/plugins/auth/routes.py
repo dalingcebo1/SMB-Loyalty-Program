@@ -11,6 +11,10 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from sqlalchemy import or_
+from uuid import uuid4
+from datetime import datetime
+from app.models import InviteToken, Tenant
+from config import settings
 
 from app.core.database import get_db
 from app.models import User, VisitCount, Vehicle
@@ -143,6 +147,15 @@ def require_staff(current_user: User = Depends(get_current_user)) -> User:
             detail="Staff privileges required",
         )
     return current_user
+    
+def require_developer(current_user: User = Depends(get_current_user)) -> User:
+    """Guard for developer-only pages"""
+    if current_user.role not in ("developer", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Developer privileges required",
+        )
+    return current_user
 
 # ─── ENDPOINTS ─────────────────────────────────────────────────────────────
 @router.post("/signup", status_code=201)
@@ -259,6 +272,64 @@ def register_staff(req: StaffRegisterRequest, db: Session = Depends(get_db), cur
     u = User(email=req.email, hashed_password=get_password_hash(req.password), first_name=req.first_name, last_name=req.last_name, phone=req.phone, onboarded=True, created_at=datetime.utcnow(), tenant_id=req.tenant_id, role="staff")
     db.add(u); db.commit()
     return {"message": "Staff registered successfully"}
+ 
+# --- White-Glove Invite & Onboard Flow ---
+class InviteValidationOut(BaseModel):
+    tenant_id: str
+    name: str
+    loyalty_type: str
+    subdomain: Optional[str]
+    logo_url: Optional[str]
+    theme_color: Optional[str]
+
+@router.get("/validate-invite", response_model=InviteValidationOut)
+def validate_invite(token: str, db: Session = Depends(get_db)):
+    invite = db.query(InviteToken).filter_by(token=token, used=False).first()
+    if not invite or invite.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Invalid or expired invite token")
+    t = db.query(Tenant).filter_by(id=invite.tenant_id).first()
+    return InviteValidationOut(
+        tenant_id=t.id,
+        name=t.name,
+        loyalty_type=t.loyalty_type,
+        subdomain=t.subdomain,
+        logo_url=t.logo_url,
+        theme_color=t.theme_color,
+    )
+
+class CompleteInviteRequest(BaseModel):
+    token: str
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    phone: str
+
+@router.post("/complete-invite", status_code=201)
+def complete_invite(req: CompleteInviteRequest, db: Session = Depends(get_db)):
+    invite = db.query(InviteToken).filter_by(token=req.token, used=False).first()
+    if not invite or invite.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Invalid or expired invite token")
+    # create user as tenant-admin
+    if db.query(User).filter_by(email=req.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    u = User(
+        email=req.email,
+        hashed_password=get_password_hash(req.password),
+        first_name=req.first_name,
+        last_name=req.last_name,
+        phone=req.phone,
+        onboarded=True,
+        created_at=datetime.utcnow(),
+        tenant_id=invite.tenant_id,
+        role="admin",
+    )
+    db.add(u)
+    # mark invite used
+    invite.used = True
+    db.commit()
+    token = create_access_token(req.email)
+    return {"access_token": token}
 
 @router.patch("/users/{user_id}/role", status_code=200)
 def update_user_role(user_id: int, new_role: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):

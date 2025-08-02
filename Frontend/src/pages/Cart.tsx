@@ -1,19 +1,33 @@
 // Frontend/src/pages/Cart.tsx
 import React, { useState, useEffect } from 'react';
 import { CartItem, Service, Extra } from '../types';
-import  api  from '../api/api';
+import api from '../api/api';
+import Loading from '../components/Loading';
+import ErrorMessage from '../components/ErrorMessage';
 
 const Cart: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [services, setServices] = useState<Record<string,Service[]>>({});
   const [extras, setExtras] = useState<Extra[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('cart');
     if (stored) setCart(JSON.parse(stored));
 
-    api.get('/catalog/services').then(r => setServices(r.data));
-    api.get('/catalog/extras').then(r => setExtras(r.data));
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      api.get('/catalog/services'),
+      api.get('/catalog/extras')
+    ])
+      .then(([svcRes, exRes]) => {
+        setServices(svcRes.data);
+        setExtras(exRes.data);
+      })
+      .catch((err) => setError('Failed to load cart data.'))
+      .finally(() => setLoading(false));
   }, []);
 
   // lookup helpers
@@ -36,6 +50,12 @@ const Cart: React.FC = () => {
     return sum + svcTotal + extrasTotal;
   }, 0);
 
+  if (loading) {
+    return <Loading text="Loading cart..." />;
+  }
+  if (error) {
+    return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
+  }
   return (
     <div style={{ padding: 20 }}>
       <h2>Your Cart</h2>

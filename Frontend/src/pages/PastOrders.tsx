@@ -1,44 +1,15 @@
-import React, { useEffect, useState } from "react";
-import api from "../api/api";
+import React, { useState } from "react";
 import QRCode from "react-qr-code";
-
-interface Extra {
-  id: number;
-  quantity: number;
-  name?: string; // If your backend can provide extra names, use them
-}
-
-interface Order {
-  id: string;
-  service_id: number;
-  extras: Extra[];
-  payment_pin: string;
-  status: string;
-  user_id: number;
-  created_at: string;
-  redeemed: boolean;
-  started_at: string | null;
-  ended_at: string | null;
-  amount?: number;
-  service_name?: string; // If your backend can provide service name, use it
-  order_redeemed_at?: string | null; // <-- Add this line
-}
+import useFetch from "../hooks/useFetch";
+import { Order } from "../types";
+import PageLayout from "../components/PageLayout";
 
 const PastOrders: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: orderData, loading, error } = useFetch<Order[]>("/orders/my-past-orders");
+  const orders: Order[] = orderData ?? [];
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
   const [showAll, setShowAll] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    api
-      .get("/orders/my-past-orders")
-      .then((res) => setOrders(res.data))
-      .catch(() => setError("Failed to load past orders"))
-      .finally(() => setLoading(false));
-  }, []);
 
   // Helper to get a user-friendly order summary
   const getOrderSummary = (order: Order) => {
@@ -58,17 +29,19 @@ const PastOrders: React.FC = () => {
   const visibleOrders = showAll ? orders : orders.slice(0, 3);
 
   return (
-    <div className="max-w-xl mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6 text-center">Past Orders</h1>
-      {loading && <div className="text-center text-gray-500">Loading…</div>}
-      {error && <div className="text-center text-red-500">{error}</div>}
-      {!loading && !error && (
-        <div>
-          {orders.length === 0 ? (
-            <div className="text-center text-gray-500">No past orders found.</div>
-          ) : (
-            <>
-              {visibleOrders.map((order) => (
+    <PageLayout
+      loading={loading}
+      error={error}
+      onRetry={() => window.location.reload()}
+      loadingText="Loading past orders..."
+    >
+      <div className="max-w-xl mx-auto py-8">
+        <h1 className="text-2xl font-bold mb-6 text-center">Past Orders</h1>
+        {orders.length === 0 ? (
+          <div className="text-center text-gray-500">No past orders found.</div>
+        ) : (
+          <>        
+            {visibleOrders.map((order) => (
                 <div
                   key={order.id}
                   className="bg-white rounded shadow p-4 mb-6 flex flex-col"
@@ -196,7 +169,7 @@ const PastOrders: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 };
 

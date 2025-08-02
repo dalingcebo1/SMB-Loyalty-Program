@@ -4,6 +4,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation }           from "react-router-dom";
 import api                                    from "../api/api";
+import Loading                                from "../components/Loading";
+import ErrorMessage                           from "../components/ErrorMessage";
 import { auth }                               from "../firebase";
 import { signInWithPhoneNumber }              from "firebase/auth";
 import { confirmationRef }                    from "./Onboarding";
@@ -121,6 +123,10 @@ const OTPVerify: React.FC = () => {
   };
 
 
+  // Show loading UI during OTP verification
+  if (loading) return <Loading text="Verifying OTP..." />;
+  // Show error UI
+  if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
   // Verify & finalize
   const submitOTP = async () => {
     setError("");
@@ -220,7 +226,7 @@ const OTPVerify: React.FC = () => {
   return (
     <div className="p-6 max-w-sm mx-auto">
       <h1 className="text-xl font-semibold mb-4">Enter Verification Code</h1>
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+      {/* error handled above */}
 
 
       <div className="flex space-x-2 mb-6">

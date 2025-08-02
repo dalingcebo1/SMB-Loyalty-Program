@@ -1,6 +1,8 @@
 // src/pages/OrderConfirmation.tsx
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-router-dom";
+import Loading from "../components/Loading";
+import ErrorMessage from "../components/ErrorMessage";
 import QRCode from "react-qr-code";
 import axios from "axios";
 import { useAuth } from "../auth/AuthProvider";
@@ -82,84 +84,45 @@ const OrderConfirmation: React.FC = () => {
     }
   }, [orderId, qrData, isLoading, navigate]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <Loading text="Checking authentication..." />;
   if (!user) return <Navigate to="/login" replace />;
 
-  if (isLoading) {
-    return (
-      <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
-        <h1 style={{ marginBottom: 16 }}>Loading your order…</h1>
-      </section>
-    );
-  }
+  if (isLoading) return <Loading text="Loading your order..." />;
 
   return (
-    <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
-      <h1 style={{ marginBottom: 16, textAlign: "center" }}>Your Order Is Confirmed!</h1>
-      {error && (
-        <div style={{
-          background: "#ffeaea",
-          color: "#b00020",
-          padding: "12px 18px",
-          borderRadius: 6,
-          marginBottom: 16,
-          fontWeight: "bold"
-        }}>
-          {error}
-        </div>
-      )}
-      <div style={{ margin: "1rem 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <section className="mx-auto my-8 max-w-md p-6 bg-gray-50 rounded-lg">
+      <h1 className="mb-4 text-center text-xl font-semibold">Your Order Is Confirmed!</h1>
+      {error && <ErrorMessage message={error} onRetry={() => window.location.reload()} />}
+      <div className="my-4 flex flex-col items-center">
         {qrCodeBase64 ? (
-          <img
-            src={`data:image/png;base64,${qrCodeBase64}`}
-            alt="Payment QR Code"
-            style={{ width: 200, height: 200 }}
-          />
+            <img
+              src={`data:image/png;base64,${qrCodeBase64}`}
+              alt="Payment QR Code"
+              className="w-48 h-48"
+            />
         ) : qrData ? (
           <QRCode value={qrData} size={200} />
         ) : (
           <div style={{ color: "#b00020", marginBottom: 12 }}>No QR code available.</div>
         )}
         {paymentPin && (
-          <div style={{
-            marginTop: 16,
-            padding: "12px 24px",
-            background: "#e9ecef",
-            borderRadius: 6,
-            fontSize: 22,
-            fontWeight: "bold",
-            letterSpacing: 4,
-            color: "#333"
-          }}>
-            Payment PIN: <span style={{ color: "#007bff" }}>{paymentPin}</span>
+          <div className="mt-4 px-6 py-3 bg-gray-100 rounded-lg text-lg font-bold tracking-widest text-gray-800">
+            Payment PIN: <span className="text-blue-500">{paymentPin}</span>
           </div>
         )}
         {amount > 0 && (
-          <div style={{
-            marginTop: 12,
-            fontSize: 18,
-            color: "#222"
-          }}>
-            Amount Paid: <span style={{ fontWeight: "bold" }}>R{(amount / 100).toFixed(2)}</span>
+          <div className="mt-3 text-lg text-gray-800">
+            Amount Paid: <span className="font-bold">R{(amount / 100).toFixed(2)}</span>
           </div>
         )}
       </div>
-      <p style={{ margin: "16px 0", textAlign: "center" }}>
+      <p className="my-4 text-center">
         Show this QR code or pin to staff to verify your payment. You can also find it in the Past Order Tab
       </p>
-      <div style={{ display: "flex", justifyContent: "center" }}>
+      <div className="flex justify-center">
         <button
           onClick={() => navigate("/past-orders")}
-          style={{
-            marginBottom: 24,
-            padding: "10px 24px",
-            borderRadius: 6,
-            background: "#007bff",
-            color: "#fff",
-            border: "none",
-            fontWeight: "bold",
-            cursor: "pointer"
-          }}
+          className="mb-6 px-6 py-3 bg-blue-600 text-white rounded font-bold cursor-pointer"
         >
           View Orders
         </button>

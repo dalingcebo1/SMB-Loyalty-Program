@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
+import Loading from "../components/Loading";
+import ErrorMessage from "../components/ErrorMessage";
 import { useAuth } from "../auth/AuthProvider";
 
 interface Service {
@@ -181,13 +183,12 @@ const OrderForm: React.FC = () => {
   // Block anonymous users
   if (!user) return <Navigate to="/login" replace />;
 
-  // Loading skeleton
+  // Handle loading and errors for catalog data
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <span className="text-gray-500 text-base">Loading…</span>
-      </div>
-    );
+    return <Loading text="Loading order form..." />;
+  }
+  if (servicesQuery.error || extrasQuery.error) {
+    return <ErrorMessage message="Failed to load order form data." onRetry={() => window.location.reload()} />;
   }
 
   // Render

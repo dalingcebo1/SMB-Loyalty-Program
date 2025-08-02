@@ -1,6 +1,8 @@
 // src/pages/Services.tsx
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import Loading from "../components/Loading";
+import ErrorMessage from "../components/ErrorMessage";
 
 interface Service {
   id: number;
@@ -15,15 +17,19 @@ const Services: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [services, setServices] = useState<Service[]>([]);
+  // Loading and error state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch and initialize on mount
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     api
       .get("/catalog/services")
       .then((res) => {
         const data: Record<string, Service[]> = res.data;
         setByCategory(data);
-
         const cats = Object.keys(data);
         setCategories(cats);
         if (cats.length) {
@@ -31,10 +37,19 @@ const Services: React.FC = () => {
           setServices(data[cats[0]]);
         }
       })
-      .catch((err) => {
-        console.error("Error loading services:", err);
-      });
+      .catch(() => {
+        setError("Failed to load services.");
+      })
+      .finally(() => setLoading(false));
   }, []);
+  
+  // Loading and error states
+  if (loading) {
+    return <Loading text="Loading services..." />;
+  }
+  if (error) {
+    return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
+  }
 
   // Update services list whenever the category changes
   useEffect(() => {

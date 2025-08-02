@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../api/api";
+import PageLayout from "../components/PageLayout";
 
 type FormData = {
   email: string;
@@ -43,8 +44,14 @@ const Signup: React.FC = () => {
   };
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
-      <h1 className="text-2xl font-semibold text-center">Sign Up</h1>
+    <PageLayout
+      loading={isSubmitting}
+      error={signUpError}
+      onRetry={() => window.location.reload()}
+      loadingText="Signing up..."
+    >
+      <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
+        <h1 className="text-2xl font-semibold text-center">Sign Up</h1>
 
       <form onSubmit={handleSubmit(onEmail)} className="space-y-4">
         <div>
@@ -90,9 +97,7 @@ const Signup: React.FC = () => {
           {isSubmitting ? "Signing up…" : "Sign Up"}
         </button>
 
-        {signUpError && (
-          <p className="text-red-500 text-center text-sm">{signUpError}</p>
-        )}
+        {/* error handled by PageLayout */}
       </form>
 
       <p className="text-center text-sm">
@@ -101,7 +106,8 @@ const Signup: React.FC = () => {
           Log in
         </Link>
       </p>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

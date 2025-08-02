@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { QrReader } from "react-qr-reader";
+import Toast from "../../components/Toast";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 // Types for user and vehicle
 interface Vehicle {
@@ -29,12 +31,6 @@ interface Wash {
   extras?: string[];     // Extras selected
 }
 
-const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
-  <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow z-50">
-    {message}
-    <button className="ml-4 text-white font-bold" onClick={onClose}>&times;</button>
-  </div>
-);
 
 const PaymentVerification: React.FC = () => {
   const [ref, setRef] = useState("");
@@ -224,31 +220,15 @@ const PaymentVerification: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto p-4">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-
-      {/* Confirm End Wash Modal */}
-      {confirmEndWash && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded shadow-lg p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold mb-2">Are you sure?</h3>
-            <p className="mb-4">Do you want to end this wash? This action cannot be undone.</p>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 bg-gray-300 rounded"
-                onClick={() => setConfirmEndWash(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-green-600 text-white rounded"
-                onClick={confirmEndWashAction}
-                disabled={loading}
-              >
-                Yes, End Wash
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={!!confirmEndWash}
+        title="Are you sure?"
+        description="Do you want to end this wash? This action cannot be undone."
+        confirmLabel="Yes, End Wash"
+        onConfirm={confirmEndWashAction}
+        onCancel={() => setConfirmEndWash(null)}
+        loading={loading}
+      />
 
       <div className="bg-white rounded shadow p-6 mb-6">
         <h1 className="text-2xl font-bold mb-4 text-center">Payment Verification</h1>

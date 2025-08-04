@@ -2,6 +2,9 @@
 import React, { useEffect, useState } from "react";
 import StepIndicator from "../components/StepIndicator";
 import { track } from '../utils/analytics';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { moduleFlags } from '../config/modules';
 import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-router-dom";
 import Loading from "../components/Loading";
 import ErrorMessage from "../components/ErrorMessage";
@@ -17,10 +20,14 @@ interface LocationState {
   amount: number;
   paymentPin?: string;
   error?: string;
+  summary?: string[];
+  timestamp?: number;
 }
 
 const OrderConfirmation: React.FC = () => {
   const navigate = useNavigate();
+  const { enableOrders, enableLoyalty } = moduleFlags;
+
   // Analytics: page view
   useEffect(() => {
     track('page_view', { page: 'OrderConfirmation' });
@@ -44,6 +51,8 @@ const OrderConfirmation: React.FC = () => {
   const [amount, setAmount] = useState<number>(0);
   const [paymentPin, setPaymentPin] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [summary, setSummary] = useState<string[]>([]);
+  const [timestamp, setTimestamp] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -59,6 +68,8 @@ const OrderConfirmation: React.FC = () => {
         setAmount(s.amount);
         setPaymentPin(s.paymentPin);
         setError(s.error);
+        setSummary(s.summary || []);
+        setTimestamp(s.timestamp);
         setIsLoading(false);
         didSet = true;
       }
@@ -74,6 +85,8 @@ const OrderConfirmation: React.FC = () => {
           setAmount(resp.data.amount || 0);
           setPaymentPin(resp.data.payment_pin);
           setError(undefined);
+          setSummary([]);
+          setTimestamp(Date.now());
         })
         .catch(() => {
           setError("Could not find order or QR code.");
@@ -154,6 +167,8 @@ const OrderConfirmation: React.FC = () => {
     <PageLayout error={error || undefined} onRetry={() => window.location.reload()}>
       <StepIndicator currentStep={3} />
       <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
+        {/* Toast notifications */}
+        <ToastContainer position="top-right" />
         <h1 style={{ marginBottom: 16, textAlign: "center" }}>Your Order Is Confirmed!</h1>
         {error && (
           <div style={{
@@ -203,43 +218,101 @@ const OrderConfirmation: React.FC = () => {
             </div>
           )}
         </div>
+        {/* Order summary and timestamp */}
+        {summary.length > 0 && (
+          <div style={{ marginTop: 12, textAlign: 'center' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: 8 }}>Order Summary</h3>
+            <ul style={{ listStyle: 'disc inside', fontSize: '14px', color: '#555' }}>
+              {summary.map((item, idx) => <li key={idx}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+        {timestamp && (
+          <div style={{ marginTop: 8, fontSize: '12px', color: '#888', textAlign: 'center' }}>
+            Ordered on: {new Date(timestamp).toLocaleString()}
+          </div>
+        )}
         <p style={{ margin: "16px 0", textAlign: "center" }}>
           Show this QR code or pin to staff to verify your payment. You can also find it in the Past Order Tab
         </p>
         <div style={{ display: "flex", justifyContent: "center" , gap: "1rem"}}>
-          <button
-            onClick={() => {
-              track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
-              navigate("/past-orders");
-            }}
-            style={{
-              marginBottom: 24,
-              padding: "10px 24px",
-              borderRadius: 6,
-              background: "#007bff",
-              color: "#fff",
-              border: "none",
-              fontWeight: "bold",
-              cursor: "pointer"
-            }}
-          >
-            View Orders
-          </button>
-          <button
-            onClick={() => navigate("/myloyalty")}
-            style={{
-              marginBottom: 24,
-              padding: "10px 24px",
-              borderRadius: 6,
-              background: "#10b981",
-              color: "#fff",
-              border: "none",
-              fontWeight: "bold",
-              cursor: "pointer"
-            }}
-          >
-            Go to My Loyalty
-          </button>
+          {enableOrders && (
+            <button
+              onClick={() => {
+                track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
+                navigate("/past-orders");
+              }}
+              style={{
+                marginBottom: 24,
+                padding: "10px 24px",
+                borderRadius: 6,
+                background: "#007bff",
+                color: "#fff",
+                border: "none",
+                fontWeight: "bold",
+                cursor: "pointer"
+              }}
+            >
+              View Orders
+            </button>
+          )}
+          {enableLoyalty && (
+            <button
+              onClick={() => navigate("/myloyalty")}
+              style={{
+                marginBottom: 24,
+                padding: "10px 24px",
+                borderRadius: 6,
+                background: "#10b981",
+                color: "#fff",
+                border: "none",
+                fontWeight: "bold",
+                cursor: "pointer"
+              }}
+            >
+              Go to My Loyalty
+            </button>
+          )}
+          {/* Download and copy actions */}
+          {qrCodeBase64 && (
+            <a
+              href={`data:image/png;base64,${qrCodeBase64}`} download={`order-${orderId}.png`}
+              style={{
+                marginBottom: 24,
+                padding: "10px 24px",
+                borderRadius: 6,
+                background: "#e2e8f0",
+                color: "#333",
+                border: "none",
+                fontWeight: "bold",
+                cursor: "pointer",
+                textDecoration: 'none'
+              }}
+            >
+              Download QR
+            </a>
+          )}
+          {paymentPin && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(paymentPin);
+                track('cta_click', { label: 'Copy PIN', page: 'OrderConfirmation' });
+                toast.success('PIN copied to clipboard');
+              }}
+              style={{
+                marginBottom: 24,
+                padding: "10px 24px",
+                borderRadius: 6,
+                background: "#e2e8f0",
+                color: "#333",
+                border: "none",
+                fontWeight: "bold",
+                cursor: "pointer"
+              }}
+            >
+              Copy PIN
+            </button>
+          )}
         </div>
         <div className="mt-6 text-xs text-gray-400 text-center">
           Secured by <span className="font-bold text-blue-500">YOCO</span>

@@ -30,6 +30,9 @@ const OrderForm: React.FC = () => {
   }, []);
   const navigate = useNavigate();
   const location = useLocation();
+  // Check if user has a ready reward
+  const [hasReadyReward, setHasReadyReward] = useState(false);
+  const [useReward, setUseReward] = useState(false);
 
   // Analytics: page view of OrderForm
   useEffect(() => {
@@ -161,14 +164,40 @@ const OrderForm: React.FC = () => {
     extras,
   ]);
 
+  // Compute a human-readable order summary for payment and confirmation
+  const orderSummary = useMemo(() => {
+    const lines: string[] = [];
+    // Service line
+    if (selectedServiceId && selectedCategory) {
+      const svc = servicesByCategory[selectedCategory]?.find(s => s.id === selectedServiceId);
+      if (svc) {
+        lines.push(`${svc.name} × ${serviceQuantity}`);
+      }
+    }
+    // Extras lines
+    extras.forEach(e => {
+      const qty = extraQuantities[e.id] || 0;
+      if (qty > 0) {
+        const name = e.name || `Extra ${e.id}`;
+        lines.push(`${name} × ${qty}`);
+      }
+    });
+    return lines;
+  }, [selectedCategory, selectedServiceId, serviceQuantity, extras, extraQuantities, servicesByCategory]);
+
   // Submit order
   const handleSubmit = () => {
+    // Validate before submit
     if (!selectedServiceId) {
       toast.warning("Please select a service");
       return;
     }
+    if (serviceQuantity < 1) {
+      toast.warning("Service quantity must be at least 1");
+      return;
+    }
 
-    // Analytics: CTA click for confirming and paying order
+    // Analytics: CTA click
     track('cta_click', { label: 'Confirm & Pay', page: 'OrderForm' });
     setIsSubmitting(true);
 
@@ -185,24 +214,19 @@ const OrderForm: React.FC = () => {
       .post("/orders/create", payload)
       .then((res) => {
         const { order_id, qr_data } = res.data;
-        const paymentState = {
+        const paymentState: any = {
           orderId: order_id,
           qrData: qr_data,
           total: total * 100,
-          summary: [] as string[],
+          summary: orderSummary,
+          timestamp: Date.now(),
         };
-        // Persist pending order so refresh won't lose state
         localStorage.setItem('pendingOrder', JSON.stringify(paymentState));
         toast.success("Order placed!");
         navigate("/order/payment", { state: paymentState });
       })
       .catch((err: any) => {
-        const msg =
-          err?.response?.data?.detail ??
-          err?.response?.data ??
-          err.message ??
-          "Server error";
-        toast.error(msg);
+        toast.error(err.response?.data?.detail || "Failed to place order");
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -342,10 +366,39 @@ const OrderForm: React.FC = () => {
             </div>
           </section>
 
+          {/* Reward checkbox */}
+          {hasReadyReward && (
+           <div className="mb-4 flex items-center">
+             <input
+               id="useReward"
+               type="checkbox"
+               checked={useReward}
+               onChange={() => setUseReward(!useReward)}
+               className="mr-2"
+             />
+             <label htmlFor="useReward" className="text-sm text-gray-700">
+               Use reward on next eligible order
+             </label>
+           </div>
+          )}
+
           {/* 4.  Live total & submit */}
           <div className="mt-4 font-bold text-base text-center">
             Total: R {total}
           </div>
+
+          {/* Order summary preview */}
+          {orderSummary.length > 0 && (
+            <div className="mb-6 bg-gray-100 p-4 rounded">
+              <h3 className="font-semibold text-gray-700 mb-2">Your Order</h3>
+              <ul className="list-disc list-inside text-gray-600">
+                {orderSummary.map((line, idx) => (
+                  <li key={idx}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}

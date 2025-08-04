@@ -60,6 +60,9 @@ const Payment: React.FC = () => {
   const [rewardInfo, setRewardInfo] = useState<{ reward: string; expiry?: string; milestone?: number } | null>(null);
   const [, setService] = useState<Service | null>(null);
   const [canApplyLoyalty, setCanApplyLoyalty] = useState(false);
+  // loading states
+  const [loadingEligibility, setLoadingEligibility] = useState(true);
+  const [loadingReward, setLoadingReward] = useState(false);
 
   const { refreshUser, user } = useAuth();
 
@@ -119,36 +122,35 @@ const Payment: React.FC = () => {
   // Fetch the order's service to check loyalty_eligible
   useEffect(() => {
     if (!orderId) return;
+    setLoadingEligibility(true);
     api.get(`/orders/${orderId}`)
       .then(res => {
-        // Use loyalty_eligible directly from the order response if available
         if (typeof res.data.loyalty_eligible !== "undefined") {
           setCanApplyLoyalty(!!res.data.loyalty_eligible);
-          // Optionally, setService with more info if needed
         } else {
-          // Fallback: fetch service by ID if not present in order response
           const svcId = res.data.serviceId ?? res.data.service_id;
           if (svcId) {
-            api.get(`/services/${svcId}`).then(svcRes => {
-              setService(svcRes.data);
-              setCanApplyLoyalty(!!svcRes.data.loyalty_eligible);
-            }).catch(() => {
-              setCanApplyLoyalty(false);
-            });
+            api.get(`/services/${svcId}`)
+              .then(svcRes => {
+                setService(svcRes.data);
+                setCanApplyLoyalty(!!svcRes.data.loyalty_eligible);
+              })
+              .catch(() => setCanApplyLoyalty(false));
           } else {
             setCanApplyLoyalty(false);
           }
         }
       })
-      .catch(() => setCanApplyLoyalty(false));
+      .catch(() => setCanApplyLoyalty(false))
+      .finally(() => setLoadingEligibility(false));
   }, [orderId]);
 
   // Check if user has a reward available for this order
   useEffect(() => {
     if (!user) return;
+    setLoadingReward(true);
     api.get("/loyalty/me", { params: { phone: user.phone } })
       .then(res => {
-        // Find a ready reward for this user (milestone reward, e.g. "Full House" or "Free Wash")
         const reward = res.data.rewards_ready?.find(
           (r: any) =>
             r.reward.toLowerCase().includes("full house") ||
@@ -161,7 +163,9 @@ const Payment: React.FC = () => {
             milestone: reward.milestone,
           });
         }
-      });
+      })
+      .catch(() => {})
+      .finally(() => setLoadingReward(false));
   }, [user]);
 
   const handleApplyReward = async () => {
@@ -281,6 +285,8 @@ const Payment: React.FC = () => {
   };
 
   const amountToPay = total - rewardDiscount;
+  // Determine if fetched reward has expired
+  const hasRewardExpired = rewardInfo?.expiry ? new Date(rewardInfo.expiry) < new Date() : false;
 
   return (
     <PageLayout>
@@ -292,25 +298,35 @@ const Payment: React.FC = () => {
           <div className="text-lg font-semibold text-center mb-6">
             Amount: <span className="text-black font-bold">R {(amountToPay / 100).toFixed(2)}</span>
           </div>
-          {rewardInfo && canApplyLoyalty && (
-            <div className="mb-4 text-center">
-              <div className="text-green-700 font-semibold">
-                Loyalty Reward Available: {rewardInfo.reward}
-              </div>
-              {rewardInfo.expiry && (
-                <div className="text-xs text-gray-500">
-                  Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
+          {/* Loyalty section: show loading, eligibility or reward info */}
+          {loadingEligibility ? (
+            <div className="text-center mb-4 text-gray-500">Checking loyalty eligibility…</div>
+          ) : rewardInfo ? (
+            canApplyLoyalty ? (
+              hasRewardExpired ? (
+                <div className="mb-4 text-center text-red-500">
+                  Loyalty Reward Expired
                 </div>
-              )}
-            </div>
-          )}
-          {rewardInfo && !canApplyLoyalty && (
-            <div className="mb-4 text-center">
-              <div className="text-gray-500 font-semibold">
-                Loyalty rewards cannot be applied to this service.
+              ) : (
+                <div className="mb-4 text-center">
+                  <div className="text-green-700 font-semibold">
+                    Loyalty Reward Available: {rewardInfo.reward}
+                  </div>
+                  {rewardInfo.expiry && (
+                    <div className="text-xs text-gray-500">
+                      Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              )
+            ) : (
+              <div className="mb-4 text-center">
+                <div className="text-gray-500 font-semibold">
+                  Loyalty rewards cannot be applied to this service.
+                </div>
               </div>
-            </div>
-          )}
+            )
+          ) : null}
           {summary.length > 0 && (
             <div className="mb-4">
               <h3 className="font-semibold text-gray-700 mb-2 text-center">Order Summary</h3>
@@ -331,14 +347,19 @@ const Payment: React.FC = () => {
             >
               {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
             </button>
-            {rewardInfo && canApplyLoyalty && !rewardApplied && (
+            {rewardInfo && canApplyLoyalty && !rewardApplied && !hasRewardExpired && (
               <button
                 onClick={handleApplyReward}
-                disabled={paying}
-                className="w-full py-2 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition"
+                disabled={paying || loadingReward}
+                className="w-full py-2 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Apply Reward
+                {loadingReward ? 'Checking reward…' : 'Apply Reward'}
               </button>
+            )}
+            {rewardInfo && hasRewardExpired && (
+              <div className="text-center text-red-500 font-semibold">
+                This reward has expired.
+              </div>
             )}
             {rewardApplied && (
               <div className="text-green-700 text-center font-semibold">

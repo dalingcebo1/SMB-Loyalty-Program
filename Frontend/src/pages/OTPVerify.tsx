@@ -11,6 +11,7 @@ import { signInWithPhoneNumber }              from "firebase/auth";
 import { confirmationRef }                    from "./Onboarding";
 import { useAuth }                            from "../auth/AuthProvider";  // ← fix path
 import { toast }                              from "react-toastify";
+import PageLayout                             from "../components/PageLayout";
 
 
 // Extend the Window interface to include recaptchaVerifier
@@ -224,48 +225,56 @@ const OTPVerify: React.FC = () => {
 
 
   return (
+<<<<<<< HEAD
     <div className="p-6 max-w-sm mx-auto">
       <h1 className="text-xl font-semibold mb-4">Enter Verification Code</h1>
       {/* error handled above */}
+=======
+    <PageLayout loading={loading} error={error || undefined}>
+      <div className="p-6 max-w-sm mx-auto">
+        <h1 className="text-xl font-semibold mb-4">Enter Verification Code</h1>
+        {/* Error message shown via layout */}
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
 
 
-      <div className="flex space-x-2 mb-6">
-        {otp.map((d, i) => (
-          <input
-            key={i}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            value={d}
-            onChange={e => handleChange(i, e.target.value)}
-            onKeyDown={e => handleKeyDown(e, i)}
-            ref={el => { if (el) inputsRef.current[i] = el; }}
-            className="w-10 h-12 text-center border rounded"
+        <div className="flex space-x-2 mb-6">
+          {otp.map((d, i) => (
+            <input
+              key={i}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={d}
+              onChange={e => handleChange(i, e.target.value)}
+              onKeyDown={e => handleKeyDown(e, i)}
+              ref={el => { if (el) inputsRef.current[i] = el; }}
+              className="w-10 h-12 text-center border rounded"
+              disabled={loading}
+            />
+          ))}
+        </div>
+
+
+        <div className="flex items-center justify-between">
+          <button
+            onClick={resend}
+            disabled={timer > 0 || loading}
+            className="text-blue-600 underline disabled:opacity-50"
+          >
+            {timer > 0
+              ? `Resend in 0:${timer.toString().padStart(2, "0")}`
+              : "Resend Code"}
+          </button>
+          <button
+            onClick={submitOTP}
             disabled={loading}
-          />
-        ))}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? "Verifying..." : "Verify"}
+          </button>
+        </div>
       </div>
-
-
-      <div className="flex items-center justify-between">
-        <button
-          onClick={resend}
-          disabled={timer > 0 || loading}
-          className="text-blue-600 underline disabled:opacity-50"
-        >
-          {timer > 0
-            ? `Resend in 0:${timer.toString().padStart(2, "0")}`
-            : "Resend Code"}
-        </button>
-        <button
-          onClick={submitOTP}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? "Verifying..." : "Verify"}
-        </button>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

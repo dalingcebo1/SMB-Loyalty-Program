@@ -24,12 +24,25 @@ api.interceptors.request.use((req) => {
   return req;
 });
 
+import { toast } from 'react-toastify';
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    console.error("[API Response Error]", {
+    const status = err.response?.status;
+    // Global 401 handler
+  if (status === 401) {
+      // Only force logout on auth errors, not on other protected endpoints
+      const url = err.config.url || '';
+      if (url.includes('/auth/')) {
+        localStorage.removeItem('token');
+        toast.error('Session expired. Please log in again.');
+        window.location.href = '/login';
+      }
+      return Promise.reject(err);
+    }
+    console.error('[API Response Error]', {
       url: err.config.baseURL + err.config.url,
-      status: err.response?.status,
+      status,
       data: err.response?.data,
       headers: err.response?.headers,
     });

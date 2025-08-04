@@ -1,9 +1,14 @@
 // Frontend/src/pages/Cart.tsx
 import React, { useState, useEffect } from 'react';
 import { CartItem, Service, Extra } from '../types';
+<<<<<<< HEAD
 import api from '../api/api';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
+=======
+import  api  from '../api/api';
+import PageLayout from "../components/PageLayout";
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
 
 const Cart: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -57,39 +62,41 @@ const Cart: React.FC = () => {
     return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
   }
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Your Cart</h2>
-      {cart.map((item, i) => {
-        const svc = findService(item.service_id)!;
-        return (
-          <div key={i} style={{ marginBottom: 16 }}>
-            <div>
-              <strong>{svc.name}</strong> × {item.qty} — R
-              {svc.base_price * item.qty}
+    <PageLayout>
+      <div style={{ padding: 20 }}>
+        <h2>Your Cart</h2>
+        {cart.map((item, i) => {
+          const svc = findService(item.service_id)!;
+          return (
+            <div key={i} style={{ marginBottom: 16 }}>
+              <div>
+                <strong>{svc.name}</strong> × {item.qty} — R
+                {svc.base_price * item.qty}
+              </div>
+              {item.extras.length > 0 && (
+                <ul style={{ marginLeft: 20 }}>
+                  {item.extras.map(eid => {
+                    const ex = findExtra(eid)!;
+                    const price = ex.price_map[item.category] || 0;
+                    return (
+                      <li key={eid}>
+                        {ex.name} (+R{price} each)
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
-            {item.extras.length > 0 && (
-              <ul style={{ marginLeft: 20 }}>
-                {item.extras.map(eid => {
-                  const ex = findExtra(eid)!;
-                  const price = ex.price_map[item.category] || 0;
-                  return (
-                    <li key={eid}>
-                      {ex.name} (+R{price} each)
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
 
-      <h3>Total: R{grandTotal}</h3>
+        <h3>Total: R{grandTotal}</h3>
 
-      <button onClick={() => (window.location.href = '/payment')}>
-        Proceed to Payment
-      </button>
-    </div>
+        <button onClick={() => (window.location.href = '/payment')}>
+          Proceed to Payment
+        </button>
+      </div>
+    </PageLayout>
   );
 };
 

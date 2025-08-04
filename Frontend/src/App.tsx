@@ -44,9 +44,10 @@ import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
 import PastOrders from "./pages/PastOrders";
 import Account from "./pages/Account"; // <-- Add this import
+import AutoLogin from './pages/AutoLogin';
 
 // Feature flags
-const { enableCatalog, enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
+ const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
 
 function RequireAuth() {
   const { user, loading } = useAuth();
@@ -84,6 +85,9 @@ export default function App() {
   return (
     <>
       <Routes>
+        {/* Auto-login via token query (e.g., /autologin?token=...) */}
+            {/* /services route removed; use /order for booking */}
+
         {/* PUBLIC */}
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
@@ -99,7 +103,7 @@ export default function App() {
             <Route path="/" element={<Welcome />} />
             {enableLoyalty && <Route path="/myloyalty" element={<MyLoyalty />} />}
             {enableOrders && <Route path="/order" element={<OrderForm />} />}
-            {enableCatalog && <Route path="/services" element={<OrderForm />} />}
+            {/* Removed standalone Services page; use OrderForm for service booking */}
             {enablePayments && <Route path="/order/payment" element={<Payment />} />}
             {enableOrders && <Route path="/order/confirmation" element={<OrderConfirmation />} />}
             {enableUsers && <Route path="/account" element={<Account />} />}

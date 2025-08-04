@@ -1,6 +1,7 @@
 // src/pages/SocialLogin.tsx
 import { useNavigate } from "react-router-dom";
 import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup } from "firebase/auth";
+import PageLayout from "../components/PageLayout";
 
 export function SocialLogin() {
   const navigate = useNavigate();
@@ -18,16 +19,18 @@ export function SocialLogin() {
   };
 
   return (
-    <div>
-      <button onClick={() => handleOAuth(new GoogleAuthProvider())}>
-        Sign up with Google
-      </button>
-      <button onClick={() => {
-        const apple = new OAuthProvider("apple.com");
-        handleOAuth(apple);
-      }}>
-        Sign up with Apple
-      </button>
-    </div>
+    <PageLayout>
+      <div>
+        <button onClick={() => handleOAuth(new GoogleAuthProvider())}>
+          Sign up with Google
+        </button>
+        <button onClick={() => {
+          const apple = new OAuthProvider("apple.com");
+          handleOAuth(apple);
+        }}>
+          Sign up with Apple
+        </button>
+      </div>
+    </PageLayout>
   );
 }

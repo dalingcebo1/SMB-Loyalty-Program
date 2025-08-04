@@ -1,7 +1,9 @@
 // src/pages/admin/UsersList.tsx
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import api from '../../api/api';
+import PageLayout from '../../components/PageLayout';
+import { useAuth } from '../../auth/AuthProvider';
 
 interface User {
   id: number;
@@ -13,6 +15,7 @@ interface User {
 }
 
 const UsersList: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,46 +34,51 @@ const UsersList: React.FC = () => {
     fetchUsers();
   }, []);
 
-  if (loading) return <div>Loading users...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (authLoading) return <PageLayout loading>{null}</PageLayout>;
+  if (!user || user.role !== 'admin') return <Navigate to='/' replace />;
+
+  if (loading) return <PageLayout loading loadingText="Loading users...">{null}</PageLayout>;
+  if (error) return <PageLayout error={error} onRetry={() => {/* no retry */}}>{null}</PageLayout>;
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Users</h1>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white shadow rounded-lg">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 border">ID</th>
-              <th className="px-4 py-2 border">Name</th>
-              <th className="px-4 py-2 border">Email</th>
-              <th className="px-4 py-2 border">Phone</th>
-              <th className="px-4 py-2 border">Role</th>
-              <th className="px-4 py-2 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-100">
-                <td className="px-4 py-2 border text-center">{u.id}</td>
-                <td className="px-4 py-2 border">{u.first_name} {u.last_name}</td>
-                <td className="px-4 py-2 border">{u.email}</td>
-                <td className="px-4 py-2 border">{u.phone}</td>
-                <td className="px-4 py-2 border capitalize">{u.role}</td>
-                <td className="px-4 py-2 border">
-                  <Link
-                    to={`/admin/users/${u.id}/edit`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </Link>
-                </td>
+    <PageLayout>
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Users</h1>
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white shadow rounded-lg">
+            <thead>
+              <tr>
+                <th className="px-4 py-2 border">ID</th>
+                <th className="px-4 py-2 border">Name</th>
+                <th className="px-4 py-2 border">Email</th>
+                <th className="px-4 py-2 border">Phone</th>
+                <th className="px-4 py-2 border">Role</th>
+                <th className="px-4 py-2 border">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-gray-100">
+                  <td className="px-4 py-2 border text-center">{u.id}</td>
+                  <td className="px-4 py-2 border">{u.first_name} {u.last_name}</td>
+                  <td className="px-4 py-2 border">{u.email}</td>
+                  <td className="px-4 py-2 border">{u.phone}</td>
+                  <td className="px-4 py-2 border capitalize">{u.role}</td>
+                  <td className="px-4 py-2 border">
+                    <Link
+                      to={`/admin/users/${u.id}/edit`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

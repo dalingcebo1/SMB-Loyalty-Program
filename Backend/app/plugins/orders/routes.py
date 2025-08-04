@@ -85,34 +85,19 @@ def list_orders(
     return q.all()
 
 @router.post("", response_model=OrderResponse)
-def create_order_legacy(data: OrderCreate, db: Session = Depends(get_db)):
-    total = 0
-    items_to_add = []
-    for it in data.items:
-        svc = db.get(Service, it.service_id)
-        if not svc:
-            raise HTTPException(status_code=404, detail=f"Service {it.service_id} not found")
-        line = svc.base_price * it.qty
-        for eid in it.extras or []:
-            ext = db.get(Extra, eid)
-            if ext:
-                line += ext.price_map.get(it.category, 0) * it.qty
-        total += line
-        items_to_add.append((it, line))
-    order = Order(user_id=data.user_id, amount=total)
+def create_order_legacy(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    # Backward-compatible order creation using service_id, quantity, extras
+    svc_id = payload.get("service_id")
+    qty = payload.get("quantity", 1)
+    extras = payload.get("extras", [])
+    if svc_id is None:
+        raise HTTPException(status_code=400, detail="service_id is required")
+    svc = db.query(Service).filter_by(id=svc_id).first()
+    if not svc:
+        raise HTTPException(status_code=404, detail=f"Service {svc_id} not found")
+    # generate unique order ID for legacy compatibility
+    order = Order(id=str(uuid.uuid4()), service_id=svc_id, quantity=qty, extras=extras, user_id=user.id)
     db.add(order)
-    db.flush()
-    for it, line in items_to_add:
-        db.add(
-            OrderItem(
-                order_id=order.id,
-                service_id=it.service_id,
-                category=it.category,
-                qty=it.qty,
-                extras=it.extras,
-                line_total=line,
-            )
-        )
     db.commit()
     db.refresh(order)
     return order
@@ -184,7 +169,7 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
     }
 
 @router.post("/{order_id}/assign-vehicle", response_model=OrderDetailResponse)
-def assign_vehicle(order_id: int, req: AssignVehicleRequest, db: Session = Depends(get_db)):
+def assign_vehicle(order_id: str, req: AssignVehicleRequest, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

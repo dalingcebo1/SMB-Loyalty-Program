@@ -3,6 +3,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
 import api from "../api/api";
+import PageLayout from "../components/PageLayout";
 
 interface Reward {
   id: number;
@@ -30,16 +31,14 @@ const RewardsPage: React.FC = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   if (isLoading)
-    return <div className="p-4 text-center">Loading rewards…</div>;
+    return <PageLayout loading loadingText="Loading rewards…">{null}</PageLayout>;
 
   if (error)
     return (
-      <div className="p-4 text-center">
-        <p>Failed to load rewards.</p>
-        <button onClick={() => refetch()} className="btn mt-2">
-          Retry
-        </button>
-      </div>
+      <PageLayout
+        error={error instanceof Error ? error.message : 'Failed to load rewards.'}
+        onRetry={() => refetch()}
+      >{null}</PageLayout>
     );
 
   const handleClaim = async (id: number) => {
@@ -48,52 +47,54 @@ const RewardsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-4">Your Rewards</h1>
+    <PageLayout>
+      <div className="max-w-4xl mx-auto p-4">
+        <h1 className="text-2xl font-semibold mb-4">Your Rewards</h1>
 
-      {data!.length === 0 && (
-        <p>No rewards available at the moment. Check back later!</p>
-      )}
+        {data!.length === 0 && (
+          <p>No rewards available at the moment. Check back later!</p>
+        )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data!.map((r) => (
-          <div
-            key={r.id}
-            className={`border rounded-lg p-4 flex flex-col ${
-              r.claimed ? "opacity-50" : ""
-            }`}
-          >
-            {r.image_url && (
-              <img
-                src={r.image_url}
-                alt={r.name}
-                className="h-32 object-cover rounded-md mb-2"
-              />
-            )}
-            <h2 className="text-lg font-medium">{r.name}</h2>
-            <p className="text-sm text-gray-600 flex-grow">
-              {r.description}
-            </p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="font-semibold">
-                {r.points_required} pts
-              </span>
-              <button
-                onClick={() => handleClaim(r.id)}
-                disabled={r.claimed}
-                className={`btn-sm ${
-                  r.claimed
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 text-white"
-                }`}
-              >
-                {r.claimed ? "Claimed" : "Claim"}
-              </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {data!.map((r) => (
+            <div
+              key={r.id}
+              className={`border rounded-lg p-4 flex flex-col ${
+                r.claimed ? "opacity-50" : ""
+              }`}
+            >
+              {r.image_url && (
+                <img
+                  src={r.image_url}
+                  alt={r.name}
+                  className="h-32 object-cover rounded-md mb-2"
+                />
+              )}
+              <h2 className="text-lg font-medium">{r.name}</h2>
+              <p className="text-sm text-gray-600 flex-grow">
+                {r.description}
+              </p>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="font-semibold">
+                  {r.points_required} pts
+                </span>
+                <button
+                  onClick={() => handleClaim(r.id)}
+                  disabled={r.claimed}
+                  className={`btn-sm ${
+                    r.claimed
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 text-white"
+                  }`}
+                >
+                  {r.claimed ? "Claimed" : "Claim"}
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

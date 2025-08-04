@@ -1,8 +1,12 @@
 // src/pages/Services.tsx
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+<<<<<<< HEAD
 import Loading from "../components/Loading";
 import ErrorMessage from "../components/ErrorMessage";
+=======
+import PageLayout from "../components/PageLayout";
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
 
 interface Service {
   id: number;
@@ -59,28 +63,30 @@ const Services: React.FC = () => {
   }, [selectedCategory, byCategory]);
 
   return (
-    <div>
-      <h2>Pick a Category</h2>
-      <select
-        value={selectedCategory}
-        onChange={(e) => setSelectedCategory(e.target.value)}
-      >
-        {categories.map((cat) => (
-          <option key={cat} value={cat}>
-            {cat}
-          </option>
-        ))}
-      </select>
+    <PageLayout>
+      <div>
+        <h2>Pick a Category</h2>
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+        >
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
 
-      <h2>Pick a Service</h2>
-      <select disabled={!services.length}>
-        {services.map((svc) => (
-          <option key={svc.id} value={svc.id}>
-            {svc.name} — R{svc.base_price}
-          </option>
-        ))}
-      </select>
-    </div>
+        <h2>Pick a Service</h2>
+        <select disabled={!services.length}>
+          {services.map((svc) => (
+            <option key={svc.id} value={svc.id}>
+              {svc.name} — R{svc.base_price}
+            </option>
+          ))}
+        </select>
+      </div>
+    </PageLayout>
   );
 };
 

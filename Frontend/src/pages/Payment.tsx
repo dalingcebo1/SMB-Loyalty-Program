@@ -1,10 +1,13 @@
-// Frontend/src/pages/Payment.tsx
+// src/pages/Payment.tsx
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { track } from '../utils/analytics';
+import StepIndicator from "../components/StepIndicator";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
+import PageLayout from "../components/PageLayout";
 
 interface LocationState {
   orderId: string;
@@ -30,6 +33,24 @@ interface Service {
 const Payment: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
+  // Persist payment state so refresh retains it
+  useEffect(() => {
+    if (state) {
+      localStorage.setItem('pendingOrder', JSON.stringify(state));
+    }
+  }, [state]);
+  // On mount, resume pending payment or redirect to order if no state
+  useEffect(() => {
+    if (!state) {
+      const pending = localStorage.getItem('pendingOrder');
+      if (pending) {
+        const pendingState = JSON.parse(pending);
+        navigate('/order/payment', { state: pendingState, replace: true });
+      } else {
+        navigate('/order', { replace: true });
+      }
+    }
+  }, [state, navigate]);
   const { orderId, total, summary = [] } = (state as LocationState) || {};
 
   const [paying, setPaying] = useState(false);
@@ -41,6 +62,13 @@ const Payment: React.FC = () => {
   const [canApplyLoyalty, setCanApplyLoyalty] = useState(false);
 
   const { refreshUser, user } = useAuth();
+
+  // Analytics: page view of Payment page
+  useEffect(() => {
+    track('page_view', { page: 'Payment' });
+  }, []);
+  // Redirect anonymous users
+  if (!user) return <Navigate to="/login" replace />;
 
   useEffect(() => {
     // Validate all required state fields
@@ -64,7 +92,9 @@ const Payment: React.FC = () => {
       script.async = true;
       script.onload = () => setYocoLoaded(true);
       script.onerror = () => {
-        toast.error("Failed to load Yoco SDK. Please check your connection.");
+        toast.error("Failed to load Yoco SDK. Showing fallback payment UI.");
+        // Proceed to render payment UI even if SDK fails to load
+        setYocoLoaded(true);
       };
       document.body.appendChild(script);
     } else {
@@ -73,6 +103,16 @@ const Payment: React.FC = () => {
       script.onload = () => setYocoLoaded(true);
     }
   }, []);
+  // Fallback: stop skeleton loader after timeout if SDK doesn’t load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!yocoLoaded) {
+        toast.info("SDK load timeout, proceeding with payment UI.");
+        setYocoLoaded(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [yocoLoaded]);
 
   const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY!;
 
@@ -125,6 +165,8 @@ const Payment: React.FC = () => {
   }, [user]);
 
   const handleApplyReward = async () => {
+    // Analytics: CTA click for applying reward
+    track('cta_click', { label: 'Apply Reward', page: 'Payment' });
     setPaying(true);
     try {
       // Use the new /loyalty/reward/apply endpoint
@@ -143,6 +185,8 @@ const Payment: React.FC = () => {
   };
 
   const handlePay = async () => {
+    // Analytics: CTA click for paying order
+    track('cta_click', { label: 'Pay', page: 'Payment' });
     if (amountToPay <= 0) {
       toast.success("No payment needed! Reward covers the full amount.");
       // Mark order as redeemed if a reward was applied
@@ -239,72 +283,75 @@ const Payment: React.FC = () => {
   const amountToPay = total - rewardDiscount;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
-      <ToastContainer position="top-right" />
-      <div className="w-full sm:max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">Complete Your Payment</h2>
-        <div className="text-lg font-semibold text-center mb-6">
-          Amount: <span className="text-black font-bold">R {(amountToPay / 100).toFixed(2)}</span>
-        </div>
-        {rewardInfo && canApplyLoyalty && (
-          <div className="mb-4 text-center">
-            <div className="text-green-700 font-semibold">
-              Loyalty Reward Available: {rewardInfo.reward}
+    <PageLayout>
+      <StepIndicator currentStep={2} />
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
+        <ToastContainer position="top-right" />
+        <div className="w-full sm:max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">Complete Your Payment</h2>
+          <div className="text-lg font-semibold text-center mb-6">
+            Amount: <span className="text-black font-bold">R {(amountToPay / 100).toFixed(2)}</span>
+          </div>
+          {rewardInfo && canApplyLoyalty && (
+            <div className="mb-4 text-center">
+              <div className="text-green-700 font-semibold">
+                Loyalty Reward Available: {rewardInfo.reward}
+              </div>
+              {rewardInfo.expiry && (
+                <div className="text-xs text-gray-500">
+                  Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
+                </div>
+              )}
             </div>
-            {rewardInfo.expiry && (
-              <div className="text-xs text-gray-500">
-                Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
+          )}
+          {rewardInfo && !canApplyLoyalty && (
+            <div className="mb-4 text-center">
+              <div className="text-gray-500 font-semibold">
+                Loyalty rewards cannot be applied to this service.
+              </div>
+            </div>
+          )}
+          {summary.length > 0 && (
+            <div className="mb-4">
+              <h3 className="font-semibold text-gray-700 mb-2 text-center">Order Summary</h3>
+              <ul className="text-sm text-gray-600 list-disc list-inside">
+                {summary.map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handlePay}
+              disabled={paying || !yocoLoaded}
+              className={`w-full py-2 rounded text-white font-semibold transition ${
+                paying || !yocoLoaded ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+              }`}
+            >
+              {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
+            </button>
+            {rewardInfo && canApplyLoyalty && !rewardApplied && (
+              <button
+                onClick={handleApplyReward}
+                disabled={paying}
+                className="w-full py-2 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition"
+              >
+                Apply Reward
+              </button>
+            )}
+            {rewardApplied && (
+              <div className="text-green-700 text-center font-semibold">
+                Reward applied! New total: R{(amountToPay / 100).toFixed(2)}
               </div>
             )}
           </div>
-        )}
-        {rewardInfo && !canApplyLoyalty && (
-          <div className="mb-4 text-center">
-            <div className="text-gray-500 font-semibold">
-              Loyalty rewards cannot be applied to this service.
-            </div>
+          <div className="mt-6 text-xs text-gray-400 text-center">
+            Secured by <span className="font-bold text-blue-500">YOCO</span>
           </div>
-        )}
-        {summary.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-semibold text-gray-700 mb-2 text-center">Order Summary</h3>
-            <ul className="text-sm text-gray-600 list-disc list-inside">
-              {summary.map((item, idx) => (
-                <li key={idx}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={handlePay}
-            disabled={paying || !yocoLoaded}
-            className={`w-full py-2 rounded text-white font-semibold transition ${
-              paying || !yocoLoaded ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
-          </button>
-          {rewardInfo && canApplyLoyalty && !rewardApplied && (
-            <button
-              onClick={handleApplyReward}
-              disabled={paying}
-              className="w-full py-2 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition"
-            >
-              Apply Reward
-            </button>
-          )}
-          {rewardApplied && (
-            <div className="text-green-700 text-center font-semibold">
-              Reward applied! New total: R{(amountToPay / 100).toFixed(2)}
-            </div>
-          )}
-        </div>
-        <div className="mt-6 text-xs text-gray-400 text-center">
-          Secured by <span className="font-bold text-blue-500">YOCO</span>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

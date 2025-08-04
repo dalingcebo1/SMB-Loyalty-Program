@@ -8,10 +8,10 @@ import { moduleFlags } from "../config/modules";
 const NavTabs: React.FC = () => {
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { enableCatalog, enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
+  const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
 
   const navOptions = [
-    ...(enableCatalog ? [{ to: "/services", label: "Services" }] : []),
+    ...(enableOrders ? [{ to: "/order", label: "Book Service" }] : []),
     ...(enableLoyalty ? [{ to: "/myloyalty", label: "Loyalty" }] : []),
     ...(enableOrders ? [{ to: "/past-orders", label: "Past Orders" }] : []),
     ...(enableUsers ? [{ to: "/account", label: "Account" }] : []),

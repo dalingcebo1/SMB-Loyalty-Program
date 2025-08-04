@@ -8,6 +8,10 @@ from config import settings
 
 
 def create_test_user(db: Session) -> User:
+    # Reuse existing test user seeded in initialize_db
+    existing = db.query(User).filter_by(phone="0812345678").first()
+    if existing:
+        return existing
     user = User(
         email="testuser@example.com",
         hashed_password=None,
@@ -19,7 +23,12 @@ def create_test_user(db: Session) -> User:
         created_at=datetime.utcnow(),
     )
     db.add(user)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return db.query(User).filter_by(phone="0812345678").first()
     db.refresh(user)
     return user
 

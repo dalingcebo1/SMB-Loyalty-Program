@@ -30,22 +30,22 @@ export interface ModuleFlags {
 }
 
 const ENV_FLAGS: ModuleFlags = {
-  enableCatalog: import.meta.env.VITE_ENABLE_CATALOG === 'true',
+  enableCatalog: import.meta.env.VITE_ENABLE_CATALOG !== 'false',
   catalogServices: false,
   catalogExtras: false,
-  enableLoyalty: import.meta.env.VITE_ENABLE_LOYALTY === 'true',
+  enableLoyalty: import.meta.env.VITE_ENABLE_LOYALTY !== 'false',
   loyaltyView: false,
   loyaltyRedeem: false,
-  enableOrders: import.meta.env.VITE_ENABLE_ORDERS === 'true',
+  enableOrders: import.meta.env.VITE_ENABLE_ORDERS !== 'false',
   ordersCreate: false,
   ordersHistory: false,
-  enablePayments: import.meta.env.VITE_ENABLE_PAYMENTS === 'true',
+  enablePayments: import.meta.env.VITE_ENABLE_PAYMENTS !== 'false',
   paymentsVerify: false,
-  enableUsers: import.meta.env.VITE_ENABLE_USERS === 'true',
+  enableUsers: import.meta.env.VITE_ENABLE_USERS !== 'false',
   usersAccount: false,
   usersAdmin: false,
   // Car Wash flags
-  enableCarWash: import.meta.env.VITE_ENABLE_CAR_WASH === 'true',
+  enableCarWash: import.meta.env.VITE_ENABLE_CAR_WASH !== 'false',
   carWashVerify: false,
   carWashLogVisit: false,
   carWashManageVehicles: false,

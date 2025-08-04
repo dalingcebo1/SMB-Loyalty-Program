@@ -151,7 +151,7 @@ def get_payment_qr(order_id: str, db: Session = Depends(get_db)):
     category = order.items[0].category if order.items else None
     qr = pay.qr_code_base64 or generate_qr_code(pay.reference)["qr_code_base64"]
     return {
-        "reference": pay.reference,
+        "reference": pay.reference or pay.transaction_id,
         "qr_code_base64": qr,
         "payment_pin": order.payment_pin,
         "amount": pay.amount,
@@ -212,32 +212,37 @@ def verify_loyalty(
             redemption = db.query(Redemption).filter_by(qr_code=qr).first()
     if not redemption:
         raise HTTPException(404, "Invalid loyalty PIN or QR code")
-    if redemption.status != "pending":
-        return {"status": "already_redeemed", "type": "loyalty"}
-    redemption.status = "used"
-    redemption.redeemed_at = datetime.utcnow()
-    if not redemption.order_id:
-        # create loyalty order and payment if a loyalty-eligible service exists
-        service = db.query(Service).filter_by(loyalty_eligible=True).first()
-        if service:
-            order = Order(
-                service_id=service.id,
-                quantity=1,
-                extras=[],
-                payment_pin=None,
-                user_id=redemption.user_id,
-                status="paid",
-                type="loyalty",
-                amount=0
-            )
-            db.add(order)
-            db.commit()
-            redemption.order_id = order.id
-        else:
-            # no loyalty service configured, skip order creation
-            redemption.order_id = None
-    db.commit()
-    return {"status": "ok", "type": "loyalty", "order_id": redemption.order_id}
+    is_qr_request = qr is not None
+    if redemption.status == "pending":
+        # mark as used on first redemption
+        redemption.status = "used"
+        redemption.redeemed_at = datetime.utcnow()
+        if not redemption.order_id:
+            # create loyalty order and payment if a loyalty-eligible service exists
+            service = db.query(Service).filter_by(loyalty_eligible=True).first()
+            if service:
+                order = Order(
+                    service_id=service.id,
+                    quantity=1,
+                    extras=[],
+                    payment_pin=None,
+                    user_id=redemption.user_id,
+                    status="paid",
+                    type="loyalty",
+                    amount=0
+                )
+                db.add(order)
+                db.commit()
+                redemption.order_id = order.id
+            else:
+                redemption.order_id = None
+        db.commit()
+        return {"status": "ok", "type": "loyalty", "order_id": redemption.order_id}
+    # already used
+    if is_qr_request:
+        # allow QR re-verification
+        return {"status": "ok", "type": "loyalty", "order_id": redemption.order_id}
+    return {"status": "already_redeemed", "type": "loyalty"}
 
 @router.get("/verify-pos")
 def verify_pos(

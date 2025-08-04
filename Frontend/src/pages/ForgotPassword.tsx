@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import PageLayout from "../components/PageLayout";
 import api from "../api/api";
 import { toast } from "react-toastify";
+import PageLayout from "../components/PageLayout";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -27,13 +28,20 @@ export default function ForgotPassword() {
   return (
     <PageLayout
       loading={submitting}
+<<<<<<< HEAD
       error={error}
       onRetry={() => window.location.reload()}
+=======
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
       loadingText="Sending reset..."
     >
       <div className="max-w-sm mx-auto mt-10 p-6 bg-white rounded shadow">
         <h1 className="text-xl font-semibold mb-4">Forgot Password</h1>
+<<<<<<< HEAD
         <form onSubmit={handleSubmit} className="space-y-4">
+=======
+        <form onSubmit={handleSubmit}>
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
           <input
             type="email"
             required

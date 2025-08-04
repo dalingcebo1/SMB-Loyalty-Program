@@ -19,6 +19,7 @@ const app = getApps().length === 0
 // Export the Auth instance
 export const auth = getAuth(app);
 
+
 /**
  * Renders an invisible reCAPTCHA widget into the given container.
  * (Modular v9+ signature: (container, params, auth))
@@ -26,6 +27,8 @@ export const auth = getAuth(app);
 export async function makeRecaptcha(
   container: string | HTMLElement
 ): Promise<RecaptchaVerifier> {
+  // Create a fresh invisible reCAPTCHA
+
   // Clear any existing widget
   const prior = (window as any).recaptchaVerifier as RecaptchaVerifier | undefined;
   if (prior) {
@@ -36,11 +39,10 @@ export async function makeRecaptcha(
     }
   }
 
-  // Create a fresh invisible reCAPTCHA
   const verifier = new RecaptchaVerifier(
-    auth,
     container,
-    { size: "invisible", badge: "bottomright" }
+    { size: "invisible", badge: "bottomright" },
+    auth
   );
   await verifier.render();
   (window as any).recaptchaVerifier = verifier;

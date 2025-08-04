@@ -34,8 +34,11 @@ export default function ResetPassword() {
   return (
     <PageLayout
       loading={submitting}
+<<<<<<< HEAD
       error={error}
       onRetry={() => window.location.reload()}
+=======
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
       loadingText="Resetting password..."
     >
       <div className="max-w-sm mx-auto mt-10 p-6 bg-white rounded shadow">

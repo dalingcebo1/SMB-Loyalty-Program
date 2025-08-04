@@ -81,5 +81,6 @@ def delete_vehicle_legacy(user_id: int, vehicle_id: int, db: Session = Depends(g
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")
 def on_startup():
-    from database import Base, engine
+    # Create tables using shared Base and engine from the app core
+    from app.core.database import Base, engine
     Base.metadata.create_all(bind=engine)

@@ -14,10 +14,10 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     # Additional configuration
-    database_url: str = Field(..., env="DATABASE_URL")
+    database_url: str = Field("sqlite:///./dev.db", env="DATABASE_URL")
     allowed_origins: Optional[str] = None  # comma-separated list
-    yoco_secret_key: Optional[str] = Field(None, env="YOCO_SECRET_KEY")
-    yoco_webhook_secret: Optional[str] = Field(None, env="YOCO_WEBHOOK_SECRET")
+    yoco_secret_key: str = Field("dev_yoco_secret", env="YOCO_SECRET_KEY")
+    yoco_webhook_secret: str = Field("dev_yoco_webhook_secret", env="YOCO_WEBHOOK_SECRET")
     loyalty_secret: str = Field("dev_loyalty_secret", env="SECRET_KEY")
     default_tenant: str = "default"
     price_csv_url: Optional[str] = None

@@ -27,11 +27,11 @@ class TenantCreate(BaseModel):
     theme_color: Optional[str] = None
 
 class TenantUpdate(BaseModel):
-    name: Optional[str]
-    loyalty_type: Optional[str]
-    subdomain: Optional[str]
-    logo_url: Optional[str]
-    theme_color: Optional[str]
+    name: Optional[str] = None
+    loyalty_type: Optional[str] = None
+    subdomain: Optional[str] = None
+    logo_url: Optional[str] = None
+    theme_color: Optional[str] = None
 
 class TenantOut(BaseModel):
     id: str
@@ -102,12 +102,24 @@ def get_tenant(tenant_id: str, db: Session = Depends(get_db)):
 
 @router.patch("/{tenant_id}", response_model=TenantOut)
 def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(get_db)):
+    data = payload.dict(exclude_unset=True)
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-    data = payload.dict(exclude_unset=True)
-    for key, val in data.items():
-        setattr(tenant, key, val)
+        # Create tenant if it doesn't exist
+        tenant = Tenant(
+            id=tenant_id,
+            name=data.get('name', tenant_id),
+            loyalty_type=data.get('loyalty_type', 'standard'),
+            subdomain=data.get('subdomain'),
+            logo_url=data.get('logo_url'),
+            theme_color=data.get('theme_color'),
+            created_at=datetime.utcnow()
+        )
+        db.add(tenant)
+    else:
+        # Update existing tenant fields
+        for key, val in data.items():
+            setattr(tenant, key, val)
     db.commit()
     db.refresh(tenant)
     return TenantOut(
@@ -122,20 +134,32 @@ def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(g
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tenant(tenant_id: str, db: Session = Depends(get_db)):
+    # Idempotent delete: remove if exists, otherwise no-op
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-    db.delete(tenant)
-    db.commit()
+    if tenant:
+        db.delete(tenant)
+        db.commit()
     return
 
 # Admin assignment
 @router.post("/{tenant_id}/admins", response_model=TenantOut)
 def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get_db)):
+    # create tenant if not exists
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant:
+        tenant = Tenant(
+            id=tenant_id,
+            name=tenant_id,
+            loyalty_type="standard",
+            created_at=datetime.utcnow()
+        )
+        db.add(tenant)
+        db.commit()
+        db.refresh(tenant)
+    # find user
     user = db.query(User).filter_by(id=payload.user_id).first()
-    if not tenant or not user:
-        raise HTTPException(status_code=404, detail="Tenant or user not found")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     if user in tenant.admins:
         raise HTTPException(status_code=400, detail="User is already an admin for this tenant")
     tenant.admins.append(user)

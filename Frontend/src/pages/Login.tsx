@@ -55,7 +55,11 @@ const Login: React.FC = () => {
       loading={isSubmitting}
       error={authError}
       onRetry={() => window.location.reload()}
+<<<<<<< HEAD
       loadingText="Logging in..."
+=======
+      loadingText="Logging in…"
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
     >
       <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
         <h1 className="text-2xl font-semibold text-center">Log In</h1>
@@ -93,6 +97,10 @@ const Login: React.FC = () => {
         {authError && (
           <div className="text-center space-y-2">
             <p className="text-red-500 text-sm">{authError}</p>
+<<<<<<< HEAD
+=======
+            {/** If they just hit the 403 case, let them jump back to onboarding */}
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
             {authError.includes("onboarding") && lastCreds && (
               <button
                 onClick={() =>

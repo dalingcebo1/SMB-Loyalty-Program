@@ -3,6 +3,10 @@ import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
+import PageLayout from "../components/PageLayout";
+import WelcomeModal from '../components/WelcomeModal';
+import { Link } from 'react-router-dom';
+import { track } from '../utils/analytics';
 
 const VISIT_MILESTONE = 5;
 
@@ -15,6 +19,11 @@ const Welcome: React.FC = () => {
     return stored ? parseInt(stored, 10) : 0;
   });
   const [justOnboarded, setJustOnboarded] = useState(false);
+  
+  const handleCloseModal = () => {
+    setJustOnboarded(false);
+  };
+
   const [activeWashes, setActiveWashes] = useState<any[]>(() => {
     const stored = localStorage.getItem("activeWashes");
     return stored ? JSON.parse(stored) : [];
@@ -76,6 +85,8 @@ const Welcome: React.FC = () => {
       setJustOnboarded(true);
       localStorage.removeItem("justOnboarded");
     }
+    // Analytics: page view
+    track('page_view', { page: 'Welcome' });
   }, []);
 
   const name =
@@ -89,6 +100,11 @@ const Welcome: React.FC = () => {
   const hasMilestone = progress === 0 && visits > 0;
 
   if (!user) return null;
+
+  // Show welcome modal after onboarding
+  if (justOnboarded) {
+    return <WelcomeModal name={name} onClose={handleCloseModal} />;
+  }
 
   // Status message logic
   let statusMessage = null;
@@ -107,52 +123,70 @@ const Welcome: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
-      {/* Welcome message card */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 mb-8 text-center">
-        <div className="font-semibold text-base mb-1">
-          Welcome {name}!
+    <PageLayout>
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
+        {/* Welcome message card */}
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 mb-8 text-center">
+          <h1 className="font-semibold text-base mb-1">
+            Welcome {name}!
+          </h1>
+          <div className="text-gray-600 text-sm">
+            {justOnboarded
+              ? "Thank you for registering, welcome to your full service car wash application."
+              : "Glad to see you again. Check out your rewards or book a service!"}
+          </div>
+          <div className="mt-4 flex justify-center space-x-4">
+            <Link
+              to="/myloyalty"
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              onClick={() => track('cta_click', { label: 'View Rewards', page: 'Welcome' })}
+            >
+              View Rewards
+            </Link>
+            <Link
+              to="/order"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={() => track('cta_click', { label: 'Book a Service', page: 'Welcome' })}
+            >
+              Book a Service
+            </Link>
+          </div>
         </div>
-        <div className="text-gray-600 text-sm">
-          {justOnboarded
-            ? "Thank you for registering, welcome to your full service car wash application."
-            : "Glad to see you again. Check out your rewards or book a service!"}
-        </div>
-      </div>
 
-      {/* Visit counter with circular progress */}
-      <div className="flex flex-col items-center mb-8">
-        <div className="w-40 h-40">
-          <CircularProgressbar
-            value={progress === 0 && visits > 0 ? nextMilestone : progress}
-            maxValue={nextMilestone}
-            text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
-            styles={buildStyles({
-              textSize: "18px",
-              pathColor: "#2563eb",
-              textColor: "#2563eb",
-              trailColor: "#e5e7eb",
-            })}
-          />
+        {/* Visit counter with circular progress */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-40 h-40">
+            <CircularProgressbar
+              value={progress === 0 && visits > 0 ? nextMilestone : progress}
+              maxValue={nextMilestone}
+              text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
+              styles={buildStyles({
+                textSize: "18px",
+                pathColor: "#2563eb",
+                textColor: "#2563eb",
+                trailColor: "#e5e7eb",
+              })}
+            />
+          </div>
+          {hasMilestone && (
+            <div className="mt-2 text-green-600 font-semibold">
+              You've reached a milestone!
+            </div>
+          )}
         </div>
-        {hasMilestone && (
-          <div className="mt-2 text-green-600 font-semibold">
-            You've reached a milestone!
+
+        {/* Status message or Engen Car Wash message */}
+        {statusMessage ? (
+          statusMessage
+        ) : (
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 text-center mb-8">
+            <div className="text-gray-700 text-sm">
+              At Engen Car Wash, we like to acknowledge your continued support, that is why we are giving you the 6th Full Wash on us.
+            </div>
           </div>
         )}
       </div>
-
-      {/* Status message or Engen Car Wash message */}
-      {statusMessage ? (
-        statusMessage
-      ) : (
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 text-center mb-8">
-          <div className="text-gray-700 text-sm">
-            At Engen Car Wash, we like to acknowledge your continued support, that is why we are giving you the 6th Full Wash on us.
-          </div>
-        </div>
-      )}
-    </div>
+    </PageLayout>
   );
 };
 

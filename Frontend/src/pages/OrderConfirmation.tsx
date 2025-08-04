@@ -1,11 +1,14 @@
 // src/pages/OrderConfirmation.tsx
 import React, { useEffect, useState } from "react";
+import StepIndicator from "../components/StepIndicator";
+import { track } from '../utils/analytics';
 import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-router-dom";
 import Loading from "../components/Loading";
 import ErrorMessage from "../components/ErrorMessage";
 import QRCode from "react-qr-code";
 import axios from "axios";
 import { useAuth } from "../auth/AuthProvider";
+import PageLayout from "../components/PageLayout";
 
 interface LocationState {
   orderId: string;
@@ -18,6 +21,10 @@ interface LocationState {
 
 const OrderConfirmation: React.FC = () => {
   const navigate = useNavigate();
+  // Analytics: page view
+  useEffect(() => {
+    track('page_view', { page: 'OrderConfirmation' });
+  }, []);
   const { state } = useLocation();
   let confirmation = state as LocationState | undefined;
 
@@ -41,6 +48,8 @@ const OrderConfirmation: React.FC = () => {
 
   useEffect(() => {
     let didSet = false;
+    // Clear pending order once we reach confirmation
+    localStorage.removeItem('pendingOrder');
     if (state && typeof state === "object") {
       const s = state as LocationState;
       if (s.orderId && s.qrData && typeof s.amount === "number") {
@@ -84,6 +93,7 @@ const OrderConfirmation: React.FC = () => {
     }
   }, [orderId, qrData, isLoading, navigate]);
 
+<<<<<<< HEAD
   if (loading) return <Loading text="Checking authentication..." />;
   if (!user) return <Navigate to="/login" replace />;
 
@@ -132,6 +142,112 @@ const OrderConfirmation: React.FC = () => {
       </div>
       <Outlet />
     </section>
+=======
+  if (loading) return <PageLayout loading>{null}</PageLayout>;
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (isLoading) {
+    return <PageLayout loading loadingText="Loading your order…">{null}</PageLayout>;
+  }
+
+  return (
+    <PageLayout error={error || undefined} onRetry={() => window.location.reload()}>
+      <StepIndicator currentStep={3} />
+      <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
+        <h1 style={{ marginBottom: 16, textAlign: "center" }}>Your Order Is Confirmed!</h1>
+        {error && (
+          <div style={{
+            background: "#ffeaea",
+            color: "#b00020",
+            padding: "12px 18px",
+            borderRadius: 6,
+            marginBottom: 16,
+            fontWeight: "bold"
+          }}>
+            {error}
+          </div>
+        )}
+        <div style={{ margin: "1rem 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {qrCodeBase64 ? (
+            <img
+              src={`data:image/png;base64,${qrCodeBase64}`}
+              alt="Payment QR Code"
+              style={{ width: 200, height: 200 }}
+            />
+          ) : qrData ? (
+            <QRCode value={qrData} size={200} />
+          ) : (
+            <div style={{ color: "#b00020", marginBottom: 12 }}>No QR code available.</div>
+          )}
+          {paymentPin && (
+            <div style={{
+              marginTop: 16,
+              padding: "12px 24px",
+              background: "#e9ecef",
+              borderRadius: 6,
+              fontSize: 22,
+              fontWeight: "bold",
+              letterSpacing: 4,
+              color: "#333"
+            }}>
+              Payment PIN: <span style={{ color: "#007bff" }}>{paymentPin}</span>
+            </div>
+          )}
+          {amount > 0 && (
+            <div style={{
+              marginTop: 12,
+              fontSize: 18,
+              color: "#222"
+            }}>
+              Amount Paid: <span style={{ fontWeight: "bold" }}>R{(amount / 100).toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+        <p style={{ margin: "16px 0", textAlign: "center" }}>
+          Show this QR code or pin to staff to verify your payment. You can also find it in the Past Order Tab
+        </p>
+        <div style={{ display: "flex", justifyContent: "center" , gap: "1rem"}}>
+          <button
+            onClick={() => {
+              track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
+              navigate("/past-orders");
+            }}
+            style={{
+              marginBottom: 24,
+              padding: "10px 24px",
+              borderRadius: 6,
+              background: "#007bff",
+              color: "#fff",
+              border: "none",
+              fontWeight: "bold",
+              cursor: "pointer"
+            }}
+          >
+            View Orders
+          </button>
+          <button
+            onClick={() => navigate("/myloyalty")}
+            style={{
+              marginBottom: 24,
+              padding: "10px 24px",
+              borderRadius: 6,
+              background: "#10b981",
+              color: "#fff",
+              border: "none",
+              fontWeight: "bold",
+              cursor: "pointer"
+            }}
+          >
+            Go to My Loyalty
+          </button>
+        </div>
+        <div className="mt-6 text-xs text-gray-400 text-center">
+          Secured by <span className="font-bold text-blue-500">YOCO</span>
+        </div>
+        <Outlet />
+      </section>
+    </PageLayout>
+>>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
   );
 };
 

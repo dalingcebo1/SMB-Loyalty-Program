@@ -6,6 +6,7 @@ import {
   RecaptchaVerifier,
 } from "firebase/auth";
 import { auth, makeRecaptcha } from "../firebase";
+import PageLayout from "../components/PageLayout";
 
 export const confirmationRef = React.createRef<ConfirmationResult>();
 
@@ -65,11 +66,7 @@ const Onboarding: React.FC = () => {
 
     setSending(true);
     try {
-      // 1) Grab a fresh token from the reCAPTCHA widget
-      const token = await verifier.verify();
-      console.log("✅ reCAPTCHA token:", token);
-
-      // 2) Now trigger the SMS
+      // Trigger the SMS; invisible reCAPTCHA runs automatically
       const confirmation: ConfirmationResult = await signInWithPhoneNumber(
         auth,
         phone.trim(),
@@ -106,83 +103,85 @@ const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Complete Your Onboarding</h2>
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+    <PageLayout loading={sending} error={error} onRetry={() => setError("")}>  
+      <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Complete Your Onboarding</h2>
+        {error && <p className="text-red-600 mb-4">{error}</p>}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Read-only Email */}
-        <div>
-          <label className="block text-sm font-medium">Email Address</label>
-          <input
-            type="email"
-            value={state?.email || ""}
-            disabled
-            className="mt-1 block w-full border rounded p-2 bg-gray-100"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Read-only Email */}
+          <div>
+            <label className="block text-sm font-medium">Email Address</label>
+            <input
+              type="email"
+              value={state?.email || ""}
+              disabled
+              className="mt-1 block w-full border rounded p-2 bg-gray-100"
+            />
+          </div>
 
-        {/* First Name */}
-        <div>
-          <label className="block text-sm font-medium">First Name</label>
-          <input
-            value={firstName}
-            onChange={e => setFirstName(e.target.value)}
-            className="mt-1 block w-full border rounded p-2"
-            required
-          />
-        </div>
+          {/* First Name */}
+          <div>
+            <label className="block text-sm font-medium">First Name</label>
+            <input
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              className="mt-1 block w-full border rounded p-2"
+              required
+            />
+          </div>
 
-        {/* Last Name */}
-        <div>
-          <label className="block text-sm font-medium">Last Name</label>
-          <input
-            value={lastName}
-            onChange={e => setLastName(e.target.value)}
-            className="mt-1 block w-full border rounded p-2"
-            required
-          />
-        </div>
+          {/* Last Name */}
+          <div>
+            <label className="block text-sm font-medium">Last Name</label>
+            <input
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              className="mt-1 block w-full border rounded p-2"
+              required
+            />
+          </div>
 
-        {/* Phone Number */}
-        <div>
-          <label className="block text-sm font-medium">Phone Number</label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="+27821234567"
-            className="mt-1 block w-full border rounded p-2"
-            required
-          />
-        </div>
+          {/* Phone Number */}
+          <div>
+            <label className="block text-sm font-medium">Phone Number</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+27821234567"
+              className="mt-1 block w-full border rounded p-2"
+              required
+            />
+          </div>
 
-        {/* Subscribe */}
-        <div className="flex items-center">
-          <input
-            id="subscribe"
-            type="checkbox"
-            checked={subscribe}
-            onChange={e => setSubscribe(e.target.checked)}
-            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-          />
-          <label htmlFor="subscribe" className="ml-2 block text-sm">
-            Subscribe to newsletter
-          </label>
-        </div>
+          {/* Subscribe */}
+          <div className="flex items-center">
+            <input
+              id="subscribe"
+              type="checkbox"
+              checked={subscribe}
+              onChange={e => setSubscribe(e.target.checked)}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+            />
+            <label htmlFor="subscribe" className="ml-2 block text-sm">
+              Subscribe to newsletter
+            </label>
+          </div>
 
-        {/* Invisible reCAPTCHA container */}
-        <div id="recaptcha-container" ref={recaptchaDiv} />
+          {/* Invisible reCAPTCHA container */}
+          <div id="recaptcha-container" ref={recaptchaDiv} />
 
-        <button
-          type="submit"
-          disabled={sending}
-          className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {sending ? "Sending…" : "Send OTP"}
-        </button>
-      </form>
-    </div>
+          <button
+            type="submit"
+            disabled={sending}
+            className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {sending ? "Sending…" : "Send OTP"}
+          </button>
+        </form>
+      </div>
+    </PageLayout>
   );
 };
 

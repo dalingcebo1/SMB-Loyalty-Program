@@ -6,6 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import api from "../api/api";
+import SplashScreen from "../components/SplashScreen";
 
 export interface User {
   id: number;
@@ -114,6 +115,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const signup = async (email: string, password: string) => {
     await api.post("/auth/signup", { email, password });
+    // Mark as just onboarded to show welcome modal
+    localStorage.setItem("justOnboarded", "true");
   };
 
   const loginWithToken = async (token: string) => {
@@ -164,11 +167,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   // Only render children when loading is false
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Loading…</p>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   return (

@@ -16,6 +16,7 @@ class TierDistributionItem(BaseModel):
 class TopRewardItem(BaseModel):
     title: str
     count: int
+    
 
 class AnalyticsSummaryResponse(BaseModel):
     user_count: int

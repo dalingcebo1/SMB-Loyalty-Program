@@ -16,6 +16,7 @@ from app.plugins.orders.routes  import router as orders_router
 from app.plugins.payments.routes import router as payments_router
 from app.plugins.tenants.routes import router as tenants_router
 from app.plugins.dev.routes     import router as dev_router
+from app.plugins.analytics.routes import router as analytics_router
 
 app = FastAPI(
     title="SMB Loyalty Program",
@@ -41,7 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Mount plugin routers under /api ────────────────────────────────────────────
+# Mount plugin routers under /api
 for prefix, router in [
     ("/api/auth",     auth_router),
     ("/api/users",    users_router),
@@ -50,6 +51,7 @@ for prefix, router in [
     ("/api/orders",   orders_router),
     ("/api/payments", payments_router),
     ("/api/tenants",  tenants_router),
+    ("/api", analytics_router),
     ("/api/dev",      dev_router),
 ]:
     app.include_router(router, prefix=prefix)

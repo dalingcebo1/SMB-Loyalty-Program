@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { HiUsers, HiUserAdd, HiCog } from 'react-icons/hi';
@@ -9,13 +9,32 @@ const AdminWelcome: React.FC = () => {
   const { user } = useAuth();
   const name = user?.firstName || 'Admin';
   const [summary, setSummary] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+  // default dates: last 7 days
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const weekAgoStr = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  const [startDate, setStartDate] = useState(weekAgoStr);
+  const [endDate, setEndDate] = useState(todayStr);
+
+  const fetchSummary = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(
+        `/analytics/summary?start_date=${startDate}&end_date=${endDate}`
+      );
+      setSummary(res.data);
+    } catch (err) {
+      console.error('Failed to load metrics:', err);
+      setSummary({});
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate]);
 
   useEffect(() => {
-    // fetch analytics summary for dashboard
-    api.get('/analytics/summary').then(res => setSummary(res.data)).catch(() => {});
-  }, []);
+    fetchSummary();
+  }, [fetchSummary]);
 
-  // you can add loading state if needed
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
       {/* Header card */}
@@ -53,35 +72,58 @@ const AdminWelcome: React.FC = () => {
         </Link>
       </div>
       {/* Analytics summary */}
-      <div className="w-full max-w-4xl mt-10">
+      <div className="w-full max-w-4xl mt-6">
+        {/* Date range picker */}
+        <div className="flex items-center space-x-2 mb-4">
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            className="border p-1 rounded"
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+            className="border p-1 rounded"
+          />
+          <button
+            onClick={fetchSummary}
+            disabled={loading}
+            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
         <h2 className="text-xl font-semibold mb-4">Quick Metrics</h2>
-        {!summary ? (
+        {!summary || loading ? (
           <p>Loading metrics...</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            <div className="bg-white p-4 rounded shadow">
+            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
               <div className="text-sm text-gray-500">Users</div>
-              <div className="text-2xl font-semibold">{summary.user_count}</div>
+              <div className="text-2xl font-semibold">{summary.user_count ?? 0}</div>
             </div>
-            <div className="bg-white p-4 rounded shadow">
+            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
               <div className="text-sm text-gray-500">Transactions</div>
-              <div className="text-2xl font-semibold">{summary.transaction_count}</div>
+              <div className="text-2xl font-semibold">{summary.transaction_count ?? 0}</div>
             </div>
-            <div className="bg-white p-4 rounded shadow">
+            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
               <div className="text-sm text-gray-500">Points Issued</div>
-              <div className="text-2xl font-semibold">{summary.points_issued}</div>
+              <div className="text-2xl font-semibold">{summary.points_issued ?? 0}</div>
             </div>
-            <div className="bg-white p-4 rounded shadow">
+            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
               <div className="text-sm text-gray-500">Points Redeemed</div>
-              <div className="text-2xl font-semibold">{summary.points_redeemed}</div>
+              <div className="text-2xl font-semibold">{summary.points_redeemed ?? 0}</div>
             </div>
-            <div className="bg-white p-4 rounded shadow">
+            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
               <div className="text-sm text-gray-500">Redemptions</div>
-              <div className="text-2xl font-semibold">{summary.redemptions_count}</div>
+              <div className="text-2xl font-semibold">{summary.redemptions_count ?? 0}</div>
             </div>
-            <div className="bg-white p-4 rounded shadow">
+            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
               <div className="text-sm text-gray-500">Total Visits</div>
-              <div className="text-2xl font-semibold">{summary.visits_total}</div>
+              <div className="text-2xl font-semibold">{summary.visits_total ?? 0}</div>
             </div>
           </div>
         )}

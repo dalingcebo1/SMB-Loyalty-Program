@@ -7,4 +7,4 @@ class Plugin:
     def register_models(self, metadata: MetaData):
         pass
     def register_routes(self, app: FastAPI):
-        app.include_router(analytics_router, prefix="/api")
+        app.include_router(analytics_router, prefix="/api/analytics")

@@ -27,6 +27,26 @@ from app.plugins.orders.schemas import (
     OrderDetailResponse,
     AssignVehicleRequest,
 )
+ 
+def _build_order_response(order, next_action_url: str = None):
+    """Serialize Order to OrderDetailResponse-compatible dict."""
+    data = {
+        "id": order.id,
+        "service_id": order.service_id,
+        "quantity": order.quantity,
+        "extras": order.extras,
+        "payment_pin": order.payment_pin,
+        "status": order.status,
+        "user_id": order.user_id,
+        "created_at": order.created_at,
+        "redeemed": order.redeemed,
+        "started_at": order.started_at,
+        "ended_at": order.ended_at,
+        "vehicles": [ov.vehicle_id for ov in order.vehicles],
+    }
+    if next_action_url:
+        data["nextActionUrl"] = next_action_url
+    return data
 
 router = APIRouter(
     prefix="",
@@ -228,22 +248,8 @@ def assign_vehicle(order_id: str, req: AssignVehicleRequest, db: Session = Depen
         db.add(vehicle); db.flush()
     db.add(OrderVehicle(order_id=order.id, vehicle_id=vehicle.id))
     db.commit(); db.refresh(order)
-    # build response model via ORM validation, then inject vehicle IDs
-    # build response dict manually
-    return {
-        "id": order.id,
-        "service_id": order.service_id,
-        "quantity": order.quantity,
-        "extras": order.extras,
-        "payment_pin": order.payment_pin,
-        "status": order.status,
-        "user_id": order.user_id,
-        "created_at": order.created_at,
-        "redeemed": order.redeemed,
-        "started_at": order.started_at,
-        "ended_at": order.ended_at,
-        "vehicles": [ov.vehicle_id for ov in order.vehicles],
-    }
+    # return standardized order detail response
+    return _build_order_response(order)
 
 @router.post("/{order_id}/start-wash", response_model=OrderDetailResponse, summary="Start wash for an order and return updated details")
 def start_wash(order_id: str, db: Session = Depends(get_db)):
@@ -252,21 +258,8 @@ def start_wash(order_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Order not found")
     order.status = "in_progress"
     db.commit(); db.refresh(order)
-    # return updated order payload
-    return {
-        "id": order.id,
-        "service_id": order.service_id,
-        "quantity": order.quantity,
-        "extras": order.extras,
-        "payment_pin": order.payment_pin,
-        "status": order.status,
-        "user_id": order.user_id,
-        "created_at": order.created_at,
-        "redeemed": order.redeemed,
-        "started_at": order.started_at,
-        "ended_at": order.ended_at,
-        "vehicles": [ov.vehicle_id for ov in order.vehicles],
-    }
+    # return standardized order detail response
+    return _build_order_response(order)
 
 @router.post("/{order_id}/complete-wash", response_model=OrderDetailResponse, summary="Complete wash for an order, update visit counts, and return updated details")
 def complete_wash(order_id: str, db: Session = Depends(get_db)):
@@ -286,24 +279,9 @@ def complete_wash(order_id: str, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
     # build nextActionUrl for front-end to redeem wash for loyalty points
+    # build nextActionUrl and return standardized response
     redeem_path = f"/api/orders/{order.id}/redeem"
-    # return updated order payload
-    return {
-        "id": order.id,
-        "service_id": order.service_id,
-        "quantity": order.quantity,
-        "extras": order.extras,
-        "payment_pin": order.payment_pin,
-        "status": order.status,
-        "user_id": order.user_id,
-        "created_at": order.created_at,
-        "redeemed": order.redeemed,
-        "started_at": order.started_at,
-        "ended_at": order.ended_at,
-        "vehicles": [ov.vehicle_id for ov in order.vehicles],
-        # link or QR path for next action: redeem loyalty points
-        "nextActionUrl": redeem_path,
-    }
+    return _build_order_response(order, next_action_url=redeem_path)
 
 @router.post("/{order_id}/redeem", response_model=OrderDetailResponse, summary="Mark order as redeemed and return updated details")
 def redeem_order(order_id: str, db: Session = Depends(get_db)):
@@ -315,18 +293,5 @@ def redeem_order(order_id: str, db: Session = Depends(get_db)):
     order.status = "paid"
     db.commit()
     db.refresh(order)
-    # return redeemed order payload
-    return {
-        "id": order.id,
-        "service_id": order.service_id,
-        "quantity": order.quantity,
-        "extras": order.extras,
-        "payment_pin": order.payment_pin,
-        "status": order.status,
-        "user_id": order.user_id,
-        "created_at": order.created_at,
-        "redeemed": order.redeemed,
-        "started_at": order.started_at,
-        "ended_at": order.ended_at,
-        "vehicles": [ov.vehicle_id for ov in order.vehicles],
-    }
+    # return standardized order detail response
+    return _build_order_response(order)

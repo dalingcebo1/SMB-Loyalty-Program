@@ -5,9 +5,10 @@ from app.core.database import get_db
 from app.models import User, Payment, PointBalance, Redemption, Reward, VisitCount
 from datetime import datetime, timedelta
 
+from .schemas import AnalyticsSummaryResponse
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
-@router.get("/summary")
+@router.get("/summary", response_model=AnalyticsSummaryResponse, summary="Get summary statistics for the dashboard")
 def get_summary(db: Session = Depends(get_db)):
     # User count
     user_count = db.query(User).count()

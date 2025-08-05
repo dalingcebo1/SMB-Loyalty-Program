@@ -14,6 +14,7 @@ import { Suspense, lazy } from "react";
 
 // Lazy-load admin bundle:
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
+const AdminWelcome = lazy(() => import("./pages/admin/AdminWelcome"));
 const UsersList = lazy(() => import("./pages/admin/UsersList"));
 const StaffRegisterForm = lazy(() => import("./pages/admin/StaffRegisterForm"));
 const ModuleSettings = lazy(() => import("./pages/admin/ModuleSettings"));
@@ -44,7 +45,6 @@ import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
 import PastOrders from "./pages/PastOrders";
 import Account from "./pages/Account"; // <-- Add this import
-import AutoLogin from './pages/AutoLogin';
 
 // Feature flags
  const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
@@ -128,8 +128,8 @@ export default function App() {
             <Route
               index
               element={
-                <Suspense fallback={<div>Loading users…</div>}>
-                  <UsersList />
+                <Suspense fallback={<div>Loading welcome…</div>}>
+                  <AdminWelcome />
                 </Suspense>
               }
             />

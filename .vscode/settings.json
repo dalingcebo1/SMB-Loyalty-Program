@@ -5,5 +5,7 @@
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
     "python.testing.pytestArgs": [
         "."
-    ]
+    ],
+    // Ensure integrated terminal opens in project root
+    "terminal.integrated.cwd": "${workspaceFolder}"
 }

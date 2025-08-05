@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { HiOutlineRefresh, HiOutlineGift } from 'react-icons/hi';
 import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import PageLayout from "../components/PageLayout";
 import WelcomeModal from '../components/WelcomeModal';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { track } from '../utils/analytics';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,6 +15,11 @@ const VISIT_MILESTONE = 5;
 
 const Welcome: React.FC = () => {
   const { user } = useAuth();
+
+  // If admin user, send to admin dashboard
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
 
   // Initialize from localStorage if available
   const [visits, setVisits] = useState(() => {
@@ -35,6 +41,7 @@ const Welcome: React.FC = () => {
     return stored ? JSON.parse(stored) : null;
   });
   const [upcomingReward, setUpcomingReward] = useState<any | null>(null);
+  const [rewardsReady, setRewardsReady] = useState<any[]>([]);
 
   // Poll loyalty and wash status with debounced interval to reduce jitter
   useEffect(() => {
@@ -48,6 +55,8 @@ const Welcome: React.FC = () => {
         ]);
         setVisits(visitsRes.data.visits || 0);
         localStorage.setItem("visits", String(visitsRes.data.visits || 0));
+        const ready = visitsRes.data.rewards_ready || [];
+        setRewardsReady(ready);
         const upcoming = visitsRes.data.upcoming_rewards || [];
         setUpcomingReward(upcoming[0] || null);
         if (washRes.data.status === "active") {
@@ -168,34 +177,21 @@ const Welcome: React.FC = () => {
           </div>
         </div>
 
-        {/* Two-column layout: Wash status and Loyalty progress */}
-        <div className="flex flex-col md:flex-row w-full max-w-4xl mb-8 gap-8">
-          {/* Left column: wash status and Start New Wash */}
-          <div className="w-full md:w-1/2 flex flex-col items-center">
-            {statusMessage ? (
-              statusMessage
-            ) : recentlyEnded ? (
-              <div className="w-full bg-white rounded-2xl shadow-md p-4 mb-4 text-center text-green-800 font-semibold">
-                Your car is ready for collection.
-              </div>
-            ) : (
-              <div className="w-full bg-white rounded-2xl shadow-md p-4 mb-4 text-center">
-                <div className="text-gray-700 text-sm">
-                  No active washes at the moment.
-                </div>
-              </div>
-            )}
-            <Link
-              to="/order"
-              className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-center font-semibold"
-              onClick={() => track('cta_click', { label: 'Start New Wash', page: 'Welcome' })}
-            >
-              Start New Wash
-            </Link>
+        {/* Modern grid layout for status and loyalty panels */}
+        <div className="grid grid-cols-1 md:grid-cols-2 w-full max-w-4xl mb-8 gap-6">
+          {/* Wash status panel */}
+          <div className="bg-white rounded-2xl shadow-md p-6 flex flex-col items-center justify-center hover:shadow-lg transition-shadow">
+            <HiOutlineRefresh className="w-12 h-12 text-blue-500 mb-4" />
+    {statusMessage ? (
+      statusMessage
+    ) : (
+      <p className="text-gray-700 text-center mb-4">No active washes at the moment.</p>
+    )}
           </div>
-          {/* Right column: loyalty progress and next reward */}
-          <div className="w-full md:w-1/2 bg-white rounded-2xl shadow-md p-4 flex flex-col items-center">
-            <div className="w-40 h-40 mb-4">
+          {/* Loyalty rewards panel */}
+          <div className="bg-white rounded-2xl shadow-md p-6 flex flex-col items-center hover:shadow-lg transition-shadow">
+            <HiOutlineGift className="w-12 h-12 text-green-500 mb-4" />
+            <div className="w-32 h-32 mb-4">
               <CircularProgressbar
                 value={progress === 0 && visits > 0 ? nextMilestone : progress}
                 maxValue={nextMilestone}
@@ -209,18 +205,22 @@ const Welcome: React.FC = () => {
               />
             </div>
             <h3 className="text-lg font-semibold mb-2">Next Reward</h3>
-            {upcomingReward ? (
+            {rewardsReady.length > 0 ? (
               <div className="text-center mb-4">
-                <p>Earn {upcomingReward.reward} at {upcomingReward.milestone} visits</p>
+                <p className="mb-2">You have a reward ready to claim!</p>
                 <button
                   onClick={handleClaimReward}
-                  className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold"
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                 >
                   Claim Now
                 </button>
               </div>
+            ) : upcomingReward ? (
+              <div className="text-center mb-4">
+                <p className="mb-2">Earn {upcomingReward.reward} at {upcomingReward.milestone} visits</p>
+              </div>
             ) : (
-              <div className="text-gray-500">Loading rewards…</div>
+              <p className="text-gray-500">No upcoming rewards</p>
             )}
           </div>
         </div>

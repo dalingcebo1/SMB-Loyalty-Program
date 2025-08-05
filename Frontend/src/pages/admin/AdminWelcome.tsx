@@ -101,30 +101,42 @@ const AdminWelcome: React.FC = () => {
           <p>Loading metrics...</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
-              <div className="text-sm text-gray-500">Users</div>
-              <div className="text-2xl font-semibold">{summary.user_count ?? 0}</div>
-            </div>
-            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
-              <div className="text-sm text-gray-500">Transactions</div>
-              <div className="text-2xl font-semibold">{summary.transaction_count ?? 0}</div>
-            </div>
-            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
-              <div className="text-sm text-gray-500">Points Issued</div>
-              <div className="text-2xl font-semibold">{summary.points_issued ?? 0}</div>
-            </div>
-            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
-              <div className="text-sm text-gray-500">Points Redeemed</div>
-              <div className="text-2xl font-semibold">{summary.points_redeemed ?? 0}</div>
-            </div>
-            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
-              <div className="text-sm text-gray-500">Redemptions</div>
-              <div className="text-2xl font-semibold">{summary.redemptions_count ?? 0}</div>
-            </div>
-            <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1">
-              <div className="text-sm text-gray-500">Total Visits</div>
-              <div className="text-2xl font-semibold">{summary.visits_total ?? 0}</div>
-            </div>
+            <Link to={`/admin/analytics/users?start_date=${startDate}&end_date=${endDate}`}>
+              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
+                <div className="text-sm text-gray-500">Users</div>
+                <div className="text-2xl font-semibold">{summary.user_count ?? 0}</div>
+              </div>
+            </Link>
+            <Link to={`/admin/analytics/transactions?start_date=${startDate}&end_date=${endDate}`}>
+              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
+                <div className="text-sm text-gray-500">Transactions</div>
+                <div className="text-2xl font-semibold">{summary.transaction_count ?? 0}</div>
+              </div>
+            </Link>
+            <Link to={`/admin/analytics/points?start_date=${startDate}&end_date=${endDate}`}>
+              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
+                <div className="text-sm text-gray-500">Points Issued</div>
+                <div className="text-2xl font-semibold">{summary.points_issued ?? 0}</div>
+              </div>
+            </Link>
+            <Link to={`/admin/analytics/redemptions?start_date=${startDate}&end_date=${endDate}`}>
+              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
+                <div className="text-sm text-gray-500">Points Redeemed</div>
+                <div className="text-2xl font-semibold">{summary.points_redeemed ?? 0}</div>
+              </div>
+            </Link>
+            <Link to={`/admin/analytics/redemptions?start_date=${startDate}&end_date=${endDate}`}>
+              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
+                <div className="text-sm text-gray-500">Redemptions</div>
+                <div className="text-2xl font-semibold">{summary.redemptions_count ?? 0}</div>
+              </div>
+            </Link>
+            <Link to={`/admin/analytics/visits?start_date=${startDate}&end_date=${endDate}`}>
+              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
+                <div className="text-sm text-gray-500">Total Visits</div>
+                <div className="text-2xl font-semibold">{summary.visits_total ?? 0}</div>
+              </div>
+            </Link>
           </div>
         )}
       </div>

@@ -98,3 +98,376 @@ def get_summary(
         "visits_over_time": visits_over_time,
         "top_rewards": top_rewards,
     }
+
+# Detailed metric endpoints for drill-downs
+@router.get(
+    "/users/details",
+    summary="Get detailed user metrics such as DAU, WAU, MAU, retention, and churn"
+)
+def get_user_details(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    # date range defaults to last 7 days
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)
+    else:
+        start, end = start_date, end_date
+    # Daily active users (distinct users with a payment on end date)
+    dau = db.query(func.count(func.distinct(Payment.user_id)))\
+        .filter(cast(Payment.created_at, Date) == end)\
+        .scalar() or 0
+    # Weekly active users (distinct users with payments in range)
+    wau = db.query(func.count(func.distinct(Payment.user_id)))\
+        .filter(cast(Payment.created_at, Date) >= start, cast(Payment.created_at, Date) <= end)\
+        .scalar() or 0
+    # Monthly active users (distinct users in last 30 days)
+    mau_start = end - timedelta(days=29)
+    mau = db.query(func.count(func.distinct(Payment.user_id)))\
+        .filter(cast(Payment.created_at, Date) >= mau_start, cast(Payment.created_at, Date) <= end)\
+        .scalar() or 0
+    # Retention and churn rates
+    prev_day = end - timedelta(days=1)
+    prev_dau = db.query(func.count(func.distinct(Payment.user_id)))\
+        .filter(cast(Payment.created_at, Date) == prev_day)\
+        .scalar() or 0
+    retention_rate = dau / prev_dau if prev_dau else 0.0
+    churn_rate = 1 - retention_rate
+    return {
+        "dau": dau,
+        "wau": wau,
+        "mau": mau,
+        "retention_rate": round(retention_rate, 4),
+        "churn_rate": round(churn_rate, 4),
+    }
+
+@router.get(
+    "/transactions/details",
+    summary="Get transaction metrics like average value, per-user rate, conversion, and peak times"
+)
+def get_transaction_details(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    # date range defaults to last 7 days
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)
+    else:
+        start, end = start_date, end_date
+    # Transactions count and total value
+    trans_count = db.query(Payment).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).count()
+    total_value = db.query(func.sum(Payment.amount)).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).scalar() or 0
+    average_value = total_value / trans_count if trans_count else 0.0
+    # Transactions per user
+    user_count = db.query(func.count(func.distinct(Payment.user_id))).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).scalar() or 0
+    per_user = trans_count / user_count if user_count else 0.0
+    # Conversion rate: transactions vs visits
+    visit_sum = db.query(func.sum(VisitCount.count)).filter(
+        cast(VisitCount.updated_at, Date) >= start,
+        cast(VisitCount.updated_at, Date) <= end
+    ).scalar() or 0
+    conversion_rate = trans_count / visit_sum if visit_sum else 0.0
+    # Peak hours (top 3)
+    peak_hours_data = db.query(
+        func.strftime('%H', Payment.created_at).label('hour'),
+        func.count(Payment.id)
+    ).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).group_by('hour').order_by(func.count(Payment.id).desc()).limit(3).all()
+    peak_hours = [{"hour": hr, "count": cnt} for hr, cnt in peak_hours_data]
+    # Peak days of week (top 3)
+    peak_days_data = db.query(
+        func.strftime('%w', Payment.created_at).label('day'),
+        func.count(Payment.id)
+    ).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).group_by('day').order_by(func.count(Payment.id).desc()).limit(3).all()
+    peak_days = [{"day": day, "count": cnt} for day, cnt in peak_days_data]
+    return {
+        "average_value": round(average_value, 2),
+        "per_user": round(per_user, 2),
+        "conversion_rate": round(conversion_rate, 4),
+        "peak_hours": peak_hours,
+        "peak_days": peak_days,
+    }
+
+@router.get(
+    "/points/details",
+    summary="Get points metrics including issued/redeemed over time and redemption rate"
+)
+def get_points_details(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    # date range defaults to last 7 days
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)
+    else:
+        start, end = start_date, end_date
+    # Points issued over time
+    points_issued_series = []
+    cur = start
+    while cur <= end:
+        val = db.query(func.sum(PointBalance.points))\
+            .filter(cast(PointBalance.created_at, Date) == cur)\
+            .scalar() or 0
+        points_issued_series.append({"date": cur.strftime("%Y-%m-%d"), "value": val})
+        cur += timedelta(days=1)
+    # Points redeemed over time
+    points_redeemed_series = []
+    cur = start
+    while cur <= end:
+        val = db.query(func.sum(Reward.cost))\
+            .join(Redemption, Redemption.reward_id == Reward.id)\
+            .filter(cast(Redemption.created_at, Date) == cur, Redemption.status == 'redeemed')\
+            .scalar() or 0
+        points_redeemed_series.append({"date": cur.strftime("%Y-%m-%d"), "value": val})
+        cur += timedelta(days=1)
+    # Overall rates and averages
+    total_issued = sum(item["value"] for item in points_issued_series)
+    total_redeemed = sum(item["value"] for item in points_redeemed_series)
+    redemption_rate = total_redeemed / total_issued if total_issued else 0.0
+    trans_count = db.query(Payment).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).count()
+    avg_points_per_transaction = total_issued / trans_count if trans_count else 0.0
+    return {
+        "points_issued_over_time": points_issued_series,
+        "points_redeemed_over_time": points_redeemed_series,
+        "redemption_rate": round(redemption_rate, 4),
+        "avg_points_per_transaction": round(avg_points_per_transaction, 2),
+    }
+
+@router.get(
+    "/redemptions/details",
+    summary="Get redemption metrics such as total redemptions, avg cost, and reward conversion"
+)
+def get_redemptions_details(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    # date range defaults to last 7 days
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)
+    else:
+        start, end = start_date, end_date
+    # Total redemptions and cost
+    total_redemptions = db.query(func.count(Redemption.id))\
+        .filter(cast(Redemption.created_at, Date) >= start, cast(Redemption.created_at, Date) <= end, Redemption.status == 'redeemed')\
+        .scalar() or 0
+    total_cost = db.query(func.sum(Reward.cost))\
+        .join(Redemption, Redemption.reward_id == Reward.id)\
+        .filter(cast(Redemption.created_at, Date) >= start, cast(Redemption.created_at, Date) <= end, Redemption.status == 'redeemed')\
+        .scalar() or 0
+    avg_redemption_cost = total_cost / total_redemptions if total_redemptions else 0.0
+    # Conversion: redemptions vs transactions
+    trans_count = db.query(Payment).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).count()
+    conversion_rate = total_redemptions / trans_count if trans_count else 0.0
+    return {
+        "total_redemptions": total_redemptions,
+        "avg_redemption_cost": round(avg_redemption_cost, 2),
+        "reward_conversion_rate": round(conversion_rate, 4),
+    }
+
+@router.get(
+    "/visits/details",
+    summary="Get visit metrics like total visits per user and peak visit times"
+)
+def get_visits_details(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    # date range defaults to last 7 days
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)
+    else:
+        start, end = start_date, end_date
+    # Total visits in range
+    visits_total_period = db.query(func.sum(VisitCount.count))\
+        .filter(cast(VisitCount.updated_at, Date) >= start, cast(VisitCount.updated_at, Date) <= end)\
+        .scalar() or 0
+    user_total = db.query(User).count() or 1
+    visits_per_user = visits_total_period / user_total
+    # Peak visit hours (top 3)
+    peak_visit_hours_data = db.query(
+        func.strftime('%H', VisitCount.updated_at).label('hour'),
+        func.sum(VisitCount.count)
+    ).filter(
+        cast(VisitCount.updated_at, Date) >= start,
+        cast(VisitCount.updated_at, Date) <= end
+    ).group_by('hour').order_by(func.sum(VisitCount.count).desc()).limit(3).all()
+    peak_visit_hours = [{"hour": hr, "count": cnt} for hr, cnt in peak_visit_hours_data]
+    # Peak visit days (top 3)
+    peak_visit_days_data = db.query(
+        func.strftime('%w', VisitCount.updated_at).label('day'),
+        func.sum(VisitCount.count)
+    ).filter(
+        cast(VisitCount.updated_at, Date) >= start,
+        cast(VisitCount.updated_at, Date) <= end
+    ).group_by('day').order_by(func.sum(VisitCount.count).desc()).limit(3).all()
+    peak_visit_days = [{"day": day, "count": cnt} for day, cnt in peak_visit_days_data]
+    return {
+        "visits_per_user": round(visits_per_user, 2),
+        "peak_visit_hours": peak_visit_hours,
+        "peak_visit_days": peak_visit_days,
+    }
+
+@router.get(
+    "/loyalty/details",
+    summary="Get loyalty tier metrics like progression rates and avg time in tier"
+)
+def get_loyalty_details(
+    db: Session = Depends(get_db)
+):
+    # compute current tier distribution
+    tiers = db.query(User.role, func.count(User.id)).group_by(User.role).all()
+    tier_progression = [{"tier": role, "count": cnt} for role, cnt in tiers]
+    # average time in tier (days) based on user.created_at
+    users = db.query(User.role, User.created_at).all()
+    today = datetime.utcnow().date()
+    time_data: dict[str, list[int]] = {}
+    for role, created in users:
+        days = (today - created.date()).days
+        time_data.setdefault(role, []).append(days)
+    avg_time_in_tier = [
+        {"tier": role, "avg_days": round(sum(days_list) / len(days_list), 1)}
+        for role, days_list in time_data.items()
+    ]
+    return {
+        "tier_progression": tier_progression,
+        "avg_time_in_tier": avg_time_in_tier,
+    }
+
+@router.get(
+    "/top-clients",
+    summary="Get top clients by count, value, points, and visits"
+)
+def get_top_clients(
+    limit: int = Query(5),
+    db: Session = Depends(get_db)
+):
+    # top by transaction count
+    cnt_data = (
+        db.query(User, func.count(Payment.id).label('count'))
+          .join(Payment, Payment.user_id == User.id)
+          .group_by(User.id)
+          .order_by(func.count(Payment.id).desc())
+          .limit(limit)
+          .all()
+    )
+    by_count = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "count": c} for u, c in cnt_data]
+    # top by transaction value
+    val_data = (
+        db.query(User, func.sum(Payment.amount).label('value'))
+          .join(Payment, Payment.user_id == User.id)
+          .group_by(User.id)
+          .order_by(func.sum(Payment.amount).desc())
+          .limit(limit)
+          .all()
+    )
+    by_value = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "value": v} for u, v in val_data]
+    # top by points earned
+    pts_data = (
+        db.query(User, func.sum(PointBalance.points).label('points'))
+          .join(PointBalance, PointBalance.user_id == User.id)
+          .group_by(User.id)
+          .order_by(func.sum(PointBalance.points).desc())
+          .limit(limit)
+          .all()
+    )
+    by_points = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "points": p} for u, p in pts_data]
+    # top by visits
+    visit_data = (
+        db.query(User, func.sum(VisitCount.count).label('visits'))
+          .join(VisitCount, VisitCount.user_id == User.id)
+          .group_by(User.id)
+          .order_by(func.sum(VisitCount.count).desc())
+          .limit(limit)
+          .all()
+    )
+    by_visits = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "visits": v} for u, v in visit_data]
+    return {
+        "by_transaction_count": by_count,
+        "by_transaction_value": by_value,
+        "by_points_earned": by_points,
+        "by_visits": by_visits,
+    }
+
+@router.get(
+    "/engagement/details",
+    summary="Get engagement metrics like banner clicks and feature usage"
+)
+def get_engagement_details(
+    db: Session = Depends(get_db)
+):
+    # engagement events not tracked—return zeros
+    return {
+        "banner_click_rate": 0.0,
+        "feature_usage": {}
+    }
+
+@router.get(
+    "/financial/details",
+    summary="Get financial KPIs like revenue, ARPU, and LTV"
+)
+def get_financial_details(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    # date range defaults to last 7 days
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)
+    else:
+        start, end = start_date, end_date
+    # revenue in period
+    revenue = db.query(func.sum(Payment.amount)).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).scalar() or 0
+    users_period = db.query(func.count(func.distinct(Payment.user_id))).filter(
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).scalar() or 1
+    arpu = revenue / users_period
+    # lifetime value (average total spend per user)
+    total_revenue_all = db.query(func.sum(Payment.amount)).scalar() or 0
+    user_total = db.query(User).count() or 1
+    ltv = total_revenue_all / user_total
+    return {
+        "revenue": round(revenue, 2),
+        "arpu": round(arpu, 2),
+        "ltv": round(ltv, 2)
+    }

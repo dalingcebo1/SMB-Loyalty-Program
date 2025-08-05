@@ -29,6 +29,9 @@ const OrderConfirmation: React.FC = () => {
   const navigate = useNavigate();
   const { enableOrders, enableLoyalty } = moduleFlags;
 
+  // Next action URL for redemption
+  const [nextActionUrl, setNextActionUrl] = useState<string | null>(null);
+
   // Analytics: page view
   useEffect(() => {
     track('page_view', { page: 'OrderConfirmation' });
@@ -112,6 +115,7 @@ const OrderConfirmation: React.FC = () => {
           setEstimatedWashTime(res.data.estimatedWashTime);
           setBayNumber(res.data.bayNumber);
           setNotificationMessage(res.data.notificationMessage);
+          setNextActionUrl(res.data.nextActionUrl || null);
         })
         .catch(() => {
           // ignore errors
@@ -184,6 +188,25 @@ const OrderConfirmation: React.FC = () => {
 
   return (
     <PageLayout error={error || undefined} onRetry={() => window.location.reload()}>
+      {/* Persistent redemption banner */}
+      {nextActionUrl && (
+        <div
+          className="fixed bottom-0 left-0 w-full bg-yellow-400 text-center py-3 cursor-pointer"
+          role="button"
+          aria-live="polite"
+          onClick={async () => {
+            try {
+              await api.post(nextActionUrl);
+              toast.success('Wash redeemed for loyalty points!');
+              navigate('/myloyalty');
+            } catch {
+              toast.error('Could not redeem wash. Please try again.');
+            }
+          }}
+        >
+          Tap here to redeem your wash for loyalty points
+        </div>
+      )}
       <StepIndicator currentStep={3} stepsCompleted={[1, 2]} />
       <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
         {/* Toast notifications */}

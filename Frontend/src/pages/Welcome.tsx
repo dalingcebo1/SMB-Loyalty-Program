@@ -7,6 +7,8 @@ import PageLayout from "../components/PageLayout";
 import WelcomeModal from '../components/WelcomeModal';
 import { Link } from 'react-router-dom';
 import { track } from '../utils/analytics';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const VISIT_MILESTONE = 5;
 
@@ -32,51 +34,54 @@ const Welcome: React.FC = () => {
     const stored = localStorage.getItem("recentlyEnded");
     return stored ? JSON.parse(stored) : null;
   });
+  const [upcomingReward, setUpcomingReward] = useState<any | null>(null);
 
-  // Fetch both visits and wash status every 3 seconds
+  // Poll loyalty and wash status with debounced interval to reduce jitter
   useEffect(() => {
-    let interval: NodeJS.Timeout | undefined;
-
-    const fetchAll = () => {
-      Promise.all([
-        api.get("/loyalty/me"),
-        api.get("/payments/user-wash-status"),
-      ])
-        .then(([visitsRes, washRes]) => {
-          setVisits(visitsRes.data.visits || 0);
-          localStorage.setItem("visits", String(visitsRes.data.visits || 0));
-
-          if (washRes.data.status === "active") {
-            setActiveWashes([washRes.data]);
-            setRecentlyEnded(null);
-            localStorage.setItem("activeWashes", JSON.stringify([washRes.data]));
-            localStorage.removeItem("recentlyEnded");
-          } else if (washRes.data.status === "ended") {
-            setActiveWashes([]);
-            setRecentlyEnded(washRes.data);
-            localStorage.removeItem("activeWashes");
-            localStorage.setItem("recentlyEnded", JSON.stringify(washRes.data));
-          } else {
-            setActiveWashes([]);
-            setRecentlyEnded(null);
-            localStorage.removeItem("activeWashes");
-            localStorage.removeItem("recentlyEnded");
-          }
-        })
-        .catch(() => {
-          setVisits(0);
+    let timer: NodeJS.Timeout;
+    let isMounted = true;
+    const fetchAll = async () => {
+      try {
+        const [visitsRes, washRes] = await Promise.all([
+          api.get("/loyalty/me"),
+          api.get("/payments/user-wash-status"),
+        ]);
+        setVisits(visitsRes.data.visits || 0);
+        localStorage.setItem("visits", String(visitsRes.data.visits || 0));
+        const upcoming = visitsRes.data.upcoming_rewards || [];
+        setUpcomingReward(upcoming[0] || null);
+        if (washRes.data.status === "active") {
+          setActiveWashes([washRes.data]);
+          setRecentlyEnded(null);
+          localStorage.setItem("activeWashes", JSON.stringify([washRes.data]));
+          localStorage.removeItem("recentlyEnded");
+        } else if (washRes.data.status === "ended") {
+          setActiveWashes([]);
+          setRecentlyEnded(washRes.data);
+          localStorage.removeItem("activeWashes");
+          localStorage.setItem("recentlyEnded", JSON.stringify(washRes.data));
+        } else {
           setActiveWashes([]);
           setRecentlyEnded(null);
-        });
+          localStorage.removeItem("activeWashes");
+          localStorage.removeItem("recentlyEnded");
+        }
+      } catch {
+        setVisits(0);
+        setActiveWashes([]);
+        setRecentlyEnded(null);
+      } finally {
+        if (isMounted) {
+          timer = setTimeout(fetchAll, 3000);
+        }
+      }
     };
-
     if (user) {
       fetchAll();
-      interval = setInterval(fetchAll, 3000);
     }
-
     return () => {
-      if (interval) clearInterval(interval);
+      isMounted = false;
+      clearTimeout(timer);
     };
   }, [user]);
 
@@ -97,7 +102,6 @@ const Welcome: React.FC = () => {
   const milestoneSize = VISIT_MILESTONE;
   const progress = visits % milestoneSize;
   const nextMilestone = milestoneSize;
-  const hasMilestone = progress === 0 && visits > 0;
 
   if (!user) return null;
 
@@ -121,6 +125,17 @@ const Welcome: React.FC = () => {
       </div>
     );
   }
+
+  const handleClaimReward = async () => {
+    if (!user) return;
+    try {
+      const res = await api.post('/loyalty/reward', { phone: user.phone });
+      toast.success(`Reward issued: ${res.data.reward}`);
+      setUpcomingReward(null);
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Could not claim reward');
+    }
+  };
 
   return (
     <PageLayout>
@@ -153,38 +168,62 @@ const Welcome: React.FC = () => {
           </div>
         </div>
 
-        {/* Visit counter with circular progress */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-40 h-40">
-            <CircularProgressbar
-              value={progress === 0 && visits > 0 ? nextMilestone : progress}
-              maxValue={nextMilestone}
-              text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
-              styles={buildStyles({
-                textSize: "18px",
-                pathColor: "#2563eb",
-                textColor: "#2563eb",
-                trailColor: "#e5e7eb",
-              })}
-            />
+        {/* Two-column layout: Wash status and Loyalty progress */}
+        <div className="flex flex-col md:flex-row w-full max-w-4xl mb-8 gap-8">
+          {/* Left column: wash status and Start New Wash */}
+          <div className="w-full md:w-1/2 flex flex-col items-center">
+            {statusMessage ? (
+              statusMessage
+            ) : recentlyEnded ? (
+              <div className="w-full bg-white rounded-2xl shadow-md p-4 mb-4 text-center text-green-800 font-semibold">
+                Your car is ready for collection.
+              </div>
+            ) : (
+              <div className="w-full bg-white rounded-2xl shadow-md p-4 mb-4 text-center">
+                <div className="text-gray-700 text-sm">
+                  No active washes at the moment.
+                </div>
+              </div>
+            )}
+            <Link
+              to="/order"
+              className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-center font-semibold"
+              onClick={() => track('cta_click', { label: 'Start New Wash', page: 'Welcome' })}
+            >
+              Start New Wash
+            </Link>
           </div>
-          {hasMilestone && (
-            <div className="mt-2 text-green-600 font-semibold">
-              You've reached a milestone!
+          {/* Right column: loyalty progress and next reward */}
+          <div className="w-full md:w-1/2 bg-white rounded-2xl shadow-md p-4 flex flex-col items-center">
+            <div className="w-40 h-40 mb-4">
+              <CircularProgressbar
+                value={progress === 0 && visits > 0 ? nextMilestone : progress}
+                maxValue={nextMilestone}
+                text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
+                styles={buildStyles({
+                  textSize: '18px',
+                  pathColor: '#10b981',
+                  textColor: '#10b981',
+                  trailColor: '#e5e7eb',
+                })}
+              />
             </div>
-          )}
+            <h3 className="text-lg font-semibold mb-2">Next Reward</h3>
+            {upcomingReward ? (
+              <div className="text-center mb-4">
+                <p>Earn {upcomingReward.reward} at {upcomingReward.milestone} visits</p>
+                <button
+                  onClick={handleClaimReward}
+                  className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold"
+                >
+                  Claim Now
+                </button>
+              </div>
+            ) : (
+              <div className="text-gray-500">Loading rewards…</div>
+            )}
+          </div>
         </div>
-
-        {/* Status message or Engen Car Wash message */}
-        {statusMessage ? (
-          statusMessage
-        ) : (
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 text-center mb-8">
-            <div className="text-gray-700 text-sm">
-              At Engen Car Wash, we like to acknowledge your continued support, that is why we are giving you the 6th Full Wash on us.
-            </div>
-          </div>
-        )}
       </div>
     </PageLayout>
   );

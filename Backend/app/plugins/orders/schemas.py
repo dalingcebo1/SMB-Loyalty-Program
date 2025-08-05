@@ -60,6 +60,8 @@ class OrderDetailResponse(OrderResponse):
     estimatedWashTime: Optional[int] = None
     bayNumber: Optional[int] = None
     notificationMessage: Optional[str] = None
+    # Link to next action (redeem wash for loyalty points)
+    nextActionUrl: Optional[str] = None
 
 class AssignVehicleRequest(BaseModel):
     vehicle_id: Optional[int] = None

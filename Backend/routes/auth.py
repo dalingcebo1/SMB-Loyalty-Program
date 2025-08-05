@@ -2,18 +2,19 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
-from database import get_db
-from models import User, VisitCount, Vehicle
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
-from sqlalchemy import or_
+from fastapi import APIRouter, Depends, HTTPException, status, Query  # type: ignore
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
+from jose import JWTError, jwt  # type: ignore
+from passlib.context import CryptContext  # type: ignore
+from pydantic import BaseModel, EmailStr  # type: ignore
+from app.core.database import get_db
+from app.models import User, VisitCount, Vehicle
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired  # type: ignore
+from sendgrid import SendGridAPIClient  # type: ignore
+from sendgrid.helpers.mail import Mail  # type: ignore
+from sqlalchemy import or_  # type: ignore
+from app.plugins.loyalty.routes import REWARD_INTERVAL
 import logging
 
 logger = logging.getLogger("vehicle_manager")
@@ -104,7 +105,7 @@ def create_access_token(email: str):
     return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.algorithm)
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    from jose.exceptions import ExpiredSignatureError
+    from jose.exceptions import ExpiredSignatureError  # type: ignore
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -388,11 +389,15 @@ def log_manual_visit(
         db.add(visit_count)
     db.commit()
 
+    # compute next loyalty milestone
+    next_ms = ((visit_count.count // REWARD_INTERVAL) + 1) * REWARD_INTERVAL
     return {
         "message": f"Visit logged for {user.first_name} {user.last_name} ({user.phone})",
         "phone": user.phone,
         "name": f"{user.first_name} {user.last_name}".strip(),
         "count": visit_count.count,
+        # return camelCase nextMilestone for frontend consistency
+        "nextMilestone": next_ms,
     }
 
 @router.get("/users/search")

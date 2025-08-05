@@ -43,7 +43,8 @@ def generate_payment_pin(db: Session) -> str:
 @router.post(
     "/create",
     response_model=OrderCreateResponse,
-    status_code=201
+    status_code=201,
+    summary="Create a new order with optional default vehicle assignment"
 )
 def create_order(
     req: OrderCreateRequest,
@@ -88,7 +89,7 @@ def create_order(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Order creation failed: {str(e)}")
 
-@router.get("", response_model=List[OrderResponse])
+@router.get("", response_model=List[OrderResponse], summary="List all orders, optional status filter")
 def list_orders(
     status: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -98,7 +99,7 @@ def list_orders(
         q = q.filter(Order.status == status)
     return q.all()
 
-@router.post("", response_model=OrderResponse)
+@router.post("", response_model=OrderResponse, summary="Legacy order creation endpoint (deprecated)")
 def create_order_legacy(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
     # Backward-compatible order creation using service_id, quantity, extras
     svc_id = payload.get("service_id")
@@ -116,7 +117,7 @@ def create_order_legacy(payload: dict, db: Session = Depends(get_db), user=Depen
     db.refresh(order)
     return order
 
-@router.get("/my-past-orders")
+@router.get("/my-past-orders", summary="Get user's past paid orders with amount and extras details")
 def my_past_orders(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     orders = (
         db.query(Order)
@@ -146,7 +147,7 @@ def my_past_orders(user: User = Depends(get_current_user), db: Session = Depends
         results.append(data)
     return results
 
-@router.get("/{order_id}")
+@router.get("/{order_id}", response_model=OrderDetailResponse, summary="Get detailed order info with loyalty and next steps")
 def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
     order = db.query(Order).filter_by(id=order_id, user_id=user.id).first()
     if not order:
@@ -213,7 +214,7 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
     })
     return ret
 
-@router.post("/{order_id}/assign-vehicle")
+@router.post("/{order_id}/assign-vehicle", response_model=OrderDetailResponse, summary="Assign a vehicle to an order and get updated details")
 def assign_vehicle(order_id: str, req: AssignVehicleRequest, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
@@ -244,7 +245,7 @@ def assign_vehicle(order_id: str, req: AssignVehicleRequest, db: Session = Depen
         "vehicles": [ov.vehicle_id for ov in order.vehicles],
     }
 
-@router.post("/{order_id}/start-wash", response_model=OrderDetailResponse)
+@router.post("/{order_id}/start-wash", response_model=OrderDetailResponse, summary="Start wash for an order and return updated details")
 def start_wash(order_id: str, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
@@ -267,7 +268,7 @@ def start_wash(order_id: str, db: Session = Depends(get_db)):
         "vehicles": [ov.vehicle_id for ov in order.vehicles],
     }
 
-@router.post("/{order_id}/complete-wash", response_model=OrderDetailResponse)
+@router.post("/{order_id}/complete-wash", response_model=OrderDetailResponse, summary="Complete wash for an order, update visit counts, and return updated details")
 def complete_wash(order_id: str, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
@@ -284,6 +285,8 @@ def complete_wash(order_id: str, db: Session = Depends(get_db)):
     vc.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(order)
+    # build nextActionUrl for front-end to redeem wash for loyalty points
+    redeem_path = f"/api/orders/{order.id}/redeem"
     # return updated order payload
     return {
         "id": order.id,
@@ -298,9 +301,11 @@ def complete_wash(order_id: str, db: Session = Depends(get_db)):
         "started_at": order.started_at,
         "ended_at": order.ended_at,
         "vehicles": [ov.vehicle_id for ov in order.vehicles],
+        # link or QR path for next action: redeem loyalty points
+        "nextActionUrl": redeem_path,
     }
 
-@router.post("/{order_id}/redeem", response_model=OrderDetailResponse)
+@router.post("/{order_id}/redeem", response_model=OrderDetailResponse, summary="Mark order as redeemed and return updated details")
 def redeem_order(order_id: str, db: Session = Depends(get_db)):
     """Mark order as redeemed and return updated order details"""
     order = db.query(Order).filter_by(id=order_id).first()

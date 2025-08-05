@@ -7,6 +7,7 @@ interface VisitResponse {
   phone: string;
   name: string;
   count: number;
+  nextMilestone: number;
 }
 
 interface VisitLog {
@@ -22,7 +23,7 @@ const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, on
     return () => clearTimeout(timer);
   }, [onClose]);
   return (
-    <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow z-50">
+    <div role="alert" aria-live="assertive" className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow z-50">
       {message}
       <button className="ml-4 text-white font-bold" onClick={onClose}>&times;</button>
     </div>
@@ -45,6 +46,7 @@ const ManualVisitLogger: React.FC = () => {
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastVisit, setLastVisit] = useState<VisitResponse | null>(null);
+  const [nextMilestone, setNextMilestone] = useState<number | null>(null);
   const [history, setHistory] = useState<VisitLog[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -80,6 +82,7 @@ const ManualVisitLogger: React.FC = () => {
       const data: VisitResponse = res.data;
       setStatus(`Visit logged for ${data.name} (${normalizePhone(data.phone)})`);
       setLastVisit(data);
+      setNextMilestone(data.nextMilestone);
       setHistory(prev => [
         {
           timestamp: new Date().toISOString(),
@@ -129,6 +132,7 @@ const ManualVisitLogger: React.FC = () => {
         <input
           type="tel"
           placeholder="Client Cellphone (e.g. 0731234567)"
+          aria-label="Client cellphone number"
           value={cell}
           onChange={e => setCell(e.target.value.replace(/[^0-9]/g, ""))}
           className="w-full px-4 py-2 border border-gray-300 rounded text-lg"
@@ -144,7 +148,7 @@ const ManualVisitLogger: React.FC = () => {
           {loading ? "Logging..." : "Log Visit"}
         </button>
         {status && (
-          <div className="text-center text-base text-green-700">
+          <div role="status" aria-live="polite" className="text-center text-base text-green-700">
             {status}
           </div>
         )}
@@ -152,7 +156,12 @@ const ManualVisitLogger: React.FC = () => {
           <div className="w-full mt-4 bg-blue-50 p-4 rounded shadow text-center">
             <div className="font-semibold text-lg mb-2">Client: {lastVisit.name}</div>
             <div className="mb-1 text-base">Phone: {normalizePhone(lastVisit.phone)}</div>
-            <div className="mb-2 text-base">Total Visits: {lastVisit.count}</div>
+            <div className="mb-1 text-base">Total Visits: {lastVisit.count}</div>
+            {nextMilestone !== null && (
+              <div className="mb-2 text-sm text-gray-600">
+                {nextMilestone - lastVisit.count} to go until free wash
+              </div>
+            )}
             <button
               className="mt-2 px-4 py-2 bg-green-600 text-white rounded font-medium text-base hover:bg-green-700 transition"
               onClick={handleStartWash}

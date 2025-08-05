@@ -290,7 +290,7 @@ const Payment: React.FC = () => {
 
   return (
     <PageLayout>
-      <StepIndicator currentStep={2} />
+      <StepIndicator currentStep={2} stepsCompleted={[1]} />
       <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
         <ToastContainer position="top-right" />
         <div className="w-full sm:max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">

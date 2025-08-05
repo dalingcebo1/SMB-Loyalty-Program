@@ -2,9 +2,10 @@
 import uuid
 import random
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
 
+from datetime import datetime
 from app.core.database import get_db
 from app.plugins.auth.routes import get_current_user
 from app.models import (
@@ -68,7 +69,20 @@ def create_order(
         db.add(new_order)
         db.commit()
         db.refresh(new_order)
-        return OrderCreateResponse(order_id=new_order.id, qr_data=new_order.id, payment_pin=pin)
+        # auto-assign default vehicle if user has exactly one vehicle
+        default_vehicle_id: Optional[int] = None
+        user_vehicles = db.query(Vehicle).filter_by(user_id=user.id).all()
+        if len(user_vehicles) == 1:
+            default_vehicle_id = user_vehicles[0].id
+            db.add(OrderVehicle(order_id=new_order.id, vehicle_id=default_vehicle_id))
+            db.commit()
+            db.refresh(new_order)
+        return OrderCreateResponse(
+            order_id=new_order.id,
+            qr_data=new_order.id,
+            payment_pin=pin,
+            default_vehicle_id=default_vehicle_id,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -153,11 +167,12 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
           .order_by(Payment.created_at.desc())
           .first()
     )
-    return {
+    # base response
+    ret = {
         "orderId": order.id,
         "serviceId": order.service_id,
         "serviceName": service_name,
-        "loyalty_eligible": loyalty_eligible,
+        "loyaltyEligible": loyalty_eligible,
         "category": category,
         "extras": extras_names,
         "qrData": payment.qr_code_base64 if payment else order.id,
@@ -167,8 +182,38 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
         "status": order.status,
         "redeemed": getattr(order, "redeemed", False),
     }
+    # include loyalty status
+    from app.plugins.loyalty.routes import REWARD_INTERVAL, get_base_reward
+    vc = db.query(VisitCount).filter_by(user_id=user.id, tenant_id=user.tenant_id).first()
+    visits = vc.count if vc else 0
+    progress = visits % REWARD_INTERVAL
+    next_ms = ((visits // REWARD_INTERVAL) + 1) * REWARD_INTERVAL
+    upcoming = []
+    base = get_base_reward(db, user.tenant_id)
+    if base and next_ms > visits:
+        upcoming.append({
+            "milestone": next_ms,
+            "visits_needed": next_ms - visits,
+            "reward": base.title,
+        })
+    # assign wash bay and estimated time
+    # static estimate or based on service
+    estimated_time = 15  # default estimated wash time in minutes
+    bay = random.randint(1, 5)
+    notification = f"Head to bay #{bay}."
+    ret.update({
+        "visits": visits,
+        "progress": progress,
+        "nextMilestone": next_ms,
+        "upcomingRewards": upcoming,
+        # Next steps info
+        "estimatedWashTime": estimated_time,
+        "bayNumber": bay,
+        "notificationMessage": notification,
+    })
+    return ret
 
-@router.post("/{order_id}/assign-vehicle", response_model=OrderDetailResponse)
+@router.post("/{order_id}/assign-vehicle")
 def assign_vehicle(order_id: str, req: AssignVehicleRequest, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
@@ -182,43 +227,101 @@ def assign_vehicle(order_id: str, req: AssignVehicleRequest, db: Session = Depen
         db.add(vehicle); db.flush()
     db.add(OrderVehicle(order_id=order.id, vehicle_id=vehicle.id))
     db.commit(); db.refresh(order)
-    resp = OrderDetailResponse.from_orm(order).dict()
-    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
-    return resp
+    # build response model via ORM validation, then inject vehicle IDs
+    # build response dict manually
+    return {
+        "id": order.id,
+        "service_id": order.service_id,
+        "quantity": order.quantity,
+        "extras": order.extras,
+        "payment_pin": order.payment_pin,
+        "status": order.status,
+        "user_id": order.user_id,
+        "created_at": order.created_at,
+        "redeemed": order.redeemed,
+        "started_at": order.started_at,
+        "ended_at": order.ended_at,
+        "vehicles": [ov.vehicle_id for ov in order.vehicles],
+    }
 
 @router.post("/{order_id}/start-wash", response_model=OrderDetailResponse)
-def start_wash(order_id: int, db: Session = Depends(get_db)):
+def start_wash(order_id: str, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     order.status = "in_progress"
     db.commit(); db.refresh(order)
-    resp = OrderDetailResponse.from_orm(order).dict()
-    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
-    return resp
+    # return updated order payload
+    return {
+        "id": order.id,
+        "service_id": order.service_id,
+        "quantity": order.quantity,
+        "extras": order.extras,
+        "payment_pin": order.payment_pin,
+        "status": order.status,
+        "user_id": order.user_id,
+        "created_at": order.created_at,
+        "redeemed": order.redeemed,
+        "started_at": order.started_at,
+        "ended_at": order.ended_at,
+        "vehicles": [ov.vehicle_id for ov in order.vehicles],
+    }
 
 @router.post("/{order_id}/complete-wash", response_model=OrderDetailResponse)
-def complete_wash(order_id: int, db: Session = Depends(get_db)):
+def complete_wash(order_id: str, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    # complete wash and update visit counts
     order.status = "completed"
-    vc = db.query(VisitCount).filter_by(user_id=order.user_id).first()
+    # include tenant filter for visit count
+    vc = db.query(VisitCount).filter_by(user_id=order.user_id, tenant_id=order.user.tenant_id).first()
     if not vc:
-        vc = VisitCount(user_id=order.user_id, tenant_id=order.user.tenant_id, count=0)
+        vc = VisitCount(user_id=order.user_id, tenant_id=order.user.tenant_id, count=0,
+                        updated_at=datetime.utcnow())
         db.add(vc)
     vc.count += sum(item.qty for item in order.items)
-    db.commit(); db.refresh(order)
-    resp = OrderDetailResponse.from_orm(order).dict()
-    resp["vehicles"] = [ov.vehicle_id for ov in order.vehicles]
-    return resp
+    vc.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(order)
+    # return updated order payload
+    return {
+        "id": order.id,
+        "service_id": order.service_id,
+        "quantity": order.quantity,
+        "extras": order.extras,
+        "payment_pin": order.payment_pin,
+        "status": order.status,
+        "user_id": order.user_id,
+        "created_at": order.created_at,
+        "redeemed": order.redeemed,
+        "started_at": order.started_at,
+        "ended_at": order.ended_at,
+        "vehicles": [ov.vehicle_id for ov in order.vehicles],
+    }
 
-@router.post("/{order_id}/redeem")
+@router.post("/{order_id}/redeem", response_model=OrderDetailResponse)
 def redeem_order(order_id: str, db: Session = Depends(get_db)):
+    """Mark order as redeemed and return updated order details"""
     order = db.query(Order).filter_by(id=order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     order.redeemed = True
     order.status = "paid"
     db.commit()
-    return {"status": "ok"}
+    db.refresh(order)
+    # return redeemed order payload
+    return {
+        "id": order.id,
+        "service_id": order.service_id,
+        "quantity": order.quantity,
+        "extras": order.extras,
+        "payment_pin": order.payment_pin,
+        "status": order.status,
+        "user_id": order.user_id,
+        "created_at": order.created_at,
+        "redeemed": order.redeemed,
+        "started_at": order.started_at,
+        "ended_at": order.ended_at,
+        "vehicles": [ov.vehicle_id for ov in order.vehicles],
+    }

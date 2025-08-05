@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel  # type: ignore
 from typing import Optional, List
 from datetime import datetime
 
@@ -26,6 +26,8 @@ class OrderCreateResponse(BaseModel):
     order_id: str
     qr_data: str
     payment_pin: Optional[str] = None
+    # ID of the user's default vehicle, if auto-assigned
+    default_vehicle_id: Optional[int] = None
 
 class OrderBase(BaseModel):
     id: str
@@ -47,7 +49,17 @@ class OrderResponse(OrderBase):
     pass
 
 class OrderDetailResponse(OrderResponse):
-    pass
+    # List of vehicle IDs assigned to the order
+    vehicles: List[int] = []
+    # Loyalty status
+    visits: Optional[int] = 0
+    progress: Optional[int] = 0  # visits % REWARD_INTERVAL
+    nextMilestone: Optional[int] = None
+    upcomingRewards: Optional[List[dict]] = []
+    # Estimated wash time in minutes, bay assignment and notification
+    estimatedWashTime: Optional[int] = None
+    bayNumber: Optional[int] = None
+    notificationMessage: Optional[str] = None
 
 class AssignVehicleRequest(BaseModel):
     vehicle_id: Optional[int] = None

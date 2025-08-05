@@ -13,13 +13,13 @@ const PastOrders: React.FC = () => {
 
 =======
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import FocusTrap from 'focus-trap-react';
 import api from "../api/api";
 import QRCode from "react-qr-code";
 import PageLayout from "../components/PageLayout";
 import { useAuth } from "../auth/AuthProvider";
 import { Navigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 interface Extra {
   id: number;
@@ -52,7 +52,7 @@ const PastOrders: React.FC = () => {
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     setDataLoading(true);
@@ -63,6 +63,20 @@ const PastOrders: React.FC = () => {
       .finally(() => setDataLoading(false));
   }, []);
 >>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
+
+  // fetch a single order on “View”
+  const loadOrderDetails = async (id: string) => {
+    setModalLoading(true);
+    try {
+      const { data } = await api.get<Order>(`/orders/${id}`);
+      setModalOrder(data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load order details");
+    } finally {
+      setModalLoading(false);
+    }
+  };
 
   // Helper to get a user-friendly order summary
   const getOrderSummary = (order: Order) => {
@@ -77,6 +91,8 @@ const PastOrders: React.FC = () => {
     }
     return summary;
   };
+
+  const [showAll, setShowAll] = useState(false);
 
   // Limit to 3 orders unless showAll is true
   const visibleOrders = showAll ? orders : orders.slice(0, 3);
@@ -155,7 +171,7 @@ const PastOrders: React.FC = () => {
                   </div>
                   <button
                     className="ml-4 px-4 py-2 bg-blue-600 text-white rounded font-medium"
-                    onClick={() => setModalOrder(order)}
+                    onClick={() => loadOrderDetails(order.id)}
                   >
                     View
                   </button>
@@ -176,16 +192,16 @@ const PastOrders: React.FC = () => {
         )}
       </div>
 
-      {/* Modal for order details */}
-      {modalOrder && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="order-details-title"
-          aria-describedby="order-details-desc"
-          tabIndex={-1}
-        >
+      {/* full‐screen loader while fetching the single order */}
+      {modalLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded p-6">Loading order…</div>
+        </div>
+      )}
+
+      {/* once loaded, show the modal */}
+      {modalOrder && !modalLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <FocusTrap focusTrapOptions={{ onDeactivate: () => setModalOrder(null), clickOutsideDeactivates: true, escapeDeactivates: true }}>
             <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full flex flex-col items-center relative">
               <button
@@ -199,81 +215,42 @@ const PastOrders: React.FC = () => {
               <h2 id="order-details-title" className="text-xl font-bold mb-2 text-center">
                 {getOrderSummary(modalOrder)}
               </h2>
-              <div className="mb-4">
-                <QRCode value={modalOrder.id} size={180} />
-              </div>
-              <div
-                style={{
-                  marginTop: 8,
-                  padding: "12px 24px",
-                  background: "#e9ecef",
-                  borderRadius: 6,
-                  fontSize: 22,
-                  fontWeight: "bold",
-                  letterSpacing: 4,
-                  color: "#333",
-                  textAlign: "center",
-                }}
-              >
-                Payment PIN:{" "}
-                <span style={{ color: "#2563eb" }}>{modalOrder.payment_pin}</span>
+              <QRCode value={modalOrder.id} size={180} className="mb-4" />
+              <div className="mt-2 text-base text-gray-600 text-center">
+                Payment PIN: <span className="font-mono font-bold text-blue-600">{modalOrder.payment_pin}</span>
               </div>
               {typeof modalOrder.amount === "number" && (
-                <div style={{ marginTop: 12, fontSize: 18, color: "#222" }}>
-                  Amount Paid:{" "}
-                  <span style={{ fontWeight: "bold" }}>
-                    R{(modalOrder.amount / 100).toFixed(2)}
-                  </span>
+                <div className="mt-2 text-base text-gray-600 text-center">
+                  Amount Paid: <span className="font-semibold">R{(modalOrder.amount / 100).toFixed(2)}</span>
                 </div>
               )}
               <div className="mt-4 text-base text-gray-600 text-center">
-                Status:{" "}
-                <span
-                  className={
-                    modalOrder.status === "paid"
-                      ? "text-green-600"
-                      : "text-gray-600"
-                  }
-                >
-                  {modalOrder.status.charAt(0).toUpperCase() +
-                    modalOrder.status.slice(1)}
+                Status:{' '}
+                <span className={modalOrder.status === "paid" ? "text-green-600" : "text-gray-600"}>
+                  {modalOrder.status.charAt(0).toUpperCase() + modalOrder.status.slice(1)}
                 </span>
               </div>
-              {/* Redeemed by staff info */}
               <div className="mt-2 text-base text-gray-600 text-center">
                 {modalOrder.order_redeemed_at ? (
-                  <>
-                    <span className="text-green-700 font-semibold">
-                      Redeemed{" "}
-                      {new Date(modalOrder.order_redeemed_at).toLocaleDateString(
-                        undefined,
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }
-                      )}
-                    </span>
-                  </>
+                  <span className="text-green-700 font-semibold">
+                    Redeemed {new Date(modalOrder.order_redeemed_at!).toLocaleString()}
+                  </span>
                 ) : (
                   <span className="text-red-600 font-semibold">Not redeemed</span>
                 )}
               </div>
               <p id="order-details-desc" className="mt-2 text-gray-500 text-center">
-                Show this QR code or PIN to staff to verify your payment.
+                Show this QR or PIN to staff.
               </p>
               <button
-                className="mt-6 px-6 py-2 bg-blue-600 text-white rounded font-medium text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[120px]"
+                className="mt-6 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onClick={() => setModalOrder(null)}
               >
                 Close
               </button>
             </div>
           </FocusTrap>
-        </div>,
-        document.body
+        </div>
       )}
     </PageLayout>
   );

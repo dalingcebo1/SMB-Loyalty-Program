@@ -5,11 +5,13 @@ import { trackStepView } from '../utils/analytics';
 
 interface StepIndicatorProps {
   currentStep: number; // 1-based index
+  // list of completed step numbers
+  stepsCompleted?: number[];
 }
 
 const steps = ['Book Service', 'Payment', 'Confirmation'];
 
-const StepIndicator: FC<StepIndicatorProps> = ({ currentStep }) => {
+const StepIndicator: FC<StepIndicatorProps> = ({ currentStep, stepsCompleted = [] }) => {
   const navigate = useNavigate();
   // Track analytics when the current step is rendered
   useEffect(() => {
@@ -32,7 +34,7 @@ const StepIndicator: FC<StepIndicatorProps> = ({ currentStep }) => {
       {steps.map((label, idx) => {
         const stepNum = idx + 1;
         const isActive = stepNum === currentStep;
-        const isCompleted = stepNum < currentStep;
+        const isCompleted = stepsCompleted.length > 0 ? stepsCompleted.includes(stepNum) : stepNum < currentStep;
         return (
           <div
             key={label}

@@ -10,6 +10,7 @@ import Loading from "../components/Loading";
 import ErrorMessage from "../components/ErrorMessage";
 import QRCode from "react-qr-code";
 import axios from "axios";
+import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import PageLayout from "../components/PageLayout";
 
@@ -52,6 +53,9 @@ const OrderConfirmation: React.FC = () => {
   const [paymentPin, setPaymentPin] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [summary, setSummary] = useState<string[]>([]);
+  const [estimatedWashTime, setEstimatedWashTime] = useState<number | null>(null);
+  const [bayNumber, setBayNumber] = useState<number | null>(null);
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [timestamp, setTimestamp] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -99,6 +103,21 @@ const OrderConfirmation: React.FC = () => {
     }
     // eslint-disable-next-line
   }, [state, paramOrderId]);
+
+  // fetch next steps info from order details
+  useEffect(() => {
+    if (orderId) {
+      api.get(`/orders/${orderId}`)
+        .then(res => {
+          setEstimatedWashTime(res.data.estimatedWashTime);
+          setBayNumber(res.data.bayNumber);
+          setNotificationMessage(res.data.notificationMessage);
+        })
+        .catch(() => {
+          // ignore errors
+        });
+    }
+  }, [orderId]);
 
   useEffect(() => {
     if (!isLoading && (!orderId || !qrData)) {
@@ -165,7 +184,7 @@ const OrderConfirmation: React.FC = () => {
 
   return (
     <PageLayout error={error || undefined} onRetry={() => window.location.reload()}>
-      <StepIndicator currentStep={3} />
+      <StepIndicator currentStep={3} stepsCompleted={[1, 2]} />
       <section style={{ margin: "32px auto", maxWidth: 400, padding: 24, background: "#fafbfc", borderRadius: 8 }}>
         {/* Toast notifications */}
         <ToastContainer position="top-right" />
@@ -230,6 +249,21 @@ const OrderConfirmation: React.FC = () => {
         {timestamp && (
           <div style={{ marginTop: 8, fontSize: '12px', color: '#888', textAlign: 'center' }}>
             Ordered on: {new Date(timestamp).toLocaleString()}
+          </div>
+        )}
+        {/* Next Steps Section */}
+        {(estimatedWashTime !== null || notificationMessage) && (
+          <div style={{ marginTop: 16, padding: 16, background: '#e8f4f8', borderRadius: 8 }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: 8 }}>Next Steps</h3>
+            {estimatedWashTime !== null && (
+              <p>Estimated wash time: {estimatedWashTime} minutes</p>
+            )}
+            {bayNumber !== null && (
+              <p>Your bay number: {bayNumber}</p>
+            )}
+            {notificationMessage && (
+              <p>{notificationMessage}</p>
+            )}
           </div>
         )}
         <p style={{ margin: "16px 0", textAlign: "center" }}>

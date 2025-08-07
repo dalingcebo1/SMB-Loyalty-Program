@@ -1,7 +1,10 @@
 import React, { Component, ReactNode } from 'react';
 import FocusTrap from 'focus-trap-react';
 
-interface Props { children: ReactNode; }
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
 interface State { hasError: boolean; }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -31,6 +34,10 @@ class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Render custom fallback or default error UI
+      if (this.props.fallback) {
+        return <>{this.props.fallback}</>;
+      }
       return (
         <FocusTrap
           focusTrapOptions={{

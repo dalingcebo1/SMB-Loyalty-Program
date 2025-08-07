@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useDateRange } from '../hooks/useDateRange';
 
 interface AdminMetricsPageProps<T> {
@@ -13,26 +14,11 @@ import Alert from './Alert';
 export function AdminMetricsPage<T>({ title, fetcher, render }: AdminMetricsPageProps<T>) {
   const navigate = useNavigate();
   const { start, end, setStart, setEnd, refresh } = useDateRange();
-  const [data, setData] = React.useState<T | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  // fetch wrapper to handle loading and errors
-  const fetchData = React.useCallback(() => {
-    setError(null);
-    setLoading(true);
-    fetcher(start, end)
-      .then(setData)
-      .catch(err => {
-        console.error(err);
-        setError(err.message || 'Failed to load metrics');
-      })
-      .finally(() => setLoading(false));
-  }, [fetcher, start, end]);
-
-  React.useEffect(() => {
-    if (!start || !end) return;
-    fetchData();
-  }, [start, end, fetchData]);
+  // React Query for metrics data
+  const { data, error, isLoading, refetch } = useQuery<T, Error>({
+    queryKey: ['adminMetrics', title, start, end],
+    queryFn: () => fetcher(start, end),
+  });
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
@@ -40,33 +26,32 @@ export function AdminMetricsPage<T>({ title, fetcher, render }: AdminMetricsPage
         <button onClick={() => navigate(-1)} className="px-3 py-1 bg-gray-200 rounded">Back</button>
         <input type="date" value={start} onChange={e => setStart(e.target.value)} className="border p-1 rounded" />
         <input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border p-1 rounded" />
-        <button
-          onClick={() => {
-            setError(null);
-            fetchData();
-            refresh();
-          }}
-          className="px-3 py-1 bg-blue-600 text-white rounded"
-        >
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+          <button
+            onClick={() => {
+              refresh();
+              refetch();
+            }}
+            className="px-3 py-1 bg-blue-600 text-white rounded"
+          >
+            {isLoading ? 'Refreshing…' : 'Refresh'}
+          </button>
       </div>
       <h2 className="text-xl font-semibold mb-4">{title}</h2>
       {error && (
         <Alert
           type="error"
-          message={error}
+          message={(error as Error).message || 'Failed to load metrics'}
           actionLabel="Retry"
-          onAction={fetchData}
-          onClose={() => setError(null)}
+          onAction={() => refetch()}
+          onClose={() => {}}
         />
       )}
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
       ) : data ? (
-        <>{render(data)}</>
+        <>{render(data as T)}</>
       ) : (
         <p className="text-center text-gray-500">No {title.toLowerCase()} available.</p>
       )}

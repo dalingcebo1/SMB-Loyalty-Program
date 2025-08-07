@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { HiUsers, HiUserAdd, HiCog } from 'react-icons/hi';
 import api from '../../api/api';
-import { SUMMARY_LABELS } from '../../utils/metrics';
+import { SUMMARY_LABELS } from '../../utils';
 
 const AdminWelcome: React.FC = () => {
   const { user } = useAuth();

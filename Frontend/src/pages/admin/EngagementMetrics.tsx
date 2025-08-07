@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api';
-import Spinner from '../../components/Spinner';
-import { ENGAGEMENT_LABELS, humanizeMetric } from '../../utils/metrics';
+import { Spinner } from '../../components';
+import { ENGAGEMENT_LABELS, humanizeMetric } from '../../utils';
 
 const EngagementMetrics: React.FC = () => {
   const navigate = useNavigate();

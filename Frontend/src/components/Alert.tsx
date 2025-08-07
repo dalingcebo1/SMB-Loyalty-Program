@@ -1,4 +1,6 @@
 import React from 'react';
+import { classNames } from '../utils/classNames';
+import Button from './ui/Button';
 
 interface AlertProps {
   type?: 'error' | 'info' | 'success';
@@ -9,35 +11,39 @@ interface AlertProps {
 }
 
 const Alert: React.FC<AlertProps> = ({ type = 'info', message, actionLabel, onAction, onClose }) => {
-  let containerClasses = 'border-l-4 p-4 mb-4 flex items-center justify-between';
+  let baseClasses = ['border-l-4', 'p-4', 'mb-4', 'flex', 'items-center', 'justify-between'];
   let textClasses = 'text-sm';
-  let actionButtonClasses = 'ml-4 px-3 py-1 rounded text-white';
 
-  switch (type) {
-    case 'error':
-      containerClasses += ' bg-red-100 border-red-500';
-      textClasses += ' text-red-700';
-      actionButtonClasses = 'ml-4 px-3 py-1 bg-red-500 rounded text-white';
-      break;
-    case 'success':
-      containerClasses += ' bg-green-100 border-green-500';
-      textClasses += ' text-green-700';
-      actionButtonClasses = 'ml-4 px-3 py-1 bg-green-500 rounded text-white';
-      break;
-    default:
-      containerClasses += ' bg-blue-100 border-blue-500';
-      textClasses += ' text-blue-700';
-      actionButtonClasses = 'ml-4 px-3 py-1 bg-blue-500 rounded text-white';
-  }
+  // Add variant styles
+  const variantStyles = {
+    error: {
+      container: ['bg-red-100', 'border-red-500'],
+      text: ['text-red-700'],
+      buttonVariant: 'danger' as const,
+    },
+    success: {
+      container: ['bg-green-100', 'border-green-500'],
+      text: ['text-green-700'],
+      buttonVariant: 'primary' as const,
+    },
+    info: {
+      container: ['bg-blue-100', 'border-blue-500'],
+      text: ['text-blue-700'],
+      buttonVariant: 'secondary' as const,
+    },
+  };
+  const vs = variantStyles[type];
+  const containerClasses = classNames(...baseClasses, ...vs.container);
+  textClasses = classNames(textClasses, ...vs.text);
 
   return (
     <div className={containerClasses}>
       <div className={textClasses}>{message}</div>
       <div className="flex items-center">
         {actionLabel && onAction && (
-          <button onClick={onAction} className={actionButtonClasses}>
+          <Button variant={vs.buttonVariant} onClick={onAction} className="ml-4">
             {actionLabel}
-          </button>
+          </Button>
         )}
         {onClose && (
           <button onClick={onClose} className="ml-2 text-sm text-gray-500 hover:underline">

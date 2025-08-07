@@ -78,12 +78,6 @@ function RequireAuth() {
   return <Outlet />;
 }
 // Guard for admin-only pages
-function RequireAdmin() {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen"><p>Loading…</p></div>;
-  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
-  return <Outlet />;
-}
 // Guard for developer-only pages
 function RequireDeveloper() {
   const { user, loading } = useAuth();
@@ -127,15 +121,14 @@ export default function App() {
         </Route>
 
         {/* PROTECTED ADMIN ROUTES */}
-        <Route element={<RequireAdmin />}>
-          <Route
-            path="/admin"
-            element={
-              <Suspense fallback={<div>Loading admin UI…</div>}>
-                <AdminLayout />
-              </Suspense>
-            }
-          >
+        <Route
+          path="/admin"
+          element={
+            <Suspense fallback={<div>Loading admin UI…</div>}>
+              <AdminLayout />
+            </Suspense>
+          }
+        >
             <Route
               index
               element={
@@ -177,7 +170,8 @@ export default function App() {
               }
             />
             {/* Analytics drill-down routes */}
-            <Route path="analytics" element={<AnalyticsLayout />}>  {/* persistent summary grid + details */}
+            <Route path="analytics" element={<AnalyticsLayout />}>
+              {/* persistent summary grid + details */}
               <Route
                 path="users"
                 element={<Suspense fallback={<div>Loading user metrics…</div>}><UsersMetrics /></Suspense>}
@@ -214,9 +208,8 @@ export default function App() {
                 path="financial"
                 element={<Suspense fallback={<div>Loading financial metrics…</div>}><FinancialMetrics /></Suspense>}
               />
-            </Route>
-          </Route>
-        </Route>
+            </Route>  {/* closes analytics */}
+          </Route>    {/* closes /admin */}
 
         {/* PROTECTED DEVELOPER ROUTES */}
         <Route element={<RequireDeveloper />}>
@@ -259,7 +252,8 @@ export default function App() {
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-      <ToastContainer position="top-center" />
+      {/* Toast notifications */}
+      <ToastContainer />
     </>
   );
 }

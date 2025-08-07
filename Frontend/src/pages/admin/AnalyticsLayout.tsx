@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Outlet, Link, useSearchParams, useMatch } from 'react-router-dom';
+import { Outlet, Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/api';
-import { SUMMARY_LABELS, humanizeMetric } from '../../utils/metrics';
+import { SUMMARY_LABELS, humanizeMetric } from '../../utils';
 import Alert from '../../components/Alert';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import AdminBreadcrumbs from '../../components/AdminBreadcrumbs';
+import Container from '../../components/ui/Container';
 // Removed chart imports until dependencies are installed
 
 const AnalyticsLayout: React.FC = () => {
@@ -37,7 +40,7 @@ const AnalyticsLayout: React.FC = () => {
     </svg>
   );
   return (
-    <div className="w-full max-w-4xl mt-6 mb-6">
+    <Container>
       {/* Date range picker (read-only here) */}
       <div className="flex items-center space-x-2 mb-4">
         <input type="date" value={start} readOnly className="border p-1 rounded" />
@@ -73,30 +76,21 @@ const AnalyticsLayout: React.FC = () => {
           </Link>
         ))}
       </div>
-      {/* Drill-down detail component */}
-      {/* Sub-header and breadcrumbs for selected metric */}
-      {(() => {
-        const m = useMatch('/admin/analytics/:metric');
-        const metric = m?.params.metric;
-        if (metric) {
-          const name = humanizeMetric(metric);
-          return (
-            <div className="mb-6">
-              <nav className="text-sm text-gray-500 mb-2">
-                <Link to="/admin/analytics" className="hover:underline">
-                  Analytics
-                </Link>
-                <span className="px-2">/</span>
-                <span>{name}</span>
-              </nav>
-              <h3 className="text-lg font-semibold">{name}</h3>
-            </div>
-          );
+      {/* Drill-down breadcrumbs and detail component */}
+      <AdminBreadcrumbs />
+      <ErrorBoundary
+        fallback={
+          <Alert
+            type="error"
+            message="Failed to load details"
+            actionLabel="Retry"
+            onAction={fetchSummary}
+          />
         }
-        return null;
-      })()}
-      <Outlet />
-    </div>
+      >
+        <Outlet />
+      </ErrorBoundary>
+    </Container>
   );
 };
 

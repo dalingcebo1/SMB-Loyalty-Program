@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { DateRange } from '../types/admin';
 
-export function useDateRange(defaultDays = 7) {
+export function useDateRange(defaultDays = 7): DateRange & {
+  setStart: (s: string) => void;
+  setEnd: (e: string) => void;
+  refresh: () => void;
+} {
   const [searchParams, setSearchParams] = useSearchParams();
   const startParam = searchParams.get('start_date');
   const endParam = searchParams.get('end_date');

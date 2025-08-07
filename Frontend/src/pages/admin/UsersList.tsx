@@ -1,12 +1,14 @@
 // src/pages/admin/UsersList.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../api/api';
 import Pagination from '../../components/Pagination';
 import PageLayout from '../../components/PageLayout';
 import { useAuth } from '../../auth/AuthProvider';
 
-interface User {
+// API user shape
+interface ApiUser {
   id: number;
   first_name: string;
   last_name: string;
@@ -17,12 +19,15 @@ interface User {
 
 const UsersList: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+  // fetch users via React Query
+  const { data: users = [], isLoading, isError, error, refetch } = useQuery<ApiUser[], Error>({
+    queryKey: ['adminUsers'],
+    queryFn: () => api.get<ApiUser[]>('/users').then(res => res.data),
+  });
+
   // filter and paginate users
   const filtered = users.filter(u =>
     u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -32,25 +37,11 @@ const UsersList: React.FC = () => {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await api.get<User[]>('/users');
-        setUsers(res.data);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to load users');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
-  }, []);
-
   if (authLoading) return <PageLayout loading>{null}</PageLayout>;
   if (!user || user.role !== 'admin') return <Navigate to='/' replace />;
 
-  if (loading) return <PageLayout loading loadingText="Loading users...">{null}</PageLayout>;
-  if (error) return <PageLayout error={error} onRetry={() => {/* no retry */}}>{null}</PageLayout>;
+  if (isLoading) return <PageLayout loading loadingText="Loading users...">{null}</PageLayout>;
+  if (isError) return <PageLayout error={error?.message || 'Failed to load users'} onRetry={() => refetch()}>{null}</PageLayout>;
 
   return (
     <PageLayout>

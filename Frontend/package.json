@@ -34,6 +34,7 @@
     "react-qr-scanner": "1.0.0-alpha.11",
     "react-router-dom": "6.30.0",
     "react-toastify": "11.0.5",
+    "react-window": "^1.8.11",
     "zod": "4.0.15"
   },
   "devDependencies": {
@@ -48,6 +49,7 @@
     "@types/estree": "^1.0.8",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
+    "@types/react-window": "^1.8.8",
     "@types/trusted-types": "^2.0.7",
     "@vitejs/plugin-react": "4.3.4",
     "@vitest/coverage-v8": "0.34.6",

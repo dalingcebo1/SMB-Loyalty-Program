@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { HiUsers, HiUserAdd, HiCog } from 'react-icons/hi';
 import api from '../../api/api';
+import { SUMMARY_LABELS } from '../../utils/metrics';
 
 const AdminWelcome: React.FC = () => {
   const { user } = useAuth();
@@ -35,15 +36,6 @@ const AdminWelcome: React.FC = () => {
     fetchSummary();
   }, [fetchSummary]);
 
-  // full label mapping for quick metrics
-  const labelMap: Record<string, string> = {
-    user_count: 'Users',
-    transaction_count: 'Transactions',
-    points_issued: 'Points Issued',
-    points_redeemed: 'Points Redeemed',
-    redemptions_count: 'Redemptions',
-    visits_total: 'Total Visits',
-  };
   // spinner for individual metric cards
   const CardSpinner: React.FC = () => (
     <svg className="animate-spin h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -115,8 +107,8 @@ const AdminWelcome: React.FC = () => {
         </div>
         <h2 className="text-xl font-semibold mb-4">Quick Metrics</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {Object.entries(labelMap).map(([key, label]) => (
-            <Link key={key} to={`/admin/analytics/${key.replace(/_count$/, 's').replace(/_/g, '/')}?start_date=${startDate}&end_date=${endDate}`}>
+          {Object.entries(SUMMARY_LABELS).map(([key, label]) => (
+            <Link key={key} to={`/admin/analytics/${key.replace(/_count$/, 's').replace(/_/g, '/')}?start_date=${startDate}&end_date=${endDate}`}>  
               <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
                 <div className="text-sm text-gray-500">{label}</div>
                 <div className="text-2xl font-semibold">

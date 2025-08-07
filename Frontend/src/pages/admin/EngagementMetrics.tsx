@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api';
+import Spinner from '../../components/Spinner';
+import { ENGAGEMENT_LABELS, humanizeMetric } from '../../utils/metrics';
 
 const EngagementMetrics: React.FC = () => {
   const navigate = useNavigate();
@@ -15,34 +17,7 @@ const EngagementMetrics: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // explicit full label mapping for metrics
-  const labelMap: Record<string, string> = {
-    dau: 'Daily Active Users',
-    wau: 'Weekly Active Users',
-    mau: 'Monthly Active Users',
-    retention_rate: 'Retention Rate',
-    churn_rate: 'Churn Rate',
-  };
 
-  // helper to format camelCase or snake_case keys into Title Case labels
-  const formatKey = (key: string) => {
-    // case-insensitive lookup
-    const lowerKey = key.toLowerCase();
-    if (labelMap[lowerKey]) return labelMap[lowerKey];
-    // fallback to auto formatting
-    return key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/_/g, ' ')
-      .replace(/^./, str => str.toUpperCase());
-  };
-
-  // simple spinner component
-  const Spinner: React.FC = () => (
-    <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-    </svg>
-  );
 
   return (
     <div className="p-4">
@@ -71,7 +46,9 @@ const EngagementMetrics: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {Object.entries(data).map(([key, value]) => (
                     <tr key={key} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{formatKey(key)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                      {humanizeMetric(key, ENGAGEMENT_LABELS)}
+                    </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-700">{String(value)}</td>
                     </tr>
                   ))}

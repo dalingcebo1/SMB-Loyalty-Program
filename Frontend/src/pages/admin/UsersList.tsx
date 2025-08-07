@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import api from '../../api/api';
+import Pagination from '../../components/Pagination';
 import PageLayout from '../../components/PageLayout';
 import { useAuth } from '../../auth/AuthProvider';
 
@@ -19,6 +20,17 @@ const UsersList: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  // filter and paginate users
+  const filtered = users.filter(u =>
+    u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -44,6 +56,15 @@ const UsersList: React.FC = () => {
     <PageLayout>
       <div>
         <h1 className="text-2xl font-bold mb-4">Users</h1>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            className="border p-2 w-full max-w-xs"
+          />
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white shadow rounded-lg">
             <thead>
@@ -57,7 +78,7 @@ const UsersList: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {paginated.map(u => (
                 <tr key={u.id} className="hover:bg-gray-100">
                   <td className="px-4 py-2 border text-center">{u.id}</td>
                   <td className="px-4 py-2 border">{u.first_name} {u.last_name}</td>
@@ -77,6 +98,11 @@ const UsersList: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </PageLayout>
   );

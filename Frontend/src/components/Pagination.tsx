@@ -1,0 +1,39 @@
+import React from 'react';
+
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+export default function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+  if (totalPages <= 1) return null;
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  return (
+    <div className="flex items-center space-x-2 mt-4">
+      <button
+        disabled={currentPage === 1}
+        onClick={() => onPageChange(currentPage - 1)}
+        className="px-2 py-1 border rounded disabled:opacity-50"
+      >
+        Previous
+      </button>
+      {pages.map(p => (
+        <button
+          key={p}
+          onClick={() => onPageChange(p)}
+          className={`px-2 py-1 border rounded ${p === currentPage ? 'bg-blue-600 text-white' : ''}`}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        disabled={currentPage === totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+        className="px-2 py-1 border rounded disabled:opacity-50"
+      >
+        Next
+      </button>
+    </div>
+  );
+}

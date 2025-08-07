@@ -1,9 +1,12 @@
 // vite.config.ts
 import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
-import visualizer from 'rollup-plugin-visualizer';
+// Use named export for visualizer plugin
+import { visualizer } from 'rollup-plugin-visualizer';
 // @ts-ignore: Missing type declarations for VitePWA plugin
-import { VitePWA } from 'vite-plugin-pwa';
+// PWA support for offline caching
+// Import from dist for proper ESM resolution per package exports
+import { VitePWA } from 'vite-plugin-pwa/dist/index.js';
 
 export default defineConfig({
   plugins: [

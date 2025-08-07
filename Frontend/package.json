@@ -41,10 +41,16 @@
     "@testing-library/jest-dom": "6.6.4",
     "@testing-library/react": "14.3.1",
     "@testing-library/user-event": "14.6.1",
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__generator": "^7.27.0",
+    "@types/babel__template": "^7.4.4",
+    "@types/babel__traverse": "^7.28.0",
+    "@types/estree": "^1.0.8",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
+    "@types/trusted-types": "^2.0.7",
     "@vitejs/plugin-react": "4.3.4",
-    "@vitest/coverage-v8": "3.2.4",
+    "@vitest/coverage-v8": "0.34.6",
     "autoprefixer": "10.4.21",
     "eslint": "9.22.0",
     "eslint-plugin-react-hooks": "5.2.0",
@@ -52,11 +58,12 @@
     "globals": "16.0.0",
     "jsdom": "22.1.0",
     "postcss": "8.5.3",
+    "rollup-plugin-visualizer": "latest",
     "tailwindcss": "3.4.3",
     "typescript": "~5.7.2",
     "typescript-eslint": "8.26.1",
     "vite": "6.3.1",
-    "vitest": "0.34.6",
-    "vite-plugin-pwa": "0.14.9"
+    "vite-plugin-pwa": "latest",
+    "vitest": "0.34.6"
   }
 }

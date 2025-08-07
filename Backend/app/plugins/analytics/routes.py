@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date
 from app.core.database import get_db
-from app.models import User, Payment, PointBalance, Redemption, Reward, VisitCount
+from app.models import User, Payment, PointBalance, Redemption, Reward, VisitCount, Order
 from datetime import datetime, timedelta, date
 from app.plugins.auth.routes import require_admin
 
@@ -117,21 +117,29 @@ def get_user_details(
     else:
         start, end = start_date, end_date
     # Daily active users (distinct users with a payment on end date)
-    dau = db.query(func.count(func.distinct(Payment.user_id)))\
+    dau = db.query(func.count(func.distinct(Order.user_id)))\
+        .select_from(Payment)\
+        .join(Order, Payment.order_id == Order.id)\
         .filter(cast(Payment.created_at, Date) == end)\
         .scalar() or 0
     # Weekly active users (distinct users with payments in range)
-    wau = db.query(func.count(func.distinct(Payment.user_id)))\
+    wau = db.query(func.count(func.distinct(Order.user_id)))\
+        .select_from(Payment)\
+        .join(Order, Payment.order_id == Order.id)\
         .filter(cast(Payment.created_at, Date) >= start, cast(Payment.created_at, Date) <= end)\
         .scalar() or 0
     # Monthly active users (distinct users in last 30 days)
     mau_start = end - timedelta(days=29)
-    mau = db.query(func.count(func.distinct(Payment.user_id)))\
+    mau = db.query(func.count(func.distinct(Order.user_id)))\
+        .select_from(Payment)\
+        .join(Order, Payment.order_id == Order.id)\
         .filter(cast(Payment.created_at, Date) >= mau_start, cast(Payment.created_at, Date) <= end)\
         .scalar() or 0
     # Retention and churn rates
     prev_day = end - timedelta(days=1)
-    prev_dau = db.query(func.count(func.distinct(Payment.user_id)))\
+    prev_dau = db.query(func.count(func.distinct(Order.user_id)))\
+        .select_from(Payment)\
+        .join(Order, Payment.order_id == Order.id)\
         .filter(cast(Payment.created_at, Date) == prev_day)\
         .scalar() or 0
     retention_rate = dau / prev_dau if prev_dau else 0.0

@@ -35,6 +35,23 @@ const AdminWelcome: React.FC = () => {
     fetchSummary();
   }, [fetchSummary]);
 
+  // full label mapping for quick metrics
+  const labelMap: Record<string, string> = {
+    user_count: 'Users',
+    transaction_count: 'Transactions',
+    points_issued: 'Points Issued',
+    points_redeemed: 'Points Redeemed',
+    redemptions_count: 'Redemptions',
+    visits_total: 'Total Visits',
+  };
+  // spinner for individual metric cards
+  const CardSpinner: React.FC = () => (
+    <svg className="animate-spin h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  );
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
       {/* Header card */}
@@ -97,48 +114,18 @@ const AdminWelcome: React.FC = () => {
           </button>
         </div>
         <h2 className="text-xl font-semibold mb-4">Quick Metrics</h2>
-        {!summary || loading ? (
-          <p>Loading metrics...</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            <Link to={`/admin/analytics/users?start_date=${startDate}&end_date=${endDate}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          {Object.entries(labelMap).map(([key, label]) => (
+            <Link key={key} to={`/admin/analytics/${key.replace(/_count$/, 's').replace(/_/g, '/')}?start_date=${startDate}&end_date=${endDate}`}>
               <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
-                <div className="text-sm text-gray-500">Users</div>
-                <div className="text-2xl font-semibold">{summary.user_count ?? 0}</div>
+                <div className="text-sm text-gray-500">{label}</div>
+                <div className="text-2xl font-semibold">
+                  {loading ? <CardSpinner /> : (summary?.[key] ?? 0)}
+                </div>
               </div>
             </Link>
-            <Link to={`/admin/analytics/transactions?start_date=${startDate}&end_date=${endDate}`}>
-              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
-                <div className="text-sm text-gray-500">Transactions</div>
-                <div className="text-2xl font-semibold">{summary.transaction_count ?? 0}</div>
-              </div>
-            </Link>
-            <Link to={`/admin/analytics/points?start_date=${startDate}&end_date=${endDate}`}>
-              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
-                <div className="text-sm text-gray-500">Points Issued</div>
-                <div className="text-2xl font-semibold">{summary.points_issued ?? 0}</div>
-              </div>
-            </Link>
-            <Link to={`/admin/analytics/redemptions?start_date=${startDate}&end_date=${endDate}`}>
-              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
-                <div className="text-sm text-gray-500">Points Redeemed</div>
-                <div className="text-2xl font-semibold">{summary.points_redeemed ?? 0}</div>
-              </div>
-            </Link>
-            <Link to={`/admin/analytics/redemptions?start_date=${startDate}&end_date=${endDate}`}>
-              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
-                <div className="text-sm text-gray-500">Redemptions</div>
-                <div className="text-2xl font-semibold">{summary.redemptions_count ?? 0}</div>
-              </div>
-            </Link>
-            <Link to={`/admin/analytics/visits?start_date=${startDate}&end_date=${endDate}`}>
-              <div className="bg-white p-4 rounded shadow flex flex-col items-center justify-center text-center h-24 space-y-1 hover:shadow-lg transition">
-                <div className="text-sm text-gray-500">Total Visits</div>
-                <div className="text-2xl font-semibold">{summary.visits_total ?? 0}</div>
-              </div>
-            </Link>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     </div>
   );

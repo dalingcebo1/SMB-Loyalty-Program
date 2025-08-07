@@ -45,6 +45,7 @@ import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
 import PastOrders from "./pages/PastOrders";
 import Account from "./pages/Account"; // <-- Add this import
+import AnalyticsLayout from './pages/admin/AnalyticsLayout';
 
 // Feature flags
  const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
@@ -176,42 +177,44 @@ export default function App() {
               }
             />
             {/* Analytics drill-down routes */}
-            <Route
-              path="analytics/users"
-              element={<Suspense fallback={<div>Loading user metrics…</div>}><UsersMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/transactions"
-              element={<Suspense fallback={<div>Loading transaction metrics…</div>}><TransactionsMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/points"
-              element={<Suspense fallback={<div>Loading points metrics…</div>}><PointsMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/redemptions"
-              element={<Suspense fallback={<div>Loading redemptions metrics…</div>}><RedemptionsMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/visits"
-              element={<Suspense fallback={<div>Loading visit metrics…</div>}><VisitsMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/loyalty"
-              element={<Suspense fallback={<div>Loading loyalty metrics…</div>}><LoyaltyMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/top-clients"
-              element={<Suspense fallback={<div>Loading top clients…</div>}><TopClientsMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/engagement"
-              element={<Suspense fallback={<div>Loading engagement metrics…</div>}><EngagementMetrics /></Suspense>}
-            />
-            <Route
-              path="analytics/financial"
-              element={<Suspense fallback={<div>Loading financial metrics…</div>}><FinancialMetrics /></Suspense>}
-            />
+            <Route path="analytics" element={<AnalyticsLayout />}>  {/* persistent summary grid + details */}
+              <Route
+                path="users"
+                element={<Suspense fallback={<div>Loading user metrics…</div>}><UsersMetrics /></Suspense>}
+              />
+              <Route
+                path="transactions"
+                element={<Suspense fallback={<div>Loading transaction metrics…</div>}><TransactionsMetrics /></Suspense>}
+              />
+              <Route
+                path="points"
+                element={<Suspense fallback={<div>Loading points metrics…</div>}><PointsMetrics /></Suspense>}
+              />
+              <Route
+                path="redemptions"
+                element={<Suspense fallback={<div>Loading redemptions metrics…</div>}><RedemptionsMetrics /></Suspense>}
+              />
+              <Route
+                path="visits"
+                element={<Suspense fallback={<div>Loading visit metrics…</div>}><VisitsMetrics /></Suspense>}
+              />
+              <Route
+                path="loyalty"
+                element={<Suspense fallback={<div>Loading loyalty metrics…</div>}><LoyaltyMetrics /></Suspense>}
+              />
+              <Route
+                path="top-clients"
+                element={<Suspense fallback={<div>Loading top clients…</div>}><TopClientsMetrics /></Suspense>}
+              />
+              <Route
+                path="engagement"
+                element={<Suspense fallback={<div>Loading engagement metrics…</div>}><EngagementMetrics /></Suspense>}
+              />
+              <Route
+                path="financial"
+                element={<Suspense fallback={<div>Loading financial metrics…</div>}><FinancialMetrics /></Suspense>}
+              />
+            </Route>
           </Route>
         </Route>
 

@@ -6,6 +6,8 @@ import api from '../../api/api';
 import Pagination from '../../components/Pagination';
 import PageLayout from '../../components/PageLayout';
 import { useAuth } from '../../auth/AuthProvider';
+// @ts-ignore: react-window types not found in this project setup
+import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
 
 // API user shape
 interface ApiUser {
@@ -56,38 +58,34 @@ const UsersList: React.FC = () => {
             className="border p-2 w-full max-w-xs"
           />
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white shadow rounded-lg">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 border">ID</th>
-                <th className="px-4 py-2 border">Name</th>
-                <th className="px-4 py-2 border">Email</th>
-                <th className="px-4 py-2 border">Phone</th>
-                <th className="px-4 py-2 border">Role</th>
-                <th className="px-4 py-2 border">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.map(u => (
-                <tr key={u.id} className="hover:bg-gray-100">
-                  <td className="px-4 py-2 border text-center">{u.id}</td>
-                  <td className="px-4 py-2 border">{u.first_name} {u.last_name}</td>
-                  <td className="px-4 py-2 border">{u.email}</td>
-                  <td className="px-4 py-2 border">{u.phone}</td>
-                  <td className="px-4 py-2 border capitalize">{u.role}</td>
-                  <td className="px-4 py-2 border">
-                    <Link
-                      to={`/admin/users/${u.id}/edit`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Virtualized user list for performance */}
+        <div className="overflow-auto border rounded-lg bg-white shadow">
+          <List
+            height={400}
+            itemCount={paginated.length}
+            itemSize={50}
+            width="100%"
+          >{
+            // @ts-ignore: implicit any for ListChildComponentProps
+            ({ index, style }: ListChildComponentProps) => {
+              const u = paginated[index];
+              return (
+                <div
+                  key={u.id}
+                  style={style}
+                  className="grid grid-cols-6 items-center border-b hover:bg-gray-100"
+                >
+                  <div className="px-4 py-2 text-center">{u.id}</div>
+                  <div className="px-4 py-2">{u.first_name} {u.last_name}</div>
+                  <div className="px-4 py-2">{u.email}</div>
+                  <div className="px-4 py-2">{u.phone}</div>
+                  <div className="px-4 py-2 capitalize">{u.role}</div>
+                  <div className="px-4 py-2">
+                    <Link to={`/admin/users/${u.id}/edit`} className="text-blue-600 hover:underline">Edit</Link>
+                  </div>
+                </div>
+              );
+          }}</List>
         </div>
         <Pagination
           currentPage={currentPage}

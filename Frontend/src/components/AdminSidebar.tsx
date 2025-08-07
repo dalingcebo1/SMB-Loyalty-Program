@@ -10,6 +10,15 @@ const links = [
   { to: '/admin/analytics', label: 'Analytics' },
 ];
 
+// Prefetch component chunks on hover/focus
+const prefetchMap: Record<string, () => Promise<any>> = {
+  '/admin': () => import('./AdminLayout'),
+  '/admin/users': () => import('../pages/admin/UsersList'),
+  '/admin/register-staff': () => import('../pages/admin/StaffRegisterForm'),
+  '/admin/modules': () => import('../pages/admin/ModuleSettings'),
+  '/admin/analytics': () => import('../pages/admin/AnalyticsLayout'),
+};
+
 const AdminSidebar: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -22,6 +31,8 @@ const AdminSidebar: React.FC = () => {
           <NavLink
             key={l.to}
             to={l.to}
+            onMouseEnter={() => prefetchMap[l.to]?.()}
+            onFocus={() => prefetchMap[l.to]?.()}
             className={({ isActive }) =>
               isActive ? 'font-bold text-blue-700' : 'hover:underline'
             }

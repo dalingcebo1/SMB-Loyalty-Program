@@ -1,9 +1,44 @@
 // vite.config.ts
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
+import visualizer from 'rollup-plugin-visualizer';
+// @ts-ignore: Missing type declarations for VitePWA plugin
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // @ts-ignore: Rollup plugin types differ slightly from Vite PluginOption
+    visualizer({ filename: 'bundle-stats.html', open: true, gzipSize: true, brotliSize: true }) as unknown as PluginOption,
+    // PWA support for offline caching
+    // @ts-ignore: plugin type mismatch
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'robots.txt'],
+      manifest: {
+        name: 'SMB Loyalty',
+        short_name: 'SMB',
+        start_url: '/',
+        display: 'standalone',
+        background_color: '#ffffff',
+        icons: [
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' }
+        ]
+      }
+    }),
+  ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return id.toString().split('node_modules/')[1].split('/')[0].toString();
+          }
+        },
+      },
+    },
+  },
   server: {
     // ✨ Add these headers so popups can close themselves cleanly
     headers: {

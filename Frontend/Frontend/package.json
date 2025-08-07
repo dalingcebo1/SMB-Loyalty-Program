@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@types/react-window": "^1.8.8",
+    "react-window": "^1.8.11"
+  },
+  "devDependencies": {
+    "vite-plugin-pwa": "^1.0.2"
+  }
+}

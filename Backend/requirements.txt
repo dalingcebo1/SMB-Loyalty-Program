@@ -4,6 +4,7 @@ python-dotenv
 sqlalchemy
 psycopg2-binary
 python-jose
+passlib[bcrypt]
 qrcode[pil]
 pydantic
 python-dotenv
@@ -12,3 +13,5 @@ pytest
 httpx
 pytest-cov
 alembic
+ pydantic-settings
+email-validator

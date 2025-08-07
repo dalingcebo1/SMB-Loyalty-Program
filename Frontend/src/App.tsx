@@ -11,6 +11,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { moduleFlags } from "./config/modules";
 import { Suspense, lazy } from "react";
+import LoadingFallback from "./components/LoadingFallback";
 
 // Lazy-load admin bundle:
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
@@ -39,7 +40,7 @@ import ForgotPassword    from "./pages/ForgotPassword";
 import ResetPassword     from "./pages/ResetPassword";
 import Welcome           from "./pages/Welcome";
 import Payment           from "./pages/Payment";
-// Removed static StaffRegisterForm import in favor of lazy-loaded version
+// ...existing code...
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
@@ -124,7 +125,7 @@ export default function App() {
         <Route
           path="/admin"
           element={
-            <Suspense fallback={<div>Loading admin UI…</div>}>
+            <Suspense fallback={<LoadingFallback message="Loading admin UI…" />}>
               <AdminLayout />
             </Suspense>
           }

@@ -1,3 +1,6 @@
+export * from './admin';
+export * from './metrics';
+
 export type Service = {
   id: number;
   name: string;

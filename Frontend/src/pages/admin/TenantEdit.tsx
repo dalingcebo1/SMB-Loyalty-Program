@@ -6,7 +6,7 @@ import PageLayout from '../../components/PageLayout';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import TextField from '../../components/ui/TextField';
-import { tenantSchema, TenantForm } from '../../schemas/admin';
+import { tenantSchema, TenantForm } from '../../schemas';
 
 // API tenant shape
 interface ApiTenant {

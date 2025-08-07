@@ -7,7 +7,7 @@ import PageLayout from '../components/PageLayout';
 import TextField from '../components/ui/TextField';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { userSchema, UserForm } from '../schemas/admin';
+import { userSchema, UserForm } from '../schemas';
 
 
 // API user shape

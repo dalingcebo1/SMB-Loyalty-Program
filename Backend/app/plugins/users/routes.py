@@ -18,6 +18,11 @@ class UserOut(BaseModel):
     role: str
 
 router = APIRouter(prefix="", tags=["users"], dependencies=[Depends(require_staff)])
+ 
+# Schema for paginated response
+class PaginatedUsers(BaseModel):
+    items: list[UserOut]
+    total: int
 
 # Schemas
 class VehicleIn(BaseModel):
@@ -78,18 +83,41 @@ def search_users(query: str = Query(..., min_length=1), db: Session = Depends(ge
         for u in users
     ]
  
-@router.get("", response_model=list[UserOut])  # List all users
-def list_users(db: Session = Depends(get_db)):
-    """List all users (admin only)"""
-    all_users = db.query(User).all()
-    return [UserOut(
+@router.get("", response_model=PaginatedUsers)
+def list_users(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1),
+    search: Optional[str] = None,
+    sort_by: Optional[str] = Query(None, regex="^(first_name|last_name|email|phone|role)$"),
+    sort_order: str = Query('asc', regex="^(asc|desc)$"),
+    db: Session = Depends(get_db)
+):
+    """List users (admin only) with pagination, optional search and sorting"""
+    query = db.query(User)
+    if search:
+        q = f"%{search}%"
+        query = query.filter(or_(
+            User.first_name.ilike(q),
+            User.last_name.ilike(q),
+            User.email.ilike(q),
+            User.phone.ilike(q),
+        ))
+    total = query.count()
+    if sort_by:
+        col = getattr(User, sort_by)
+        if sort_order == 'desc':
+            col = col.desc()
+        query = query.order_by(col)
+    users = query.offset((page - 1) * per_page).limit(per_page).all()
+    items = [UserOut(
         id=u.id,
         first_name=u.first_name,
         last_name=u.last_name,
         email=u.email,
         phone=u.phone,
         role=u.role,
-    ) for u in all_users]
+    ) for u in users]
+    return PaginatedUsers(items=items, total=total)
 
 class UserUpdate(BaseModel):
     first_name: Optional[str]

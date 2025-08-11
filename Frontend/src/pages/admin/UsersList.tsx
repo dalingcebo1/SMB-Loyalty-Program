@@ -1,9 +1,10 @@
 // src/pages/admin/UsersList.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/api';
 import PageLayout from '../../components/PageLayout';
+import Pagination from '../../components/Pagination';
 import { useAuth } from '../../auth/AuthProvider';
 import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
 import ContentLoader from 'react-content-loader';
@@ -11,7 +12,6 @@ import ContentLoader from 'react-content-loader';
 import Modal from 'react-modal';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// remove AxiosResponse import
 
 // API user shape
 interface ApiUser {
@@ -27,13 +27,45 @@ const UsersList: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
   const [sortKey, setSortKey] = useState<keyof ApiUser>('first_name');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [editUser, setEditUser] = useState<ApiUser | null>(null);
-  // fetch users via React Query
-  const { data: users = [], isLoading, isError, error, refetch } = useQuery<ApiUser[], Error>({
-    queryKey: ['adminUsers'],
-    queryFn: () => api.get<ApiUser[]>('/users').then(res => res.data),
+  // debounce search input
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
+  // fetch paginated users via API
+  const fetchUsers = (page: number): Promise<{ items: ApiUser[]; total: number }> =>
+    api.get('/users', {
+      params: {
+        page,
+        per_page: pageSize,
+        search: debouncedSearch,
+        sort_by: sortKey,
+        sort_order: 'asc',
+      },
+    }).then(res => res.data);
+  // fetch and cache paginated users
+  const { data, isLoading, isError, error, refetch } = useQuery<{ items: ApiUser[]; total: number }, Error>({
+    queryKey: ['adminUsers', currentPage, debouncedSearch, sortKey],
+    queryFn: () => fetchUsers(currentPage),
+    staleTime: 1000 * 60 * 5,       // cache for 5 minutes
   });
+  // derive list and pagination info
+  const usersList = data?.items ?? [];
+  const totalPages = data ? Math.ceil(data.total / pageSize) : 1;
+  // prefetch next page for smooth pagination
+  useEffect(() => {
+    if (data && currentPage < totalPages) {
+      queryClient.prefetchQuery({
+        queryKey: ['adminUsers', currentPage + 1, debouncedSearch, sortKey],
+        queryFn: () => fetchUsers(currentPage + 1),
+      });
+    }
+  }, [data, currentPage, debouncedSearch, sortKey, totalPages, queryClient]);
 
   const deleteMutation = useMutation<void, Error, number>({
     mutationFn: (id: number) => api.delete(`/users/${id}`).then(() => {}),
@@ -55,18 +87,6 @@ const UsersList: React.FC = () => {
     onError: () => toast.error('Update failed'),
   });
 
-  // client-side filter + sort
-  const filtered = useMemo(() => {
-    return users
-      .filter(u =>
-        u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort((a, b) =>
-        a[sortKey]! > b[sortKey]! ? 1 : a[sortKey]! < b[sortKey]! ? -1 : 0
-      );
-  }, [users, searchTerm, sortKey]);
 
   if (authLoading) return <PageLayout loading>{null}</PageLayout>;
   if (!user || user.role !== 'admin') return <Navigate to='/' replace />;
@@ -110,63 +130,77 @@ const UsersList: React.FC = () => {
           <option value="role">Role</option>
         </select>
       </div>
-      {/* List or loader */}
+      {/* Loader or table */}
       {isLoading ? (
         Array.from({ length: 8 }).map((_, i) => <LoadingRow key={i} />)
       ) : (
-        <div role="table" aria-label="Users">
-          <List
-            height={400}
-            itemCount={filtered.length}
-            itemSize={50}
-            width="100%"
-          >
-            {({ index, style }: ListChildComponentProps) => {
-              const u = filtered[index];
-              return (
-                <div
-                  role="row"
-                  tabIndex={0}
-                  key={u.id}
-                  style={style}
-                  className="grid grid-cols-6 items-center border-b hover:bg-gray-50 p-2"
-                >
-                  <div role="cell" className="px-4 text-center">{u.id}</div>
-                  <div role="cell" className="px-4">{u.first_name} {u.last_name}</div>
-                  <div role="cell" className="px-4">{u.email}</div>
-                  <div role="cell" className="px-4">{u.phone}</div>
-                  <div role="cell" className="px-4 capitalize">{u.role}</div>
-                  <button
-                    onClick={() => {
-                      setEditUser(u);
-                      setFormData({
-                        first_name: u.first_name,
-                        last_name: u.last_name,
-                        email: u.email,
-                        phone: u.phone,
-                        role: u.role,
-                      });
-                    }}
-                    aria-label={`Edit ${u.first_name}`}
-                    className="px-2 text-blue-600 hover:underline"
-                  >Edit</button>
-                  <button
-                    onClick={() => { if (confirm(`Delete ${u.first_name}?`)) deleteMutation.mutate(u.id); }}
-                    aria-label={`Delete ${u.first_name}`}
-                    disabled={deleteMutation.status === 'pending'}
-                    className="px-2 text-red-600"
-                  >Delete</button>
-                </div>
-              );
-            }}
-          </List>
-        </div>
+        <>
+          <div role="table" aria-label="Users" className="mb-4">
+            <List
+              height={400}
+              itemCount={usersList.length}
+              itemSize={50}
+              width="100%"
+            >
+              {({ index, style }: ListChildComponentProps) => {
+                const u = usersList[index];
+                return (
+                  <div
+                    role="row"
+                    tabIndex={0}
+                    key={u.id}
+                    style={style}
+                    className="grid grid-cols-6 items-center border-b hover:bg-gray-50 p-2"
+                  >
+                    <div role="cell" className="px-4 text-center">{u.id}</div>
+                    <div role="cell" className="px-4">{u.first_name} {u.last_name}</div>
+                    <div role="cell" className="px-4">{u.email}</div>
+                    <div role="cell" className="px-4">{u.phone}</div>
+                    <div role="cell" className="px-4 capitalize">{u.role}</div>
+                    <button
+                      onClick={() => {
+                        setEditUser(u);
+                        setFormData({
+                          first_name: u.first_name,
+                          last_name: u.last_name,
+                          email: u.email,
+                          phone: u.phone,
+                          role: u.role,
+                        });
+                      }}
+                      aria-label={`Edit ${u.first_name}`}
+                      className="px-2 text-blue-600 hover:underline"
+                    >Edit</button>
+                    <button
+                      onClick={() => { if (confirm(`Delete ${u.first_name}?`)) deleteMutation.mutate(u.id); }}
+                      aria-label={`Delete ${u.first_name}`}
+                      disabled={deleteMutation.status === 'pending'}
+                      className="px-2 text-red-600"
+                    >Delete</button>
+                  </div>
+                );
+              }}
+            </List>
+          </div>
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </>
       )}
       {/* Edit modal */}
       {editUser && (
-        <Modal isOpen onRequestClose={() => setEditUser(null)} contentLabel="Edit User" ariaHideApp={false}>
+        <Modal
+          isOpen
+          onRequestClose={() => setEditUser(null)}
+          contentLabel="Edit User"
+          ariaHideApp={false}
+        >
           <h2 className="text-xl font-bold mb-4">Edit User</h2>
           <div className="space-y-2">
+            {/* User form fields */}
             <label className="block">
               First Name
               <input
@@ -212,17 +246,17 @@ const UsersList: React.FC = () => {
               </select>
             </label>
           </div>
-            <div className="mt-4 flex justify-end space-x-2">
-              <button
-                onClick={() => setEditUser(null)}
-                className="px-4 py-2 bg-gray-200"
-              >Cancel</button>
-              <button
-                onClick={() => updateMutation.mutate({ id: editUser.id, data: formData })}
-                disabled={updateMutation.status === 'pending'}
-                className="px-4 py-2 bg-blue-600 text-white"
-              >Save</button>
-            </div>
+          <div className="mt-4 flex justify-end space-x-2">
+            <button
+              onClick={() => setEditUser(null)}
+              className="px-4 py-2 bg-gray-200"
+            >Cancel</button>
+            <button
+              onClick={() => updateMutation.mutate({ id: editUser!.id, data: formData })}
+              disabled={updateMutation.status === 'pending'}
+              className="px-4 py-2 bg-blue-600 text-white"
+            >Save</button>
+          </div>
         </Modal>
       )}
     </PageLayout>

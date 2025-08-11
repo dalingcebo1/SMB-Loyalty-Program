@@ -40,13 +40,12 @@ import ForgotPassword    from "./pages/ForgotPassword";
 import ResetPassword     from "./pages/ResetPassword";
 import Welcome           from "./pages/Welcome";
 import Payment           from "./pages/Payment";
-// ...existing code...
 import PaymentVerification from "./pages/staff/PaymentVerification";
 import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
 import VehicleManager from "./pages/staff/VehicleManager";
 import PastOrders from "./pages/PastOrders";
 import Account from "./pages/Account"; // <-- Add this import
-import AnalyticsLayout from './pages/admin/AnalyticsLayout';
+const AnalyticsLayout = lazy(() => import("./pages/admin/AnalyticsLayout"));
 
 // Feature flags
  const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
@@ -171,7 +170,14 @@ export default function App() {
               }
             />
             {/* Analytics drill-down routes */}
-            <Route path="analytics" element={<AnalyticsLayout />}>
+            <Route
+              path="analytics"
+              element={
+                <Suspense fallback={<LoadingFallback message="Loading analytics…" />}>
+                  <AnalyticsLayout />
+                </Suspense>
+              }
+            >
               {/* persistent summary grid + details */}
               <Route
                 path="users"

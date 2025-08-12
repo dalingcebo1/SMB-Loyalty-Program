@@ -7,12 +7,16 @@ import StatusBanner from './StatusBanner';
 
 const AdminLayout: React.FC = () => (
   <RequireAdmin>
-    <StatusBanner />
-    <div className="min-h-screen bg-gray-50 flex">
-      <AdminSidebar />
-      <main className="flex-1 p-6">
-        <Outlet />
-      </main>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="flex flex-1">
+        <AdminSidebar />
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
+      </div>
+      <footer className="mt-auto">
+        <StatusBanner />
+      </footer>
     </div>
   </RequireAdmin>
 );

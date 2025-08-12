@@ -46,6 +46,7 @@ import VehicleManager from "./pages/staff/VehicleManager";
 import PastOrders from "./pages/PastOrders";
 import Account from "./pages/Account"; // <-- Add this import
 const AnalyticsLayout = lazy(() => import("./pages/admin/AnalyticsLayout"));
+const AnalyticsOverview = lazy(() => import("./pages/admin/AnalyticsOverview"));
 
 // Feature flags
  const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;

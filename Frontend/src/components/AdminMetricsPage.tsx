@@ -21,22 +21,18 @@ export function AdminMetricsPage<T>({ title, fetcher, render }: AdminMetricsPage
   });
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="flex items-center mb-4 space-x-2">
-        <button onClick={() => navigate(-1)} className="px-3 py-1 bg-gray-200 rounded">Back</button>
-        <input type="date" value={start} onChange={e => setStart(e.target.value)} className="border p-1 rounded" />
-        <input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border p-1 rounded" />
-          <button
-            onClick={() => {
-              refresh();
-              refetch();
-            }}
-            className="px-3 py-1 bg-blue-600 text-white rounded"
-          >
-            {isLoading ? 'Refreshing…' : 'Refresh'}
-          </button>
+    <div className="mx-auto max-w-7xl">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded text-sm">Back</button>
+        <input type="date" value={start} onChange={e => setStart(e.target.value)} className="border p-2 rounded text-sm" />
+        <input type="date" value={end} onChange={e => setEnd(e.target.value)} className="border p-2 rounded text-sm" />
+        <button
+          onClick={() => { refresh(); refetch(); }}
+          disabled={isLoading}
+          className={`px-5 py-2 rounded text-sm font-medium ${isLoading ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+        >{isLoading ? 'Refreshing…' : 'Refresh'}</button>
       </div>
-      <h2 className="text-xl font-semibold mb-4">{title}</h2>
+      <h2 className="text-2xl font-semibold mb-4">{title}</h2>
       {error && (
         <Alert
           type="error"
@@ -46,15 +42,15 @@ export function AdminMetricsPage<T>({ title, fetcher, render }: AdminMetricsPage
           onClose={() => {}}
         />
       )}
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
-      ) : data ? (
-        <>{render(data as T)}</>
-      ) : (
-        <p className="text-center text-gray-500">No {title.toLowerCase()} available.</p>
-      )}
+      <div className="bg-white rounded shadow-sm">
+        {isLoading ? (
+          <div className="flex justify-center py-12"><Spinner /></div>
+        ) : data ? (
+          <>{render(data as T)}</>
+        ) : (
+          <p className="text-center text-gray-500 py-8">No {title.toLowerCase()} available.</p>
+        )}
+      </div>
     </div>
   );
 }

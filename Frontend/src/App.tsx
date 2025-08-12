@@ -179,6 +179,15 @@ export default function App() {
                 </Suspense>
               }
             >
+              {/* Analytics overview at index */}
+              <Route
+                index
+                element={
+                  <Suspense fallback={<div>Loading overview…</div>}>
+                    <AnalyticsOverview />
+                  </Suspense>
+                }
+              />
               {/* persistent summary grid + details */}
               <Route
                 path="users"

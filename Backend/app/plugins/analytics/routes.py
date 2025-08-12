@@ -43,19 +43,25 @@ def get_summary(
     redemptions_count = db.query(func.count(Redemption.id))\
         .filter(Redemption.status == 'redeemed')\
         .scalar() or 0
-    # User growth over date range
+    # User growth over date range (aggregate in one query)
+    raw_growth = db.query(cast(User.created_at, Date).label('date'), func.count(User.id))\
+        .filter(cast(User.created_at, Date) >= start, cast(User.created_at, Date) <= end)\
+        .group_by('date').all()
+    growth_dict = {r[0]: r[1] for r in raw_growth}
     user_growth = []
     cur = start
     while cur <= end:
-        cnt = db.query(User).filter(cast(User.created_at, Date) == cur).count()
-        user_growth.append({"date": cur.strftime("%Y-%m-%d"), "count": cnt})
+        user_growth.append({"date": cur.strftime("%Y-%m-%d"), "count": growth_dict.get(cur, 0)})
         cur += timedelta(days=1)
-    # Transaction volume over date range
+    # Transaction volume over date range (aggregate)
+    raw_volume = db.query(cast(Payment.created_at, Date).label('date'), func.sum(Payment.amount))\
+        .filter(cast(Payment.created_at, Date) >= start, cast(Payment.created_at, Date) <= end)\
+        .group_by('date').all()
+    volume_dict = {r[0]: r[1] or 0 for r in raw_volume}
     transaction_volume = []
     cur = start
     while cur <= end:
-        val = db.query(func.sum(Payment.amount)).filter(func.date(Payment.created_at) == cur).scalar() or 0
-        transaction_volume.append({"date": cur.strftime("%Y-%m-%d"), "value": val})
+        transaction_volume.append({"date": cur.strftime("%Y-%m-%d"), "value": volume_dict.get(cur, 0)})
         cur += timedelta(days=1)
     # Tier distribution (if you have a role/tier field)
     tier_distribution = (
@@ -66,12 +72,15 @@ def get_summary(
     ]
     # Visits total
     visits_total = db.query(func.sum(VisitCount.count)).scalar() or 0
-    # Visits over time over date range
+    # Visits over time (aggregate)
+    raw_visits = db.query(cast(VisitCount.updated_at, Date).label('date'), func.sum(VisitCount.count))\
+        .filter(cast(VisitCount.updated_at, Date) >= start, cast(VisitCount.updated_at, Date) <= end)\
+        .group_by('date').all()
+    visits_dict = {r[0]: r[1] or 0 for r in raw_visits}
     visits_over_time = []
     cur = start
     while cur <= end:
-        tot = db.query(func.sum(VisitCount.count)).filter(cast(VisitCount.updated_at, Date) == cur).scalar() or 0
-        visits_over_time.append({"date": cur.strftime("%Y-%m-%d"), "count": tot})
+        visits_over_time.append({"date": cur.strftime("%Y-%m-%d"), "count": visits_dict.get(cur, 0)})
         cur += timedelta(days=1)
     # Top rewards redeemed
     top_rewards_data = (
@@ -178,11 +187,15 @@ def get_transaction_details(
         cast(Payment.created_at, Date) <= end
     ).scalar() or 0
     average_value = total_value / trans_count if trans_count else 0.0
-    # Transactions per user
-    user_count = db.query(func.count(func.distinct(Payment.user_id))).filter(
-        cast(Payment.created_at, Date) >= start,
-        cast(Payment.created_at, Date) <= end
-    ).scalar() or 0
+    # Transactions per user (distinct users who made transactions)
+    user_count = db.query(func.count(func.distinct(Order.user_id)))\
+        .select_from(Payment)\
+        .join(Order, Payment.order_id == Order.id)\
+        .filter(
+            cast(Payment.created_at, Date) >= start,
+            cast(Payment.created_at, Date) <= end
+        )\
+        .scalar() or 0
     per_user = trans_count / user_count if user_count else 0.0
     # Conversion rate: transactions vs visits
     visit_sum = db.query(func.sum(VisitCount.count)).filter(
@@ -192,7 +205,7 @@ def get_transaction_details(
     conversion_rate = trans_count / visit_sum if visit_sum else 0.0
     # Peak hours (top 3)
     peak_hours_data = db.query(
-        func.strftime('%H', Payment.created_at).label('hour'),
+        func.date_part('hour', Payment.created_at).label('hour'),
         func.count(Payment.id)
     ).filter(
         cast(Payment.created_at, Date) >= start,
@@ -201,7 +214,7 @@ def get_transaction_details(
     peak_hours = [{"hour": hr, "count": cnt} for hr, cnt in peak_hours_data]
     # Peak days of week (top 3)
     peak_days_data = db.query(
-        func.strftime('%w', Payment.created_at).label('day'),
+        func.date_part('dow', Payment.created_at).label('day'),
         func.count(Payment.id)
     ).filter(
         cast(Payment.created_at, Date) >= start,
@@ -236,8 +249,9 @@ def get_points_details(
     points_issued_series = []
     cur = start
     while cur <= end:
+        # Use updated_at for PointBalance since created_at does not exist
         val = db.query(func.sum(PointBalance.points))\
-            .filter(cast(PointBalance.created_at, Date) == cur)\
+            .filter(cast(PointBalance.updated_at, Date) == cur)\
             .scalar() or 0
         points_issued_series.append({"date": cur.strftime("%Y-%m-%d"), "value": val})
         cur += timedelta(days=1)
@@ -328,7 +342,7 @@ def get_visits_details(
     visits_per_user = visits_total_period / user_total
     # Peak visit hours (top 3)
     peak_visit_hours_data = db.query(
-        func.strftime('%H', VisitCount.updated_at).label('hour'),
+        func.date_part('hour', VisitCount.updated_at).label('hour'),
         func.sum(VisitCount.count)
     ).filter(
         cast(VisitCount.updated_at, Date) >= start,
@@ -337,7 +351,7 @@ def get_visits_details(
     peak_visit_hours = [{"hour": hr, "count": cnt} for hr, cnt in peak_visit_hours_data]
     # Peak visit days (top 3)
     peak_visit_days_data = db.query(
-        func.strftime('%w', VisitCount.updated_at).label('day'),
+        func.date_part('dow', VisitCount.updated_at).label('day'),
         func.sum(VisitCount.count)
     ).filter(
         cast(VisitCount.updated_at, Date) >= start,
@@ -387,7 +401,8 @@ def get_top_clients(
     # top by transaction count
     cnt_data = (
         db.query(User, func.count(Payment.id).label('count'))
-          .join(Payment, Payment.user_id == User.id)
+          .join(Order, Order.user_id == User.id)
+          .join(Payment, Payment.order_id == Order.id)
           .group_by(User.id)
           .order_by(func.count(Payment.id).desc())
           .limit(limit)
@@ -397,7 +412,8 @@ def get_top_clients(
     # top by transaction value
     val_data = (
         db.query(User, func.sum(Payment.amount).label('value'))
-          .join(Payment, Payment.user_id == User.id)
+          .join(Order, Order.user_id == User.id)
+          .join(Payment, Payment.order_id == Order.id)
           .group_by(User.id)
           .order_by(func.sum(Payment.amount).desc())
           .limit(limit)
@@ -465,10 +481,15 @@ def get_financial_details(
         cast(Payment.created_at, Date) >= start,
         cast(Payment.created_at, Date) <= end
     ).scalar() or 0
-    users_period = db.query(func.count(func.distinct(Payment.user_id))).filter(
-        cast(Payment.created_at, Date) >= start,
-        cast(Payment.created_at, Date) <= end
-    ).scalar() or 1
+    # distinct users who made transactions in period
+    users_period = db.query(func.count(func.distinct(Order.user_id)))\
+        .select_from(Payment)\
+        .join(Order, Payment.order_id == Order.id)\
+        .filter(
+            cast(Payment.created_at, Date) >= start,
+            cast(Payment.created_at, Date) <= end
+        )\
+        .scalar() or 1
     arpu = revenue / users_period
     # lifetime value (average total spend per user)
     total_revenue_all = db.query(func.sum(Payment.amount)).scalar() or 0

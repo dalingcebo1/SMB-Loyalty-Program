@@ -33,11 +33,15 @@ export function DataTable<T>({ columns, data }: DataTableProps<T>) {
       </thead>
       <tbody className="bg-white divide-y divide-gray-200">
         {data.map((row, rowIndex) => (
-          <tr key={rowIndex} className="hover:bg-gray-50">
+          <tr
+            key={rowIndex}
+            className="hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            tabIndex={0}
+          >
             {columns.map(col => (
               <td
                 key={col.id ?? col.header}
-                className="px-6 py-4 whitespace-nowrap text-gray-700"
+                className="px-6 py-4 whitespace-nowrap text-gray-700 tabular-nums"
               >
                 {col.accessor(row)}
               </td>

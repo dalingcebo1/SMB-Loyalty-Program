@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 class DailyCount(BaseModel):
@@ -31,5 +31,5 @@ class AnalyticsSummaryResponse(BaseModel):
     visits_over_time: List[DailyCount]
     top_rewards: List[TopRewardItem]
 
-    class Config:
-        orm_mode = True
+    # Pydantic V2 config: allow building from ORM objects
+    model_config = ConfigDict(from_attributes=True)

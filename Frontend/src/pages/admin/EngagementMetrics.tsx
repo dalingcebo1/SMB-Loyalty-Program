@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api';
-import { Spinner } from '../../components';
 import { ENGAGEMENT_LABELS, humanizeMetric } from '../../utils';
 
 const EngagementMetrics: React.FC = () => {
@@ -29,10 +28,37 @@ const EngagementMetrics: React.FC = () => {
         <h2 className="text-2xl font-semibold mb-4">Engagement Metrics</h2>
         <div>
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Spinner />
-            </div>
-          ) : !data ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-6 py-3">
+                        <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+                      </th>
+                      <th className="px-6 py-3">
+                        <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                    <tr
+                      key={i}
+                      className="hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      tabIndex={0}
+                    >
+                        <td className="px-6 py-4 tabular-nums">
+                          <div className="h-4 bg-gray-200 rounded w-full animate-pulse" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-full animate-pulse" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : !data ? (
             <p className="text-center text-gray-500 py-8">No engagement metrics available.</p>
           ) : (
             <div className="overflow-x-auto">

@@ -142,15 +142,24 @@ const AdminWelcome: React.FC = () => {
         </div>
         <div className="overflow-x-auto pb-2 -mx-1 px-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 min-w-[640px]">
-            {Object.entries(SUMMARY_LABELS).map(([key, label]) => (
-              <MetricCard
-                key={key}
-                label={label}
-                value={summary?.[key]}
-                loading={loading}
-                to={`/admin/analytics/${key.replace(/_count$/, 's').replace(/_/g, '/')}`}
-              />
-            ))}
+            {Object.entries(SUMMARY_LABELS).map(([key, label]) => {
+              const route = (() => {
+                if (key.startsWith('points_')) return 'points';
+                if (key === 'redemptions_count') return 'redemptions';
+                if (key === 'visits_total') return 'visits';
+                if (key.endsWith('_count')) return key.replace(/_count$/, 's');
+                return key;
+              })();
+              return (
+                <MetricCard
+                  key={key}
+                  label={label}
+                  value={summary?.[key]}
+                  loading={loading}
+                  to={`/admin/analytics/${route}`}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

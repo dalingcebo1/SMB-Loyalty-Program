@@ -145,15 +145,24 @@ const AnalyticsLayout: React.FC = () => {
       {/* Quick Metrics grid (prefetched, show placeholders if loading) */}
       <div className="bg-gray-100 rounded mb-10 px-12 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-          {Object.keys(SUMMARY_LABELS).map(key => (
-            <MetricCard
-              key={key}
-              label={humanizeMetric(key, SUMMARY_LABELS)}
-              value={summary?.[key]}
-              loading={loading}
-              to={`/admin/analytics/${key.replace(/_count$/, 's').replace(/_/g, '/')}?start_date=${start}&end_date=${end}`}
-            />
-          ))}
+          {Object.keys(SUMMARY_LABELS).map(key => {
+            const route = (() => {
+              if (key.startsWith('points_')) return 'points';
+              if (key === 'redemptions_count') return 'redemptions';
+              if (key === 'visits_total') return 'visits';
+              if (key.endsWith('_count')) return key.replace(/_count$/, 's');
+              return key;
+            })();
+            return (
+              <MetricCard
+                key={key}
+                label={humanizeMetric(key, SUMMARY_LABELS)}
+                value={summary?.[key]}
+                loading={loading}
+                to={`/admin/analytics/${route}?start_date=${start}&end_date=${end}`}
+              />
+            );
+          })}
         </div>
       </div>
       {/* Drill-down or overview content */}

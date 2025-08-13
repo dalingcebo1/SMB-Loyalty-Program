@@ -75,3 +75,9 @@ export interface LoyaltyMetricsData {
   tier_progression: { tier: string; count: number }[];
   avg_time_in_tier: { tier: string; avg_days: number }[];
 }
+
+export interface FinancialMetricsData {
+  revenue: number;
+  arpu: number;
+  ltv: number;
+}

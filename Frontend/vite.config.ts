@@ -9,6 +9,10 @@ import { visualizer } from 'rollup-plugin-visualizer';
 import { VitePWA } from 'vite-plugin-pwa/dist/index.js';
 
 export default defineConfig({
+  // Include 'react-is' to satisfy recharts peer dependency
+  optimizeDeps: {
+    include: ['react-is'],
+  },
   plugins: [
     react(),
     // @ts-ignore: Rollup plugin types differ slightly from Vite PluginOption

@@ -5,17 +5,33 @@ import Container from './ui/Container';
 
 interface AdminMetricsPageProps<T> {
   title: string;
+  /** Base query key segments (e.g., ['analytics','transactions','details']) */
+  queryKeyBase?: string[];
   fetcher: (start: string, end: string) => Promise<T>;
   render: (data: T) => React.ReactNode;
 }
 
 import Alert from './Alert';
-export function AdminMetricsPage<T>({ title, fetcher, render }: AdminMetricsPageProps<T>) {
+export function AdminMetricsPage<T>({ title, queryKeyBase, fetcher, render }: AdminMetricsPageProps<T>) {
   const { start, end } = useDateRange();
+  // Determine query key: use provided base or fallback to ['adminMetrics', title]
+  const baseKey = queryKeyBase && queryKeyBase.length > 0 ? queryKeyBase : ['adminMetrics', title];
   // React Query for metrics data
   const { data, error, isLoading, refetch } = useQuery<T, Error>({
-    queryKey: ['adminMetrics', title, start, end],
-    queryFn: () => fetcher(start, end),
+    queryKey: [...baseKey, start, end],
+    queryFn: async () => {
+      try {
+        return await fetcher(start, end);
+      } catch (e: any) {
+        // repackage axios error for richer message
+        if (e?.response) {
+          const status = e.response.status;
+            const detail = typeof e.response.data === 'object' ? JSON.stringify(e.response.data) : e.response.data;
+          throw new Error(`HTTP ${status}: ${detail || e.message}`);
+        }
+        throw e;
+      }
+    },
   });
 
   return (

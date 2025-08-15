@@ -502,48 +502,86 @@ def get_loyalty_details(
 )
 def get_top_clients(
     limit: int = Query(5),
+    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
 ):
     # top by transaction count
+    # apply date range default: last 7 days if not provided
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)
+    else:
+        start, end = start_date, end_date
+    # count per user
+    cnt_query = db.query(User, func.count(Payment.id).label('count'))
+    cnt_query = cnt_query.join(Order, Order.user_id == User.id)
+    cnt_query = cnt_query.join(Payment, Payment.order_id == Order.id)
     cnt_data = (
-        db.query(User, func.count(Payment.id).label('count'))
-          .join(Order, Order.user_id == User.id)
-          .join(Payment, Payment.order_id == Order.id)
-          .group_by(User.id)
-          .order_by(func.count(Payment.id).desc())
-          .limit(limit)
-          .all()
+        cnt_query.filter(
+            cast(Payment.created_at, Date) >= start,
+            cast(Payment.created_at, Date) <= end,
+        )
+        .group_by(User.id)
+        .order_by(func.count(Payment.id).desc())
+        .limit(limit)
+        .all()
     )
     by_count = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "count": c} for u, c in cnt_data]
     # top by transaction value
+    # total transaction value per user
+    val_query = db.query(User, func.sum(Payment.amount).label('value'))
+    val_query = val_query.join(Order, Order.user_id == User.id)
+    val_query = val_query.join(Payment, Payment.order_id == Order.id)
     val_data = (
-        db.query(User, func.sum(Payment.amount).label('value'))
-          .join(Order, Order.user_id == User.id)
-          .join(Payment, Payment.order_id == Order.id)
-          .group_by(User.id)
-          .order_by(func.sum(Payment.amount).desc())
-          .limit(limit)
-          .all()
+        val_query.filter(
+            cast(Payment.created_at, Date) >= start,
+            cast(Payment.created_at, Date) <= end,
+        )
+        .group_by(User.id)
+        .order_by(func.sum(Payment.amount).desc())
+        .limit(limit)
+        .all()
     )
-    by_value = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "value": v} for u, v in val_data]
+    # convert cents to rands
+    by_value = [
+        {
+            "user_id": u.id,
+            "name": f"{u.first_name} {u.last_name}".strip(),
+            # divide cents by 100 to get rands, rounded to 2dp
+            "value": round((v or 0) / 100, 2)
+        }
+        for u, v in val_data
+    ]
     # top by points earned
+    # points earned per user
     pts_data = (
         db.query(User, func.sum(PointBalance.points).label('points'))
-          .join(PointBalance, PointBalance.user_id == User.id)
-          .group_by(User.id)
-          .order_by(func.sum(PointBalance.points).desc())
-          .limit(limit)
-          .all()
+            .join(PointBalance, PointBalance.user_id == User.id)
+            .filter(
+                cast(PointBalance.updated_at, Date) >= start,
+                cast(PointBalance.updated_at, Date) <= end,
+            )
+            .group_by(User.id)
+            .order_by(func.sum(PointBalance.points).desc())
+            .limit(limit)
+            .all()
     )
     by_points = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "points": p} for u, p in pts_data]
     # top by visits
+    # visits per user
     visit_data = (
         db.query(User, func.sum(VisitCount.count).label('visits'))
-          .join(VisitCount, VisitCount.user_id == User.id)
-          .group_by(User.id)
-          .order_by(func.sum(VisitCount.count).desc())
-          .limit(limit)
-          .all()
+            .join(VisitCount, VisitCount.user_id == User.id)
+            .filter(
+                cast(VisitCount.updated_at, Date) >= start,
+                cast(VisitCount.updated_at, Date) <= end,
+            )
+            .group_by(User.id)
+            .order_by(func.sum(VisitCount.count).desc())
+            .limit(limit)
+            .all()
     )
     by_visits = [{"user_id": u.id, "name": f"{u.first_name} {u.last_name}".strip(), "visits": v} for u, v in visit_data]
     return {

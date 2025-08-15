@@ -3,6 +3,8 @@ import api from '../../api/api';
 import { AdminMetricsPage } from '../../components/AdminMetricsPage';
 import { RedemptionsMetricsData } from '../../types/metrics';
 import TimeSeriesChart from '../../components/charts/TimeSeriesChart';
+import { humanizeMetric } from '../../utils/metrics';
+import { SUMMARY_LABELS } from '../../utils/metrics';
 
 const RedemptionsMetrics: React.FC = () => (
   <AdminMetricsPage<RedemptionsMetricsData>
@@ -14,7 +16,7 @@ const RedemptionsMetrics: React.FC = () => (
     }
     render={data => (
       <div className="space-y-8">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto p-6">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead>
               <tr className="bg-gray-50">
@@ -25,18 +27,20 @@ const RedemptionsMetrics: React.FC = () => (
             <tbody className="bg-white divide-y divide-gray-200">
               {Object.entries(data).map(([key, value]) => (
                 <tr key={key} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{key}</td>
-                  <td className="px-4 py-3 text-gray-700 tabular-nums">{String(value)}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{humanizeMetric(key, SUMMARY_LABELS)}</td>
+                  <td className="px-4 py-3 text-gray-700 tabular-nums">{value}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <TimeSeriesChart
-          title="Redemption Rate (Derived)"
-          series={[{ name: 'Rate', data: [{ date: 'Current', value: data.reward_conversion_rate }], type: 'area', color: '#f59e0b' }]}
-          yLabel="Rate"
-        />
+        <div className="p-6">
+          <TimeSeriesChart
+            title="Redemption Rate (Derived)"
+            series={[{ name: 'Rate', data: [{ date: 'Current', value: data.reward_conversion_rate }], type: 'area', color: '#f59e0b' }]}
+            yLabel="Rate"
+          />
+        </div>
       </div>
     )}
   />

@@ -81,3 +81,18 @@ export interface FinancialMetricsData {
   arpu: number;
   ltv: number;
 }
+// Top clients by spend and visits
+export interface TopClientByValue {
+  user_id: number;
+  name: string;
+  value: number;
+}
+export interface TopClientByVisits {
+  user_id: number;
+  name: string;
+  visits: number;
+}
+export interface TopClientsData {
+  by_transaction_value: TopClientByValue[];
+  by_visits: TopClientByVisits[];
+}

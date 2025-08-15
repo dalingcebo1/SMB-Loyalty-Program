@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Outlet, Link } from 'react-router-dom';
 import api from '../../api/api';
+import { useSearchParams } from 'react-router-dom';
 import { SUMMARY_LABELS, humanizeMetric } from '../../utils';
 import Alert from '../../components/Alert';
 import MetricCard from '../../components/ui/MetricCard';
@@ -16,6 +17,7 @@ import AnalyticsOverview from './AnalyticsOverview';
 const AnalyticsLayout: React.FC = () => {
   // Global date & period context
   const { start, end, period: periodParam, setStart, setEnd, setPeriod, refresh } = useDateRange();
+  const [, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   // Compute active period buttons styling
   const periods = ['1W','4W','1Y','MTD','QTD','YTD','ALL'] as const;
@@ -58,13 +60,15 @@ const AnalyticsLayout: React.FC = () => {
   const errorMessage = useMemo(() => (isError ? (error as any)?.message || 'Failed to load summary metrics' : null), [isError, error]);
   const handleRefresh = useCallback(() => refetch(), [refetch]);
   const handleSelectPeriod = useCallback((p: string) => {
-    const range = computeRange(p);
+    const { start: newStart, end: newEnd } = computeRange(p);
     setPeriod(p);
-    setStart(range.start);
-    setEnd(range.end);
-    refresh();
+    setStart(newStart);
+    setEnd(newEnd);
+    // update URL params immediately
+    setSearchParams({ start_date: newStart, end_date: newEnd, period: p });
+    // reload data
     refetch();
-  }, [computeRange, setPeriod, setStart, setEnd, refresh, refetch]);
+  }, [computeRange, setPeriod, setStart, setEnd, setSearchParams, refetch]);
   // Pre-render (prefetch) drill-down datasets so detail pages are instant
   useEffect(() => {
     if (!start || !end) return;

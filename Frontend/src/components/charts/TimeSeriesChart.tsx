@@ -19,11 +19,13 @@ export interface TimeSeriesChartProps {
   height?: number;
   yLabel?: string;
   stacked?: boolean;
+  /** Optional formatter for tooltip values */
+  tooltipFormatter?: (value: number) => string;
 }
 
 const palette = ['#2563eb', '#0891b2', '#16a34a', '#d97706', '#dc2626', '#7c3aed'];
 
-const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ title, series, height = 260, yLabel }) => {
+const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ title, series, height = 260, yLabel, tooltipFormatter }) => {
   const dateMap: Record<string, any> = {};
   series.forEach(s => {
     s.data.forEach(p => {
@@ -50,7 +52,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ title, series, height
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 } } : undefined} />
-          <Tooltip />
+          <Tooltip formatter={tooltipFormatter ? (value: any) => tooltipFormatter(Number(value)) : undefined} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {lines}
         </ChartComp>

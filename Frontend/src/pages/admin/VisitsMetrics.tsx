@@ -3,6 +3,8 @@ import api from '../../api/api';
 import { AdminMetricsPage } from '../../components/AdminMetricsPage';
 import { VisitsMetricsData } from '../../types/metrics';
 import TimeSeriesChart from '../../components/charts/TimeSeriesChart';
+import { humanizeMetric } from '../../utils/metrics';
+import { SUMMARY_LABELS } from '../../utils/metrics';
 
 const VisitsMetrics: React.FC = () => (
   <AdminMetricsPage<VisitsMetricsData>
@@ -18,7 +20,7 @@ const VisitsMetrics: React.FC = () => (
       delete flat.peak_visit_days;
       return (
         <div className="space-y-8">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto p-6">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead>
                 <tr className="bg-gray-50">
@@ -29,14 +31,14 @@ const VisitsMetrics: React.FC = () => (
               <tbody className="bg-white divide-y divide-gray-200">
                 {Object.entries(flat).map(([key, value]) => (
                   <tr key={key} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{key}</td>
-                    <td className="px-4 py-3 text-gray-700 tabular-nums">{String(value)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{humanizeMetric(key, SUMMARY_LABELS)}</td>
+                    <td className="px-4 py-3 text-gray-700 tabular-nums">{value}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
             <TimeSeriesChart
               title="Peak Visit Hours"
               series={[{ name: 'Visits', data: (data.peak_visit_hours ?? []).map(h => ({ date: String(h.hour), value: h.count })), type: 'area', color: '#6366f1', dataKey: 'value' }]}

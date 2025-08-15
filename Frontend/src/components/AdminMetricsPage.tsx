@@ -36,7 +36,7 @@ export function AdminMetricsPage<T>({ title, queryKeyBase, fetcher, render }: Ad
 
   return (
     <Container>
-  <h1 className="text-3xl font-bold mb-6">{title}</h1>
+      <h1 className="text-3xl font-bold mb-6">{title}</h1>
       {error && (
         <Alert
           type="error"
@@ -46,7 +46,7 @@ export function AdminMetricsPage<T>({ title, queryKeyBase, fetcher, render }: Ad
           onClose={() => {}}
         />
       )}
-      <div className="bg-white rounded shadow-sm">
+      <div className="bg-white rounded shadow-sm p-6">
         {isLoading ? (
             <div className="grid grid-cols-1 gap-4 p-6">
               {/* Skeleton placeholders matching card layout */}

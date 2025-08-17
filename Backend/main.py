@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+import time
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Explicitly import each router
 from app.plugins.auth.routes    import router as auth_router
@@ -23,6 +25,17 @@ app = FastAPI(
     version="0.1",
     openapi_url="/api/openapi.json",
 )  # allow automatic redirects on trailing slash
+
+# Middleware to add request timing header
+class TimingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        response.headers['X-Query-Duration-ms'] = f"{elapsed_ms:.1f}"
+        return response
+
+app.add_middleware(TimingMiddleware)
 
 # ─── Validation Error Handler ────────────────────────────────────────────────
 @app.exception_handler(RequestValidationError)

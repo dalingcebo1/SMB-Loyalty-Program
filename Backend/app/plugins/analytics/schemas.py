@@ -33,3 +33,27 @@ class AnalyticsSummaryResponse(BaseModel):
 
     # Pydantic V2 config: allow building from ORM objects
     model_config = ConfigDict(from_attributes=True)
+ 
+class PeakHour(BaseModel):
+    hour: str
+    count: int
+
+class PeakDay(BaseModel):
+    day: str
+    count: int
+
+class TransactionDetails(BaseModel):
+    average_value: float
+    per_user: float
+    conversion_rate: float
+    peak_hours: List[PeakHour]
+    peak_days: List[PeakDay]
+    model_config = ConfigDict(from_attributes=True)
+
+class UserDetails(BaseModel):
+    dau: int
+    wau: int
+    mau: int
+    retention_rate: float
+    churn_rate: float
+    model_config = ConfigDict(from_attributes=True)

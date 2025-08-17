@@ -7,10 +7,10 @@ import StatusBanner from './StatusBanner';
 
 const AdminLayout: React.FC = () => (
   <RequireAdmin>
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="flex flex-1">
-        <AdminSidebar />
-        <main className="flex-1 p-6">
+  <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
+    <div className="flex flex-1 overflow-hidden">
+  <AdminSidebar />
+  <main className="flex-1 p-6 overflow-y-auto">
           <Outlet />
         </main>
       </div>

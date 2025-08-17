@@ -1,3 +1,4 @@
+openai
 alembic
 fastapi
 itsdangerous

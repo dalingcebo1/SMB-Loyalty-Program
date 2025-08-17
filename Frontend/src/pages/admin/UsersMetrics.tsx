@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import api, { buildQuery } from '../../api/api';
 import { useDateRange } from '../../hooks/useDateRange';
-import api from '../../api/api';
 import { AdminMetricsPage } from '../../components/AdminMetricsPage';
 import { UserMetrics, TopClientsData } from '../../types/metrics';
 import DataTable, { Column } from '../../components/ui/DataTable';
@@ -15,12 +15,12 @@ const UsersMetrics: React.FC = () => {
   ];
   const { start, end } = useDateRange();
   // Fetch top clients data for current date range
-  const { data: topClients, isLoading : topLoading } = useQuery<TopClientsData, Error>({
+  const { data: topClients, isLoading: topLoading } = useQuery<TopClientsData, Error>({
     queryKey: ['analytics', 'top-clients', start, end],
     queryFn: () =>
       api
         .get<TopClientsData>(
-          `/analytics/top-clients?limit=5&start_date=${start}&end_date=${end}`
+          `/analytics/top-clients${buildQuery({ limit: '5', start_date: start, end_date: end })}`
         )
         .then(res => res.data),
     staleTime: 1000 * 60 * 5,
@@ -31,7 +31,7 @@ const UsersMetrics: React.FC = () => {
       title="User Metrics"
       fetcher={(start, end) =>
         api.get<UserMetrics>(
-          `/analytics/users/details?start_date=${start}&end_date=${end}`
+          `/analytics/users/details${buildQuery({ start_date: start, end_date: end })}`
         ).then(res => res.data)
       }
       render={data => {

@@ -24,7 +24,7 @@ const AdminSidebar: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <aside className="w-64 bg-white shadow p-6 max-h-screen overflow-y-auto">
+  <aside className="w-64 bg-white shadow p-6 sticky top-0 h-full overflow-y-auto">
       <h2 className="text-xl font-bold mb-4">Admin Panel</h2>
       <nav className="flex flex-col space-y-2">
         {links.map(l => (

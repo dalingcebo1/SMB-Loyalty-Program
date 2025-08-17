@@ -2,7 +2,8 @@ import React from 'react';
 import api from '../../api/api';
 import { AdminMetricsPage } from '../../components/AdminMetricsPage';
 import { FinancialMetricsData } from '../../types/metrics';
-import { humanizeMetric, SUMMARY_LABELS } from '../../utils/metrics';
+import MetricTable from '../../components/ui/MetricTable';
+import { SUMMARY_LABELS } from '../../utils/metrics';
 
 const FinancialMetrics: React.FC = () => (
   <AdminMetricsPage<FinancialMetricsData>
@@ -13,24 +14,8 @@ const FinancialMetrics: React.FC = () => (
         .then(res => res.data)
     }
     render={data => (
-      <div className="overflow-x-auto p-6">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {Object.entries(data).map(([key, value]) => (
-              <tr key={key} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{humanizeMetric(key, SUMMARY_LABELS)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{String(value)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      // Generic metric table
+      <MetricTable data={data} labels={SUMMARY_LABELS} />
     )}
   />
 );

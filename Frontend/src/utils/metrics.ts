@@ -16,6 +16,17 @@ export const SUMMARY_LABELS: Record<string, string> = {
   redemptions_count: 'Redemptions',
   visits_total: 'Total Visits',
 };
+/**
+ * Tooltip descriptions for summary metrics
+ */
+export const SUMMARY_TOOLTIPS: Record<string, string> = {
+  user_count: 'Number of distinct users in the selected period',
+  transaction_count: 'Total number of transactions completed',
+  points_issued: 'Total loyalty points issued to users',
+  points_redeemed: 'Total loyalty points redeemed by users',
+  redemptions_count: 'Count of completed redemption events',
+  visits_total: 'Total number of visits recorded',
+};
 
 /**
  * Returns a human-friendly label for a metric key, using provided labels or auto-formatting.

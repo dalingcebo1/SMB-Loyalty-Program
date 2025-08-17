@@ -52,3 +52,16 @@ api.interceptors.response.use(
 // --- END DEBUGGING ---
 
 export default api;
+/**
+ * Builds a query string from an object, e.g. {a: '1', b: '2'} => '?a=1&b=2'
+ */
+export function buildQuery(params: Record<string, string>) {
+  const qs = new URLSearchParams(params).toString();
+  return qs ? `?${qs}` : '';
+}
+// Log timing from backend X-Query-Duration-ms header
+api.interceptors.response.use(res => {
+  const dur = res.headers['x-query-duration-ms'];
+  if (dur) console.debug(`[API] ${res.config.url} took ${dur} ms`);
+  return res;
+});

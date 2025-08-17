@@ -1,33 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import api from '../../api/api';
+import React from 'react';
+import { AdminMetricsPage } from '../../components/AdminMetricsPage';
+import api, { buildQuery } from '../../api/api';
+import DataTable, { Column } from '../../components/ui/DataTable';
+import { TopClientByValue, TopClientsData } from '../../types/metrics';
 
 const TopClientsMetrics: React.FC = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const limit = searchParams.get('limit') || '5';
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    api.get(`/analytics/top-clients?limit=${limit}`)
-      .then(res => setData(res.data))
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, [limit]);
-
-  if (loading) return <p>Loading top clients metrics...</p>;
-  if (!data) return <p>No top clients metrics to display.</p>;
-
+  // Define table columns for top clients by spend and visits
+  const columns: Column<{ name: string; spend: number; visits: number }>[] = [
+    { header: 'Client', accessor: row => row.name },
+    { header: 'Spend', accessor: row => String(row.spend) },
+    { header: 'Visits', accessor: row => String(row.visits) },
+  ];
   return (
-    <div className="p-4">
-      <div className="mb-4">
-        <button onClick={() => navigate(-1)} className="px-3 py-1 bg-gray-200 rounded">Back</button>
-      </div>
-      <h2 className="text-xl font-semibold mb-2">Top Clients</h2>
-      <pre className="bg-gray-100 p-4 rounded">{JSON.stringify(data, null, 2)}</pre>
-    </div>
+    <AdminMetricsPage<TopClientsData>
+      title="Top Clients"
+      queryKeyBase={['analytics','top-clients']}
+      fetcher={(start, end) =>
+        api
+          .get<TopClientsData>(
+            `/analytics/top-clients${buildQuery({ limit: '5', start_date: start, end_date: end })}`
+          )
+          .then(res => res.data)
+      }
+      render={data => {
+        // Merge top clients value and visits into rows
+        const rows = data.by_transaction_value.map((c: TopClientByValue) => ({
+          name: c.name,
+          spend: c.value,
+          visits: data.by_visits.find(v => v.user_id === c.user_id)?.visits || 0,
+        }));
+        return <DataTable columns={columns} data={rows} />;
+      }}
+    />
   );
 };
 

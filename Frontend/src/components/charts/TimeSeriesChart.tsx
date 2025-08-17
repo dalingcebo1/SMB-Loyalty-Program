@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -26,23 +26,26 @@ export interface TimeSeriesChartProps {
 const palette = ['#2563eb', '#0891b2', '#16a34a', '#d97706', '#dc2626', '#7c3aed'];
 
 const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ title, series, height = 260, yLabel, tooltipFormatter }) => {
-  const dateMap: Record<string, any> = {};
-  series.forEach(s => {
-    s.data.forEach(p => {
-      const key = p.date;
-      if (!dateMap[key]) dateMap[key] = { date: key };
-      const dk = s.dataKey || ('value' in p ? 'value' : 'count');
-      dateMap[key][s.name] = (p as any)[dk];
+  const data = useMemo(() => {
+    const dateMap: Record<string, any> = {};
+    series.forEach(s => {
+      s.data.forEach(p => {
+        const key = p.date;
+        if (!dateMap[key]) dateMap[key] = { date: key };
+        const dk = s.dataKey || ('value' in p ? 'value' : 'count');
+        dateMap[key][s.name] = (p as any)[dk];
+      });
     });
-  });
-  const data = Object.values(dateMap).sort((a: any, b: any) => a.date.localeCompare(b.date));
-  const lines = series.map((s, i) => {
+    return Object.values(dateMap).sort((a: any, b: any) => a.date.localeCompare(b.date));
+  }, [series]);
+
+  const lines = useMemo(() => series.map((s, i) => {
     const color = s.color || palette[i % palette.length];
     if (s.type === 'area') {
       return <Area key={s.name} type="monotone" dataKey={s.name} stroke={color} fill={color} fillOpacity={0.15} strokeWidth={2} />;
     }
     return <Line key={s.name} type="monotone" dataKey={s.name} stroke={color} strokeWidth={2} dot={false} />;
-  });
+  }), [series]);
   const ChartComp: any = series.some(s => s.type === 'area') ? AreaChart : LineChart;
   return (
     <div className="bg-white rounded shadow-sm p-4">

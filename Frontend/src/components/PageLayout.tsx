@@ -3,28 +3,21 @@ import Container from './ui/Container';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 
-<<<<<<< HEAD
-interface PageLayoutProps {
-=======
 export interface PageLayoutProps {
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
   loadingText?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
+// Removed merge conflict markers
 const PageLayout: React.FC<PageLayoutProps> = ({ loading, error, onRetry, loadingText, children }) => {
   if (loading) {
     return <Loading text={loadingText} />;
   }
   if (error) {
-<<<<<<< HEAD
     return <ErrorMessage message={error} onRetry={onRetry} />;
-=======
-    return <ErrorMessage message={error!} onRetry={onRetry} />;
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
   }
   // Wrap page content in global Container for consistent max-width and padding
   return (

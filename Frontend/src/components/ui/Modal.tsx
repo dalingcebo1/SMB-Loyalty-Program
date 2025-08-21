@@ -24,7 +24,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         className="fixed inset-0 z-50 flex items-center justify-center"
       >
         {/* Overlay */}
-        <div className="fixed inset-0 bg-black opacity-50" onClick={onClose} />
+        <div
+          data-testid="modal-overlay"
+          className="fixed inset-0 bg-black opacity-50"
+          onClick={onClose}
+        />
 
         {/* Dialog panel */}
         <div className="bg-white rounded-md shadow-lg z-60 max-w-lg w-full p-lg relative">
@@ -48,5 +52,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     document.body
   );
 };
+// Memoize Modal to optimize rendering
+export default React.memo(Modal);
 
-export default Modal;

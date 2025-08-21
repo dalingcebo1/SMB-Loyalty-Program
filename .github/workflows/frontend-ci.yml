@@ -1,0 +1,45 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Frontend/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+          
+      - name: Install dependencies
+        run: cd Frontend && npm ci
+        
+      - name: Run ESLint
+        run: cd Frontend && npm run lint
+        
+      - name: Run unit tests
+        run: cd Frontend && npm test
+        
+      - name: Build frontend
+        run: cd Frontend && npm run build
+        
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: Frontend/dist

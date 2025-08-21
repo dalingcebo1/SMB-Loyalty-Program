@@ -1,0 +1,68 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install backend dependencies
+        run: cd Backend && pip install -r requirements.txt
+
+      - name: Install frontend dependencies
+        run: cd Frontend && npm ci
+        
+      - name: Install Cypress dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth
+      
+      - name: Start backend server
+        run: |
+          cd Backend
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db \
+          JWT_SECRET=test_secret PORT=3001 npm run start:test &
+
+      - name: Build frontend
+        run: cd Frontend && npm run build
+      
+      - name: Start frontend server
+        run: cd Frontend && npm run preview &
+        
+      - name: Run Cypress tests
+        run: |
+          cd Frontend
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run cypress:run

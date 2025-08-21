@@ -185,4 +185,5 @@ const Onboarding: React.FC = () => {
   );
 };
 
+// This file has been moved to src/features/auth/pages/Onboarding.tsx
 export default Onboarding;

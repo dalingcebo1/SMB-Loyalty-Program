@@ -31,8 +31,8 @@ const OrderForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   // Check if user has a ready reward
-  const [hasReadyReward, setHasReadyReward] = useState(false);
-  const [useReward, setUseReward] = useState(false);
+  // removed unused reward state
+  // removed unused reward toggle state
 
   // Analytics: page view of OrderForm
   useEffect(() => {
@@ -235,33 +235,19 @@ const OrderForm: React.FC = () => {
   if (loading) return <PageLayout loading>{null}</PageLayout>;
   if (!user) return <Navigate to="/login" replace />;
 
-<<<<<<< HEAD
   // Handle loading and errors for catalog data
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
     return <Loading text="Loading order form..." />;
   }
   if (servicesQuery.error || extrasQuery.error) {
-    return <ErrorMessage message="Failed to load order form data." onRetry={() => window.location.reload()} />;
-=======
-  // Loading skeleton for form structure
-  if (servicesQuery.isLoading || extrasQuery.isLoading) {
     return (
-      <PageLayout>
-        <StepIndicator currentStep={1} />
-        <div className="min-h-screen bg-gray-100 flex flex-col items-center px-0 py-4 w-full overflow-x-hidden">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8 animate-pulse">
-            <div className="h-6 bg-gray-300 rounded w-1/3 mb-4" />
-            <div className="h-4 bg-gray-300 rounded w-full mb-6" />
-            <div className="space-y-4">
-              <div className="h-4 bg-gray-300 rounded w-full" />
-              <div className="h-4 bg-gray-300 rounded w-full" />
-              <div className="h-4 bg-gray-300 rounded w-full" />
-            </div>
-          </div>
-        </div>
-      </PageLayout>
+      <ErrorMessage
+        message={
+          servicesQuery.error?.message || extrasQuery.error?.message || 'Error loading data'
+        }
+        onRetry={() => window.location.reload()}
+      />
     );
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
   }
 
   // Render actual form
@@ -366,21 +352,6 @@ const OrderForm: React.FC = () => {
             </div>
           </section>
 
-          {/* Reward checkbox */}
-          {hasReadyReward && (
-           <div className="mb-4 flex items-center">
-             <input
-               id="useReward"
-               type="checkbox"
-               checked={useReward}
-               onChange={() => setUseReward(!useReward)}
-               className="mr-2"
-             />
-             <label htmlFor="useReward" className="text-sm text-gray-700">
-               Use reward on next eligible order
-             </label>
-           </div>
-          )}
 
           {/* 4.  Live total & submit */}
           <div className="mt-4 font-bold text-base text-center">
@@ -416,4 +387,5 @@ const OrderForm: React.FC = () => {
   );
 };
 
+// This page has been moved to src/features/order/pages/OrderForm.tsx
 export default OrderForm;

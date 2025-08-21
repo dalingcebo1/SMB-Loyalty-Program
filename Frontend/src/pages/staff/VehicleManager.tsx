@@ -397,4 +397,5 @@ const VehicleManager: React.FC = () => {
   );
 };
 
+// This page has been moved to src/features/staff/pages/VehicleManager.tsx
 export default VehicleManager;

@@ -376,4 +376,5 @@ const Payment: React.FC = () => {
   );
 };
 
+// This page has been moved to src/features/order/pages/Payment.tsx
 export default Payment;

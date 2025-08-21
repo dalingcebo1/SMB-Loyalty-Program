@@ -40,9 +40,9 @@ export async function makeRecaptcha(
   }
 
   const verifier = new RecaptchaVerifier(
+    auth,
     container,
-    { size: "invisible", badge: "bottomright" },
-    auth
+    { size: "invisible", badge: "bottomright" }
   );
   await verifier.render();
   (window as any).recaptchaVerifier = verifier;

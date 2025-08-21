@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
+import { toast } from 'react-toastify';
+import TableContainer from '../../components/ui/TableContainer';
 
 // Types for backend response and log history
 interface VisitResponse {
@@ -17,18 +19,6 @@ interface VisitLog {
   count: number;
 }
 
-const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 5000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-  return (
-    <div role="alert" aria-live="assertive" className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow z-50">
-      {message}
-      <button className="ml-4 text-white font-bold" onClick={onClose}>&times;</button>
-    </div>
-  );
-};
 
 const normalizePhone = (phone: string) => {
   // Always return as 073... (South African local format)
@@ -48,7 +38,7 @@ const ManualVisitLogger: React.FC = () => {
   const [lastVisit, setLastVisit] = useState<VisitResponse | null>(null);
   const [nextMilestone, setNextMilestone] = useState<number | null>(null);
   const [history, setHistory] = useState<VisitLog[]>([]);
-  const [toast, setToast] = useState<string | null>(null);
+  // use react-toastify for notifications
 
   const token = localStorage.getItem("token");
   const axiosAuth = axios.create({
@@ -93,15 +83,15 @@ const ManualVisitLogger: React.FC = () => {
         ...prev.slice(0, 4), // Keep last 5 logs
       ]);
       setCell("");
-      setToast("Visit logged! You can now start a wash for this client.");
-    } catch (err: any) {
+  toast.success("Visit logged! You can now start a wash for this client.");
+  } catch (err: any) {
       setLastVisit(null);
       if (err.response?.status === 401 || err.response?.status === 403) {
         setStatus("Not authenticated. Please log in again.");
       } else if (err.response?.data?.message) {
         setStatus(err.response.data.message);
       } else {
-        setStatus("Could not log visit");
+  setStatus("Could not log visit");
       }
     } finally {
       setLoading(false);
@@ -113,7 +103,7 @@ const ManualVisitLogger: React.FC = () => {
     setStatus(null);
     try {
       await axiosAuth.post("/api/payments/start-manual-wash", { phone: normalizePhone(lastVisit?.phone || "") });
-      setToast("Wash started for POS client!");
+  toast.success("Wash started for POS client!");
       setStatus(null);
     } catch {
       setStatus("Could not start wash for POS client.");
@@ -123,7 +113,7 @@ const ManualVisitLogger: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto p-6 bg-white rounded shadow mt-10">
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+  {/* react-toastify handles notifications */}
       <h1 className="text-2xl font-bold mb-4 text-center">Manual Visit Logging</h1>
       <p className="text-gray-600 mb-6 text-center">
         For clients paying at the till (POS). Enter the customer's phone number to log a visit and start a wash. No payment or QR code required.
@@ -174,21 +164,23 @@ const ManualVisitLogger: React.FC = () => {
         {history.length > 0 && (
           <div className="w-full mt-8">
             <h4 className="font-semibold mb-2 text-center">Recent Visit Logs</h4>
-            <ul className="space-y-2">
-              {history.map((log, idx) => (
-                <li
-                  key={idx}
-                  className="bg-gray-100 rounded px-3 py-2 flex flex-col md:flex-row md:items-center md:justify-between text-base"
-                >
-                  <span className="text-gray-500 mb-1 md:mb-0 md:mr-2" style={{ minWidth: 80 }}>
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </span>
-                  <span className="flex-1 text-center md:text-left">
-                    <strong>{log.name}</strong> ({normalizePhone(log.phone)}) — Visits: {log.count}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <TableContainer>
+              <ul className="space-y-2">
+                {history.map((log, idx) => (
+                  <li
+                    key={idx}
+                    className="bg-gray-100 rounded px-3 py-2 flex flex-col md:flex-row md:items-center md:justify-between text-base"
+                  >
+                    <span className="text-gray-500 mb-1 md:mb-0 md:mr-2" style={{ minWidth: 80 }}>
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </span>
+                    <span className="flex-1 text-center md:text-left">
+                      <strong>{log.name}</strong> ({normalizePhone(log.phone)}) — Visits: {log.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </TableContainer>
           </div>
         )}
       </div>
@@ -196,4 +188,5 @@ const ManualVisitLogger: React.FC = () => {
   );
 };
 
+// This page has been moved to src/features/staff/pages/ManualVisitLogger.tsx
 export default ManualVisitLogger;

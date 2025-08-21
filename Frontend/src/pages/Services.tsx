@@ -1,12 +1,9 @@
 // src/pages/Services.tsx
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
-<<<<<<< HEAD
 import Loading from "../components/Loading";
 import ErrorMessage from "../components/ErrorMessage";
-=======
 import PageLayout from "../components/PageLayout";
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
 
 interface Service {
   id: number;

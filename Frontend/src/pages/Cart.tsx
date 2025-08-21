@@ -1,48 +1,29 @@
 // Frontend/src/pages/Cart.tsx
-import React, { useState, useEffect } from 'react';
-import { CartItem, Service, Extra } from '../types';
-<<<<<<< HEAD
-import api from '../api/api';
+import React from 'react';
+import { useServices, useExtras } from '../api/queries';
+import Container from '../components/ui/Container';
+import Button from '../components/ui/Button';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
-=======
-import  api  from '../api/api';
-import PageLayout from "../components/PageLayout";
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
+import PageLayout from '../components/PageLayout';
+import { CartItem } from '../types';
+
 
 const Cart: React.FC = () => {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [services, setServices] = useState<Record<string,Service[]>>({});
-  const [extras, setExtras] = useState<Extra[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Cart items from localStorage
+  const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]');
 
-  useEffect(() => {
-    const stored = localStorage.getItem('cart');
-    if (stored) setCart(JSON.parse(stored));
+  // Data fetching via React Query
+  const { data: services = {}, isLoading: loadingSvc, error: errorSvc } = useServices();
+  const { data: extras = [], isLoading: loadingEx, error: errorEx } = useExtras();
 
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      api.get('/catalog/services'),
-      api.get('/catalog/extras')
-    ])
-      .then(([svcRes, exRes]) => {
-        setServices(svcRes.data);
-        setExtras(exRes.data);
-      })
-      .catch((err) => setError('Failed to load cart data.'))
-      .finally(() => setLoading(false));
-  }, []);
+  const loading = loadingSvc || loadingEx;
+  const error = errorSvc || errorEx;
 
   // lookup helpers
-  const findService = (id: number) =>
-    Object.values(services)
-      .flat()
-      .find(s => s.id === id);
-  const findExtra = (id: number) =>
-    extras.find(e => e.id === id);
-
+  const allServices = Object.values(services).flat();
+  const findService = (id: number) => allServices.find(s => s.id === id)!;
+  const findExtra = (id: number) => extras.find(e => e.id === id)!;
   // compute grand total
   const grandTotal = cart.reduce((sum, item) => {
     const svc = findService(item.service_id)!;
@@ -55,49 +36,41 @@ const Cart: React.FC = () => {
     return sum + svcTotal + extrasTotal;
   }, 0);
 
-  if (loading) {
-    return <Loading text="Loading cart..." />;
-  }
-  if (error) {
-    return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
-  }
+  if (loading) return <Loading text="Loading cart..." />;
+  if (error) return <ErrorMessage message="Failed to load cart data." onRetry={() => window.location.reload()} />;
+
   return (
     <PageLayout>
-      <div style={{ padding: 20 }}>
-        <h2>Your Cart</h2>
-        {cart.map((item, i) => {
-          const svc = findService(item.service_id)!;
-          return (
-            <div key={i} style={{ marginBottom: 16 }}>
-              <div>
-                <strong>{svc.name}</strong> × {item.qty} — R
-                {svc.base_price * item.qty}
+      <Container>
+        <div className="py-6">
+          <h2 className="text-xl font-semibold mb-4">Your Cart</h2>
+          {cart.map((item, i) => {
+            const svc = findService(item.service_id)!;
+            return (
+              <div key={i} className="mb-4">
+                <div className="flex justify-between">
+                  <span><strong>{svc.name}</strong> × {item.qty}</span>
+                  <span>R{svc.base_price * item.qty}</span>
+                </div>
+                {item.extras.length > 0 && (
+                  <ul className="ml-4 list-disc">
+                    {item.extras.map(eid => {
+                      const ex = findExtra(eid)!;
+                      const price = ex.price_map[item.category] || 0;
+                      return <li key={eid}>{ex.name} (+R{price} each)</li>;
+                    })}
+                  </ul>
+                )}
               </div>
-              {item.extras.length > 0 && (
-                <ul style={{ marginLeft: 20 }}>
-                  {item.extras.map(eid => {
-                    const ex = findExtra(eid)!;
-                    const price = ex.price_map[item.category] || 0;
-                    return (
-                      <li key={eid}>
-                        {ex.name} (+R{price} each)
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-
-        <h3>Total: R{grandTotal}</h3>
-
-        <button onClick={() => (window.location.href = '/payment')}>
-          Proceed to Payment
-        </button>
-      </div>
+            );
+          })}
+          <div className="flex justify-between items-center mt-6">
+            <h3 className="text-lg font-semibold">Total: R{grandTotal}</h3>
+            <Button onClick={() => window.location.href = '/payment'}>Proceed to Payment</Button>
+          </div>
+        </div>
+      </Container>
     </PageLayout>
   );
 };
-
 export default Cart;

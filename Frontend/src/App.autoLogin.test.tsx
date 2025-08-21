@@ -1,14 +1,13 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from './App';
-
-// Import AuthProvider to wrap App for real auth context
 import { AuthProvider } from './auth/AuthProvider';
 
+// Import AuthProvider to wrap App for real auth context
+
 // Mock API client to intercept /auth/me for auto-login
-import api from './api/api';
+// Removed unused React and api imports
 vi.mock('./api/api', async () => {
   // Import the real module for interceptors and other methods
   // Import the real module to preserve interceptors

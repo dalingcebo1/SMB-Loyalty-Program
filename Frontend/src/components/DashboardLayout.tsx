@@ -4,6 +4,7 @@ import React from "react";
 import { Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import NavTabs from "./NavTabs";
+import BottomNav from "./BottomNav";
 
 const DashboardLayout: React.FC = () => {
   const { user, loading } = useAuth();
@@ -24,9 +25,11 @@ const DashboardLayout: React.FC = () => {
 
   // 3) Authenticated layout
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 pb-16 md:pb-0">
       {/* Top navigation bar */}
       <NavTabs />
+      {/* Mobile bottom nav */}
+      <BottomNav />
 
       {/* Main page content */}
       <main className="flex-grow max-w-6xl mx-auto p-6">

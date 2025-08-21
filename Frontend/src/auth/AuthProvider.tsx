@@ -20,7 +20,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   signup: (email: string, password: string) => Promise<void>;
   loginWithToken: (token: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const form = new URLSearchParams();
     form.append("username", email);
     form.append("password", password);
@@ -90,11 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     const res = await api.post<{ access_token: string }>(
       "/auth/login",
       form,
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
     const token = res.data.access_token;
@@ -103,14 +99,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     const me = await api.get("/auth/me");
     const u = me.data;
-    setUser({
+    const newUser: User = {
       id: u.id,
       email: u.email,
       phone: u.phone,
       firstName: u.first_name || u.firstName || "",
       lastName: u.last_name || u.lastName || "",
       role: u.role,
-    });
+    };
+    setUser(newUser);
+    return newUser;
   };
 
   const signup = async (email: string, password: string) => {

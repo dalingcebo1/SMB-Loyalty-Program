@@ -1,68 +1,18 @@
-<<<<<<< HEAD
 import React, { useState } from "react";
 import QRCode from "react-qr-code";
 import useFetch from "../hooks/useFetch";
 import { Order } from "../types";
 import PageLayout from "../components/PageLayout";
+import api from "../api/api";
+import { toast } from "react-toastify";
+import FocusTrap from 'focus-trap-react';
 
 const PastOrders: React.FC = () => {
-  const { data: orderData, loading, error } = useFetch<Order[]>("/orders/my-past-orders");
+  const { data: orderData, loading: dataLoading, error } = useFetch<Order[]>("/orders/my-past-orders");
   const orders: Order[] = orderData ?? [];
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
+  const [modalLoading, setModalLoading] = useState<boolean>(false);
   const [showAll, setShowAll] = useState(false);
-
-=======
-import React, { useEffect, useState } from "react";
-import FocusTrap from 'focus-trap-react';
-import api from "../api/api";
-import QRCode from "react-qr-code";
-import PageLayout from "../components/PageLayout";
-import { useAuth } from "../auth/AuthProvider";
-import { Navigate } from "react-router-dom";
-import { toast } from "react-toastify";
-
-interface Extra {
-  id: number;
-  quantity: number;
-  name?: string; // If your backend can provide extra names, use them
-}
-
-interface Order {
-  id: string;
-  service_id: number;
-  extras: Extra[];
-  payment_pin: string;
-  status: string;
-  user_id: number;
-  created_at: string;
-  redeemed: boolean;
-  started_at: string | null;
-  ended_at: string | null;
-  amount?: number;
-  service_name?: string; // If your backend can provide service name, use it
-  order_redeemed_at?: string | null; // <-- Add this line
-}
-
-const PastOrders: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
-  // Auth loading and redirect
-  if (authLoading) return <PageLayout loading>{null}</PageLayout>;
-  if (!user) return <Navigate to="/login" replace />;
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [modalOrder, setModalOrder] = useState<Order | null>(null);
-  const [modalLoading, setModalLoading] = useState(false);
-
-  useEffect(() => {
-    setDataLoading(true);
-    api
-      .get("/orders/my-past-orders")
-      .then((res) => setOrders(res.data))
-      .catch(() => setError("Failed to load past orders"))
-      .finally(() => setDataLoading(false));
-  }, []);
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
 
   // fetch a single order on “View”
   const loadOrderDetails = async (id: string) => {
@@ -92,7 +42,6 @@ const PastOrders: React.FC = () => {
     return summary;
   };
 
-  const [showAll, setShowAll] = useState(false);
 
   // Limit to 3 orders unless showAll is true
   const visibleOrders = showAll ? orders : orders.slice(0, 3);
@@ -118,23 +67,15 @@ const PastOrders: React.FC = () => {
   }
   return (
     <PageLayout
-<<<<<<< HEAD
-      loading={loading}
       error={error}
       onRetry={() => window.location.reload()}
-      loadingText="Loading past orders..."
-=======
-      error={error}
-      onRetry={() => window.location.reload()}
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
     >
       <div className="max-w-xl mx-auto py-8">
         <h1 className="text-2xl font-bold mb-6 text-center">Past Orders</h1>
         {orders.length === 0 ? (
           <div className="text-center text-gray-500">No past orders found.</div>
         ) : (
-<<<<<<< HEAD
-          <>        
+          <>
             {visibleOrders.map((order) => (
                 <div
                   key={order.id}
@@ -150,33 +91,15 @@ const PastOrders: React.FC = () => {
                           ? new Date(order.created_at).toLocaleString()
                           : ""}
                       </div>
-=======
-          <>
-            {visibleOrders.map((order) => (
-              <div
-                key={order.id}
-                className="bg-white rounded shadow p-4 mb-6 flex flex-col"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-lg font-semibold mb-1 text-gray-900">
-                      {getOrderSummary(order)}
                     </div>
-                    <div className="text-base text-gray-600 mb-1">
-                      {order.created_at
-                        ? new Date(order.created_at).toLocaleString()
-                        : ""}
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
-                    </div>
+                    <button
+                      className="ml-4 px-4 py-2 bg-blue-600 text-white rounded font-medium"
+                      onClick={() => loadOrderDetails(order.id)}
+                    >
+                      View
+                    </button>
                   </div>
-                  <button
-                    className="ml-4 px-4 py-2 bg-blue-600 text-white rounded font-medium"
-                    onClick={() => loadOrderDetails(order.id)}
-                  >
-                    View
-                  </button>
                 </div>
-              </div>
             ))}
             {!showAll && orders.length > 3 && (
               <div className="flex justify-center">
@@ -256,4 +179,5 @@ const PastOrders: React.FC = () => {
   );
 };
 
+// This page has been moved to src/features/order/pages/PastOrders.tsx
 export default PastOrders;

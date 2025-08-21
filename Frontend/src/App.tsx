@@ -28,22 +28,29 @@ const TenantEdit = lazy(() => import("./pages/admin/TenantEdit"));
 const DeveloperConsole = lazy(() => import("./pages/dev/DeveloperConsole"));
 const ProvisionWizard = lazy(() => import("./pages/dev/ProvisionWizard"));
 
-import Signup            from "./pages/Signup";
-import Login             from "./pages/Login";
-import Onboarding        from "./pages/Onboarding";
-import OTPVerify         from "./pages/OTPVerify";
-import OrderForm         from "./pages/OrderForm";
-import OrderConfirmation from "./pages/OrderConfirmation";
-import MyLoyalty         from "./pages/MyLoyalty";
+import { 
+  Signup,
+  Login,
+  Onboarding,
+  OTPVerify,
+  ForgotPassword,
+  ResetPassword
+} from "./features/auth";
+import { 
+  OrderForm,
+  OrderConfirmation,
+  PastOrders,
+  Payment
+} from "./features/order";
+import { MyLoyalty } from "./features/loyalty";
+import { 
+  PaymentVerification,
+  ManualVisitLogger,
+  VehicleManager,
+  CarWashDashboard
+} from "./features/staff";
 import DashboardLayout   from "./components/DashboardLayout";
-import ForgotPassword    from "./pages/ForgotPassword";
-import ResetPassword     from "./pages/ResetPassword";
 import Welcome           from "./pages/Welcome";
-import Payment           from "./pages/Payment";
-import PaymentVerification from "./pages/staff/PaymentVerification";
-import ManualVisitLogger from "./pages/staff/ManualVisitLogger";
-import VehicleManager from "./pages/staff/VehicleManager";
-import PastOrders from "./pages/PastOrders";
 import Account from "./pages/Account"; // <-- Add this import
 const AnalyticsLayout = lazy(() => import("./pages/admin/AnalyticsLayout"));
 const AnalyticsOverview = lazy(() => import("./pages/admin/AnalyticsOverview"));
@@ -90,6 +97,7 @@ function RequireDeveloper() {
 export default function App() {
   return (
     <>
+     <ToastContainer position="top-center" />
       <Routes>
         {/* Auto-login via token query (e.g., /autologin?token=...) */}
             {/* /services route removed; use /order for booking */}
@@ -118,6 +126,7 @@ export default function App() {
             {enablePayments && <Route path="/staff" element={<PaymentVerification />} />}
             <Route path="/staff/manual-visit" element={<ManualVisitLogger />} />
             <Route path="/staff/vehicle-manager" element={<VehicleManager />} />
+            <Route path="/staff/dashboard" element={<CarWashDashboard />} />
           </Route>
         </Route>
 
@@ -269,8 +278,6 @@ export default function App() {
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-      {/* Toast notifications */}
-      <ToastContainer />
     </>
   );
 }

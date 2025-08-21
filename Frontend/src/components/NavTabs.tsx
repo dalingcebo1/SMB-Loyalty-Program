@@ -16,7 +16,7 @@ const NavTabs: React.FC = () => {
     ...(enableOrders ? [{ to: "/past-orders", label: "Past Orders" }] : []),
     ...(enableUsers ? [{ to: "/account", label: "Account" }] : []),
     ...((user?.role === "staff" || user?.role === "admin") ? [
-      ...(enablePayments ? [{ to: "/staff", label: "Car Wash" }] : []),
+      ...(enablePayments ? [{ to: "/staff/dashboard", label: "Car Wash" }] : []),
       { to: "/staff/manual-visit", label: "Log a visit" },
       { to: "/staff/vehicle-manager", label: "Manage Vehicles" },
     ] : []),
@@ -31,7 +31,7 @@ const NavTabs: React.FC = () => {
   return (
     <>
       {/* Single Top Bar */}
-      <div className="w-full flex items-center justify-between px-4 py-3 bg-white shadow">
+      <div className="hidden md:flex w-full items-center justify-between px-4 py-3 bg-white shadow">
         {/* Hamburger Icon */}
         <button
           className="text-3xl text-gray-700"

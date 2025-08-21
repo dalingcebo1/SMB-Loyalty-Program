@@ -1,9 +1,11 @@
 // src/pages/Login.tsx
 
 import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import { TextFieldControlled } from "../components/form/TextFieldControlled";
+import Button from "../components/ui/Button";
 import PageLayout from "../components/PageLayout";
 
 interface FormData {
@@ -19,11 +21,10 @@ const Login: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [lastCreds, setLastCreds] = useState<FormData | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>();
+  // get form state from FormProvider
+  // Initialize form methods
+  const methods = useForm<FormData>({ defaultValues: { email: "", password: "" } });
+  const { handleSubmit, formState: { isSubmitting } } = methods;
 
   useEffect(() => {
     setAuthError(null);
@@ -32,8 +33,14 @@ const Login: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setAuthError(null);
     try {
-      await login(data.email, data.password);
-      navigate("/", { replace: true });
+      // login returns the authenticated user
+      const currentUser = await login(data.email, data.password);
+      // Redirect based on role: staff/admin -> Car Wash, others -> Home
+      if (currentUser.role === "staff" || currentUser.role === "admin") {
+        navigate("/staff", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err: any) {
       // save what they just tried, so we can re-use it
       setLastCreds(data);
@@ -55,52 +62,24 @@ const Login: React.FC = () => {
       loading={isSubmitting}
       error={authError}
       onRetry={() => window.location.reload()}
-<<<<<<< HEAD
-      loadingText="Logging in..."
-=======
       loadingText="Logging in…"
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
     >
       <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
         <h1 className="text-2xl font-semibold text-center">Log In</h1>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full border rounded px-3 py-2"
-            {...register("email", { required: "Email is required" })}
-          />
-          {errors.email && (
-            <p className="text-red-500 text-sm">{errors.email.message}</p>
-          )}
-
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full border rounded px-3 py-2"
-            {...register("password", { required: "Password is required" })}
-          />
-          {errors.password && (
-            <p className="text-red-500 text-sm">{errors.password.message}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isSubmitting ? "Logging in…" : "Log in"}
-          </button>
-        </form>
+        <FormProvider {...methods}>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <TextFieldControlled name="email" label="Email" />
+            <TextFieldControlled name="password" label="Password" type="password" />
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? 'Logging in…' : 'Log in'}
+            </Button>
+          </form>
+        </FormProvider>
 
         {authError && (
           <div className="text-center space-y-2">
             <p className="text-red-500 text-sm">{authError}</p>
-<<<<<<< HEAD
-=======
-            {/** If they just hit the 403 case, let them jump back to onboarding */}
->>>>>>> 2586f56 (Add testing setup and scripts for backend and frontend)
             {authError.includes("onboarding") && lastCreds && (
               <button
                 onClick={() =>
@@ -129,5 +108,7 @@ const Login: React.FC = () => {
     </PageLayout>
   );
 };
+
+// This file has been moved to src/features/auth/pages/Login.tsx
 
 export default Login;

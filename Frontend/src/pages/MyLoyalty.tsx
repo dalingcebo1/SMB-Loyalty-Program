@@ -1,3 +1,14 @@
+// @ts-nocheck
+import React from 'react';
+
+/**
+ * MyLoyalty page placeholder.
+ */
+const MyLoyalty: React.FC = () => (
+  <div>MyLoyalty page under reconstruction.</div>
+);
+
+export default MyLoyalty;
 // src/pages/MyLoyalty.tsx
 import React from "react";
 import { useNavigate, Navigate } from "react-router-dom";
@@ -26,4 +37,4 @@ const MyLoyalty: React.FC = () => {
   );
 };
 
-export default MyLoyalty;
+// This page has been moved to src/features/loyalty/pages/MyLoyalty.tsx

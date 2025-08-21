@@ -1,63 +1,17 @@
 // src/App.tsx
+import React from 'react';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import AppRoutes from './routes';
 
-import {
-  Routes,
-  Route,
-  Navigate,
-  Outlet,
-} from "react-router-dom";
-import { useAuth } from "./auth/AuthProvider";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { moduleFlags } from "./config/modules";
-import { Suspense, lazy } from "react";
-import LoadingFallback from "./components/LoadingFallback";
-
-// Lazy-load admin bundle:
-const AdminLayout = lazy(() => import("./components/AdminLayout"));
-const AdminWelcome = lazy(() => import("./pages/admin/AdminWelcome"));
-const UsersList = lazy(() => import("./pages/admin/UsersList"));
-const StaffRegisterForm = lazy(() => import("./pages/admin/StaffRegisterForm"));
-const ModuleSettings = lazy(() => import("./pages/admin/ModuleSettings"));
-// Edit-user page
-const AdminUserEdit = lazy(() => import("./pages/AdminUserEdit"));
-// Tenants pages
-const TenantsList = lazy(() => import("./pages/admin/TenantsList"));
-const TenantEdit = lazy(() => import("./pages/admin/TenantEdit"));
-// Developer console bundle
-const DeveloperConsole = lazy(() => import("./pages/dev/DeveloperConsole"));
-const ProvisionWizard = lazy(() => import("./pages/dev/ProvisionWizard"));
-
-import { 
-  Signup,
-  Login,
-  Onboarding,
-  OTPVerify,
-  ForgotPassword,
-  ResetPassword
-} from "./features/auth";
-import { 
-  OrderForm,
-  OrderConfirmation,
-  PastOrders,
-  Payment
-} from "./features/order";
-import { MyLoyalty } from "./features/loyalty";
-import { 
-  PaymentVerification,
-  ManualVisitLogger,
-  VehicleManager,
-  CarWashDashboard
-} from "./features/staff";
-import DashboardLayout   from "./components/DashboardLayout";
-import Welcome           from "./pages/Welcome";
-import Account from "./pages/Account"; // <-- Add this import
-const AnalyticsLayout = lazy(() => import("./pages/admin/AnalyticsLayout"));
-const AnalyticsOverview = lazy(() => import("./pages/admin/AnalyticsOverview"));
-
-// Feature flags
- const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
- // Analytics detail pages (lazy-loaded)
+export default function App() {
+  return (
+    <>
+      <ToastContainer position="top-center" />
+      <AppRoutes />
+    </>
+  );
+}
 const UsersMetrics = lazy(() => import("./pages/admin/UsersMetrics"));
 const TransactionsMetrics = lazy(() => import("./pages/admin/TransactionsMetrics"));
 const PointsMetrics = lazy(() => import("./pages/admin/PointsMetrics"));

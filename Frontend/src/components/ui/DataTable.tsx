@@ -11,7 +11,8 @@ export interface DataTableProps<T> {
   data: T[];
 }
 
-export function DataTable<T>({ columns, data }: DataTableProps<T>) {
+// Generic table component implementation
+function DataTableComponent<T>({ columns, data }: DataTableProps<T>) {
   return (
     <table
       className="min-w-full divide-y divide-gray-200"
@@ -53,4 +54,8 @@ export function DataTable<T>({ columns, data }: DataTableProps<T>) {
   );
 }
 
+// Memoized generic DataTable
+export const DataTable = React.memo(DataTableComponent) as <T>(
+  props: DataTableProps<T>
+) => JSX.Element;
 export default DataTable;

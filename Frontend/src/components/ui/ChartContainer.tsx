@@ -7,7 +7,6 @@ export interface ChartContainerProps {
   height?: number;
   className?: string;
 }
-
 const ChartContainer: React.FC<ChartContainerProps> = ({ children, aspect = 2, height = 200, className }) => (
   <div className={className}>
     {aspect ? (
@@ -22,4 +21,5 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ children, aspect = 2, h
   </div>
 );
 
-export default ChartContainer;
+// Memoize ChartContainer to avoid unnecessary re-renders
+export default React.memo(ChartContainer);

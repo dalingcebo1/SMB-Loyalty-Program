@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import SparklineChart from '../charts/SparklineChart';
 
@@ -63,4 +63,4 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, value = 0, loading = fal
   );
 };
 
-export default MetricCard;
+export default memo(MetricCard);

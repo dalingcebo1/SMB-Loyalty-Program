@@ -22,7 +22,9 @@ const Select: React.FC<SelectProps> = ({
   id,
   ...props
 }) => {
-  const generatedId = id || React.useId();
+  // Generate unique id
+  const hookId = React.useId();
+  const generatedId = id || hookId;
   const helperId = helperText ? `${generatedId}-helper` : undefined;
 
   return (
@@ -34,7 +36,11 @@ const Select: React.FC<SelectProps> = ({
         id={generatedId}
         aria-invalid={!!error}
         aria-describedby={helperId}
-        className={`w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-600 focus:border-red-600' : 'border-gray-300'} ${className || ''}`}        
+        className={
+          `w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-primary ` +
+          `${error ? 'border-danger focus:ring-danger' : 'border-gray300'} ` +
+          `${className || ''}`
+        }
         {...props}
       >
         {options.map(opt => (

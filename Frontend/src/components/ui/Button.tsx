@@ -38,6 +38,8 @@ const Button: React.FC<ButtonProps> = ({
   ...props
 }) => (
   <button
+    role="button"
+    aria-disabled={disabled || isLoading}
     className={twMerge(
       'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
       variantClasses[variant],

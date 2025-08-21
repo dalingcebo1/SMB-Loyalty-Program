@@ -9,7 +9,9 @@ interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const TextField: React.FC<TextFieldProps> = ({ label, error, helperText, className, id, ...props }) => {
-  const generatedId = id || React.useId();
+  // Generate unique id for accessibility
+  const hookId = React.useId();
+  const generatedId = id || hookId;
   const helperId = helperText ? `${generatedId}-helper` : undefined;
   return (
     <div className="space-y-xs">
@@ -36,7 +38,7 @@ const TextField: React.FC<TextFieldProps> = ({ label, error, helperText, classNa
         </p>
       )}
       {error && (
-        <p className="text-danger text-sm">
+        <p role="alert" className="sr-only text-danger text-sm">
           {error}
         </p>
       )}

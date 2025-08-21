@@ -1,5 +1,6 @@
 // src/components/ui/TextField.tsx
 import React from 'react';
+import { twMerge } from 'tailwind-merge';
 
 interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -11,7 +12,7 @@ const TextField: React.FC<TextFieldProps> = ({ label, error, helperText, classNa
   const generatedId = id || React.useId();
   const helperId = helperText ? `${generatedId}-helper` : undefined;
   return (
-    <div className="space-y-1">
+    <div className="space-y-xs">
       <label htmlFor={generatedId} className="block text-sm font-medium">
         {label}
       </label>
@@ -19,15 +20,26 @@ const TextField: React.FC<TextFieldProps> = ({ label, error, helperText, classNa
         id={generatedId}
         aria-invalid={!!error}
         aria-describedby={helperId}
-        className={`w-full border px-3 py-2 rounded ${error ? 'border-red-600 focus:border-red-600' : ''} ${className || ''}`}
+        className={twMerge(
+          'w-full border border-gray300 focus:outline-none focus:ring-2 focus:ring-primary',
+          'px-md py-sm rounded-md',
+          error
+            ? 'border-danger focus:ring-danger'
+            : '',
+          className
+        )}
         {...props}
       />
       {helperText && (
-        <p id={helperId} className="text-gray-500 text-sm">
+        <p id={helperId} className="text-gray300 text-sm">
           {helperText}
         </p>
       )}
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && (
+        <p className="text-danger text-sm">
+          {error}
+        </p>
+      )}
     </div>
   );
 };

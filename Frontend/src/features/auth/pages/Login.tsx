@@ -1,6 +1,7 @@
 // src/features/auth/pages/Login.tsx
 
 import React, { useEffect, useState } from "react";
+import { AxiosError } from "axios";
 import { useForm, FormProvider } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -14,7 +15,7 @@ interface FormData {
 }
 
 const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, socialLogin } = useAuth();
   const navigate = useNavigate();
 
   const [authError, setAuthError] = useState<string | null>(null);
@@ -23,9 +24,7 @@ const Login: React.FC = () => {
   const methods = useForm<FormData>({ defaultValues: { email: "", password: "" } });
   const { handleSubmit, formState: { isSubmitting } } = methods;
 
-  useEffect(() => {
-    setAuthError(null);
-  }, []);
+  useEffect(() => { setAuthError(null); }, []);
 
   const onSubmit = async (data: FormData) => {
     setAuthError(null);
@@ -36,17 +35,43 @@ const Login: React.FC = () => {
       } else {
         navigate("/", { replace: true });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLastCreds(data);
+      const status = (err as AxiosError).response?.status;
+      if (status === 404) setAuthError("Email is not registered. Please sign up first.");
+      else if (status === 401) setAuthError("Incorrect email or password.");
+      else if (status === 403) setAuthError("Please complete your profile and phone verification to continue.");
+      else setAuthError("Unable to log in right now. Please try again later.");
+    }
+  };
 
-      if (err.response?.status === 404) {
-        setAuthError("Email is not registered. Please sign up first.");
-      } else if (err.response?.status === 401) {
-        setAuthError("Incorrect email or password.");
-      } else if (err.response?.status === 403) {
-        setAuthError("Please complete onboarding before logging in.");
+  const handleSocial = async () => {
+    setAuthError(null);
+    try {
+      // Initiate social login via redirect; navigation will occur on return
+      await socialLogin();
+      // we do not handle navigation here because redirect will reload the app
+    } catch (error: unknown) {
+      // Handle user cancellation gracefully
+      if (error instanceof Error) {
+        if (error.message === 'Sign-in was cancelled') {
+          // Don't show an error for user cancellation - this is normal behavior
+          console.log("User cancelled Google sign-in");
+          return;
+        }
+        
+        console.error("Social login error in component:", error);
+        // Show the specific error message from AuthProvider
+        setAuthError(error.message);
+      } else if (error && typeof error === 'object' && 'response' in error) {
+        // Handle 403 for onboarding (this is expected)
+        const status = (error as { response?: { status?: number } }).response?.status;
+        if (status === 403) {
+          // Onboarding redirect will be handled by AuthProvider
+          return;
+        }
       } else {
-        setAuthError("Unable to log in right now. Please try again later.");
+        setAuthError("Social login failed. Please try again.");
       }
     }
   };
@@ -66,7 +91,7 @@ const Login: React.FC = () => {
             <TextFieldControlled name="email" label="Email" />
             <TextFieldControlled name="password" label="Password" type="password" />
             <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Logging in…' : 'Log in'}
+              {isSubmitting ? "Logging in…" : "Log in"}
             </Button>
           </form>
         </FormProvider>
@@ -74,19 +99,12 @@ const Login: React.FC = () => {
         {authError && (
           <div className="text-center space-y-2">
             <p className="text-red-500 text-sm">{authError}</p>
-            {authError.includes("onboarding") && lastCreds && (
+            {authError.includes("profile and phone verification") && lastCreds && (
               <button
-                onClick={() =>
-                  navigate("/onboarding", {
-                    state: {
-                      email: lastCreds.email,
-                      password: lastCreds.password,
-                    },
-                  })
-                }
+                onClick={() => navigate("/onboarding", { state: { email: lastCreds.email, password: lastCreds.password } })}
                 className="text-blue-600 underline text-sm"
               >
-                Complete onboarding →
+                Complete profile setup →
               </button>
             )}
           </div>
@@ -98,6 +116,13 @@ const Login: React.FC = () => {
             Sign up
           </Link>
         </p>
+
+        <div className="mt-6 text-center">
+          <p className="text-gray-500 mb-2">Or continue with</p>
+          <Button variant="outline" onClick={handleSocial} className="w-full">
+            Continue with Google
+          </Button>
+        </div>
       </div>
     </PageLayout>
   );

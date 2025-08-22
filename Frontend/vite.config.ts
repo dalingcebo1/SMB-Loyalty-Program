@@ -3,7 +3,6 @@ import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 // Use named export for visualizer plugin
 import { visualizer } from 'rollup-plugin-visualizer';
-// @ts-ignore: Missing type declarations for VitePWA plugin
 // PWA support for offline caching
 // Import from dist for proper ESM resolution per package exports
 import { VitePWA } from 'vite-plugin-pwa/dist/index.js';
@@ -15,10 +14,8 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    // @ts-ignore: Rollup plugin types differ slightly from Vite PluginOption
     visualizer({ filename: 'bundle-stats.html', open: true, gzipSize: true, brotliSize: true }) as unknown as PluginOption,
     // PWA support for offline caching
-    // @ts-ignore: plugin type mismatch
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt'],
@@ -47,14 +44,15 @@ export default defineConfig({
     },
   },
   server: {
-    // ✨ Add these headers so popups can close themselves cleanly
+    // Temporarily remove COOP header to test popup behavior
     headers: {
       // "Cross-Origin-Opener-Policy": "same-origin",
-      // "Cross-Origin-Embedder-Policy": "require-corp",
+      // "Cross-Origin-Embedder-Policy": "require-corp", // Already commented out to allow Yoco SDK
     },
+    host: true,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
     },

@@ -1,5 +1,13 @@
+
+// Extend Window interface to store RecaptchaVerifier instance
+declare global {
+  interface Window {
+  recaptchaVerifier?: import("firebase/auth").RecaptchaVerifier | null | undefined;
+  }
+}
+
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, RecaptchaVerifier } from "firebase/auth";
+import { getAuth, RecaptchaVerifier, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 // Your Firebase config from VITE_… env vars
 const firebaseConfig = {
@@ -19,6 +27,13 @@ const app = getApps().length === 0
 // Export the Auth instance
 export const auth = getAuth(app);
 
+// Configure persistence to localStorage for redirect compatibility
+if (typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch((error: unknown) => {
+    console.warn('Failed to set Firebase persistence:', error);
+  });
+}
+
 
 /**
  * Renders an invisible reCAPTCHA widget into the given container.
@@ -30,9 +45,10 @@ export async function makeRecaptcha(
   // Create a fresh invisible reCAPTCHA
 
   // Clear any existing widget
-  const prior = (window as any).recaptchaVerifier as RecaptchaVerifier | undefined;
+  // Clear existing recaptcha if present
+  const prior = window.recaptchaVerifier;
   if (prior) {
-    try { prior.clear(); } catch {}
+    try { prior.clear(); } catch { /* ignore */ }
     if (typeof container === "string") {
       const el = document.getElementById(container);
       if (el) el.innerHTML = "";
@@ -45,6 +61,6 @@ export async function makeRecaptcha(
     { size: "invisible", badge: "bottomright" }
   );
   await verifier.render();
-  (window as any).recaptchaVerifier = verifier;
+  window.recaptchaVerifier = verifier;
   return verifier;
 }

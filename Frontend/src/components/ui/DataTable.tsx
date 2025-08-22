@@ -85,5 +85,5 @@ function DataTableComponent<T>({ columns, data, emptyMessage, onRowClick }: Data
 // Memoized generic DataTable
 export const DataTable = React.memo(DataTableComponent) as <T>(
   props: DataTableProps<T>
-) => JSX.Element;
+) => React.JSX.Element;
 export default DataTable;

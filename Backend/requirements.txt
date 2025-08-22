@@ -16,3 +16,4 @@ sendgrid
 sqlalchemy
 uvicorn[standard]
 PyJWT
+firebase-admin

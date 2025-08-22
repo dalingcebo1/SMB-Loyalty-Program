@@ -1,6 +1,7 @@
 // src/pages/Login.tsx
 
 import React, { useEffect, useState } from "react";
+import { AxiosError } from "axios";
 import { useForm, FormProvider } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
@@ -14,7 +15,7 @@ interface FormData {
 }
 
 const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, socialLogin } = useAuth();
   const navigate = useNavigate();
 
   // track any auth error & the last credentials we tried
@@ -41,19 +42,31 @@ const Login: React.FC = () => {
       } else {
         navigate("/", { replace: true });
       }
-    } catch (err: any) {
-      // save what they just tried, so we can re-use it
-      setLastCreds(data);
+    } catch (err: unknown) {
+        // save what they just tried, so we can re-use it
+        setLastCreds(data);
+        const axiosError = err as AxiosError;
+        const status = axiosError.response?.status;
+        if (status === 404) {
+          setAuthError("Email is not registered. Please sign up first.");
+        } else if (status === 401) {
+          setAuthError("Incorrect email or password.");
+        } else if (status === 403) {
+          setAuthError("Please complete onboarding before logging in.");
+        } else {
+          setAuthError("Unable to log in right now. Please try again later.");
+        }
+    }
+  };
 
-      if (err.response?.status === 404) {
-        setAuthError("Email is not registered. Please sign up first.");
-      } else if (err.response?.status === 401) {
-        setAuthError("Incorrect email or password.");
-      } else if (err.response?.status === 403) {
-        setAuthError("Please complete onboarding before logging in.");
-      } else {
-        setAuthError("Unable to log in right now. Please try again later.");
-      }
+  // Handle Google social login
+  const handleSocial = async () => {
+    setAuthError(null);
+    try {
+      await socialLogin();
+      // Navigation will be handled by AuthProvider after redirect
+    } catch {
+      setAuthError("Social login failed. Please try again.");
     }
   };
 
@@ -99,11 +112,17 @@ const Login: React.FC = () => {
         )}
 
         <p className="text-center text-sm">
-          Don’t have an account?{" "}
+          Don’t have an account?{' '}
           <Link to="/signup" className="text-blue-600 underline">
             Sign up
           </Link>
         </p>
+        <div className="mt-6 text-center">
+          <p className="text-gray-500 mb-2">Or continue with</p>
+          <Button variant="outline" onClick={handleSocial} className="w-full">
+            Continue with Google
+          </Button>
+        </div>
       </div>
     </PageLayout>
   );

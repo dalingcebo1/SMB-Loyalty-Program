@@ -16,15 +16,20 @@ import { queryClient } from './api/queryClient';
 async function bootstrap() {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-      <AuthProvider>
-        <ErrorBoundary>
-          <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <AuthProvider>
+          <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
               <App />
-            </BrowserRouter>
-          </QueryClientProvider>
-        </ErrorBoundary>
-      </AuthProvider>
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </AuthProvider>
+      </BrowserRouter>
     </React.StrictMode>
   );
 }

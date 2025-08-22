@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation }       from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   signInWithPhoneNumber,
   ConfirmationResult,
@@ -7,12 +7,17 @@ import {
 } from "firebase/auth";
 import { auth, makeRecaptcha } from "../firebase";
 import PageLayout from "../components/PageLayout";
-
-export const confirmationRef = React.createRef<ConfirmationResult>();
+import { confirmationRef } from "../utils/confirmationRef";
 
 interface LocationState {
   email: string;
-  password: string;
+  password?: string;          // optional for social users
+  firstName?: string;
+  lastName?: string;
+  fromSocial?: boolean;
+  skipProfileStep?: boolean;
+  subscribe?: boolean;
+  phone?: string;
 }
 
 // E.164 format validator
@@ -23,18 +28,18 @@ const Onboarding: React.FC = () => {
   const { state } = useLocation() as { state?: LocationState };
   const recaptchaDiv = useRef<HTMLDivElement>(null);
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName,  setLastName]  = useState("");
-  const [phone,     setPhone]     = useState("");
-  const [subscribe, setSubscribe] = useState(false);
+  const [firstName, setFirstName] = useState(state?.firstName || "");
+  const [lastName,  setLastName]  = useState(state?.lastName || "");
+  const [phone,     setPhone]     = useState(state?.phone || "");
+  const [subscribe, setSubscribe] = useState(state?.subscribe ?? false);
   const [error,     setError]     = useState("");
   const [sending,   setSending]   = useState(false);
   const [verifier,  setVerifier]  = useState<RecaptchaVerifier | null>(null);
 
-  // Redirect back if email/password is missing
+  // Redirect back if email is missing (allow social login without password)
   useEffect(() => {
-    if (!state?.email || !state?.password) {
-      navigate("/signup", { replace: true });
+    if (!state?.email) {
+      navigate("/login", { replace: true });
     }
   }, [state, navigate]);
 
@@ -47,7 +52,7 @@ const Onboarding: React.FC = () => {
         console.error("reCAPTCHA init failed", e);
         setError("Could not initialize reCAPTCHA. Check your network or disable blockers.");
       });
-  }, []); // only once
+  }, [verifier]); // Include verifier dependency
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,16 +83,18 @@ const Onboarding: React.FC = () => {
       navigate("/onboarding/verify", {
         state: {
           email:    state!.email,
-          password: state!.password,
+          password: state?.password, // may be undefined for social login
           firstName,
           lastName,
           phone:    phone.trim(),
           subscribe,
+          fromSocialLogin: state?.fromSocial ?? false,
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Send OTP failed", err);
-      switch (err.code) {
+      const error = err as { code?: string };
+      switch (error.code) {
         case "auth/invalid-phone-number":
           setError("That phone number is invalid.");
           break;
@@ -128,6 +135,7 @@ const Onboarding: React.FC = () => {
               onChange={e => setFirstName(e.target.value)}
               className="mt-1 block w-full border rounded p-2"
               required
+              disabled={state?.fromSocial && !!state?.firstName}
             />
           </div>
 
@@ -139,6 +147,7 @@ const Onboarding: React.FC = () => {
               onChange={e => setLastName(e.target.value)}
               className="mt-1 block w-full border rounded p-2"
               required
+              disabled={state?.fromSocial && !!state?.lastName}
             />
           </div>
 

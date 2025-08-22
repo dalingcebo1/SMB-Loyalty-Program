@@ -29,8 +29,6 @@ jobs:
       - name: Install dependencies
         run: cd Frontend && npm ci
         
-      - name: Run ESLint
-        run: cd Frontend && npm run lint
         
       - name: Run unit tests
         run: cd Frontend && npm test

@@ -2,7 +2,7 @@
 import os
 import datetime
 from dotenv import load_dotenv
-from database import SessionLocal
+from app.core.database import SessionLocal
 from models import Reward
 
 load_dotenv()    # so DATABASE_URL, etc

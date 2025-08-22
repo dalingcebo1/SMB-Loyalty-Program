@@ -7,7 +7,7 @@ HERE = os.path.dirname(__file__)            # Backend/
 ROOT = os.path.abspath(os.path.join(HERE, ".."))  # project root
 sys.path.insert(0, ROOT)
 
-from database import Base, engine
+from app.core.database import Base, engine
 from sqlalchemy.orm import Session
 from models import Tenant
 

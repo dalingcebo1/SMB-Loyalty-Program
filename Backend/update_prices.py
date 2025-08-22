@@ -3,7 +3,7 @@ import os
 import csv
 import requests
 from dotenv import load_dotenv
-from database import SessionLocal
+from app.core.database import SessionLocal
 from models import Service, Extra
 
 def get_price_csv_url() -> str:

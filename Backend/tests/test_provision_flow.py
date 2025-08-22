@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.plugins.auth.routes import require_admin, require_developer, get_current_user
+from app.plugins.auth.routes import require_admin, get_current_user
 from app.models import User, Tenant, InviteToken
 from config import settings
 from datetime import datetime

@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.plugins.auth.routes import require_developer, get_current_user
+from app.plugins.auth.routes import require_admin, get_current_user
 from app.models import User, Tenant
 from config import settings
 from datetime import datetime
@@ -12,7 +12,7 @@ def dev_client(client, db_session):
     dev = db_session.query(User).first()
     dev.role = 'developer'
     db_session.commit()
-    app.dependency_overrides[require_developer] = lambda: dev
+    app.dependency_overrides[require_admin] = lambda: dev
     app.dependency_overrides[get_current_user] = lambda: dev
     return client
 

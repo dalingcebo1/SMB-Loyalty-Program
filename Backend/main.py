@@ -69,29 +69,6 @@ for prefix, router in [
 ]:
     app.include_router(router, prefix=prefix)
 
-# Explicit legacy endpoints for backwards compatibility
-from app.plugins.users.routes import add_vehicle, delete_vehicle, VehicleIn, VehicleOut
-from app.core.database import get_db
-from app.plugins.auth.routes import require_staff
-from sqlalchemy.orm import Session
-from fastapi import Depends
-
-@app.post(
-    "/api/users/users/{user_id}/vehicles",
-    dependencies=[Depends(require_staff)],
-    response_model=VehicleOut,
-    status_code=201
-)
-def add_vehicle_legacy(user_id: int, vehicle: VehicleIn, db: Session = Depends(get_db)):
-    return add_vehicle(user_id, vehicle, db)
-
-@app.delete(
-    "/api/users/users/{user_id}/vehicles/{vehicle_id}",
-    dependencies=[Depends(require_staff)]
-)
-def delete_vehicle_legacy(user_id: int, vehicle_id: int, db: Session = Depends(get_db)):
-    return delete_vehicle(user_id, vehicle_id, db)
-
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")
 def on_startup():

@@ -13,7 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from database import Base
+from app.core.database import Base
 
 # association table for tenant admins
 tenant_admins = Table(

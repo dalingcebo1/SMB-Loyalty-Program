@@ -3,19 +3,27 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../api/api";
 import Loading from "../components/Loading";
 import ErrorMessage from "../components/ErrorMessage";
 import { useAuth } from "../auth/AuthProvider";
 import PageLayout from "../components/PageLayout";
 import StepIndicator from "../components/StepIndicator";
+import ServiceCard from "../components/ServiceCard";
+import DateTimePicker from "../components/DateTimePicker";
+import BookingConfirmation from "../components/BookingConfirmation";
 import { track } from '../utils/analytics';
 
 interface Service {
   id: number;
   name: string;
   base_price: number;
+  description?: string;
+  duration?: number;
+  loyalty_points?: number;
 }
+
 interface Extra {
   id: number;
   name: string;
@@ -24,20 +32,19 @@ interface Extra {
 
 const OrderForm: React.FC = () => {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // Clear any previous pending order to avoid auto-redirect to payment skeleton
   useEffect(() => {
     localStorage.removeItem('pendingOrder');
   }, []);
-  const navigate = useNavigate();
-  const location = useLocation();
-  // Check if user has a ready reward
-  // removed unused reward state
-  // removed unused reward toggle state
 
   // Analytics: page view of OrderForm
   useEffect(() => {
     track('page_view', { page: 'OrderForm' });
   }, []);
+
   useEffect(() => {
     // Only auto-redirect on the Order page itself, not on '/services'
     if (location.pathname === '/order' && !location.state) {
@@ -49,12 +56,43 @@ const OrderForm: React.FC = () => {
     }
   }, [location.pathname, location.state, navigate]);
 
+  // Helper functions for enhanced service data
+  const getServiceDescription = (name: string): string => {
+    const descriptions: Record<string, string> = {
+      'FULL HOUSE': 'Complete interior and exterior cleaning with premium products',
+      'Basic Wash': 'Standard exterior wash with soap and rinse',
+      'Deluxe Wash': 'Premium wash with wax and interior vacuum',
+      'Premium Detail': 'Full detailing service with clay bar and protection'
+    };
+    return descriptions[name] || 'Professional car wash service';
+  };
+
+  const getServiceDuration = (name: string): number => {
+    const durations: Record<string, number> = {
+      'FULL HOUSE': 60,
+      'Basic Wash': 20,
+      'Deluxe Wash': 35,
+      'Premium Detail': 90
+    };
+    return durations[name] || 30;
+  };
+
   // Fetch catalog data
   const servicesQuery = useQuery({
     queryKey: ["services"],
     queryFn: async (): Promise<Record<string, Service[]>> => {
       const { data } = await api.get("/catalog/services");
-      return data;
+      // Add mock data for better UX
+      const enhancedData: Record<string, Service[]> = {};
+      Object.entries(data).forEach(([category, services]) => {
+        enhancedData[category] = (services as Service[]).map(service => ({
+          ...service,
+          description: getServiceDescription(service.name),
+          duration: getServiceDuration(service.name),
+          loyalty_points: Math.floor(service.base_price / 10) // 1 point per R10
+        }));
+      });
+      return enhancedData;
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -78,12 +116,17 @@ const OrderForm: React.FC = () => {
   const servicesByCategory = servicesQuery.data ?? {};
   const extras = extrasQuery.data ?? [];
 
-  // UI state
-  const [selectedCategory, setSelectedCategory] = useState(""); // will set default in useEffect
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  // Multi-step form state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [serviceQuantity, setServiceQuantity] = useState(1);
   const [extraQuantities, setExtraQuantities] = useState<Record<number, number>>({});
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedTime, setSelectedTime] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
 
   // Set default category to "Fullhouse" (case-insensitive) when services load
   useEffect(() => {
@@ -99,30 +142,22 @@ const OrderForm: React.FC = () => {
         setSelectedCategory(cats[0]);
       }
     }
-    // eslint-disable-next-line
-  }, [servicesByCategory]);
+  }, [servicesByCategory, selectedCategory]);
 
   // Set default service when category changes
   useEffect(() => {
-    if (
-      selectedCategory &&
-      servicesByCategory[selectedCategory]?.length
-    ) {
+    if (selectedCategory && servicesByCategory[selectedCategory]?.length) {
       const serviceList = servicesByCategory[selectedCategory];
       // Try to find "FULL HOUSE" (case-insensitive)
       const fullHouseService = serviceList.find(
         (s) => s.name.trim().toLowerCase() === "full house"
       );
-      if (
-        selectedServiceId == null ||
-        !serviceList.some((s) => s.id === selectedServiceId)
-      ) {
-        setSelectedServiceId(fullHouseService?.id ?? serviceList[0]?.id ?? null);
+      if (!selectedService || !serviceList.some((s) => s.id === selectedService.id)) {
+        setSelectedService(fullHouseService ?? serviceList[0] ?? null);
         setServiceQuantity(1);
       }
     }
-    // eslint-disable-next-line
-  }, [selectedCategory, servicesByCategory]);
+  }, [selectedCategory, servicesByCategory, selectedService]);
 
   // Init extra counters
   useEffect(() => {
@@ -131,22 +166,11 @@ const OrderForm: React.FC = () => {
     setExtraQuantities(init);
   }, [extras]);
 
-  // Increment/decrement helpers
-  const incService = () => setServiceQuantity((q) => q + 1);
-  const decService = () => setServiceQuantity((q) => Math.max(1, q - 1));
-  const incExtra = (id: number) =>
-    setExtraQuantities((q) => ({ ...q, [id]: (q[id] || 0) + 1 }));
-  const decExtra = (id: number) =>
-    setExtraQuantities((q) => ({ ...q, [id]: Math.max(0, (q[id] || 0) - 1) }));
-
-  // Re-calculate total
+  // Calculate total
   const total = useMemo(() => {
     let sum = 0;
-    if (selectedCategory && selectedServiceId != null) {
-      const svc = servicesByCategory[selectedCategory].find(
-        (s) => s.id === selectedServiceId
-      );
-      if (svc) sum += svc.base_price * serviceQuantity;
+    if (selectedService) {
+      sum += selectedService.base_price * serviceQuantity;
     }
     extras.forEach((e) => {
       const qty = extraQuantities[e.id] || 0;
@@ -155,26 +179,14 @@ const OrderForm: React.FC = () => {
       }
     });
     return sum;
-  }, [
-    selectedCategory,
-    selectedServiceId,
-    serviceQuantity,
-    extraQuantities,
-    servicesByCategory,
-    extras,
-  ]);
+  }, [selectedService, serviceQuantity, extraQuantities, extras, selectedCategory]);
 
-  // Compute a human-readable order summary for payment and confirmation
+  // Compute order summary
   const orderSummary = useMemo(() => {
     const lines: string[] = [];
-    // Service line
-    if (selectedServiceId && selectedCategory) {
-      const svc = servicesByCategory[selectedCategory]?.find(s => s.id === selectedServiceId);
-      if (svc) {
-        lines.push(`${svc.name} × ${serviceQuantity}`);
-      }
+    if (selectedService) {
+      lines.push(`${selectedService.name} × ${serviceQuantity}`);
     }
-    // Extras lines
     extras.forEach(e => {
       const qty = extraQuantities[e.id] || 0;
       if (qty > 0) {
@@ -183,52 +195,96 @@ const OrderForm: React.FC = () => {
       }
     });
     return lines;
-  }, [selectedCategory, selectedServiceId, serviceQuantity, extras, extraQuantities, servicesByCategory]);
+  }, [selectedService, serviceQuantity, extras, extraQuantities]);
+
+  // Step navigation
+  const canProceedToStep2 = selectedService && selectedCategory;
+  const canProceedToStep3 = canProceedToStep2 && selectedDate && selectedTime;
+
+  const handleNextStep = () => {
+    if (currentStep === 1 && canProceedToStep2) {
+      setCurrentStep(2);
+      track('step_completed', { step: 1, page: 'OrderForm' });
+    } else if (currentStep === 2 && canProceedToStep3) {
+      setCurrentStep(3);
+      track('step_completed', { step: 2, page: 'OrderForm' });
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   // Submit order
-  const handleSubmit = () => {
-    // Validate before submit
-    if (!selectedServiceId) {
-      toast.warning("Please select a service");
-      return;
-    }
-    if (serviceQuantity < 1) {
-      toast.warning("Service quantity must be at least 1");
+  const handleSubmit = async () => {
+    if (!selectedService || !selectedDate || !selectedTime) {
+      toast.warning("Please complete all steps before booking");
       return;
     }
 
-    // Analytics: CTA click
-    track('cta_click', { label: 'Confirm & Pay', page: 'OrderForm' });
+    track('cta_click', { label: 'Confirm Booking', page: 'OrderForm' });
     setIsSubmitting(true);
 
     const payload = {
       email: user!.email,
-      service_id: selectedServiceId,
+      service_id: selectedService.id,
       quantity: serviceQuantity,
+      scheduled_date: selectedDate,
+      scheduled_time: selectedTime,
       extras: Object.entries(extraQuantities)
         .filter(([, qty]) => qty > 0)
         .map(([id, qty]) => ({ id: Number(id), quantity: qty })),
     };
 
-    api
-      .post("/orders/create", payload)
-      .then((res) => {
-        const { order_id, qr_data } = res.data;
-        const paymentState: any = {
-          orderId: order_id,
-          qrData: qr_data,
-          total: total * 100,
-          summary: orderSummary,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem('pendingOrder', JSON.stringify(paymentState));
-        toast.success("Order placed!");
-        navigate("/order/payment", { state: paymentState });
-      })
-      .catch((err: any) => {
-        toast.error(err.response?.data?.detail || "Failed to place order");
-      })
-      .finally(() => setIsSubmitting(false));
+    try {
+      const res = await api.post("/orders/create", payload);
+      const { order_id, qr_data } = res.data;
+
+      const orderDetails = {
+        id: order_id,
+        serviceName: selectedService.name,
+        date: selectedDate,
+        time: selectedTime,
+        total,
+        estimatedDuration: selectedService.duration,
+        bayNumber: Math.floor(Math.random() * 5) + 1 // Mock bay assignment
+      };
+
+      setConfirmedOrder(orderDetails);
+      setShowConfirmation(true);
+      
+      // Store for payment flow
+      const paymentState: any = {
+        orderId: order_id,
+        qrData: qr_data,
+        total: total * 100,
+        summary: orderSummary,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem('pendingOrder', JSON.stringify(paymentState));
+      
+      toast.success("Booking confirmed!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Failed to place order");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDateTimeChange = (date: string, time: string) => {
+    setSelectedDate(date);
+    setSelectedTime(time);
+  };
+
+  const handleConfirmationComplete = () => {
+    setShowConfirmation(false);
+    if (confirmedOrder) {
+      navigate("/order/payment", { 
+        state: JSON.parse(localStorage.getItem('pendingOrder') || '{}')
+      });
+    }
   };
 
   // Show auth loading and block anonymous users
@@ -237,7 +293,7 @@ const OrderForm: React.FC = () => {
 
   // Handle loading and errors for catalog data
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
-    return <Loading text="Loading order form..." />;
+    return <Loading text="Loading services..." />;
   }
   if (servicesQuery.error || extrasQuery.error) {
     return (
@@ -250,142 +306,301 @@ const OrderForm: React.FC = () => {
     );
   }
 
-  // Render actual form
   return (
     <PageLayout>
-      <StepIndicator currentStep={1} />
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center px-0 py-4 w-full overflow-x-hidden">
+      <div className="min-h-screen bg-gray-50 py-8">
         <ToastContainer position="top-right" />
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-2 sm:p-4 mb-8">
-          <h1 className="text-lg font-bold mb-2 text-gray-800 text-center">Book a Service</h1>
-          <p className="text-gray-600 mb-4 text-center text-xs">
-            Select your service and extras below to book your next car wash.
-          </p>
-
-          {/* 1. Pick a Category */}
-          <section className="mb-3">
-            <label className="block text-gray-700 font-medium mb-1 text-xs">1. Category</label>
-            <select
-              className="w-full border rounded px-2 py-1 text-sm bg-gray-50"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              {Object.keys(servicesByCategory).map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </section>
-
-          {/* 2. Pick a Service */}
-          <section className="mb-3">
-            <label className="block text-gray-700 font-medium mb-1 text-xs">2. Service</label>
-            <div className="flex items-center space-x-2 w-full">
-              <select
-                className="flex-1 border rounded px-2 py-1 text-sm bg-gray-50"
-                value={selectedServiceId ?? undefined}
-                onChange={(e) => setSelectedServiceId(Number(e.target.value))}
-              >
-                {servicesByCategory[selectedCategory]?.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} — R{s.base_price}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={decService}
-                className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
-                aria-label="Decrease quantity"
-              >
-                −
-              </button>
-              <span className="w-6 text-center text-sm">{serviceQuantity}</span>
-              <button
-                type="button"
-                onClick={incService}
-                className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
-                aria-label="Increase quantity"
-              >
-                +
-              </button>
-            </div>
-          </section>
-
-          {/* 3. Extras */}
-          <section className="mb-3">
-            <label className="block text-gray-700 font-medium mb-1 text-xs">3. Extras</label>
-            <div>
-              {extras.length === 0 && (
-                <div className="text-gray-400 text-xs">No extras available for this category.</div>
-              )}
-              {extras.map((e) => (
-                <div
-                  key={e.id}
-                  className="flex items-center justify-between py-2 border-b last:border-b-0"
-                >
-                  <div className="text-sm break-words pr-2">
-                    {e.name} — R{e.price_map[selectedCategory] ?? 0}
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <button
-                      type="button"
-                      onClick={() => decExtra(e.id)}
-                      className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
-                      aria-label={`Decrease ${e.name}`}
-                    >
-                      −
-                    </button>
-                    <span className="w-6 text-center text-sm">{extraQuantities[e.id]}</span>
-                    <button
-                      type="button"
-                      onClick={() => incExtra(e.id)}
-                      className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base"
-                      aria-label={`Increase ${e.name}`}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-
-          {/* 4.  Live total & submit */}
-          <div className="mt-4 font-bold text-base text-center">
-            Total: R {total}
+        
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Book Your Car Wash</h1>
+            <p className="text-gray-600">Select your service, choose a time, and we'll take care of the rest</p>
           </div>
 
-          {/* Order summary preview */}
-          {orderSummary.length > 0 && (
-            <div className="mb-6 bg-gray-100 p-4 rounded">
-              <h3 className="font-semibold text-gray-700 mb-2">Your Order</h3>
-              <ul className="list-disc list-inside text-gray-600">
-                {orderSummary.map((line, idx) => (
-                  <li key={idx}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Step Indicator */}
+          <div className="mb-8">
+            <StepIndicator 
+              currentStep={currentStep}
+              stepsCompleted={currentStep > 1 ? [1] : []}
+            />
+          </div>
 
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className={`w-full mt-3 py-2 rounded text-white font-semibold transition text-base ${
-              isSubmitting
-                ? "bg-blue-300 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {isSubmitting ? "Submitting…" : "Confirm & Pay"}
-          </button>
+          {/* Step Content */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <AnimatePresence mode="wait">
+              {/* Step 1: Service Selection */}
+              {currentStep === 1 && (
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  className="p-6"
+                >
+                  <h2 className="text-xl font-semibold mb-6">Step 1: Select Your Service</h2>
+                  
+                  {/* Category Selection */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Service Category
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(servicesByCategory).map((category) => (
+                        <button
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            selectedCategory === category
+                              ? 'bg-blue-500 text-white shadow-md'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Service Cards */}
+                  {selectedCategory && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Choose Service
+                      </label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {servicesByCategory[selectedCategory]?.map((service) => (
+                          <ServiceCard
+                            key={service.id}
+                            service={service}
+                            isSelected={selectedService?.id === service.id}
+                            onSelect={setSelectedService}
+                            quantity={selectedService?.id === service.id ? serviceQuantity : 1}
+                            onQuantityChange={setServiceQuantity}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extras */}
+                  {extras.length > 0 && selectedCategory && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Add Extras (Optional)
+                      </label>
+                      <div className="space-y-3">
+                        {extras.map((extra) => (
+                          <div
+                            key={extra.id}
+                            className="flex items-center justify-between p-3 border rounded-lg"
+                          >
+                            <div>
+                              <span className="font-medium">{extra.name}</span>
+                              <span className="text-sm text-gray-500 ml-2">
+                                +R{extra.price_map[selectedCategory] ?? 0}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => setExtraQuantities(prev => ({ 
+                                  ...prev, 
+                                  [extra.id]: Math.max(0, (prev[extra.id] || 0) - 1) 
+                                }))}
+                                className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                              >
+                                −
+                              </button>
+                              <span className="w-8 text-center">{extraQuantities[extra.id] || 0}</span>
+                              <button
+                                type="button"
+                                onClick={() => setExtraQuantities(prev => ({ 
+                                  ...prev, 
+                                  [extra.id]: (prev[extra.id] || 0) + 1 
+                                }))}
+                                className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 1 Footer */}
+                  <div className="flex justify-between items-center pt-6 border-t">
+                    <div className="text-lg font-semibold">
+                      Total: R{total}
+                    </div>
+                    <button
+                      onClick={handleNextStep}
+                      disabled={!canProceedToStep2}
+                      className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                        canProceedToStep2
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Choose Date & Time
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 2: Date & Time Selection */}
+              {currentStep === 2 && (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  className="p-6"
+                >
+                  <h2 className="text-xl font-semibold mb-6">Step 2: Choose Date & Time</h2>
+                  
+                  <DateTimePicker
+                    selectedDate={selectedDate}
+                    selectedTime={selectedTime}
+                    onDateTimeChange={handleDateTimeChange}
+                    className="mb-6"
+                  />
+
+                  {/* Step 2 Footer */}
+                  <div className="flex justify-between items-center pt-6 border-t">
+                    <button
+                      onClick={handlePrevStep}
+                      className="px-6 py-3 rounded-lg font-medium bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    >
+                      Back
+                    </button>
+                    <div className="text-lg font-semibold">
+                      Total: R{total}
+                    </div>
+                    <button
+                      onClick={handleNextStep}
+                      disabled={!canProceedToStep3}
+                      className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                        canProceedToStep3
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Review Booking
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 3: Review & Confirm */}
+              {currentStep === 3 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  className="p-6"
+                >
+                  <h2 className="text-xl font-semibold mb-6">Step 3: Review Your Booking</h2>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Booking Summary */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="font-semibold mb-3">Booking Summary</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Service:</span>
+                          <span className="font-medium">{selectedService?.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Quantity:</span>
+                          <span className="font-medium">{serviceQuantity}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Date:</span>
+                          <span className="font-medium">
+                            {new Date(selectedDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Time:</span>
+                          <span className="font-medium">{selectedTime}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Duration:</span>
+                          <span className="font-medium">~{selectedService?.duration || 30} min</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Price Breakdown */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="font-semibold mb-3">Price Breakdown</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>{selectedService?.name} × {serviceQuantity}</span>
+                          <span>R{selectedService ? selectedService.base_price * serviceQuantity : 0}</span>
+                        </div>
+                        {extras.map(extra => {
+                          const qty = extraQuantities[extra.id] || 0;
+                          if (qty > 0) {
+                            const price = (extra.price_map[selectedCategory] ?? 0) * qty;
+                            return (
+                              <div key={extra.id} className="flex justify-between">
+                                <span>{extra.name} × {qty}</span>
+                                <span>R{price}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })}
+                        <div className="border-t pt-2 font-semibold flex justify-between">
+                          <span>Total:</span>
+                          <span>R{total}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 3 Footer */}
+                  <div className="flex justify-between items-center pt-6 border-t">
+                    <button
+                      onClick={handlePrevStep}
+                      className="px-6 py-3 rounded-lg font-medium bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className={`px-8 py-3 rounded-lg font-medium transition-all ${
+                        isSubmitting
+                          ? 'bg-blue-300 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700 shadow-md'
+                      } text-white`}
+                    >
+                      {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
+
+        {/* Booking Confirmation Modal */}
+        {confirmedOrder && (
+          <BookingConfirmation
+            isVisible={showConfirmation}
+            onComplete={handleConfirmationComplete}
+            orderDetails={confirmedOrder}
+          />
+        )}
       </div>
     </PageLayout>
   );
 };
 
-// This page has been moved to src/features/order/pages/OrderForm.tsx
 export default OrderForm;

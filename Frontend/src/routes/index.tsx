@@ -57,7 +57,7 @@ function RequireAuth() {
 function RequireDeveloper() {
   const { user, loading } = useAuth();
   if (loading) return <LoadingFallback message="Loading…" />;
-  if (!user || (user.role !== 'developer' && user.role !== 'admin')) {
+  if (!user || user.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
   return <Outlet />;

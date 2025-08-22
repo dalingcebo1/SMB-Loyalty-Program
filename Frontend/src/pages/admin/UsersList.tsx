@@ -340,8 +340,10 @@ const UsersList: React.FC = () => {
                 onChange={e => setFormData({ ...formData, role: e.target.value })}
                 className="border p-1 w-full"
               >
-                <option value="admin">Admin</option>
+                <option value="">Select Role</option>
                 <option value="user">User</option>
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
               </select>
             </label>
           </div>

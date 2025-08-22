@@ -157,15 +157,6 @@ def require_staff(current_user: User = Depends(get_current_user)) -> User:
             detail="Staff privileges required",
         )
     return current_user
-    
-def require_developer(current_user: User = Depends(get_current_user)) -> User:
-    """Guard for developer-only pages"""
-    if current_user.role not in ("developer", "admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Developer privileges required",
-        )
-    return current_user
 
 # ─── ENDPOINTS ─────────────────────────────────────────────────────────────
 @router.post("/signup", status_code=201)

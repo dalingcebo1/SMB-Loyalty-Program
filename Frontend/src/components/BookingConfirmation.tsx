@@ -65,30 +65,27 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
       pathLength: 1, 
       opacity: 1,
       transition: { 
-        pathLength: { duration: 0.5, ease: "easeInOut" },
+        pathLength: { duration: 0.5 },
         opacity: { duration: 0.2 }
       }
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: { 
-      opacity: 1, 
-      scale: 1,
-      transition: { 
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    },
-    exit: {
-      opacity: 0,
-      scale: 0.8,
-      transition: { duration: 0.3 }
+const containerVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    transition: { 
+      duration: 0.3
     }
-  };
-
-  return (
+  },
+  exit: { 
+    opacity: 0, 
+    scale: 0.8,
+    transition: { duration: 0.2 }
+  }
+};  return (
     <AnimatePresence>
       {isVisible && (
         <motion.div

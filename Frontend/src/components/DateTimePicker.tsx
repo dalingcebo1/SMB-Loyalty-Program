@@ -42,7 +42,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
       date.setDate(date.getDate() + i);
       
       // Skip past dates
-      if (date < new Date().setHours(0, 0, 0, 0)) continue;
+      if (date < new Date(new Date().setHours(0, 0, 0, 0))) continue;
       
       const dateStr = date.toISOString().split('T')[0];
       const slots: TimeSlot[] = [];

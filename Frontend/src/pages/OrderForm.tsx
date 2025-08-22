@@ -30,6 +30,16 @@ interface Extra {
   price_map: Record<string, number>;
 }
 
+interface ConfirmedOrder {
+  id: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  total: number;
+  estimatedDuration?: number;
+  bayNumber: number;
+}
+
 const OrderForm: React.FC = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -112,9 +122,9 @@ const OrderForm: React.FC = () => {
   useEffect(() => { if (extrasQuery.error) toast.error("Failed to load extras"); },
     [extrasQuery.error]);
 
-  // Type-safe fall-backs
-  const servicesByCategory = servicesQuery.data ?? {};
-  const extras = extrasQuery.data ?? [];
+  // Type-safe fall-backs with useMemo for dependency optimization
+  const servicesByCategory = useMemo(() => servicesQuery.data ?? {}, [servicesQuery.data]);
+  const extras = useMemo(() => extrasQuery.data ?? [], [extrasQuery.data]);
 
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -126,7 +136,7 @@ const OrderForm: React.FC = () => {
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
+  const [confirmedOrder, setConfirmedOrder] = useState<ConfirmedOrder | null>(null);
 
   // Set default category to "Fullhouse" (case-insensitive) when services load
   useEffect(() => {
@@ -256,7 +266,7 @@ const OrderForm: React.FC = () => {
       setShowConfirmation(true);
       
       // Store for payment flow
-      const paymentState: any = {
+      const paymentState = {
         orderId: order_id,
         qrData: qr_data,
         total: total * 100,
@@ -266,8 +276,9 @@ const OrderForm: React.FC = () => {
       localStorage.setItem('pendingOrder', JSON.stringify(paymentState));
       
       toast.success("Booking confirmed!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Failed to place order");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      toast.error(error.response?.data?.detail || "Failed to place order");
     } finally {
       setIsSubmitting(false);
     }

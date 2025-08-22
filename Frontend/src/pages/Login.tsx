@@ -38,7 +38,7 @@ const Login: React.FC = () => {
       const currentUser = await login(data.email, data.password);
       // Redirect based on role: staff/admin -> Car Wash, others -> Home
       if (currentUser.role === "staff" || currentUser.role === "admin") {
-        navigate("/staff", { replace: true });
+        navigate("/staff/dashboard", { replace: true });
       } else {
         navigate("/", { replace: true });
       }

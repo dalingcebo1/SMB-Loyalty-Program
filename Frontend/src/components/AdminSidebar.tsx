@@ -7,16 +7,16 @@ const links = [
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/register-staff', label: 'Register Staff' },
   { to: '/admin/modules', label: 'Modules' },
-  { to: '/admin/analytics', label: 'Analytics' },
+  { to: '/admin/tenants', label: 'Tenants' },
 ];
 
 // Prefetch component chunks on hover/focus
-const prefetchMap: Record<string, () => Promise<any>> = {
+const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/admin': () => import('./AdminLayout'),
   '/admin/users': () => import('../pages/admin/UsersList'),
   '/admin/register-staff': () => import('../pages/admin/StaffRegisterForm'),
   '/admin/modules': () => import('../pages/admin/ModuleSettings'),
-  '/admin/analytics': () => import('../pages/admin/AnalyticsLayout'),
+  '/admin/tenants': () => import('../pages/admin/TenantsList'),
 };
 
 const AdminSidebar: React.FC = () => {

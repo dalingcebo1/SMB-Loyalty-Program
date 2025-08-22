@@ -21,10 +21,10 @@ const GoogleRedirectTest = lazy(() => import('../debug/GoogleRedirectTest'));
 // User pages
 const Welcome = lazy(() => import('../pages/Welcome'));
 const MyLoyalty = lazy(() => import('../features/loyalty/pages/MyLoyalty'));
-const OrderForm = lazy(() => import('../features/order/pages/OrderForm'));
+const OrderForm = lazy(() => import('../pages/OrderForm')); // Use complete implementation
 const Payment = lazy(() => import('../features/order/pages/Payment'));
 const OrderConfirmation = lazy(() => import('../features/order/pages/OrderConfirmation'));
-const PastOrders = lazy(() => import('../features/order/pages/PastOrders'));
+const PastOrders = lazy(() => import('../pages/PastOrders')); // Use complete implementation
 const Account = lazy(() => import('../pages/Account'));
 
 // Staff pages
@@ -94,7 +94,7 @@ const AppRoutes: React.FC = () => {
             enableOrders && { path: '/order/confirmation', element: <OrderConfirmation /> },
             enableUsers && { path: '/account', element: <Account /> },
             enableOrders && { path: '/past-orders', element: <PastOrders /> },
-            enablePayments && { path: '/staff', element: <PaymentVerification /> },
+            enablePayments && { path: '/staff/payment', element: <PaymentVerification /> },
             { path: '/staff/manual-visit', element: <ManualVisitLogger /> },
             { path: '/staff/vehicle-manager', element: <VehicleManager /> },
             { path: '/staff/dashboard', element: <CarWashDashboard /> },

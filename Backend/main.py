@@ -57,19 +57,18 @@ app.add_middleware(
 
 # Mount plugin routers under /api
 for prefix, router in [
-    ("/api/auth",     auth_router),
-    ("/api/users",    users_router),
-    ("/api/catalog",  catalog_router),
-    ("/api/loyalty",  loyalty_router),
-    ("/api/orders",   orders_router),
-    ("/api/payments", payments_router),
-    ("/api/tenants",  tenants_router),
-    ("/api", analytics_router),
-    ("/api/dev",      dev_router),
+    ("/api/auth",      auth_router),
+    ("/api/users",     users_router),
+    ("/api/catalog",   catalog_router),
+    ("/api/loyalty",   loyalty_router),
+    ("/api/orders",    orders_router),
+    ("/api/payments",  payments_router),
+    ("/api/tenants",   tenants_router),
+    ("/api/analytics", analytics_router),
+    ("/api/dev",       dev_router),
 ]:
     app.include_router(router, prefix=prefix)
-# Legacy mount: support old /api/users/users prefix for backward compatibility
-app.include_router(users_router, prefix="/api/users/users")
+
 # Explicit legacy endpoints for backwards compatibility
 from app.plugins.users.routes import add_vehicle, delete_vehicle, VehicleIn, VehicleOut
 from app.core.database import get_db

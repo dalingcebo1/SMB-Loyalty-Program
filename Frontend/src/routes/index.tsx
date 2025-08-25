@@ -5,10 +5,10 @@ import { moduleFlags } from '../config/modules';
 import { useAuth } from '../auth/AuthProvider';
 import LoadingFallback from '../components/LoadingFallback';
 
-// Auth pages (using legacy pages for onboarding SMS flow)
+// Auth pages (using unified onboarding flow)
 const Signup = lazy(() => import('../features/auth/pages/Signup'));
 const Login = lazy(() => import('../features/auth/pages/Login'));
-const Onboarding = lazy(() => import('../pages/Onboarding'));
+const UnifiedOnboarding = lazy(() => import('../features/auth/pages/UnifiedOnboarding'));
 const OTPVerify = lazy(() => import('../pages/OTPVerify'));
 const ForgotPassword = lazy(() => import('../features/auth/pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../features/auth/pages/ResetPassword'));  
@@ -16,14 +16,15 @@ const ResetPassword = lazy(() => import('../features/auth/pages/ResetPassword'))
 // Debug pages
 const FirebaseTest = lazy(() => import('../debug/FirebaseTest'));  
 const GoogleLoginTest = lazy(() => import('../debug/GoogleLoginTest'));
-const GoogleRedirectTest = lazy(() => import('../debug/GoogleRedirectTest'));  
+const GoogleRedirectTest = lazy(() => import('../debug/GoogleRedirectTest'));
+const GoogleLoginDebug = lazy(() => import('../pages/GoogleLoginDebug'));  
 
 // User pages
 const Welcome = lazy(() => import('../pages/Welcome'));
 const MyLoyalty = lazy(() => import('../features/loyalty/pages/MyLoyalty'));
 const OrderForm = lazy(() => import('../pages/OrderForm')); // Use complete implementation
 const Payment = lazy(() => import('../features/order/pages/Payment'));
-const OrderConfirmation = lazy(() => import('../features/order/pages/OrderConfirmation'));
+const OrderConfirmation = lazy(() => import('../pages/OrderConfirmation'));
 const PastOrders = lazy(() => import('../pages/PastOrders')); // Use complete implementation
 const Account = lazy(() => import('../pages/Account'));
 
@@ -71,14 +72,15 @@ const AppRoutes: React.FC = () => {
     // PUBLIC
     { path: '/signup', element: <Signup /> },
     { path: '/login', element: <Login /> },
-    { path: '/onboarding', element: <Onboarding /> },
+    { path: '/onboarding', element: <UnifiedOnboarding /> },
     { path: '/onboarding/verify', element: <OTPVerify /> },
-    { path: '/onboarding/invite', element: <Onboarding /> },
+    { path: '/onboarding/invite', element: <UnifiedOnboarding /> },
     { path: '/forgot-password', element: <ForgotPassword /> },
     { path: '/reset-password', element: <ResetPassword /> },
     { path: '/debug/firebase', element: <FirebaseTest /> },
     { path: '/debug/google-login', element: <GoogleLoginTest /> },
     { path: '/debug/google-redirect', element: <GoogleRedirectTest /> },
+    { path: '/debug/google-auth', element: <GoogleLoginDebug /> },
 
     // USER ROUTES
     {
@@ -91,7 +93,7 @@ const AppRoutes: React.FC = () => {
             enableLoyalty && { path: '/myloyalty', element: <MyLoyalty /> },
             enableOrders && { path: '/order', element: <OrderForm /> },
             enablePayments && { path: '/order/payment', element: <Payment /> },
-            enableOrders && { path: '/order/confirmation', element: <OrderConfirmation /> },
+            enableOrders && { path: '/order/confirmation/:orderId?', element: <OrderConfirmation /> },
             enableUsers && { path: '/account', element: <Account /> },
             enableOrders && { path: '/past-orders', element: <PastOrders /> },
             enablePayments && { path: '/staff/payment', element: <PaymentVerification /> },

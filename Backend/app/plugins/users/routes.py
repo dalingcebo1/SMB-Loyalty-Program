@@ -11,10 +11,10 @@ from typing import Optional
 # Schema for full user info
 class UserOut(BaseModel):
     id: int
-    first_name: str
-    last_name: str
+    first_name: Optional[str]
+    last_name: Optional[str]
     email: str
-    phone: str
+    phone: Optional[str]
     role: str
 
 router = APIRouter(prefix="", tags=["users"], dependencies=[Depends(require_staff)])

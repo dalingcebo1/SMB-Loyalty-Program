@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import api from '../../../api/api';
 import Loading from '../../../components/Loading';
 import ErrorMessage from '../../../components/ErrorMessage';
-import { auth } from '../../../firebase';
+import { auth, getGlobalRecaptcha } from '../../../firebase';
 import { signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 import { confirmationRef } from "../../../utils/confirmationRef";
 import { useAuth } from '../../../auth/AuthProvider';
@@ -206,11 +206,9 @@ const OTPVerify: React.FC = () => {
     setTimer(60); // Reset timer immediately to prevent multiple clicks
     
     try {
-      if (!window.recaptchaVerifier) {
-        throw new Error("reCAPTCHA not initialized. Please reload the page.");
-      }
-      
-      const newConf: ConfirmationResult = await signInWithPhoneNumber(auth, onboardingData!.phone, window.recaptchaVerifier);
+      // Rebuild verifier if missing (HMR may have cleared DOM)
+  const verifier = window.recaptchaVerifier || await getGlobalRecaptcha();
+  const newConf: ConfirmationResult = await signInWithPhoneNumber(auth, onboardingData!.phone, verifier);
       confirmationRef.current = newConf;
       toast.success("Verification code sent!");
     } catch (error: unknown) {

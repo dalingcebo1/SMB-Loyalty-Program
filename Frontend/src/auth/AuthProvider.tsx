@@ -9,7 +9,7 @@ import React, {
 import api from "../api/api";
 import SplashScreen from "../components/SplashScreen";
 import { auth as firebaseAuth } from "../firebase";
-import { GoogleAuthProvider } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useNavigate } from 'react-router-dom';
 
 export interface User {
@@ -74,139 +74,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     };
   }, []);
 
-  // On mount, check for stored token and fetch user, also check for redirect results
+  // On mount, check for stored token and fetch user (popup flow has no redirect handling)
   useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        console.log("🔄 Initializing redirect result handler...");
-        const socialLoginInProgress = localStorage.getItem('socialLoginInProgress');
-        console.log("🔍 socialLoginInProgress flag:", socialLoginInProgress);
-        
-        // Always check for redirect result, not just when flag is set
-        console.log("🔍 Checking for Firebase redirect result...");
-        const { getRedirectResult } = await import('firebase/auth');
-        const result = await getRedirectResult(firebaseAuth);
-        console.log("🔍 Firebase redirect result:", result);
-        
-        if (result) {
-          console.log("📱 Processing redirect result for:", result.user.email);
-          console.log("🎫 User details:", {
-            email: result.user.email,
-            displayName: result.user.displayName,
-            uid: result.user.uid
-          });
-          
-          // Clear the flag
-          localStorage.removeItem('socialLoginInProgress');
-          
-          const idToken = await result.user.getIdToken();
-          console.log("🎫 Got Firebase ID token, length:", idToken.length);
-          
-          const res = await api.post<LoginResponseServer>("/auth/social-login", { id_token: idToken });
-          console.log("🎯 Backend exchange successful:", res.data);
-          
-          if (res.data.onboarding_required) {
-            const token = res.data.access_token;
-            localStorage.setItem("token", token);
-            api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-            
-            console.log("🚨 Redirecting to onboarding from redirect result");
-            console.log("🚨 Next step:", res.data.next_step);
-            console.log("🚨 User data:", res.data.user);
-            
-            if (res.data.next_step === "PROFILE_INFO") {
-              console.log("➡️ Navigating to profile completion");
-              navigate('/onboarding', { 
-                state: { 
-                  email: res.data.user.email,
-                  fromSocialLogin: true 
-                } 
-              });
-            } else if (res.data.next_step === "PHONE_VERIFICATION") {
-              console.log("➡️ Navigating to phone verification");
-              
-              // Check if user has complete profile data
-              const hasProfileData = res.data.user.first_name && res.data.user.last_name;
-              
-              if (hasProfileData) {
-                console.log("✅ User has profile data, skipping to phone verification");
-                navigate('/onboarding', { 
-                  state: { 
-                    email: res.data.user.email,
-                    firstName: res.data.user.first_name,
-                    lastName: res.data.user.last_name,
-                    fromSocialLogin: true,
-                    skipProfileStep: true
-                  } 
-                });
-              } else {
-                console.log("⚠️ User missing profile data, starting with profile step");
-                navigate('/onboarding', { 
-                  state: { 
-                    email: res.data.user.email,
-                    fromSocialLogin: true 
-                  } 
-                });
-              }
-            }
-            setLoading(false);
-            return;
-          }
-          
-          // Complete login for fully onboarded users
-          console.log("✅ User fully onboarded, completing login");
-          const token = res.data.access_token;
-          await loginWithToken(token);
-          console.log("✅ Login completed, navigating to dashboard");
-          navigate('/', { replace: true });
-          setLoading(false);
-          return;
-        } else {
-          console.log("❌ No redirect result found");
-          if (socialLoginInProgress) {
-            console.log("🧹 Cleaning up socialLoginInProgress flag");
-            localStorage.removeItem('socialLoginInProgress');
-          }
-        }
-      } catch (error) {
-        console.error("❌ Error handling redirect result:", error);
-        localStorage.removeItem('socialLoginInProgress');
-      }
-    };
-
     const initializeAuth = async () => {
-      await handleRedirectResult();
-      
       const t = localStorage.getItem("token");
       if (t) {
         api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
-        api
-          .get("/auth/me")
-          .then((res) => {
-            const u = res.data;
-            console.log("auth/me response", u); // <-- Add this
-            setUser({
-              id: u.id,
-              email: u.email,
-              phone: u.phone,
-              firstName: u.first_name || u.firstName || "",
-              lastName: u.last_name || u.lastName || "",
-              role: u.role,
-            });
-          })
-          .catch((err) => {
+        try {
+          const res = await api.get("/auth/me");
+          const u = res.data;
+          setUser({
+            id: u.id,
+            email: u.email,
+            phone: u.phone,
+            firstName: u.first_name || u.firstName || "",
+            lastName: u.last_name || u.lastName || "",
+            role: u.role,
+          });
+        } catch (err: unknown) {
+          const status = (err as { response?: { status?: number } }).response?.status;
+          if (status === 403) {
+            // User has a token but backend requires onboarding; decode email from JWT so onboarding has context
+            let email: string | undefined;
+            try {
+              const payload = JSON.parse(atob(t.split('.')[1] || '')) as { sub?: string };
+              if (payload.sub) email = payload.sub;
+            } catch { /* ignore */ }
+            // Avoid redirect loop: only navigate if not already on onboarding
+            if (!window.location.pathname.startsWith('/onboarding')) {
+              navigate('/onboarding', { replace: true, state: { email, fromSocialLogin: true } });
+            }
+          } else {
             console.error("Failed to fetch /auth/me", err);
             localStorage.removeItem("token");
             delete api.defaults.headers.common["Authorization"];
             setUser(null);
-          })
-          .finally(() => setLoading(false));
+          }
+        } finally {
+          setLoading(false);
+        }
       } else {
         setUser(null);
         setLoading(false);
       }
     };
-
     initializeAuth();
   }, [navigate]);
 
@@ -279,25 +190,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
   };
 
-  // Replace hybrid socialLogin with redirect-only flow
+  // Popup-based Google social login
   const socialLogin = async (): Promise<void> => {
-    console.log("🚀 Starting Google OAuth redirect flow...");
-    
-    // Start Google OAuth redirect flow
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    provider.addScope('email');
-    provider.addScope('profile');
-    
-    console.log("🏷️ Setting socialLoginInProgress flag...");
-    localStorage.setItem('socialLoginInProgress', 'true');
-    
-    console.log("🔄 Initiating signInWithRedirect...");
-    const { signInWithRedirect } = await import('firebase/auth');
-    await signInWithRedirect(firebaseAuth, provider);
-    
-    console.log("⚠️ This line should never execute (redirect should happen)");
-    // Execution will stop due to redirect
+    console.log("🚀 Starting Google OAuth popup flow...");
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      provider.addScope('email');
+      provider.addScope('profile');
+
+      const popupResult = await signInWithPopup(firebaseAuth, provider);
+      console.log("✅ Firebase popup success for:", popupResult.user.email);
+
+      const idToken = await popupResult.user.getIdToken();
+      console.log("� Got Firebase ID token length:", idToken.length);
+
+      const res = await api.post<LoginResponseServer>("/auth/social-login", { id_token: idToken });
+      console.log("🎯 Backend social-login response:", res.data);
+
+      // If onboarding required, store token and navigate accordingly
+      if (res.data.onboarding_required) {
+        const token = res.data.access_token;
+        localStorage.setItem("token", token);
+        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+        if (res.data.next_step === "PROFILE_INFO") {
+          navigate('/onboarding', { state: { email: res.data.user.email, fromSocialLogin: true } });
+          return;
+        }
+        if (res.data.next_step === "PHONE_VERIFICATION") {
+          const hasProfile = res.data.user.first_name && res.data.user.last_name;
+            navigate('/onboarding', { 
+              state: { 
+                email: res.data.user.email,
+                firstName: res.data.user.first_name,
+                lastName: res.data.user.last_name,
+                fromSocialLogin: true,
+                skipProfileStep: !!hasProfile
+              } 
+            });
+          return;
+        }
+      }
+
+      // Fully onboarded user path
+      const token = res.data.access_token;
+      await loginWithToken(token);
+      navigate('/', { replace: true });
+    } catch (err: unknown) {
+      console.error("❌ Social login popup failed:", err);
+      // Common Firebase error codes assistance
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/popup-blocked') {
+        alert('Popup was blocked. Please allow popups for this site and try again.');
+      } else if (code === 'auth/popup-closed-by-user') {
+        alert('Popup closed before completing sign-in. Please try again.');
+      } else if (code === 'auth/unauthorized-domain') {
+        alert('Current domain not authorized in Firebase Authentication settings.');
+      } else {
+        alert('Social login failed. Check console for details.');
+      }
+      throw err;
+    }
   };
 
   const refreshUser = async () => {

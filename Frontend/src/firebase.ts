@@ -39,28 +39,45 @@ if (typeof window !== 'undefined') {
  * Renders an invisible reCAPTCHA widget into the given container.
  * (Modular v9+ signature: (container, params, auth))
  */
-export async function makeRecaptcha(
-  container: string | HTMLElement
-): Promise<RecaptchaVerifier> {
-  // Create a fresh invisible reCAPTCHA
+// Legacy function (kept for compatibility) now proxies to global
+export async function makeRecaptcha(): Promise<RecaptchaVerifier> { return getGlobalRecaptcha(); }
 
-  // Clear any existing widget
-  // Clear existing recaptcha if present
-  const prior = window.recaptchaVerifier;
-  if (prior) {
-    try { prior.clear(); } catch { /* ignore */ }
-    if (typeof container === "string") {
-      const el = document.getElementById(container);
-      if (el) el.innerHTML = "";
-    }
+let globalRecaptchaPromise: Promise<RecaptchaVerifier> | null = null;
+
+/**
+ * Ensure a single invisible reCAPTCHA instance mounted in a stable <div id="global-recaptcha-container" />
+ * appended to document.body (outside React HMR tree) so it is not removed during fast refresh.
+ */
+export function getGlobalRecaptcha(): Promise<RecaptchaVerifier> {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('recaptcha only available in browser'));
   }
+  if (window.recaptchaVerifier) {
+    return Promise.resolve(window.recaptchaVerifier as RecaptchaVerifier);
+  }
+  if (globalRecaptchaPromise) return globalRecaptchaPromise;
 
-  const verifier = new RecaptchaVerifier(
-    auth,
-    container,
-    { size: "invisible", badge: "bottomright" }
-  );
-  await verifier.render();
-  window.recaptchaVerifier = verifier;
-  return verifier;
+  globalRecaptchaPromise = new Promise<RecaptchaVerifier>((resolve, reject) => {
+    try {
+      let container = document.getElementById('global-recaptcha-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'global-recaptcha-container';
+        // Keep it off-screen / hidden but present
+        container.style.position = 'fixed';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        document.body.appendChild(container);
+      }
+      const verifier = new RecaptchaVerifier(auth, container, { size: 'invisible', badge: 'bottomright' });
+      verifier.render().then(() => {
+        window.recaptchaVerifier = verifier;
+        resolve(verifier);
+      }).catch(reject);
+    } catch (e) {
+      globalRecaptchaPromise = null;
+      reject(e);
+    }
+  });
+  return globalRecaptchaPromise;
 }

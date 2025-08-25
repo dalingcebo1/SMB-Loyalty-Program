@@ -25,8 +25,9 @@ const Signup: React.FC = () => {
     try {
       await api.post("/auth/signup", { email: data.email, password: data.password });
       navigate("/onboarding", { state: { email: data.email, password: data.password } });
-    } catch (err: any) {
-      setSignUpError(err.response?.data?.detail || err.message || "Failed to sign up. Please try again.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } }; message?: string };
+      setSignUpError(error.response?.data?.detail || error.message || "Failed to sign up. Please try again.");
     }
   };
 

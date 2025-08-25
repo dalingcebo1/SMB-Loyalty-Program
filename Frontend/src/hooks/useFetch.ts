@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "../api/api";
 
 interface UseFetchResult<T> {
@@ -12,10 +12,13 @@ interface UseFetchResult<T> {
  * @param url API endpoint (relative to base URL)
  * @param params Optional request params
  */
-function useFetch<T>(url: string, params?: Record<string, any>): UseFetchResult<T> {
+function useFetch<T>(url: string, params?: Record<string, unknown>): UseFetchResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Memoize params to avoid unnecessary re-renders
+  const paramsKey = useMemo(() => JSON.stringify(params), [params]);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,7 +46,7 @@ function useFetch<T>(url: string, params?: Record<string, any>): UseFetchResult<
     return () => {
       isMounted = false;
     };
-  }, [url, JSON.stringify(params)]);
+  }, [url, paramsKey, params]);
 
   return { data, loading, error };
 }

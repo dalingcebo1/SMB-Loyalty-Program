@@ -6,13 +6,13 @@ import PageLayout from "../components/PageLayout";
 
 const Account: React.FC = () => {
   const { user, refreshUser, loading } = useAuth();
-  if (loading) return <PageLayout loading>{null}</PageLayout>;
-  if (!user) return <Navigate to="/login" replace />;
-
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
   const [error, setError] = useState<string | null>(null);
+  
+  if (loading) return <PageLayout loading>{null}</PageLayout>;
+  if (!user) return <Navigate to="/login" replace />;
 
   const handleEdit = () => {
     setEditing(true);
@@ -36,8 +36,9 @@ const Account: React.FC = () => {
       });
       await refreshUser();
       setEditing(false);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || "Error updating name");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } }; message?: string };
+      setError(error.response?.data?.detail || error.message || "Error updating name");
     }
   };
 

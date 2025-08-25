@@ -7,11 +7,10 @@ import { useLoyalty } from '../hooks/useLoyalty';
 
 const MyLoyalty: React.FC = () => {
 	const { user, loading } = useAuth();
-	if (loading) return <PageLayout loading />;
+	const { data, isLoading, isError } = useLoyalty(user?.phone || '');
+	
+	if (loading || isLoading) return <PageLayout loading />;
 	if (!user) return <Navigate to="/login" replace />;
-
-	const { data, isLoading, isError } = useLoyalty(user.phone);
-	if (isLoading) return <PageLayout loading />;
 	if (isError) return <PageLayout error="Failed to load loyalty data." onRetry={() => window.location.reload()} />;
 
 	const points = data?.points ?? 0;

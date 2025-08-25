@@ -12,19 +12,22 @@ def test_signup_and_login_flow(client: TestClient, db_session: Session):
     assert resp.status_code == 201
     assert resp.json()["message"] == "Signup successful. Please complete onboarding to verify your phone."
 
-    # Login before onboarding should fail
+    # Login before onboarding should succeed but indicate onboarding required
     resp = client.post("/api/auth/login", data={"username": email, "password": password})
-    assert resp.status_code == 403
-    assert resp.json()["detail"] == "Complete onboarding to login"
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["onboarding_required"] == True
+    assert data["next_step"] == "PROFILE_INFO"
+    assert "access_token" in data
 
     # Confirm OTP to complete onboarding and get token
     otp_payload = {
-        "session_id": "sess",
-        "code": "0000",
+        "session_id": "test_session_1234567890",  # Valid 10+ char session ID
+        "code": "123456",  # Valid 6-digit code
         "first_name": "Alice",
         "last_name": "Smith",
-        # Use a different phone than seeded test user to avoid conflict
-        "phone": "0821234567",
+        # Use proper phone format with country code
+        "phone": "+27821234567",
         "email": email,
         "tenant_id": settings.default_tenant
     }

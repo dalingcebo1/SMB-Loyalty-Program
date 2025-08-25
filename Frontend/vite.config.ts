@@ -14,7 +14,10 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    visualizer({ filename: 'bundle-stats.html', open: true, gzipSize: true, brotliSize: true }) as unknown as PluginOption,
+    // Only include visualizer in development to reduce build memory usage
+    ...(process.env.NODE_ENV === 'development' ? [
+      visualizer({ filename: 'bundle-stats.html', open: false, gzipSize: true, brotliSize: true }) as unknown as PluginOption
+    ] : []),
     // PWA support for offline caching
     VitePWA({
       registerType: 'autoUpdate',
@@ -33,12 +36,22 @@ export default defineConfig({
     }),
   ],
   build: {
+    // Optimize build for memory efficiency
+    target: 'esnext',
+    minify: 'esbuild',
+    sourcemap: false, // Disable sourcemaps to reduce memory usage
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      // More efficient chunk splitting
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            return id.toString().split('node_modules/')[1].split('/')[0].toString();
-          }
+        manualChunks: {
+          // Group vendor libraries
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@headlessui/react', 'framer-motion', 'react-icons'],
+          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+          query: ['@tanstack/react-query', 'axios'],
+          charts: ['recharts', 'react-circular-progressbar'],
+          // Keep other node_modules separate but smaller
         },
       },
     },

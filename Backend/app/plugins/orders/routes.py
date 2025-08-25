@@ -192,16 +192,21 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
     ret = {
         "orderId": order.id,
         "serviceId": order.service_id,
+        "quantity": order.quantity,
+        "extras": extras_names,
+        "paymentPin": order.payment_pin,
+        "status": order.status,
+        "userId": order.user_id,
+        "createdAt": order.created_at,
+        "redeemed": getattr(order, "redeemed", False),
+        "startedAt": order.started_at,
+        "endedAt": order.ended_at,
+        # Additional fields for detail response
         "serviceName": service_name,
         "loyaltyEligible": loyalty_eligible,
         "category": category,
-        "extras": extras_names,
         "qrData": payment.qr_code_base64 if payment else order.id,
         "amount": payment.amount if payment else None,
-        "paymentPin": order.payment_pin,
-        "createdAt": order.created_at,
-        "status": order.status,
-        "redeemed": getattr(order, "redeemed", False),
     }
     # include loyalty status
     from app.plugins.loyalty.routes import REWARD_INTERVAL, get_base_reward

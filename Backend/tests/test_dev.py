@@ -8,9 +8,9 @@ from datetime import datetime
 
 @pytest.fixture(autouse=True)
 def dev_client(client, db_session):
-    # Ensure a developer user exists and override auth dependencies
+    # Ensure an admin user exists and override auth dependencies
     dev = db_session.query(User).first()
-    dev.role = 'developer'
+    dev.role = 'admin'  # Change to admin role since require_admin checks for 'admin'
     db_session.commit()
     app.dependency_overrides[require_admin] = lambda: dev
     app.dependency_overrides[get_current_user] = lambda: dev

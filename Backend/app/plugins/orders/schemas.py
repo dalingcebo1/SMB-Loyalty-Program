@@ -1,4 +1,4 @@
-from pydantic import BaseModel  # type: ignore
+from pydantic import BaseModel, Field  # type: ignore
 from typing import Optional, List
 from datetime import datetime
 
@@ -30,20 +30,21 @@ class OrderCreateResponse(BaseModel):
     default_vehicle_id: Optional[int] = None
 
 class OrderBase(BaseModel):
-    id: str
-    service_id: int
+    id: str = Field(alias="orderId")
+    service_id: int = Field(alias="serviceId")
     quantity: int
     extras: list
-    payment_pin: Optional[str]
+    payment_pin: Optional[str] = Field(alias="paymentPin")
     status: str
-    user_id: int
-    created_at: datetime
+    user_id: int = Field(alias="userId")
+    created_at: datetime = Field(alias="createdAt")
     redeemed: bool
-    started_at: Optional[datetime] = None
-    ended_at: Optional[datetime] = None
+    started_at: Optional[datetime] = Field(None, alias="startedAt")
+    ended_at: Optional[datetime] = Field(None, alias="endedAt")
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 class OrderResponse(OrderBase):
     pass
@@ -51,6 +52,12 @@ class OrderResponse(OrderBase):
 class OrderDetailResponse(OrderResponse):
     # List of vehicle IDs assigned to the order
     vehicles: List[int] = []
+    # Service details
+    serviceName: Optional[str] = None
+    loyaltyEligible: Optional[bool] = None
+    category: Optional[str] = None
+    qrData: Optional[str] = None
+    amount: Optional[int] = None
     # Loyalty status
     visits: Optional[int] = 0
     progress: Optional[int] = 0  # visits % REWARD_INTERVAL

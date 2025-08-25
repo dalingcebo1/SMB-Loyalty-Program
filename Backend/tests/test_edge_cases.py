@@ -8,6 +8,8 @@ import pytest
 
 from config import settings
 from app.models import User, Service, Extra, VisitCount, Reward
+from app.main import app
+from app.plugins.auth.routes import require_staff, get_current_user
 
 @pytest.mark.usefixtures("db_session")
 def test_auth_signup_existing(client: TestClient):
@@ -20,16 +22,35 @@ def test_auth_signup_existing(client: TestClient):
     assert resp2.json()["detail"] == "Email already registered"
 
 @pytest.mark.usefixtures("db_session")
-def test_users_vehicle_edge_cases(client: TestClient):
-    # Nonexistent user
-    resp = client.post("/api/users/users/999/vehicles", json={"plate": "X", "make": "M", "model": "D"})
-    # Vehicle creation should still create record since FK not enforced in SQLite
-    assert resp.status_code == 201
-    vid = resp.json()["id"]
+def test_users_vehicle_edge_cases(client: TestClient, db_session: Session):
+    # Set up staff user for authentication
+    staff_user = db_session.query(User).first()
+    if staff_user:
+        staff_user.role = 'staff'
+        db_session.commit()
+    else:
+        staff_user = User(email="staff@example.com", role="staff", onboarded=True, tenant_id="default")
+        db_session.add(staff_user)
+        db_session.commit()
+    
+    # Override auth dependencies
+    app.dependency_overrides[require_staff] = lambda: staff_user
+    app.dependency_overrides[get_current_user] = lambda: staff_user
+    
+    # Use the plugin route path that's actually registered
+    # Nonexistent user - SQLite doesn't enforce FK constraints by default like PostgreSQL
+    resp = client.post("/api/users/999/vehicles", json={"plate": "X", "make": "M", "model": "D"})
+    # In SQLite test environment, this will succeed (create vehicle with invalid user_id)
+    # In PostgreSQL production, this would fail with FK violation
+    assert resp.status_code == 201  # Vehicle created successfully in SQLite
+    
     # Delete non-existing vehicle
-    resp2 = client.delete("/api/users/users/999/vehicles/0")
+    resp2 = client.delete("/api/users/999/vehicles/0")
     assert resp2.status_code == 404
     assert resp2.json()["detail"] == "Vehicle not found"
+    
+    # Cleanup overrides
+    app.dependency_overrides.clear()
 
 @pytest.mark.usefixtures("db_session")
 def test_catalog_empty(client: TestClient):

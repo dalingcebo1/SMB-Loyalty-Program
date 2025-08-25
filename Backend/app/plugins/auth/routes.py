@@ -26,7 +26,7 @@ pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 reset_serializer = URLSafeTimedSerializer(settings.reset_secret)
 
-router = APIRouter(prefix="", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 # ─── SCHEMAS ────────────────────────────────────────────────────────────────
 class SignupRequest(BaseModel):

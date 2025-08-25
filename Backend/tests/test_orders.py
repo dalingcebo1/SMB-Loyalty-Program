@@ -45,20 +45,20 @@ def test_list_orders_and_assign_vehicle(client: TestClient, db_session: Session)
     legacy_resp = client.post("/api/orders", json=create_payload)
     assert legacy_resp.status_code == 200
     order = legacy_resp.json()
-    order_id = order["id"]
+    order_id = order["orderId"]  # Use camelCase field name due to schema alias
 
     # List orders
     resp = client.get("/api/orders")
     assert resp.status_code == 200
     orders = resp.json()
-    assert any(o["id"] == order_id for o in orders)
+    assert any(o["orderId"] == order_id for o in orders)  # Use camelCase field name
 
     # Assign new vehicle
     assign_payload = {"plate": "XYZ123", "make": "Test", "model": "Car"}
     resp = client.post(f"/api/orders/{order_id}/assign-vehicle", json=assign_payload)
     assert resp.status_code == 200
     out = resp.json()
-    assert order_id == out.get("id") or out.get("order_id") == order_id
+    assert order_id == out.get("orderId") or out.get("order_id") == order_id
 
     # Verify vehicle assigned in DB
     veh = db_session.query(Vehicle).filter_by(plate="XYZ123").first()

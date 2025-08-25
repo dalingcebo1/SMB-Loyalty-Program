@@ -9,7 +9,6 @@ import Pagination from '../../components/Pagination';
 import { useAuth } from '../../auth/AuthProvider';
 import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
 import ContentLoader from 'react-content-loader';
-// @ts-ignore: react-modal has no types
 import Modal from 'react-modal';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -24,6 +23,23 @@ interface ApiUser {
   role: string;
 }
 
+// Row data interface for virtualization
+interface RowData { 
+  users: ApiUser[]; 
+  onEdit: (u: ApiUser) => void; 
+  onDelete: (id: number) => void;
+}
+
+// Debounce hook - moved outside component to avoid re-declaration
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debounced;
+}
+
 const UsersList: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
@@ -31,20 +47,15 @@ const UsersList: React.FC = () => {
   const [sortKey, setSortKey] = useState<keyof ApiUser>('first_name');
   const [sortOrder, setSortOrder] = useState<'asc'|'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
   const [editUser, setEditUser] = useState<ApiUser | null>(null);
-  // Debounce hook
-  function useDebounce<T>(value: T, delay: number): T {
-    const [debounced, setDebounced] = useState(value);
-    useEffect(() => {
-      const handler = setTimeout(() => setDebounced(value), delay);
-      return () => clearTimeout(handler);
-    }, [value, delay]);
-    return debounced;
-  }
+  const [formData, setFormData] = useState<Partial<ApiUser>>({});
+  const [showErrorBanner, setShowErrorBanner] = useState(true);
+  
+  const pageSize = 10;
   const debouncedSearch = useDebounce(searchTerm, 300);
+  
   // fetch paginated users via API
-  const fetchUsers = (page: number): Promise<{ items: ApiUser[]; total: number }> =>
+  const fetchUsers = useCallback((page: number): Promise<{ items: ApiUser[]; total: number }> =>
     api.get('/users', {
       params: {
         page,
@@ -53,16 +64,19 @@ const UsersList: React.FC = () => {
         sort_by: sortKey,
         sort_order: sortOrder,
       },
-    }).then(res => res.data);
+    }).then(res => res.data), [debouncedSearch, sortKey, sortOrder]);
+  
   // fetch and cache paginated users
   const { data, isLoading, isError, error, refetch } = useQuery<{ items: ApiUser[]; total: number }, Error>({
     queryKey: ['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder],
     queryFn: () => fetchUsers(currentPage),
     staleTime: 1000 * 60 * 5,
   });
+
   // derive list and pagination info
-  const usersList = data?.items ?? [];
+  const usersList = useMemo(() => data?.items ?? [], [data?.items]);
   const totalPages = data ? Math.ceil(data.total / pageSize) : 1;
+  
   // prefetch next page for smooth pagination
   useEffect(() => {
     if (data && currentPage < totalPages) {
@@ -71,7 +85,7 @@ const UsersList: React.FC = () => {
         queryFn: () => fetchUsers(currentPage + 1),
       });
     }
-  }, [data, currentPage, debouncedSearch, sortKey, totalPages, queryClient]);
+  }, [data, currentPage, debouncedSearch, sortKey, totalPages, queryClient, fetchUsers]);
 
   const deleteMutation = useMutation<void, Error, number>({
     mutationFn: (id: number) => api.delete(`/users/${id}`).then(() => {}),
@@ -81,22 +95,22 @@ const UsersList: React.FC = () => {
     },
     onError: () => toast.error('Delete failed'),
   });
-  // form state and mutation for editing user
-  const [formData, setFormData] = useState<Partial<ApiUser>>({});
+  
   const updateMutation = useMutation<ApiUser, Error, { id: number; data: Partial<ApiUser> }>({
     mutationFn: ({ id, data }) => api.patch(`/users/${id}`, data).then(res => res.data),
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder] });
-      const previous = queryClient.getQueryData<any>(['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder]);
-      queryClient.setQueryData(['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder], (old: any) => {
+      const previous = queryClient.getQueryData<{ items: ApiUser[]; total: number }>(['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder]);
+      queryClient.setQueryData(['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder], (old: { items: ApiUser[]; total: number } | undefined) => {
         const items = old?.items?.map((u: ApiUser) => (u.id === id ? { ...u, ...data } : u));
-        return { ...old, items };
+        return old ? { ...old, items: items || [] } : { items: [], total: 0 };
       });
       return { previous };
     },
-    onError: (_err, _vars, context: any) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder], context.previous);
+    onError: (_err, _vars, context: unknown) => {
+      const typedContext = context as { previous?: { items: ApiUser[]; total: number } } | undefined;
+      if (typedContext?.previous) {
+        queryClient.setQueryData(['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder], typedContext.previous);
       }
       toast.error('Update failed');
     },
@@ -108,9 +122,42 @@ const UsersList: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder] });
     },
   });
+  
+  // stable callbacks for virtualization
+  const handleEdit = useCallback((u: ApiUser) => {
+    setEditUser(u);
+    setFormData({
+      first_name: u.first_name,
+      last_name: u.last_name,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+    });
+  }, []);
+  
+  const handleDelete = useCallback((id: number) => {
+    if (confirm(`Delete user ${id}?`)) deleteMutation.mutate(id);
+  }, [deleteMutation]);
+  
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+  
+  const handleSortChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const key = e.target.value as keyof ApiUser;
+    if (sortKey === key) {
+      setSortOrder(o => (o === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+    setCurrentPage(1);
+  }, [sortKey]);
+  
+  // memoized itemData to avoid re-renders
+  const itemData = useMemo(() => ({ users: usersList, onEdit: handleEdit, onDelete: handleDelete }), [usersList, handleEdit, handleDelete]);
 
-
-  const [showErrorBanner, setShowErrorBanner] = useState(true);
+  // Early returns after all hooks are declared
   if (authLoading) return <PageLayout loading>{null}</PageLayout>;
   if (!user || user.role !== 'admin') return <Navigate to='/' replace />;
 
@@ -128,7 +175,6 @@ const UsersList: React.FC = () => {
   ));
 
   // memoized row renderer for virtualization
-  interface RowData { users: ApiUser[]; onEdit: (u: ApiUser) => void; onDelete: (id: number) => void }
   const UserRow = memo(function UserRow({ index, style, data }: ListChildComponentProps<RowData>) {
     const u = data.users[index];
     return (
@@ -160,41 +206,11 @@ const UsersList: React.FC = () => {
     );
   });
 
-  // stable callbacks for virtualization
-  const handleEdit = useCallback((u: ApiUser) => {
-    setEditUser(u);
-    setFormData({
-      first_name: u.first_name,
-      last_name: u.last_name,
-      email: u.email,
-      phone: u.phone,
-      role: u.role,
-    });
-  }, []);
-  const handleDelete = useCallback((id: number) => {
-    if (confirm(`Delete user ${id}?`)) deleteMutation.mutate(id);
-  }, [deleteMutation]);
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  }, []);
-  const handleSortChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    const key = e.target.value as keyof ApiUser;
-    if (sortKey === key) {
-      setSortOrder(o => (o === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortOrder('asc');
-    }
-    setCurrentPage(1);
-  }, [sortKey]);
-  // memoized itemData to avoid re-renders
-  const itemData = useMemo(() => ({ users: usersList, onEdit: handleEdit, onDelete: handleDelete }), [usersList, handleEdit, handleDelete]);
-
   return (
     <PageLayout>
       <ToastContainer position="bottom-right" />
       <h1 className="text-2xl font-bold mb-4">Users</h1>
-  {/* Toolbar: filter + sort */}
+      {/* Toolbar: filter + sort */}
       <div className="flex mb-4 items-center">
         {/* search input */}
         <input

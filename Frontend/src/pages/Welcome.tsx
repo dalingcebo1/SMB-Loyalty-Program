@@ -10,6 +10,12 @@ import { Link, Navigate } from 'react-router-dom';
 import { track } from '../utils/analytics';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { Wash } from '../types';
+
+interface UpcomingReward {
+  reward: string;
+  milestone: number;
+}
 
 const VISIT_MILESTONE = 5;
 
@@ -17,33 +23,24 @@ const Welcome: React.FC = () => {
   const { user } = useAuth();
 
   // If admin user, send to admin dashboard
-  if (user?.role === 'admin') {
-    return <Navigate to="/admin" replace />;
-  }
-
-  // Initialize from localStorage if available
+  // Initialize from localStorage if available - must be called before any early returns
   const [visits, setVisits] = useState(() => {
     const stored = localStorage.getItem("visits");
     return stored ? parseInt(stored, 10) : 0;
   });
   const [justOnboarded, setJustOnboarded] = useState(false);
-  
-  const handleCloseModal = () => {
-    setJustOnboarded(false);
-  };
-
-  const [activeWashes, setActiveWashes] = useState<any[]>(() => {
+  const [activeWashes, setActiveWashes] = useState<Wash[]>(() => {
     const stored = localStorage.getItem("activeWashes");
     return stored ? JSON.parse(stored) : [];
   });
-  const [recentlyEnded, setRecentlyEnded] = useState<any | null>(() => {
+  const [recentlyEnded, setRecentlyEnded] = useState<Wash | null>(() => {
     const stored = localStorage.getItem("recentlyEnded");
     return stored ? JSON.parse(stored) : null;
   });
-  const [upcomingReward, setUpcomingReward] = useState<any | null>(null);
-  const [rewardsReady, setRewardsReady] = useState<any[]>([]);
+  const [upcomingReward, setUpcomingReward] = useState<UpcomingReward | null>(null);
+  const [rewardsReady, setRewardsReady] = useState<unknown[]>([]);
 
-  // Poll loyalty and wash status with debounced interval to reduce jitter
+  // All useEffect hooks must be called before any conditional returns
   useEffect(() => {
     let timer: NodeJS.Timeout;
     let isMounted = true;
@@ -103,6 +100,14 @@ const Welcome: React.FC = () => {
     track('page_view', { page: 'Welcome' });
   }, []);
 
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+  
+  const handleCloseModal = () => {
+    setJustOnboarded(false);
+  };
+
   const name =
     user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`
@@ -141,8 +146,9 @@ const Welcome: React.FC = () => {
       const res = await api.post('/loyalty/reward', { phone: user.phone });
       toast.success(`Reward issued: ${res.data.reward}`);
       setUpcomingReward(null);
-    } catch (e: any) {
-      toast.error(e.response?.data?.detail || 'Could not claim reward');
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { detail?: string } } };
+      toast.error(error.response?.data?.detail || 'Could not claim reward');
     }
   };
 

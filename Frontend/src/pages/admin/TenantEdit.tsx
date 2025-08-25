@@ -49,8 +49,9 @@ const TenantEdit: React.FC = () => {
         await api.patch<ApiTenant>(`/tenants/${tenantId}`, data);
       }
       navigate('/admin/tenants');
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Save failed');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setError(error.response?.data?.detail || 'Save failed');
     }
   });
 

@@ -12,7 +12,7 @@ export function SocialLogin() {
       const result = await signInWithPopup(auth, provider);
       // don’t write to your DB here—just move into onboarding
       navigate("/onboarding", { state: { uid: result.user.uid } });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Social sign-in error:", err);
       alert("Sign-in failed. Please try again.");
     }

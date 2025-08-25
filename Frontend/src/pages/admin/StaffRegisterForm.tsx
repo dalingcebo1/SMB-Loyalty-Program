@@ -7,9 +7,6 @@ import { Navigate } from "react-router-dom";
 
 const StaffRegisterForm: React.FC = () => {
   const { user, loading } = useAuth();
-  if (loading) return <PageLayout loading>{null}</PageLayout>;
-  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
-
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -19,6 +16,9 @@ const StaffRegisterForm: React.FC = () => {
     tenantId: "default",
   });
   const [loadingSubmit, setLoading] = useState(false);
+  
+  if (loading) return <PageLayout loading>{null}</PageLayout>;
+  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -48,9 +48,10 @@ const StaffRegisterForm: React.FC = () => {
         phone: "",
         tenantId: "default",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
       toast.error(
-        err.response?.data?.detail || "Failed to register staff"
+        error.response?.data?.detail || "Failed to register staff"
       );
     } finally {
       setLoading(false);

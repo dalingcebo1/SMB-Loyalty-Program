@@ -44,6 +44,13 @@ const Services: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
   
+  // Update services list whenever the category changes
+  useEffect(() => {
+    if (selectedCategory) {
+      setServices(byCategory[selectedCategory] || []);
+    }
+  }, [selectedCategory, byCategory]);
+  
   // Loading and error states
   if (loading) {
     return <Loading text="Loading services..." />;
@@ -51,13 +58,6 @@ const Services: React.FC = () => {
   if (error) {
     return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
   }
-
-  // Update services list whenever the category changes
-  useEffect(() => {
-    if (selectedCategory) {
-      setServices(byCategory[selectedCategory] || []);
-    }
-  }, [selectedCategory, byCategory]);
 
   return (
     <PageLayout>

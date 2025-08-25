@@ -22,8 +22,9 @@ export default function ResetPassword() {
       await api.post("/auth/reset-password-confirm", { token, new_password: password });
       toast.success("Password reset successful! You can now log in.");
       setTimeout(() => navigate("/login", { replace: true }), 1500);
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || "Reset failed.";
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      const msg = error.response?.data?.detail || "Reset failed.";
       toast.error(msg);
       setError(msg);
     } finally {

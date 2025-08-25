@@ -1,13 +1,3 @@
-import React from 'react';
-
-/**
- * OrderConfirmation page placeholder.
- */
-const OrderConfirmation: React.FC = () => (
-  <div>OrderConfirmation page under reconstruction.</div>
-);
-
-export default OrderConfirmation;
 // src/pages/OrderConfirmation.tsx
 import React, { useEffect, useState } from "react";
 import StepIndicator from "../components/StepIndicator";
@@ -16,13 +6,12 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { moduleFlags } from '../config/modules';
 import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-router-dom";
-import Loading from "../components/Loading";
-// ErrorMessage is rendered via PageLayout; direct import removed
 import QRCode from "react-qr-code";
 import axios from "axios";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import PageLayout from "../components/PageLayout";
+import Loading from "../components/Loading";
 
 interface LocationState {
   orderId: string;
@@ -114,7 +103,6 @@ const OrderConfirmation: React.FC = () => {
     } else if (!didSet) {
       setIsLoading(false);
     }
-    // eslint-disable-next-line
   }, [state, paramOrderId]);
 
   // fetch next steps info from order details
@@ -340,18 +328,6 @@ const OrderConfirmation: React.FC = () => {
   );
 };
 
-export const createOrder = async (orderPayload: any, navigate: any) => {
-  const response = await axios.post("/api/orders/create", orderPayload);
-  const { order_id, qr_data, amount, payment_pin } = response.data;
-
-  navigate("/order/payment", {
-    state: {
-      orderId: order_id,        // string (uuid)
-      qrData: qr_data,          // string (could be order_id or payment.reference)
-      total: amount,            // number (cents), renamed to 'total' for consistency
-      paymentPin: payment_pin   // string (4-digit pin)
-    }
-  });
-};
+export default OrderConfirmation;
 
 // This page has been moved to src/features/order/pages/OrderConfirmation.tsx

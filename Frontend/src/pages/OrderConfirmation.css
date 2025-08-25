@@ -1,0 +1,757 @@
+/* OrderConfirmation.css - Consistent with OrderForm and Payment Design */
+
+/* 
+ * Unified Typography Scale (matching OrderForm and Payment):
+ * h1 (Page Headers): 2.5rem (desktop) / 2rem (mobile)
+ * h2 (Section Headers): 1.5rem  
+ * h3 (Card Titles): 1.2rem
+ * Subtitle/Large Text: 1.1rem
+ * Body Text: 1rem
+ * Small Text: 0.9rem
+ * Extra Small: 0.8rem
+ * Font Family: System fonts for optimal performance
+ * Line Height: 1.6 for readability
+ */
+
+/* Wrapper to override global App styles - matching OrderForm */
+.confirmation-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.confirmation-page {
+  /* Proper responsive layout with scrolling enabled - matching OrderForm */
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  
+  /* Layout - matching OrderForm */
+  padding: 1.5rem 1rem 6rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  line-height: 1.6;
+  box-sizing: border-box;
+  
+  /* Content container - matching OrderForm */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Main confirmation container - matching OrderForm form-step styling */
+.confirmation-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  overflow: hidden;
+  /* Animation */
+  animation: slideInUp 0.6s ease-out;
+}
+
+/* Info Cards - grouped information */
+.info-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  animation: slideInUp 0.6s ease-out;
+  animation-delay: 0.1s;
+  animation-fill-mode: both;
+}
+
+/* Card titles */
+.card-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: white;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Payment Card specific styles */
+.payment-card {
+  border-left: 4px solid #4ade80;
+}
+
+/* Order Card specific styles */
+.order-card {
+  border-left: 4px solid #60a5fa;
+}
+
+/* Loyalty Card specific styles */
+.loyalty-card {
+  border-left: 4px solid #f59e0b;
+}
+
+/* Steps Card specific styles */
+.steps-card {
+  border-left: 4px solid #ec4899;
+}
+
+/* Instructions Card specific styles */
+.instructions-card {
+  border-left: 4px solid #8b5cf6;
+  text-align: center;
+}
+
+/* Error card */
+.error-card {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fef2f2;
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+/* Success icon container */
+.success-icon {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  animation: celebrateSuccess 0.8s ease-out;
+}
+
+.success-icon-emoji {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  display: block;
+}
+
+/* Typography - matching design system */
+.confirmation-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: white;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.confirmation-subtitle {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  color: white;
+  text-align: center;
+}
+
+/* Order details section */
+.order-details {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.order-details-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.order-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.order-detail-item:last-child {
+  border-bottom: none;
+}
+
+.order-detail-label {
+  font-weight: 500;
+}
+
+.order-detail-value {
+  font-weight: 600;
+  color: white;
+}
+
+/* Status badge */
+.status-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 1rem;
+}
+
+.status-badge.confirmed {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: white;
+}
+
+.status-badge.processing {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+}
+
+/* QR Code Section - updated for card layout */
+.qr-section {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.qr-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.qr-instructions {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 1rem;
+  line-height: 1.5;
+}
+
+/* Payment PIN section - updated for card layout */
+.payment-pin-section {
+  text-align: center;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.payment-pin-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.5rem;
+}
+
+.payment-pin-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.2rem;
+  margin: 0.5rem 0;
+}
+
+/* Amount section - updated for card layout */
+.amount-section {
+  text-align: center;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.amount-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-right: 0.5rem;
+}
+
+.amount-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+/* Order Summary - Card Layout */
+.order-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.order-summary-list li {
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid #60a5fa;
+  color: white;
+  font-size: 0.9rem;
+}
+
+.loyalty-eligible-badge {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.order-timestamp {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Loyalty Progress - Card Layout */
+.loyalty-progress-visits {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: white;
+  text-align: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.loyalty-progress-rewards {
+  text-align: center;
+}
+
+.next-reward {
+  font-size: 0.9rem;
+  color: #fbbf24;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.visits-needed {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Next Steps - Card Layout */
+.notification-message {
+  padding: 1rem;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fef3c7;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.next-steps-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  color: white;
+  font-size: 0.9rem;
+}
+
+.step-icon {
+  margin-right: 0.75rem;
+  font-size: 1.1rem;
+}
+
+/* Instructions - Card Layout */
+.instructions-text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+/* Next steps section */
+.next-steps {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.next-steps-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.next-steps-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.next-steps-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.next-steps-item:last-child {
+  margin-bottom: 0;
+}
+
+.next-steps-number {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: white;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* Loyalty progress section */
+.loyalty-progress {
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.loyalty-progress-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4ade80;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.loyalty-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.loyalty-stat {
+  text-align: center;
+}
+
+.loyalty-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #4ade80;
+  display: block;
+}
+
+.loyalty-stat-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Action buttons - matching OrderForm and Payment style */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.primary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.secondary-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Action button styles imported from shared-buttons.css */
+
+.download-button,
+.copy-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.download-button:hover,
+.copy-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Security footer */
+.security-footer {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.yoco-brand {
+  color: #00d4aa;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Redemption banner */
+.redemption-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 -4px 12px rgba(74, 222, 128, 0.3);
+  z-index: 50;
+  animation: pulse 2s infinite;
+}
+
+.redemption-banner-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.redemption-banner-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+/* Animations */
+@keyframes slideInUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes celebrateSuccess {
+  0% { 
+    transform: scale(0.8); 
+    opacity: 0; 
+  }
+  50% { 
+    transform: scale(1.05); 
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.8; 
+  }
+}
+
+/* Responsive Design - matching OrderForm breakpoints */
+@media (max-width: 1024px) {
+  .confirmation-page {
+    padding: 1.25rem 0.75rem 7rem 0.75rem;
+  }
+  
+  .confirmation-container {
+    padding: 1.5rem;
+    border-radius: 15px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .confirmation-actions {
+    align-items: center;
+  }
+  
+  /* Responsive action-button styles handled in shared-buttons.css */
+}
+
+@media (max-width: 768px) {
+  .confirmation-page {
+    padding: 0.75rem 0.5rem 8rem 0.5rem;
+  }
+  
+  .confirmation-container {
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+  }
+  
+  .confirmation-title {
+    font-size: 1.25rem;
+  }
+  
+  .success-icon-emoji {
+    font-size: 2.5rem;
+  }
+  
+  .loyalty-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .confirmation-page {
+    padding: 0.75rem 0.5rem 9rem 0.5rem;
+  }
+  
+  .confirmation-container {
+    padding: 1rem 0.75rem;
+    border-radius: 12px;
+  }
+  
+  .confirmation-title {
+    font-size: 1.1rem;
+  }
+  
+  .success-icon-emoji {
+    font-size: 2rem;
+  }
+  
+  .order-details,
+  .next-steps,
+  .loyalty-progress {
+    padding: 1rem;
+  }
+  
+  .payment-pin-value {
+    font-size: 1.25rem;
+  }
+}
+
+/* Safe area support for modern devices - matching OrderForm */
+@supports (padding: max(0px)) {
+  .confirmation-page {
+    padding-bottom: max(6rem, env(safe-area-inset-bottom) + 4rem);
+  }
+  
+  @media (max-width: 1024px) {
+    .confirmation-page {
+      padding-bottom: max(7rem, env(safe-area-inset-bottom) + 5rem);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .confirmation-page {
+      padding-bottom: max(8rem, env(safe-area-inset-bottom) + 6rem);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .confirmation-page {
+      padding-bottom: max(9rem, env(safe-area-inset-bottom) + 7rem);
+    }
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .confirmation-container {
+    border: 2px solid rgba(255, 255, 255, 0.5);
+  }
+  
+  .status-badge {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .confirmation-container,
+  .success-icon,
+  .redemption-banner,
+  .action-button {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Ensure no horizontal overflow */
+* {
+  box-sizing: border-box;
+}
+
+.confirmation-wrapper,
+.confirmation-page,
+.confirmation-container {
+  max-width: 100%;
+  overflow-x: hidden;
+}

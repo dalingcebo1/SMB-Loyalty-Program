@@ -1,0 +1,128 @@
+/* Shared Button Styles */
+/* Used across OrderForm, Payment, and OrderConfirmation pages */
+
+.action-button {
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  min-width: 150px;
+}
+
+.action-button.primary,
+.primary-button {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: white;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+}
+
+.action-button.primary:hover,
+.primary-button:hover {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(74, 222, 128, 0.4);
+}
+
+.action-button.secondary,
+.secondary-button {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  color: white;
+  box-shadow: 0 4px 15px rgba(96, 165, 250, 0.3);
+}
+
+.action-button.secondary:hover,
+.secondary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(96, 165, 250, 0.4);
+}
+
+.action-button.success,
+.success-button {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+}
+
+.action-button.success:hover,
+.success-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Small action buttons for secondary actions */
+.download-button,
+.copy-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.download-button:hover,
+.copy-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* YOCO Branding - shared across payment interfaces */
+.yoco-brand,
+.payment-security-brand {
+  color: #00d4aa;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Responsive button adjustments */
+@media (max-width: 1024px) {
+  .action-button {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .action-button {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .action-button {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    min-width: 100px;
+  }
+  
+  .download-button,
+  .copy-button {
+    padding: 0.625rem 1rem;
+    font-size: 0.85rem;
+  }
+}

@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { Navigate } from "react-router-dom";
 import api from "../api/api";
-import PageLayout from "../components/PageLayout";
+import { FaUser, FaEnvelope, FaPhone, FaEdit, FaSave, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
+import './Account.css';
 
 const Account: React.FC = () => {
   const { user, refreshUser, loading } = useAuth();
@@ -11,7 +12,23 @@ const Account: React.FC = () => {
   const [lastName, setLastName] = useState(user?.lastName || "");
   const [error, setError] = useState<string | null>(null);
   
-  if (loading) return <PageLayout loading>{null}</PageLayout>;
+  if (loading) {
+    return (
+      <div className="account-page">
+        <div className="page-header">
+          <h1>Account Details</h1>
+          <p className="subtitle">Loading your account information...</p>
+        </div>
+        <div className="account-details-card">
+          <div className="detail-section">
+            <div className="detail-label">Loading...</div>
+            <div className="detail-value">Please wait</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   if (!user) return <Navigate to="/login" replace />;
 
   const handleEdit = () => {
@@ -43,74 +60,84 @@ const Account: React.FC = () => {
   };
 
   return (
-    <PageLayout error={error || undefined}>
-      <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-6 text-center">Account Details</h1>
-        <div className="divide-y divide-gray-200">
-          <div className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-gray-500 text-sm">Name</div>
-              {editing ? (
-                <form onSubmit={handleSave} className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
-                  <input
-                    className="border rounded px-2 py-1 mr-2"
-                    value={firstName}
-                    onChange={e => setFirstName(e.target.value)}
-                    required
-                    placeholder="First Name"
-                  />
-                  <input
-                    className="border rounded px-2 py-1 mr-2"
-                    value={lastName}
-                    onChange={e => setLastName(e.target.value)}
-                    placeholder="Last Name"
-                  />
-                  <div className="flex gap-2 mt-2 sm:mt-0">
-                    <button
-                      type="submit"
-                      className="bg-blue-600 text-white px-4 py-1 rounded"
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      className="bg-gray-300 px-4 py-1 rounded"
-                      onClick={handleCancel}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="flex items-center mt-1">
-                  <span className="font-medium">{user.firstName} {user.lastName}</span>
-                  <button
-                    className="ml-4 bg-blue-600 text-white px-3 py-1 rounded text-sm"
-                    onClick={handleEdit}
-                    type="button"
-                  >
-                    Edit
-                  </button>
-                </div>
-              )}
-              {error && <div className="text-red-500 mt-2">{error}</div>}
-            </div>
+    <div className="account-page">
+      <div className="page-header">
+        <h1>Account Details</h1>
+        <p className="subtitle">Manage your personal information and preferences</p>
+      </div>
+
+      <div className="account-details-card">
+        {/* Name Section */}
+        <div className="detail-section">
+          <div className="detail-label">
+            <FaUser style={{ display: 'inline', marginRight: '0.5rem' }} />
+            Full Name
           </div>
-          <div className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-gray-500 text-sm">Email</div>
-              <div className="font-medium mt-1">{user.email}</div>
+          {editing ? (
+            <form onSubmit={handleSave} className="edit-form">
+              <div className="form-row">
+                <input
+                  className="form-input"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  required
+                  placeholder="First Name"
+                />
+                <input
+                  className="form-input"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  placeholder="Last Name"
+                />
+              </div>
+              <div className="button-group">
+                <button type="submit" className="btn btn-primary">
+                  <FaSave /> Save Changes
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={handleCancel}>
+                  <FaTimes /> Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="value-display">
+              <span className="value-text">{user.firstName} {user.lastName}</span>
+              <button className="btn btn-edit" onClick={handleEdit} type="button">
+                <FaEdit /> Edit
+              </button>
             </div>
-          </div>
-          <div className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-gray-500 text-sm">Phone</div>
-              <div className="font-medium mt-1">{user.phone}</div>
+          )}
+          {error && (
+            <div className="error-message">
+              <FaExclamationTriangle />
+              {error}
             </div>
+          )}
+        </div>
+
+        {/* Email Section */}
+        <div className="detail-section">
+          <div className="detail-label">
+            <FaEnvelope style={{ display: 'inline', marginRight: '0.5rem' }} />
+            Email Address
           </div>
+          <div className="detail-value">{user.email}</div>
+        </div>
+
+        {/* Phone Section */}
+        <div className="detail-section">
+          <div className="detail-label">
+            <FaPhone style={{ display: 'inline', marginRight: '0.5rem' }} />
+            Phone Number
+          </div>
+          <div className="detail-value">{user.phone}</div>
         </div>
       </div>
-    </PageLayout>
+
+      <div className="page-footer">
+        API Version: v1.0.0
+      </div>
+    </div>
   );
 };
 

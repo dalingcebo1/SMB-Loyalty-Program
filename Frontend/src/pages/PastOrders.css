@@ -1,0 +1,729 @@
+/* PastOrders.css */
+
+/* 
+ * Unified Typography Scale:
+ * h1 (Page Headers): 2.5rem (desktop) / 2rem (mobile)
+ * h2 (Section Headers): 1.5rem  
+ * h3 (Card Titles): 1.2rem
+ * Subtitle/Large Text: 1.1rem
+ * Body Text: 1rem
+ * Small Text: 0.9rem
+ * Extra Small: 0.8rem
+ * Font Family: System fonts for optimal performance
+ * Line Height: 1.6 for readability
+ */
+
+.past-orders-page {
+	padding: 1.5rem;
+	max-width: 1200px;
+	margin: 0 auto;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	min-height: 100vh;
+	color: white;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+	line-height: 1.6;
+}
+
+/* Header Section */
+.page-header {
+	text-align: center;
+	margin-bottom: 2rem;
+}
+
+.page-header h1 {
+	font-size: 2.5rem;
+	font-weight: bold;
+	margin-bottom: 0.5rem;
+	color: white;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	line-height: 1.2;
+}
+
+.page-header .subtitle {
+	font-size: 1.1rem;
+	margin: 0 0 1rem 0;
+	opacity: 0.9;
+	color: white;
+}
+
+.filters {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.filter-dropdown {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 10px;
+	padding: 0.5rem 1rem;
+	color: white;
+	font-size: 0.9rem;
+	font-weight: 400;
+}
+
+.filter-dropdown option {
+	background: #667eea;
+	color: white;
+}
+
+.search-container {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.search-container input {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 10px;
+	padding: 0.5rem 2.5rem 0.5rem 1rem;
+	color: white;
+	font-size: 0.9rem;
+	font-weight: 400;
+	width: 250px;
+}
+
+.search-container input::placeholder {
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.search-icon {
+	position: absolute;
+	right: 0.75rem;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+/* Orders Timeline */
+.orders-timeline {
+	margin-top: 2rem;
+}
+
+.time-section {
+	margin-bottom: 2rem;
+}
+
+.time-section h2 {
+	color: white;
+	margin-bottom: 1rem;
+	font-size: 1.5rem;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.count {
+	background: rgba(255, 255, 255, 0.2);
+	padding: 0.25rem 0.5rem;
+	border-radius: 15px;
+	font-size: 0.8rem;
+	font-weight: normal;
+}
+
+.orders-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+	gap: 1.5rem;
+}
+
+/* Order Cards */
+.order-card {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border-radius: 15px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	overflow: hidden;
+	transition: all 0.3s ease;
+	cursor: pointer;
+}
+
+.order-card:hover {
+	transform: translateY(-5px);
+	background: rgba(255, 255, 255, 0.15);
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.order-header {
+	display: flex;
+	align-items: center;
+	padding: 1.5rem;
+	gap: 1rem;
+}
+
+.service-icon {
+	background: linear-gradient(135deg, #ffd700, #ffed4e);
+	border-radius: 50%;
+	width: 50px;
+	height: 50px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.service-icon .icon {
+	font-size: 1.5rem;
+	color: #333;
+}
+
+.order-info {
+	flex: 1;
+}
+
+.order-info h3 {
+	margin: 0 0 0.5rem 0;
+	font-size: 1.2rem;
+	color: white;
+	font-weight: 600;
+}
+
+.order-meta {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+}
+
+.date {
+	font-size: 0.9rem;
+	opacity: 0.8;
+}
+
+.badge {
+	padding: 0.25rem 0.75rem;
+	border-radius: 20px;
+	font-size: 0.8rem;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+
+.badge.completed {
+	background: #4ade80;
+	color: #166534;
+}
+
+.badge.pending {
+	background: #fbbf24;
+	color: #92400e;
+}
+
+.badge.cancelled {
+	background: #f87171;
+	color: #991b1b;
+}
+
+.order-price {
+	text-align: right;
+	flex-shrink: 0;
+}
+
+.currency {
+	font-size: 1rem;
+	opacity: 0.8;
+}
+
+.order-price .currency + * {
+	font-size: 1.5rem;
+	font-weight: bold;
+}
+
+/* Order Details (expandable section) */
+.order-details {
+	padding: 0 1.5rem 1rem 1.5rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	margin-top: 1rem;
+	padding-top: 1rem;
+}
+
+.detail-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.detail-row:last-child {
+	border-bottom: none;
+}
+
+.detail-row .label {
+	font-weight: 500;
+	opacity: 0.8;
+}
+
+.detail-row .value {
+	font-weight: 600;
+}
+
+.loyalty-earned {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	background: rgba(255, 215, 0, 0.2);
+	border-radius: 10px;
+	margin-top: 1rem;
+}
+
+.loyalty-icon {
+	color: #ffd700;
+}
+
+/* Order Actions */
+.order-actions {
+	display: flex;
+	gap: 0.75rem;
+	padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.action-button {
+	flex: 1;
+	padding: 0.75rem 1rem;
+	border: none;
+	border-radius: 10px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+}
+
+.action-button.primary {
+	background: linear-gradient(135deg, #ffd700, #ffed4e);
+	color: #333;
+}
+
+.action-button.primary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+.action-button.secondary {
+	background: rgba(255, 255, 255, 0.2);
+	color: white;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.action-button.secondary:hover {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+/* Enhanced Modal */
+.order-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	padding: 1rem;
+}
+
+.order-modal {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border-radius: 20px;
+	max-width: 600px;
+	width: 100%;
+	max-height: 90vh;
+	overflow-y: auto;
+	position: relative;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+	padding: 2rem 2rem 1rem 2rem;
+	text-align: center;
+	position: relative;
+}
+
+.modal-header h2 {
+	color: white;
+	margin: 0 0 0.5rem 0;
+	font-size: 1.5rem;
+}
+
+.order-id {
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 0.9rem;
+}
+
+.close-button {
+	position: absolute;
+	top: 1rem;
+	right: 1rem;
+	background: rgba(255, 255, 255, 0.2);
+	border: none;
+	border-radius: 50%;
+	width: 40px;
+	height: 40px;
+	color: white;
+	font-size: 1.5rem;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.close-button:hover {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+/* Order Timeline in Modal */
+.order-timeline {
+	padding: 0 2rem;
+	margin-bottom: 2rem;
+}
+
+.timeline-step {
+	display: flex;
+	align-items: flex-start;
+	gap: 1rem;
+	position: relative;
+}
+
+.timeline-step.completed .step-icon {
+	background: #4ade80;
+	color: white;
+}
+
+.timeline-step .step-icon {
+	background: rgba(255, 255, 255, 0.3);
+	color: rgba(255, 255, 255, 0.6);
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	z-index: 1;
+}
+
+.step-content h4 {
+	margin: 0 0 0.25rem 0;
+	color: white;
+	font-weight: 600;
+}
+
+.step-content p {
+	margin: 0;
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 0.9rem;
+}
+
+.timeline-connector {
+	width: 2px;
+	height: 30px;
+	background: rgba(255, 255, 255, 0.3);
+	margin: 5px 0 5px 19px;
+}
+
+.timeline-connector.completed {
+	background: #4ade80;
+}
+
+/* Service Details in Modal */
+.service-details {
+	padding: 0 2rem 1rem 2rem;
+}
+
+.service-details h3 {
+	color: white;
+	margin-bottom: 1rem;
+	font-size: 1.2rem;
+}
+
+.detail-table {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 10px;
+	overflow: hidden;
+}
+
+.table-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.75rem 1rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-row:last-child {
+	border-bottom: none;
+}
+
+.table-row .label {
+	font-weight: 500;
+	opacity: 0.8;
+}
+
+.table-row .value {
+	font-weight: 600;
+	text-align: right;
+	flex: 1;
+	margin-left: 1rem;
+}
+
+/* Loyalty Section in Modal */
+.loyalty-section {
+	padding: 0 2rem 1rem 2rem;
+}
+
+.loyalty-card {
+	background: rgba(255, 215, 0, 0.2);
+	border-radius: 15px;
+	padding: 1.5rem;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.loyalty-card .loyalty-icon {
+	font-size: 2rem;
+	color: #ffd700;
+	flex-shrink: 0;
+}
+
+.loyalty-info h4 {
+	margin: 0 0 0.5rem 0;
+	color: white;
+	font-weight: 600;
+}
+
+.loyalty-info p {
+	margin: 0 0 0.75rem 0;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 0.9rem;
+}
+
+.progress-container {
+	background: rgba(255, 255, 255, 0.3);
+	border-radius: 10px;
+	height: 8px;
+	overflow: hidden;
+	margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+	background: linear-gradient(90deg, #ffd700, #ffed4e);
+	height: 100%;
+	border-radius: 10px;
+	transition: width 0.5s ease;
+}
+
+.progress-text {
+	margin: 0;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+/* Modal Actions */
+.modal-actions {
+	padding: 1rem 2rem 2rem 2rem;
+	display: flex;
+	gap: 1rem;
+}
+
+/* Empty State */
+.empty-state {
+	text-align: center;
+	padding: 3rem 1rem;
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border-radius: 20px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	margin: 2rem auto;
+	max-width: 500px;
+}
+
+.empty-icon {
+	margin-bottom: 1.5rem;
+}
+
+.empty-icon .icon {
+	font-size: 4rem;
+	color: rgba(255, 255, 255, 0.4);
+}
+
+.empty-state h3 {
+	color: white;
+	margin-bottom: 1rem;
+	font-size: 1.5rem;
+}
+
+.empty-state p {
+	color: rgba(255, 255, 255, 0.8);
+	margin-bottom: 2rem;
+}
+
+.primary-button {
+	background: linear-gradient(135deg, #ffd700, #ffed4e);
+	color: #333;
+	border: none;
+	border-radius: 25px;
+	padding: 0.75rem 2rem;
+	font-weight: bold;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.primary-button:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+/* Loading Skeletons */
+.orders-loading {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+	gap: 1.5rem;
+	margin-top: 2rem;
+}
+
+.skeleton-card {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border-radius: 15px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	padding: 1.5rem;
+	animation: pulse 2s infinite;
+}
+
+.skeleton-header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.skeleton-circle {
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.3);
+}
+
+.skeleton-lines {
+	flex: 1;
+}
+
+.skeleton-line-short {
+	height: 1rem;
+	background: rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+	margin-bottom: 0.5rem;
+	width: 60%;
+}
+
+.skeleton-line-long {
+	height: 0.75rem;
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 4px;
+	width: 80%;
+}
+
+.skeleton-body {
+	margin-bottom: 1rem;
+}
+
+.skeleton-line-full {
+	height: 0.75rem;
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 4px;
+	margin-bottom: 0.5rem;
+	width: 100%;
+}
+
+.skeleton-actions {
+	display: flex;
+	gap: 0.75rem;
+}
+
+.skeleton-button {
+	flex: 1;
+	height: 2.5rem;
+	background: rgba(255, 255, 255, 0.3);
+	border-radius: 10px;
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.7;
+	}
+}
+
+/* Responsive Design */
+/* Responsive Typography */
+@media (max-width: 1024px) {
+	.past-orders-page {
+		padding: 1.25rem;
+	}
+}
+
+@media (max-width: 768px) {
+	.past-orders-page {
+		padding: 1rem;
+	}
+	
+	.page-header h1 {
+		font-size: 2rem;
+		line-height: 1.2;
+	}
+	
+	.page-header .subtitle {
+		font-size: 1rem;
+	}
+	
+	.filters {
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+	
+	.search-container input {
+		width: 100%;
+	}
+	
+	.orders-grid {
+		grid-template-columns: 1fr;
+	}
+	
+	.order-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 1rem;
+	}
+	
+	.order-price {
+		align-self: flex-end;
+	}
+	
+	.order-actions {
+		flex-direction: column;
+	}
+	
+	.action-button {
+		width: 100%;
+	}
+	
+	.modal-actions {
+		flex-direction: column;
+	}
+	
+	.order-modal {
+		margin: 1rem;
+		max-height: calc(100vh - 2rem);
+	}
+}

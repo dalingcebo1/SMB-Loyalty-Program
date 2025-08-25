@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { HiOutlineRefresh, HiOutlineGift } from 'react-icons/hi';
+import { FaGift, FaCar, FaCheckCircle, FaClock } from 'react-icons/fa';
 import { useAuth } from "../auth/AuthProvider";
 import api from "../api/api";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
-import PageLayout from "../components/PageLayout";
 import WelcomeModal from '../components/WelcomeModal';
 import { Link, Navigate } from 'react-router-dom';
 import { track } from '../utils/analytics';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Wash } from '../types';
+import './Welcome.css';
 
 interface UpcomingReward {
   reward: string;
@@ -128,14 +129,16 @@ const Welcome: React.FC = () => {
   let statusMessage = null;
   if (activeWashes.length > 0) {
     statusMessage = (
-      <div className="w-full max-w-md bg-blue-100 rounded-2xl shadow-md p-4 mb-8 text-center text-blue-800 font-semibold">
-        Your vehicles are currently being wash, you will be notified when ready for collection.
+      <div className="status-message active">
+        <h3><FaClock style={{ display: 'inline', marginRight: '0.5rem' }} />Wash in Progress</h3>
+        <p>Your vehicles are currently being washed. You will be notified when ready for collection.</p>
       </div>
     );
   } else if (recentlyEnded) {
     statusMessage = (
-      <div className="w-full max-w-md bg-green-100 rounded-2xl shadow-md p-4 mb-8 text-center text-green-800 font-semibold">
-        Your car is ready for collection.
+      <div className="status-message ready">
+        <h3><FaCheckCircle style={{ display: 'inline', marginRight: '0.5rem' }} />Ready for Collection</h3>
+        <p>Your car is ready for collection.</p>
       </div>
     );
   }
@@ -153,85 +156,100 @@ const Welcome: React.FC = () => {
   };
 
   return (
-    <PageLayout>
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
-        {/* Welcome message card */}
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-4 mb-8 text-center">
-          <h1 className="font-semibold text-base mb-1">
-            Welcome {name}!
-          </h1>
-          <div className="text-gray-600 text-sm">
-            {justOnboarded
-              ? "Thank you for registering, welcome to your full service car wash application."
-              : "Glad to see you again. Check out your rewards or book a service!"}
-          </div>
-          <div className="mt-4 flex justify-center space-x-4">
-            <Link
-              to="/myloyalty"
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              onClick={() => track('cta_click', { label: 'View Rewards', page: 'Welcome' })}
-            >
-              View Rewards
-            </Link>
-            <Link
-              to="/order"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              onClick={() => track('cta_click', { label: 'Book a Service', page: 'Welcome' })}
-            >
-              Book a Service
-            </Link>
+    <div className="welcome-page">
+      <div className="welcome-header">
+        <h1>Welcome {name}!</h1>
+        <p className="subtitle">Your car wash companion for loyalty rewards and service booking</p>
+      </div>
+
+      {/* Welcome message card */}
+      <div className="welcome-message-card">
+        <h2>
+          {justOnboarded
+            ? "Thank you for registering!"
+            : "Glad to see you again"}
+        </h2>
+        <div className="description">
+          {justOnboarded
+            ? "Welcome to your full service car wash application. Start earning loyalty rewards with every visit!"
+            : "Check out your rewards or book a service to keep your car looking great!"}
+        </div>
+        <div className="action-buttons">
+          <Link
+            to="/myloyalty"
+            className="action-btn action-btn-primary"
+            onClick={() => track('cta_click', { label: 'View Rewards', page: 'Welcome' })}
+          >
+            <FaGift /> View Rewards
+          </Link>
+          <Link
+            to="/order"
+            className="action-btn action-btn-secondary"
+            onClick={() => track('cta_click', { label: 'Book a Service', page: 'Welcome' })}
+          >
+            <FaCar /> Book a Service
+          </Link>
+        </div>
+      </div>
+
+      {/* Status and panels grid */}
+      <div className="panels-grid">
+        {/* Status message if there is one */}
+        {statusMessage}
+
+        {/* Wash status panel */}
+        <div className="panel-card">
+          <HiOutlineRefresh className="panel-icon wash-icon" />
+          <h3>Wash Status</h3>
+          <div className="description">
+            {activeWashes.length > 0
+              ? "Your wash is currently in progress"
+              : recentlyEnded
+              ? "Your car is ready for collection"
+              : "No active washes at the moment"}
           </div>
         </div>
 
-        {/* Modern grid layout for status and loyalty panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 w-full max-w-4xl mb-8 gap-6">
-          {/* Wash status panel */}
-          <div className="bg-white rounded-2xl shadow-md p-6 flex flex-col items-center justify-center hover:shadow-lg transition-shadow">
-            <HiOutlineRefresh className="w-12 h-12 text-blue-500 mb-4" />
-    {statusMessage ? (
-      statusMessage
-    ) : (
-      <p className="text-gray-700 text-center mb-4">No active washes at the moment.</p>
-    )}
+        {/* Loyalty rewards panel */}
+        <div className="panel-card">
+          <HiOutlineGift className="panel-icon loyalty-icon" />
+          <h3>Loyalty Progress</h3>
+          <div className="progress-container">
+            <CircularProgressbar
+              value={progress === 0 && visits > 0 ? nextMilestone : progress}
+              maxValue={nextMilestone}
+              text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
+              styles={buildStyles({
+                textSize: '18px',
+                pathColor: '#22c55e',
+                textColor: '#ffffff',
+                trailColor: 'rgba(255, 255, 255, 0.2)',
+              })}
+            />
           </div>
-          {/* Loyalty rewards panel */}
-          <div className="bg-white rounded-2xl shadow-md p-6 flex flex-col items-center hover:shadow-lg transition-shadow">
-            <HiOutlineGift className="w-12 h-12 text-green-500 mb-4" />
-            <div className="w-32 h-32 mb-4">
-              <CircularProgressbar
-                value={progress === 0 && visits > 0 ? nextMilestone : progress}
-                maxValue={nextMilestone}
-                text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
-                styles={buildStyles({
-                  textSize: '18px',
-                  pathColor: '#10b981',
-                  textColor: '#10b981',
-                  trailColor: '#e5e7eb',
-                })}
-              />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Next Reward</h3>
+          <div className="loyalty-info">
             {rewardsReady.length > 0 ? (
-              <div className="text-center mb-4">
-                <p className="mb-2">You have a reward ready to claim!</p>
+              <div>
+                <p>You have a reward ready to claim!</p>
                 <button
                   onClick={handleClaimReward}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  className="claim-button"
                 >
                   Claim Now
                 </button>
               </div>
             ) : upcomingReward ? (
-              <div className="text-center mb-4">
-                <p className="mb-2">Earn {upcomingReward.reward} at {upcomingReward.milestone} visits</p>
+              <div>
+                <p>Next reward: {upcomingReward.reward}</p>
+                <p>At {upcomingReward.milestone} visits</p>
               </div>
             ) : (
-              <p className="text-gray-500">No upcoming rewards</p>
+              <p>Keep visiting to earn rewards!</p>
             )}
           </div>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 };
 

@@ -8,12 +8,13 @@ import api from "../api/api";
 import Loading from "../components/Loading";
 import ErrorMessage from "../components/ErrorMessage";
 import { useAuth } from "../auth/AuthProvider";
-import PageLayout from "../components/PageLayout";
 import StepIndicator from "../components/StepIndicator";
 import ServiceCard from "../components/ServiceCard";
 import DateTimePicker from "../components/DateTimePicker";
 import BookingConfirmation from "../components/BookingConfirmation";
 import { track } from '../utils/analytics';
+import './OrderForm.css';
+import '../styles/shared-buttons.css';
 
 interface Service {
   id: number;
@@ -299,7 +300,7 @@ const OrderForm: React.FC = () => {
   };
 
   // Show auth loading and block anonymous users
-  if (loading) return <PageLayout loading>{null}</PageLayout>;
+  if (loading) return <Loading text="Authenticating..." />;
   if (!user) return <Navigate to="/login" replace />;
 
   // Handle loading and errors for catalog data
@@ -318,142 +319,117 @@ const OrderForm: React.FC = () => {
   }
 
   return (
-    <PageLayout>
-      <div className="min-h-screen bg-gray-50 py-8">
+    <div className="order-form-wrapper">
+      <div className="order-form-page">
         <ToastContainer position="top-right" />
         
-        <div className="max-w-4xl mx-auto px-4">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Book Your Car Wash</h1>
-            <p className="text-gray-600">Select your service, choose a time, and we'll take care of the rest</p>
-          </div>
+        {/* Header */}
+        <div className="order-form-header">
+          <h1>Book Your Service</h1>
+          <p className="subtitle">Select your service, choose a time, and we'll take care of the rest</p>
+        </div>
 
-          {/* Step Indicator */}
-          <div className="mb-8">
-            <StepIndicator 
-              currentStep={currentStep}
-              stepsCompleted={currentStep > 1 ? [1] : []}
-            />
-          </div>
+        {/* Step Indicator */}
+        <div className="step-indicator-container">
+          <StepIndicator 
+            currentStep={currentStep}
+            stepsCompleted={currentStep > 1 ? [1] : []}
+          />
+        </div>
 
-          {/* Step Content */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <AnimatePresence mode="wait">
-              {/* Step 1: Service Selection */}
-              {currentStep === 1 && (
-                <motion.div
-                  key="step1"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  className="p-6"
+        {/* Step Content */}
+        <AnimatePresence mode="wait">
+          {/* Step 1: Service Selection */}
+          {currentStep === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              className="form-step"
                 >
-                  <h2 className="text-xl font-semibold mb-6">Step 1: Select Your Service</h2>
+                  <h2 className="step-title">Step 1: Select Your Service</h2>
                   
                   {/* Category Selection */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Service Category
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.keys(servicesByCategory).map((category) => (
-                        <button
-                          key={category}
-                          onClick={() => setSelectedCategory(category)}
-                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                            selectedCategory === category
-                              ? 'bg-blue-500 text-white shadow-md'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {category}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="category-tabs">
+                    {Object.keys(servicesByCategory).map((category) => (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`category-tab ${
+                          selectedCategory === category ? 'active' : ''
+                        }`}
+                      >
+                        {category}
+                      </button>
+                    ))}
                   </div>
 
                   {/* Service Cards */}
                   {selectedCategory && (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Choose Service
-                      </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {servicesByCategory[selectedCategory]?.map((service) => (
-                          <ServiceCard
-                            key={service.id}
-                            service={service}
-                            isSelected={selectedService?.id === service.id}
-                            onSelect={setSelectedService}
-                            quantity={selectedService?.id === service.id ? serviceQuantity : 1}
-                            onQuantityChange={setServiceQuantity}
-                          />
-                        ))}
-                      </div>
+                    <div className="services-grid">
+                      {servicesByCategory[selectedCategory]?.map((service) => (
+                        <ServiceCard
+                          key={service.id}
+                          service={service}
+                          isSelected={selectedService?.id === service.id}
+                          onSelect={setSelectedService}
+                          quantity={selectedService?.id === service.id ? serviceQuantity : 1}
+                          onQuantityChange={setServiceQuantity}
+                        />
+                      ))}
                     </div>
                   )}
 
                   {/* Extras */}
                   {extras.length > 0 && selectedCategory && (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Add Extras (Optional)
-                      </label>
-                      <div className="space-y-3">
-                        {extras.map((extra) => (
-                          <div
-                            key={extra.id}
-                            className="flex items-center justify-between p-3 border rounded-lg"
-                          >
-                            <div>
-                              <span className="font-medium">{extra.name}</span>
-                              <span className="text-sm text-gray-500 ml-2">
-                                +R{extra.price_map[selectedCategory] ?? 0}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button
-                                type="button"
-                                onClick={() => setExtraQuantities(prev => ({ 
-                                  ...prev, 
-                                  [extra.id]: Math.max(0, (prev[extra.id] || 0) - 1) 
-                                }))}
-                                className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                              >
-                                −
-                              </button>
-                              <span className="w-8 text-center">{extraQuantities[extra.id] || 0}</span>
-                              <button
-                                type="button"
-                                onClick={() => setExtraQuantities(prev => ({ 
-                                  ...prev, 
-                                  [extra.id]: (prev[extra.id] || 0) + 1 
-                                }))}
-                                className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
-                              >
-                                +
-                              </button>
-                            </div>
+                    <div className="extras-grid">
+                      {extras.map((extra) => (
+                        <div key={extra.id} className="extra-item">
+                          <div className="extra-header">
+                            <h4>{extra.name}</h4>
+                            <span className="extra-price">
+                              +R{extra.price_map[selectedCategory] ?? 0}
+                            </span>
                           </div>
-                        ))}
-                      </div>
+                          <div className="extra-quantity">
+                            <button
+                              type="button"
+                              onClick={() => setExtraQuantities(prev => ({ 
+                                ...prev, 
+                                [extra.id]: Math.max(0, (prev[extra.id] || 0) - 1) 
+                              }))}
+                              className="quantity-button"
+                              disabled={(extraQuantities[extra.id] || 0) === 0}
+                            >
+                              −
+                            </button>
+                            <span className="quantity-display">{extraQuantities[extra.id] || 0}</span>
+                            <button
+                              type="button"
+                              onClick={() => setExtraQuantities(prev => ({ 
+                                ...prev, 
+                                [extra.id]: (prev[extra.id] || 0) + 1 
+                              }))}
+                              className="quantity-button"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {/* Step 1 Footer */}
-                  <div className="flex justify-between items-center pt-6 border-t">
-                    <div className="text-lg font-semibold">
+                  {/* Step 1 Actions */}
+                  <div className="form-actions">
+                    <div className="total-amount">
                       Total: R{total}
                     </div>
                     <button
                       onClick={handleNextStep}
                       disabled={!canProceedToStep2}
-                      className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                        canProceedToStep2
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
+                      className={`action-button ${canProceedToStep2 ? 'primary' : 'secondary'}`}
                     >
                       Choose Date & Time
                     </button>
@@ -468,36 +444,32 @@ const OrderForm: React.FC = () => {
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
-                  className="p-6"
+                  className="form-step"
                 >
-                  <h2 className="text-xl font-semibold mb-6">Step 2: Choose Date & Time</h2>
+                  <h2 className="step-title">Step 2: Choose Date & Time</h2>
                   
                   <DateTimePicker
                     selectedDate={selectedDate}
                     selectedTime={selectedTime}
                     onDateTimeChange={handleDateTimeChange}
-                    className="mb-6"
+                    className="datetime-section"
                   />
 
-                  {/* Step 2 Footer */}
-                  <div className="flex justify-between items-center pt-6 border-t">
+                  {/* Step 2 Actions */}
+                  <div className="form-actions">
                     <button
                       onClick={handlePrevStep}
-                      className="px-6 py-3 rounded-lg font-medium bg-gray-200 hover:bg-gray-300 text-gray-700"
+                      className="action-button secondary"
                     >
                       Back
                     </button>
-                    <div className="text-lg font-semibold">
+                    <div className="total-amount">
                       Total: R{total}
                     </div>
                     <button
                       onClick={handleNextStep}
                       disabled={!canProceedToStep3}
-                      className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                        canProceedToStep3
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
+                      className={`action-button ${canProceedToStep3 ? 'primary' : 'secondary'}`}
                     >
                       Review Booking
                     </button>
@@ -512,85 +484,73 @@ const OrderForm: React.FC = () => {
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
-                  className="p-6"
+                  className="form-step"
                 >
-                  <h2 className="text-xl font-semibold mb-6">Step 3: Review Your Booking</h2>
+                  <h2 className="step-title">Step 3: Review Your Booking</h2>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    {/* Booking Summary */}
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h3 className="font-semibold mb-3">Booking Summary</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Service:</span>
-                          <span className="font-medium">{selectedService?.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Quantity:</span>
-                          <span className="font-medium">{serviceQuantity}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Date:</span>
-                          <span className="font-medium">
-                            {new Date(selectedDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Time:</span>
-                          <span className="font-medium">{selectedTime}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Duration:</span>
-                          <span className="font-medium">~{selectedService?.duration || 30} min</span>
-                        </div>
-                      </div>
+                  {/* Order Summary */}
+                  <div className="order-summary">
+                    <h3 className="summary-title">Booking Summary</h3>
+                    
+                    <div className="summary-item">
+                      <span>Service:</span>
+                      <span>{selectedService?.name}</span>
                     </div>
-
+                    <div className="summary-item">
+                      <span>Quantity:</span>
+                      <span>{serviceQuantity}</span>
+                    </div>
+                    <div className="summary-item">
+                      <span>Date:</span>
+                      <span>{new Date(selectedDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="summary-item">
+                      <span>Time:</span>
+                      <span>{selectedTime}</span>
+                    </div>
+                    <div className="summary-item">
+                      <span>Duration:</span>
+                      <span>~{selectedService?.duration || 30} min</span>
+                    </div>
+                    
                     {/* Price Breakdown */}
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h3 className="font-semibold mb-3">Price Breakdown</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>{selectedService?.name} × {serviceQuantity}</span>
-                          <span>R{selectedService ? selectedService.base_price * serviceQuantity : 0}</span>
-                        </div>
-                        {extras.map(extra => {
-                          const qty = extraQuantities[extra.id] || 0;
-                          if (qty > 0) {
-                            const price = (extra.price_map[selectedCategory] ?? 0) * qty;
-                            return (
-                              <div key={extra.id} className="flex justify-between">
-                                <span>{extra.name} × {qty}</span>
-                                <span>R{price}</span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })}
-                        <div className="border-t pt-2 font-semibold flex justify-between">
-                          <span>Total:</span>
-                          <span>R{total}</span>
-                        </div>
-                      </div>
+                    <div className="summary-item">
+                      <span>{selectedService?.name} × {serviceQuantity}</span>
+                      <span>R{selectedService ? selectedService.base_price * serviceQuantity : 0}</span>
+                    </div>
+                    
+                    {extras.map(extra => {
+                      const qty = extraQuantities[extra.id] || 0;
+                      if (qty > 0) {
+                        const price = (extra.price_map[selectedCategory] ?? 0) * qty;
+                        return (
+                          <div key={extra.id} className="summary-item">
+                            <span>{extra.name} × {qty}</span>
+                            <span>R{price}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
+                    
+                    <div className="summary-total">
+                      <span>Total:</span>
+                      <span className="total-amount">R{total}</span>
                     </div>
                   </div>
 
-                  {/* Step 3 Footer */}
-                  <div className="flex justify-between items-center pt-6 border-t">
+                  {/* Step 3 Actions */}
+                  <div className="form-actions">
                     <button
                       onClick={handlePrevStep}
-                      className="px-6 py-3 rounded-lg font-medium bg-gray-200 hover:bg-gray-300 text-gray-700"
+                      className="action-button secondary"
                     >
                       Back
                     </button>
                     <button
                       onClick={handleSubmit}
                       disabled={isSubmitting}
-                      className={`px-8 py-3 rounded-lg font-medium transition-all ${
-                        isSubmitting
-                          ? 'bg-blue-300 cursor-not-allowed'
-                          : 'bg-blue-600 hover:bg-blue-700 shadow-md'
-                      } text-white`}
+                      className={`action-button ${isSubmitting ? 'secondary' : 'primary'}`}
                     >
                       {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
                     </button>
@@ -598,8 +558,6 @@ const OrderForm: React.FC = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-        </div>
 
         {/* Booking Confirmation Modal */}
         {confirmedOrder && (
@@ -610,7 +568,7 @@ const OrderForm: React.FC = () => {
           />
         )}
       </div>
-    </PageLayout>
+    </div>
   );
 };
 

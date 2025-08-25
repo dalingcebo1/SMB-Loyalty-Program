@@ -5,13 +5,14 @@ import { track } from '../utils/analytics';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { moduleFlags } from '../config/modules';
-import { useLocation, useNavigate, useParams, Navigate, Outlet } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Navigate } from "react-router-dom";
 import QRCode from "react-qr-code";
 import axios from "axios";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
-import PageLayout from "../components/PageLayout";
 import Loading from "../components/Loading";
+import "./OrderConfirmation.css";
+import '../styles/shared-buttons.css';
 
 interface LocationState {
   orderId: string;
@@ -209,290 +210,228 @@ const OrderConfirmation: React.FC = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   if (isLoading) {
-    return <PageLayout loading loadingText="Loading your order…">{null}</PageLayout>;
+    return (
+      <div className="confirmation-wrapper">
+        <div className="confirmation-page">
+          <div className="confirmation-container">
+            <Loading text="Loading your order…" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="confirmation-wrapper">
+        <div className="confirmation-page">
+          <div className="confirmation-container">
+            <div className="text-center">
+              <div className="text-red-400 mb-4">{error}</div>
+                            <button
+                onClick={() => navigate("/")}
+                className="action-button secondary-button"
+              >
+                Go Home
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <PageLayout error={error || undefined} onRetry={() => window.location.reload()}>
-      <style>
-        {`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-          }
-          @keyframes slideInUp {
-            from {
-              transform: translateY(30px);
-              opacity: 0;
-            }
-            to {
-              transform: translateY(0);
-              opacity: 1;
-            }
-          }
-          @keyframes celebrateSuccess {
-            0% { transform: scale(0.8); opacity: 0; }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); opacity: 1; }
-          }
-          .order-confirmation-container {
-            animation: slideInUp 0.6s ease-out;
-          }
-          .success-icon {
-            animation: celebrateSuccess 0.8s ease-out;
-          }
-          @media (max-width: 640px) {
-            .order-confirmation-container {
-              margin: 16px auto !important;
-              padding: 16px !important;
-              max-width: calc(100vw - 32px) !important;
-            }
-          }
-        `}
-      </style>
-      {/* Persistent redemption banner */}
-      {nextActionUrl && (
-        <div
-          className="fixed bottom-0 left-0 w-full bg-gradient-to-r from-green-400 to-green-600 text-white text-center py-4 cursor-pointer shadow-lg z-50"
-          role="button"
-          aria-live="polite"
-          onClick={async () => {
-            try {
-              await api.post(nextActionUrl);
-              toast.success('Wash redeemed for loyalty points!');
-              navigate('/myloyalty');
-            } catch {
-              toast.error('Could not redeem wash. Please try again.');
-            }
-          }}
-          style={{
-            background: 'linear-gradient(45deg, #10b981, #059669)',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
-            animation: 'pulse 2s infinite',
-            transform: 'scale(1)',
-            transition: 'transform 0.2s'
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.transform = 'scale(0.98)';
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-            🎁 Tap here to redeem your wash for loyalty points
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.9 }}>
-            Complete your wash and earn rewards
-          </div>
-        </div>
-      )}
-      <StepIndicator currentStep={3} stepsCompleted={[1, 2]} />
-      <section 
-        className="order-confirmation-container"
-        style={{ 
-          margin: "32px auto", 
-          maxWidth: 400, 
-          padding: 24, 
-          background: "#fafbfc", 
-          borderRadius: 8,
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)"
-        }}
-      >
-        {/* Toast notifications */}
+    <div className="confirmation-wrapper">
+      <div className="confirmation-page">
+        <StepIndicator currentStep={3} stepsCompleted={[1, 2]} />
         <ToastContainer position="top-right" />
-        <div className="success-icon" style={{ textAlign: "center", marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: "48px",
-            marginBottom: "8px",
-            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
-          }}>
-            ✅
-          </div>
-        </div>
-        <h1 style={{ marginBottom: 16, textAlign: "center" }}>Your Order Is Confirmed!</h1>
-        {/* Order Status Badge */}
-        {orderStatus && (
-          <div style={{
-            textAlign: "center",
-            marginBottom: 16
-          }}>
-            <span style={{
-              padding: "6px 12px",
-              borderRadius: 12,
-              fontSize: "14px",
-              fontWeight: "bold",
-              backgroundColor: 
-                orderStatus === "paid" ? "#d4edda" :
-                orderStatus === "in_progress" ? "#fff3cd" :
-                orderStatus === "completed" ? "#d1ecf1" : "#f8d7da",
-              color:
-                orderStatus === "paid" ? "#155724" :
-                orderStatus === "in_progress" ? "#856404" :
-                orderStatus === "completed" ? "#0c5460" : "#721c24"
-            }}>
-              Status: {orderStatus.replace(/_/g, ' ').toUpperCase()}
-            </span>
-          </div>
-        )}
-        {error && (
-          <div style={{
-            background: "#ffeaea",
-            color: "#b00020",
-            padding: "12px 18px",
-            borderRadius: 6,
-            marginBottom: 16,
-            fontWeight: "bold"
-          }}>
-            {error}
+        
+        {/* Persistent redemption banner */}
+        {nextActionUrl && (
+          <div
+            className="redemption-banner"
+            role="button"
+            aria-live="polite"
+            onClick={async () => {
+              try {
+                await api.post(nextActionUrl);
+                toast.success('Wash redeemed for loyalty points!');
+                navigate('/myloyalty');
+              } catch {
+                toast.error('Could not redeem wash. Please try again.');
+              }
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = 'scale(0.98)';
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            <div className="redemption-banner-title">
+              🎁 Tap here to redeem your wash for loyalty points
+            </div>
+            <div className="redemption-banner-subtitle">
+              Complete your wash and earn rewards
+            </div>
           </div>
         )}
-        <div style={{ margin: "1rem 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          {qrCodeBase64 ? (
-            <img
-              src={`data:image/png;base64,${qrCodeBase64}`}
-              alt="Payment QR Code"
-              style={{ width: 200, height: 200 }}
-            />
-          ) : qrData ? (
-            <QRCode value={qrData} size={200} />
-          ) : (
-            <div style={{ color: "#b00020", marginBottom: 12 }}>No QR code available.</div>
+
+        <div className="confirmation-container">
+          {/* Success Icon */}
+          <div className="success-icon">
+            <span className="success-icon-emoji">✅</span>
+          </div>
+          
+          {/* Title */}
+          <h1 className="confirmation-title">Your Order Is Confirmed!</h1>
+          
+          {/* Order Status Badge */}
+          {orderStatus && (
+            <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+              <span className={`status-badge ${orderStatus === "paid" || orderStatus === "completed" ? "confirmed" : "processing"}`}>
+                Status: {orderStatus.replace(/_/g, ' ').toUpperCase()}
+              </span>
+            </div>
           )}
+          
+          {/* Error Message */}
+          {error && (
+            <div className="error-card">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Payment Card */}
+        <div className="info-card payment-card">
+          <h3 className="card-title">Payment Details</h3>
+          
+          {/* Payment PIN */}
           {paymentPin && (
-            <div style={{
-              marginTop: 16,
-              padding: "12px 24px",
-              background: "#e9ecef",
-              borderRadius: 6,
-              fontSize: 22,
-              fontWeight: "bold",
-              letterSpacing: 4,
-              color: "#333"
-            }}>
-              Payment PIN: <span style={{ color: "#007bff" }}>{paymentPin}</span>
+            <div className="payment-pin-section">
+              <div className="payment-pin-label">Payment PIN</div>
+              <div className="payment-pin-value">{paymentPin}</div>
             </div>
           )}
+          
+          {/* Amount */}
           {amount > 0 && (
-            <div style={{
-              marginTop: 12,
-              fontSize: 18,
-              color: "#222"
-            }}>
-              Amount Paid: <span style={{ fontWeight: "bold" }}>R{(amount / 100).toFixed(2)}</span>
+            <div className="amount-section">
+              <span className="amount-label">Amount Paid:</span>
+              <span className="amount-value">R{(amount / 100).toFixed(2)}</span>
             </div>
           )}
+          
+          {/* QR Code Section */}
+          <div className="qr-section">
+            <h4 className="qr-title">Payment QR Code</h4>
+            <div className="qr-code-container">
+              {qrCodeBase64 ? (
+                <img
+                  src={`data:image/png;base64,${qrCodeBase64}`}
+                  alt="Payment QR Code"
+                  style={{ width: 200, height: 200 }}
+                />
+              ) : qrData ? (
+                <QRCode value={qrData} size={200} />
+              ) : (
+                <div style={{ color: "#dc2626", marginBottom: "0.75rem" }}>
+                  No QR code available.
+                </div>
+              )}
+            </div>
+            <p className="qr-instructions">
+              Show this QR code at the car wash station to complete your payment
+            </p>
+          </div>
         </div>
-        {/* Order summary and timestamp */}
+
+        {/* Order Summary Card */}
         {summary.length > 0 && (
-          <div style={{ marginTop: 12, textAlign: 'center' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: 8 }}>Order Summary</h3>
-            <ul style={{ listStyle: 'disc inside', fontSize: '14px', color: '#555' }}>
+          <div className="info-card order-card">
+            <h3 className="card-title">Order Summary</h3>
+            <ul className="order-summary-list">
               {summary.map((item, idx) => <li key={idx}>{item}</li>)}
             </ul>
             {loyaltyEligible && (
-              <div style={{
-                marginTop: 8,
-                padding: "8px 12px",
-                background: "#e8f5e8",
-                color: "#2d6a2d",
-                borderRadius: 6,
-                fontSize: "13px",
-                fontWeight: "bold"
-              }}>
+              <div className="loyalty-eligible-badge">
                 ✓ This order is eligible for loyalty points!
+              </div>
+            )}
+            {/* Timestamp */}
+            {timestamp && (
+              <div className="order-timestamp">
+                Ordered on: {new Date(timestamp).toLocaleString()}
               </div>
             )}
           </div>
         )}
-        {timestamp && (
-          <div style={{ marginTop: 8, fontSize: '12px', color: '#888', textAlign: 'center' }}>
-            Ordered on: {new Date(timestamp).toLocaleString()}
-          </div>
-        )}
-        {/* Loyalty Progress Section */}
+        
+        {/* Loyalty Progress Card */}
         {loyaltyProgress && enableLoyalty && (
-          <div style={{ marginTop: 16, padding: 16, background: '#f0f9ff', borderRadius: 8, border: '1px solid #bfdbfe' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: 8, color: '#1e40af' }}>Loyalty Progress</h3>
-            <div style={{ fontSize: '14px', marginBottom: 8 }}>
+          <div className="info-card loyalty-card">
+            <h3 className="card-title">Loyalty Progress</h3>
+            <div className="loyalty-progress-visits">
               Total visits: <strong>{loyaltyProgress.visits}</strong>
             </div>
             {loyaltyProgress.upcomingRewards.length > 0 && (
-              <div style={{ fontSize: '14px' }}>
-                <div>🎁 Next reward at <strong>{loyaltyProgress.nextMilestone}</strong> visits</div>
-                <div style={{ color: '#6b7280', fontSize: '12px' }}>
+              <div className="loyalty-progress-rewards">
+                <div className="next-reward">
+                  🎁 Next reward at <strong>{loyaltyProgress.nextMilestone}</strong> visits
+                </div>
+                <div className="visits-needed">
                   {loyaltyProgress.upcomingRewards[0].visits_needed} more visits to earn: {loyaltyProgress.upcomingRewards[0].reward}
                 </div>
               </div>
             )}
           </div>
         )}
-        {/* Next Steps Section */}
-        {(estimatedWashTime !== null || notificationMessage) && (
-          <div style={{ marginTop: 16, padding: 16, background: '#fffbeb', borderRadius: 8, border: '1px solid #fbbf24' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: 12, color: '#92400e', display: 'flex', alignItems: 'center' }}>
-              🚗 Next Steps
-            </h3>
+
+        {/* Next Steps Card */}
+        {(estimatedWashTime !== null || notificationMessage || bayNumber !== null) && (
+          <div className="info-card steps-card">
+            <h3 className="card-title">🚗 Next Steps</h3>
             {notificationMessage && (
-              <div style={{ 
-                padding: '12px',
-                background: '#f59e0b',
-                color: 'white',
-                borderRadius: 6,
-                marginBottom: 8,
-                fontWeight: 'bold',
-                textAlign: 'center'
-              }}>
+              <div className="notification-message">
                 {notificationMessage}
               </div>
             )}
-            <div style={{ display: 'grid', gap: '8px' }}>
+            <div className="next-steps-grid">
               {estimatedWashTime !== null && (
-                <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
-                  <span style={{ marginRight: '8px' }}>⏱️</span>
+                <div className="step-item">
+                  <span className="step-icon">⏱️</span>
                   <span>Estimated wash time: <strong>{estimatedWashTime} minutes</strong></span>
                 </div>
               )}
               {bayNumber !== null && (
-                <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
-                  <span style={{ marginRight: '8px' }}>🅿️</span>
+                <div className="step-item">
+                  <span className="step-icon">🅿️</span>
                   <span>Your bay number: <strong>{bayNumber}</strong></span>
                 </div>
               )}
             </div>
           </div>
         )}
-        <p style={{ margin: "16px 0", textAlign: "center", color: "#6b7280" }}>
-          Show this QR code or PIN to staff to verify your payment. You can also find it in the Past Orders tab.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "24px" }}>
+
+        {/* Instructions Card */}
+        <div className="info-card instructions-card">
+          <p className="instructions-text">
+            Show this QR code or PIN to staff to verify your payment. You can also find it in the Past Orders tab.
+          </p>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="action-buttons">
           {/* Primary Actions */}
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
+          <div className="primary-actions">
             <button
               onClick={() => navigate("/")}
-              style={{
-                padding: "12px 24px",
-                borderRadius: 8,
-                background: "#6366f1",
-                color: "#fff",
-                border: "none",
-                fontWeight: "bold",
-                cursor: "pointer",
-                fontSize: "14px",
-                transition: "all 0.2s",
-                boxShadow: "0 2px 4px rgba(99, 102, 241, 0.3)"
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = "#4f46e5";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = "#6366f1";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
+              className="action-button primary-button"
             >
               🏠 Home
             </button>
@@ -502,26 +441,7 @@ const OrderConfirmation: React.FC = () => {
                   track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
                   navigate("/past-orders");
                 }}
-                style={{
-                  padding: "12px 24px",
-                  borderRadius: 8,
-                  background: "#007bff",
-                  color: "#fff",
-                  border: "none",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  transition: "all 0.2s",
-                  boxShadow: "0 2px 4px rgba(0, 123, 255, 0.3)"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "#0056b3";
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "#007bff";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
+                className="action-button secondary-button"
               >
                 📋 View Orders
               </button>
@@ -529,55 +449,20 @@ const OrderConfirmation: React.FC = () => {
             {enableLoyalty && (
               <button
                 onClick={() => navigate("/myloyalty")}
-                style={{
-                  padding: "12px 24px",
-                  borderRadius: 8,
-                  background: "#10b981",
-                  color: "#fff",
-                  border: "none",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  transition: "all 0.2s",
-                  boxShadow: "0 2px 4px rgba(16, 185, 129, 0.3)"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "#059669";
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "#10b981";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
+                className="action-button success-button"
               >
                 🎁 My Loyalty
               </button>
             )}
           </div>
+          
           {/* Secondary Actions */}
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
+          <div className="secondary-actions">
             {qrCodeBase64 && (
               <a
                 href={`data:image/png;base64,${qrCodeBase64}`} 
                 download={`order-${orderId}.png`}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: 6,
-                  background: "#f3f4f6",
-                  color: "#374151",
-                  border: "1px solid #d1d5db",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  textDecoration: 'none',
-                  fontSize: "13px",
-                  transition: "all 0.2s"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "#e5e7eb";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "#f3f4f6";
-                }}
+                className="download-button"
               >
                 💾 Download QR
               </a>
@@ -589,38 +474,21 @@ const OrderConfirmation: React.FC = () => {
                   track('cta_click', { label: 'Copy PIN', page: 'OrderConfirmation' });
                   toast.success('PIN copied to clipboard');
                 }}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: 6,
-                  background: "#f3f4f6",
-                  color: "#374151",
-                  border: "1px solid #d1d5db",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  transition: "all 0.2s"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "#e5e7eb";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "#f3f4f6";
-                }}
+                className="copy-button"
               >
                 📋 Copy PIN
               </button>
             )}
           </div>
         </div>
-        <div className="mt-6 text-xs text-gray-400 text-center">
-          Secured by <span className="font-bold text-blue-500">YOCO</span>
+        
+        {/* Footer */}
+        <div className="security-footer">
+          Secured by <span className="yoco-brand">YOCO</span>
         </div>
-        <Outlet />
-      </section>
-    </PageLayout>
+      </div>
+    </div>
   );
 };
 
 export default OrderConfirmation;
-
-// This page has been moved to src/features/order/pages/OrderConfirmation.tsx

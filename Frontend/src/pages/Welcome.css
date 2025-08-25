@@ -1,0 +1,343 @@
+/* Welcome.css */
+
+/* 
+ * Unified Typography Scale:
+ * h1 (Page Headers): 2.5rem (desktop) / 2rem (mobile)
+ * h2 (Section Headers): 1.5rem  
+ * h3 (Card Titles): 1.2rem
+ * Subtitle/Large Text: 1.1rem
+ * Body Text: 1rem
+ * Small Text: 0.9rem
+ * Extra Small: 0.8rem
+ * Font Family: System fonts for optimal performance
+ * Line Height: 1.6 for readability
+ */
+
+.welcome-page {
+	padding: 1.5rem 1rem;
+	max-width: 1200px;
+	margin: 0 auto;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	min-height: 100vh;
+	color: white;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+	line-height: 1.6;
+	/* Add padding bottom to ensure content doesn't get hidden by bottom nav */
+	padding-bottom: 6rem;
+}
+
+/* Header Section */
+.welcome-header {
+	text-align: center;
+	margin-bottom: 2rem;
+}
+
+.welcome-header h1 {
+	font-size: 2.5rem;
+	font-weight: bold;
+	margin-bottom: 0.5rem;
+	color: white;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	line-height: 1.2;
+}
+
+.welcome-header .subtitle {
+	font-size: 1.1rem;
+	margin: 0 0 1rem 0;
+	opacity: 0.9;
+	color: white;
+}
+
+/* Welcome Message Card */
+.welcome-message-card {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border-radius: 20px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	max-width: 500px;
+	margin: 0 auto 2rem auto;
+	padding: 2rem;
+	text-align: center;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+}
+
+.welcome-message-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.welcome-message-card h2 {
+	font-size: 1.5rem;
+	font-weight: 600;
+	margin-bottom: 1rem;
+	color: white;
+}
+
+.welcome-message-card .description {
+	font-size: 1rem;
+	opacity: 0.9;
+	margin-bottom: 1.5rem;
+	line-height: 1.5;
+}
+
+/* Action Buttons */
+.action-buttons {
+	display: flex;
+	gap: 1rem;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.action-btn {
+	padding: 0.75rem 1.5rem;
+	border-radius: 12px;
+	border: none;
+	font-size: 0.9rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	text-decoration: none;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 140px;
+	justify-content: center;
+}
+
+.action-btn-primary {
+	background: linear-gradient(135deg, #22c55e, #16a34a);
+	color: white;
+	box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.action-btn-primary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+.action-btn-secondary {
+	background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+	color: white;
+	box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.action-btn-secondary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Status and Panels Grid */
+.panels-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 1.5rem;
+	margin-bottom: 2rem;
+}
+
+/* Status Message */
+.status-message {
+	grid-column: 1 / -1;
+	background: rgba(255, 255, 255, 0.15);
+	backdrop-filter: blur(10px);
+	border-radius: 15px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	padding: 1.5rem;
+	text-align: center;
+	margin-bottom: 1rem;
+}
+
+.status-message.active {
+	background: rgba(59, 130, 246, 0.2);
+	border-color: rgba(59, 130, 246, 0.3);
+}
+
+.status-message.ready {
+	background: rgba(34, 197, 94, 0.2);
+	border-color: rgba(34, 197, 94, 0.3);
+}
+
+.status-message h3 {
+	font-size: 1.2rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+.status-message p {
+	font-size: 1rem;
+	opacity: 0.9;
+	margin: 0;
+}
+
+/* Panel Cards */
+.panel-card {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border-radius: 20px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	padding: 2rem;
+	text-align: center;
+	transition: all 0.3s ease;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.panel-card:hover {
+	transform: translateY(-5px);
+	background: rgba(255, 255, 255, 0.15);
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.panel-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+	display: block;
+}
+
+.panel-icon.wash-icon {
+	color: #3b82f6;
+}
+
+.panel-icon.loyalty-icon {
+	color: #22c55e;
+}
+
+.panel-card h3 {
+	font-size: 1.5rem;
+	font-weight: 600;
+	margin-bottom: 1rem;
+	color: white;
+}
+
+.panel-card .description {
+	font-size: 0.9rem;
+	opacity: 0.8;
+	margin-bottom: 1.5rem;
+	line-height: 1.5;
+}
+
+/* Progress Circle */
+.progress-container {
+	width: 120px;
+	height: 120px;
+	margin: 0 auto 1.5rem auto;
+}
+
+/* Loyalty Specific */
+.loyalty-info {
+	margin-top: 1rem;
+}
+
+.loyalty-info p {
+	font-size: 0.9rem;
+	margin-bottom: 0.5rem;
+	opacity: 0.9;
+}
+
+.claim-button {
+	background: linear-gradient(135deg, #fbbf24, #f59e0b);
+	color: #92400e;
+	padding: 0.75rem 1.5rem;
+	border-radius: 12px;
+	border: none;
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+}
+
+.claim-button:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
+}
+
+/* Scroll Protection for Bottom Navigation */
+.welcome-page {
+	/* Ensure content never gets hidden by bottom nav */
+	min-height: calc(100vh - 4rem);
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 768px) {
+	.welcome-page {
+		padding: 1rem 0.75rem 7rem 0.75rem; /* Extra bottom padding for bottom nav */
+		min-height: calc(100vh - 4rem);
+	}
+	
+	.welcome-header h1 {
+		font-size: 2rem;
+		line-height: 1.2;
+	}
+	
+	.welcome-header .subtitle {
+		font-size: 1rem;
+	}
+	
+	.welcome-message-card {
+		margin: 0 0 1.5rem 0;
+		padding: 1.5rem;
+		border-radius: 15px;
+	}
+	
+	.welcome-message-card h2 {
+		font-size: 1.2rem;
+	}
+	
+	.action-buttons {
+		flex-direction: column;
+		align-items: center;
+	}
+	
+	.action-btn {
+		width: 100%;
+		max-width: 250px;
+	}
+	
+	.panels-grid {
+		grid-template-columns: 1fr;
+		gap: 1rem;
+	}
+	
+	.panel-card {
+		padding: 1.5rem;
+		border-radius: 15px;
+	}
+	
+	.panel-icon {
+		font-size: 2.5rem;
+	}
+	
+	.progress-container {
+		width: 100px;
+		height: 100px;
+	}
+}
+
+/* Responsive Typography */
+@media (max-width: 1024px) {
+	.welcome-page {
+		padding: 1.25rem 1rem 6rem 1rem;
+	}
+}
+
+/* Ensure bottom navigation never overlaps content */
+@media (max-width: 767px) {
+	.welcome-page {
+		/* Force bottom padding to prevent bottom nav overlap */
+		padding-bottom: 8rem !important;
+	}
+}
+
+/* Additional protection for very small screens */
+@media (max-width: 480px) {
+	.welcome-page {
+		padding-bottom: 9rem !important;
+	}
+	
+	.welcome-message-card {
+		margin-left: 0.5rem;
+		margin-right: 0.5rem;
+	}
+}

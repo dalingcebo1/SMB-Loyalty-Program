@@ -7,7 +7,8 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
-import PageLayout from "../components/PageLayout";
+import "./Payment.css";
+import "../styles/yoco-modal.css";
 
 interface LocationState {
   orderId: string;
@@ -17,9 +18,41 @@ interface LocationState {
   paymentPin?: string;
 }
 
+interface RewardData {
+  reward: string;
+  expiry?: string;
+  milestone?: number;
+}
+
+interface YocoResult {
+  id: string;
+  status: string;
+  error?: {
+    message?: string;
+  };
+  [key: string]: unknown;
+}
+
 declare global {
   interface Window {
-    YocoSDK: any;
+    YocoSDK: {
+      new (options: { publicKey: string }): {
+        showPopup: (options: {
+          amountInCents: number;
+          currency: string;
+          name: string;
+          description: string;
+          callback: (result: YocoResult) => void;
+        }) => void;
+      };
+      popup: (options: {
+        amountInCents: number;
+        currency: string;
+        name: string;
+        description: string;
+        callback: (result: YocoResult) => void;
+      }) => void;
+    };
   }
 }
 
@@ -70,8 +103,6 @@ const Payment: React.FC = () => {
   useEffect(() => {
     track('page_view', { page: 'Payment' });
   }, []);
-  // Redirect anonymous users
-  if (!user) return <Navigate to="/login" replace />;
 
   useEffect(() => {
     // Validate all required state fields
@@ -152,7 +183,7 @@ const Payment: React.FC = () => {
     api.get("/loyalty/me", { params: { phone: user.phone } })
       .then(res => {
         const reward = res.data.rewards_ready?.find(
-          (r: any) =>
+          (r: RewardData) =>
             r.reward.toLowerCase().includes("full house") ||
             r.reward.toLowerCase().includes("free wash")
         );
@@ -168,6 +199,9 @@ const Payment: React.FC = () => {
       .finally(() => setLoadingReward(false));
   }, [user]);
 
+  // Redirect anonymous users
+  if (!user) return <Navigate to="/login" replace />;
+
   const handleApplyReward = async () => {
     // Analytics: CTA click for applying reward
     track('cta_click', { label: 'Apply Reward', page: 'Payment' });
@@ -182,8 +216,9 @@ const Payment: React.FC = () => {
       } else {
         toast.error("No valid reward found.");
       }
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Could not apply reward.");
+    } catch (e: unknown) {
+      const errorMessage = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Could not apply reward.";
+      toast.error(errorMessage);
     }
     setPaying(false);
   };
@@ -197,7 +232,7 @@ const Payment: React.FC = () => {
       if (rewardApplied) {
         try {
           await api.post(`/orders/${orderId}/redeem`);
-        } catch (e) {
+        } catch {
           // Optionally handle error
         }
       }
@@ -227,12 +262,12 @@ const Payment: React.FC = () => {
         currency: "ZAR",
         name: "SMB Loyalty Payment",
         description: `Order #${orderId}`,
-        callback: async (result: any) => {
+        callback: async (result: YocoResult) => {
           if (result.error) {
             setPaying(false);
             toast.error(result.error.message || "Payment failed. Please try again.");
           } else {
-            toast.success("Payment successful! Finalizing...");
+            // Remove the toast and make it instant
             try {
               await api.post("/payments/charge", {
                 token: result.id,
@@ -243,7 +278,7 @@ const Payment: React.FC = () => {
               if (rewardApplied) {
                 try {
                   await api.post(`/orders/${orderId}/redeem`);
-                } catch (e) {
+                } catch {
                   // Optionally handle error
                 }
               }
@@ -267,20 +302,22 @@ const Payment: React.FC = () => {
               };
               localStorage.setItem("lastOrderConfirmation", JSON.stringify(confirmationData));
 
+              // Show success toast only after navigating
+              toast.success("Payment successful!", { autoClose: 2000 });
               navigate("/order/confirmation", { state: confirmationData });
-            } catch (err: any) {
+            } catch (err: unknown) {
               setPaying(false);
-              toast.error(
-                err?.response?.data?.detail ||
-                  "Payment could not be completed. Please contact support."
-              );
+              const errorMessage = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 
+                "Payment could not be completed. Please contact support.";
+              toast.error(errorMessage);
             }
           }
         },
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       setPaying(false);
-      toast.error("Unexpected error: " + (e.message || e));
+      const errorMessage = (e as Error)?.message || String(e);
+      toast.error("Unexpected error: " + errorMessage);
     }
   };
 
@@ -289,60 +326,58 @@ const Payment: React.FC = () => {
   const hasRewardExpired = rewardInfo?.expiry ? new Date(rewardInfo.expiry) < new Date() : false;
 
   return (
-    <PageLayout>
-      <StepIndicator currentStep={2} stepsCompleted={[1]} />
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center px-2 py-4">
+    <div className="payment-wrapper">
+      <div className="payment-page">
+        <StepIndicator currentStep={2} stepsCompleted={[1]} />
         <ToastContainer position="top-right" />
-        <div className="w-full sm:max-w-md bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">Complete Your Payment</h2>
-          <div className="text-lg font-semibold text-center mb-6">
-            Amount: <span className="text-black font-bold">R {(amountToPay / 100).toFixed(2)}</span>
+        <div className="payment-container">
+          <h2 className="payment-title">Complete Your Payment</h2>
+          <div className="payment-amount">
+            Amount: <span className="payment-amount-value">R {(amountToPay / 100).toFixed(2)}</span>
           </div>
           {/* Loyalty section: show loading, eligibility or reward info */}
           {loadingEligibility ? (
-            <div className="text-center mb-4 text-gray-500">Checking loyalty eligibility…</div>
+            <div className="payment-status loading">Checking loyalty eligibility…</div>
           ) : rewardInfo ? (
             canApplyLoyalty ? (
               hasRewardExpired ? (
-                <div className="mb-4 text-center text-red-500">
+                <div className="payment-status error">
                   Loyalty Reward Expired
                 </div>
               ) : (
-                <div className="mb-4 text-center">
-                  <div className="text-green-700 font-semibold">
+                <div className="payment-status success">
+                  <div>
                     Loyalty Reward Available: {rewardInfo.reward}
                   </div>
                   {rewardInfo.expiry && (
-                    <div className="text-xs text-gray-500">
+                    <div className="expiry-text">
                       Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
                     </div>
                   )}
                 </div>
               )
             ) : (
-              <div className="mb-4 text-center">
-                <div className="text-gray-500 font-semibold">
-                  Loyalty rewards cannot be applied to this service.
-                </div>
+              <div className="payment-status info">
+                Loyalty rewards cannot be applied to this service.
               </div>
             )
           ) : null}
           {summary.length > 0 && (
-            <div className="mb-4">
-              <h3 className="font-semibold text-gray-700 mb-2 text-center">Order Summary</h3>
-              <ul className="text-sm text-gray-600 list-disc list-inside">
+            <div className="order-summary">
+              <h3 className="order-summary-title">Order Summary</h3>
+              <ul className="order-summary-list">
                 {summary.map((item, idx) => (
-                  <li key={idx}>{item}</li>
+                  <li key={idx} className="order-summary-item">{item}</li>
                 ))}
               </ul>
             </div>
           )}
-          <div className="flex flex-col gap-3">
+          <div className="payment-buttons">
             <button
               onClick={handlePay}
               disabled={paying || !yocoLoaded}
-              className={`w-full py-2 rounded text-white font-semibold transition ${
-                paying || !yocoLoaded ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+              className={`payment-button ${
+                paying || !yocoLoaded ? "" : "primary"
               }`}
             >
               {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
@@ -351,28 +386,28 @@ const Payment: React.FC = () => {
               <button
                 onClick={handleApplyReward}
                 disabled={paying || loadingReward}
-                className="w-full py-2 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="payment-button success"
               >
                 {loadingReward ? 'Checking reward…' : 'Apply Reward'}
               </button>
             )}
             {rewardInfo && hasRewardExpired && (
-              <div className="text-center text-red-500 font-semibold">
+              <div className="payment-status error">
                 This reward has expired.
               </div>
             )}
             {rewardApplied && (
-              <div className="text-green-700 text-center font-semibold">
+              <div className="reward-applied">
                 Reward applied! New total: R{(amountToPay / 100).toFixed(2)}
               </div>
             )}
           </div>
-          <div className="mt-6 text-xs text-gray-400 text-center">
-            Secured by <span className="font-bold text-blue-500">YOCO</span>
+          <div className="payment-security">
+            Secured by <span className="payment-security-brand">YOCO</span>
           </div>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 };
 

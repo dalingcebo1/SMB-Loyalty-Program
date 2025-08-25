@@ -2,9 +2,134 @@ import React, { useState } from "react";
 import QRCode from "react-qr-code";
 import useFetch from "../hooks/useFetch";
 import { Order } from "../types";
-import PageLayout from "../components/PageLayout";
 import api from "../api/api";
 import { toast } from "react-toastify";
+import { 
+  FaCar, 
+  FaSearch, 
+  FaReceipt, 
+  FaRedo, 
+  FaCheckCircle, 
+  FaCarSide, 
+  FaSprayCan, 
+  FaCreditCard, 
+  FaTrophy, 
+  FaStar, 
+  FaFileAlt
+} from 'react-icons/fa';
+import './PastOrders.css';
+
+// OrderCard component for enhanced order display
+interface OrderCardProps {
+  order: Order;
+  onViewOrder: (id: string) => void;
+}
+
+const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder }) => {
+  const getOrderSummary = (order: Order) => {
+    let summary = order.service_name || "Full wash";
+    if (order.extras && order.extras.length > 0) {
+      const firstExtra = order.extras[0]?.name || "Extra";
+      if (order.extras.length === 1) {
+        summary += ` with ${firstExtra}`;
+      } else {
+        summary += ` with ${firstExtra} & Others`;
+      }
+    }
+    return summary;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'paid':
+      case 'completed':
+        return 'completed';
+      case 'pending':
+      case 'processing':
+        return 'pending';
+      case 'cancelled':
+      case 'failed':
+        return 'cancelled';
+      default:
+        return 'pending';
+    }
+  };
+
+  const formatOrderDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const orderDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    const diffTime = today.getTime() - orderDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return `Today • ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (diffDays === 1) return `Yesterday • ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (diffDays <= 7) return `${diffDays} days ago • ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div className="order-card" onClick={() => onViewOrder(order.id)}>
+      <div className="order-header">
+        <div className="service-icon">
+          <FaCar className="icon" />
+        </div>
+        <div className="order-info">
+          <h3>{getOrderSummary(order)}</h3>
+          <div className="order-meta">
+            <span className="date">{formatOrderDate(order.created_at || '')}</span>
+            <span className={`badge ${getStatusBadge(order.status || '')}`}>
+              {(order.status || 'pending').toUpperCase()}
+            </span>
+          </div>
+        </div>
+        <div className="order-price">
+          <span className="currency">R</span>{((order.amount || 0) / 100).toFixed(0)}
+        </div>
+      </div>
+      
+      <div className="order-details">
+        <div className="detail-row">
+          <span className="label">Order ID</span>
+          <span className="value">#{order.id}</span>
+        </div>
+        <div className="detail-row">
+          <span className="label">Payment Method</span>
+          <span className="value">Credit Card</span>
+        </div>
+        {order.payment_pin && (
+          <div className="detail-row">
+            <span className="label">PIN</span>
+            <span className="value">{order.payment_pin}</span>
+          </div>
+        )}
+        
+        <div className="loyalty-earned">
+          <FaStar className="loyalty-icon" />
+          <span>+1 visit progress earned</span>
+        </div>
+      </div>
+      
+      <div className="order-actions">
+        <button className="action-button primary" onClick={(e) => { e.stopPropagation(); onViewOrder(order.id); }}>
+          <FaReceipt /> View Details
+        </button>
+        <button className="action-button secondary" onClick={(e) => { e.stopPropagation(); window.location.href = '/order'; }}>
+          <FaRedo /> Book Again
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const PastOrders: React.FC = () => {
   const { data: orderData, loading: dataLoading, error } = useFetch<Order[]>("/orders/my-past-orders");
@@ -12,6 +137,8 @@ const PastOrders: React.FC = () => {
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
   const [modalLoading, setModalLoading] = useState<boolean>(false);
   const [showAll, setShowAll] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [timeFilter, setTimeFilter] = useState("all");
 
   // fetch a single order on “View”
   type ExtraLike = string | { id?: number; name?: string; title?: string; price_map?: Record<string, number> };
@@ -93,144 +220,355 @@ const PastOrders: React.FC = () => {
     return summary;
   };
 
+  // Helper to get status badge class
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'paid':
+      case 'completed':
+        return 'completed';
+      case 'pending':
+      case 'processing':
+        return 'pending';
+      case 'cancelled':
+      case 'failed':
+        return 'cancelled';
+      default:
+        return 'pending';
+    }
+  };
 
-  // Limit to 3 orders unless showAll is true
-  const visibleOrders = showAll ? orders : orders.slice(0, 3);
+  // Helper to format date nicely
+  const formatOrderDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const orderDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    const diffTime = today.getTime() - orderDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return `Today • ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (diffDays === 1) return `Yesterday • ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (diffDays <= 7) return `${diffDays} days ago • ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Helper to group orders by time periods
+  const groupOrdersByTime = (orders: Order[]) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const groups = {
+      today: [] as Order[],
+      thisWeek: [] as Order[],
+      thisMonth: [] as Order[],
+      earlier: [] as Order[]
+    };
+
+    orders.forEach(order => {
+      const orderDate = new Date(order.created_at || '');
+      const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+      
+      if (orderDateOnly.getTime() === today.getTime()) {
+        groups.today.push(order);
+      } else if (orderDate >= weekAgo) {
+        groups.thisWeek.push(order);
+      } else if (orderDate >= monthAgo) {
+        groups.thisMonth.push(order);
+      } else {
+        groups.earlier.push(order);
+      }
+    });
+
+    return groups;
+  };
+
+  // Filter and group orders
+  const filteredOrders = orders.filter(order => {
+    const searchMatch = searchTerm === "" || 
+      getOrderSummary(order).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Time filter logic would go here
+    return searchMatch;
+  });
+
+  const groupedOrders = groupOrdersByTime(filteredOrders);
 
   // Show skeleton loader while fetching past orders
   if (dataLoading) {
     return (
-      <PageLayout>
-        <div className="max-w-xl mx-auto py-8 space-y-6 animate-pulse">
-          <div className="h-6 bg-gray-300 rounded w-1/2 mx-auto" />
+      <div className="past-orders-page">
+        <div className="page-header">
+          <h1>Past Orders</h1>
+          <p className="subtitle">View your car wash history and reorder your favorites</p>
+        </div>
+        <div className="orders-loading">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-gray-200 p-4 rounded flex space-x-4">
-              <div className="h-8 w-8 bg-gray-300 rounded-full" />
-              <div className="flex-1 space-y-2 py-1">
-                <div className="h-4 bg-gray-300 rounded w-3/4" />
-                <div className="h-4 bg-gray-300 rounded w-1/2" />
+            <div key={i} className="skeleton-card">
+              <div className="skeleton-header">
+                <div className="skeleton-circle" />
+                <div className="skeleton-lines">
+                  <div className="skeleton-line-short" />
+                  <div className="skeleton-line-long" />
+                </div>
+              </div>
+              <div className="skeleton-body">
+                <div className="skeleton-line-full" />
+                <div className="skeleton-line-full" />
+              </div>
+              <div className="skeleton-actions">
+                <div className="skeleton-button" />
+                <div className="skeleton-button" />
               </div>
             </div>
           ))}
         </div>
-      </PageLayout>
+      </div>
     );
   }
   return (
-    <PageLayout
-      error={error}
-      onRetry={() => window.location.reload()}
-    >
-      <div className="max-w-xl mx-auto py-8">
-        <h1 className="text-2xl font-bold mb-6 text-center">Past Orders</h1>
-        {orders.length === 0 ? (
-          <div className="text-center text-gray-500">No past orders found.</div>
-        ) : (
-          <>
-            {visibleOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-white rounded shadow p-4 mb-6 flex flex-col"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-lg font-semibold mb-1 text-gray-900">
-                        {getOrderSummary(order)}
-                      </div>
-                      <div className="text-base text-gray-600 mb-1">
-                        {order.created_at
-                          ? new Date(order.created_at).toLocaleString()
-                          : ""}
-                      </div>
-                    </div>
-                    <button
-                      className="ml-4 px-4 py-2 bg-blue-600 text-white rounded font-medium"
-                      onClick={() => loadOrderDetails(order.id)}
-                    >
-                      View
-                    </button>
-                  </div>
-                </div>
-            ))}
-            {!showAll && orders.length > 3 && (
-              <div className="flex justify-center">
-                <button
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium"
-                  onClick={() => setShowAll(true)}
-                >
-                  View More
-                </button>
-              </div>
-            )}
-          </>
-        )}
+    <div className="past-orders-page">
+      <div className="page-header">
+        <h1>Past Orders</h1>
+        <p className="subtitle">View your car wash history and reorder your favorites</p>
+        <div className="filters">
+          <select 
+            className="filter-dropdown"
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value)}
+          >
+            <option value="all">All Time</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="quarter">Last 3 Months</option>
+          </select>
+          <div className="search-container">
+            <input 
+              type="text" 
+              placeholder="Search orders..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <FaSearch className="search-icon" />
+          </div>
+        </div>
       </div>
 
-      {/* full‐screen loader while fetching the single order */}
-      {modalLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded p-6">Loading order…</div>
+      {error && (
+        <div className="error-container">
+          <h2>Unable to load orders</h2>
+          <p className="error-message">{error}</p>
+          <button onClick={() => window.location.reload()} className="retry-button">
+            Try Again
+          </button>
         </div>
       )}
 
-      {/* once loaded, show the modal */}
+      {orders.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">
+            <FaFileAlt className="icon" />
+          </div>
+          <h3>No Orders Yet</h3>
+          <p>Your past orders will appear here once you've made a purchase.</p>
+          <button className="primary-button" onClick={() => window.location.href = '/order'}>
+            Book a Service
+          </button>
+        </div>
+      ) : (
+        <div className="orders-timeline">
+          {groupedOrders.today.length > 0 && (
+            <div className="time-section">
+              <h2>Today <span className="count">({groupedOrders.today.length})</span></h2>
+              <div className="orders-grid">
+                {groupedOrders.today.map((order) => (
+                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {groupedOrders.thisWeek.length > 0 && (
+            <div className="time-section">
+              <h2>This Week <span className="count">({groupedOrders.thisWeek.length})</span></h2>
+              <div className="orders-grid">
+                {groupedOrders.thisWeek.map((order) => (
+                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {groupedOrders.thisMonth.length > 0 && (
+            <div className="time-section">
+              <h2>This Month <span className="count">({groupedOrders.thisMonth.length})</span></h2>
+              <div className="orders-grid">
+                {groupedOrders.thisMonth.map((order) => (
+                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {groupedOrders.earlier.length > 0 && (
+            <div className="time-section">
+              <h2>Earlier <span className="count">({groupedOrders.earlier.length})</span></h2>
+              <div className="orders-grid">
+                {groupedOrders.earlier.slice(0, showAll ? undefined : 3).map((order) => (
+                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                ))}
+              </div>
+              {!showAll && groupedOrders.earlier.length > 3 && (
+                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                  <button
+                    className="primary-button"
+                    onClick={() => setShowAll(true)}
+                    style={{ background: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                  >
+                    View More Orders
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Loading overlay while fetching a single order */}
+      {modalLoading && (
+        <div className="order-modal-overlay">
+          <div className="bg-white rounded p-6 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading order details...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced order modal */}
       {modalOrder && !modalLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div
-            className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full flex flex-col items-center relative"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="order-details-title"
-            aria-describedby="order-details-desc"
-          >
+        <div className="order-modal-overlay" onClick={() => setModalOrder(null)}>
+          <div className="order-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
               <button
-                autoFocus
-                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="close-button"
                 onClick={() => setModalOrder(null)}
                 aria-label="Close dialog"
               >
                 &times;
               </button>
-              <h2 id="order-details-title" className="text-xl font-bold mb-2 text-center">
-                {getOrderSummary(modalOrder)}
-              </h2>
-              <QRCode value={modalOrder.id || 'unknown'} size={180} className="mb-4" />
-              <div className="mt-2 text-base text-gray-600 text-center">
-                Payment PIN: <span className="font-mono font-bold text-blue-600">{modalOrder.payment_pin}</span>
-              </div>
-              {typeof modalOrder.amount === "number" && (
-                <div className="mt-2 text-base text-gray-600 text-center">
-                  Amount Paid: <span className="font-semibold">R{(modalOrder.amount / 100).toFixed(2)}</span>
+              <h2>{getOrderSummary(modalOrder)}</h2>
+              <span className="order-id">Order #{modalOrder.id}</span>
+            </div>
+
+            <div className="order-timeline">
+              <div className="timeline-step completed">
+                <div className="step-icon"><FaCheckCircle /></div>
+                <div className="step-content">
+                  <h4>Order Placed</h4>
+                  <p>{formatOrderDate(modalOrder.created_at || '')}</p>
                 </div>
-              )}
-              <div className="mt-4 text-base text-gray-600 text-center">
-                Status:{' '}
-                <span className={modalOrder.status === "paid" ? "text-green-600" : "text-gray-600"}>
-                  {modalOrder.status.charAt(0).toUpperCase() + modalOrder.status.slice(1)}
-                </span>
               </div>
-              <div className="mt-2 text-base text-gray-600 text-center">
-                {modalOrder.order_redeemed_at ? (
-                  <span className="text-green-700 font-semibold">
-                    Redeemed {new Date(modalOrder.order_redeemed_at!).toLocaleString()}
+              <div className="timeline-connector completed"></div>
+              
+              <div className="timeline-step completed">
+                <div className="step-icon"><FaCarSide /></div>
+                <div className="step-content">
+                  <h4>Service Assigned</h4>
+                  <p>Bay assigned</p>
+                </div>
+              </div>
+              <div className="timeline-connector completed"></div>
+              
+              <div className="timeline-step completed">
+                <div className="step-icon"><FaSprayCan /></div>
+                <div className="step-content">
+                  <h4>Service Completed</h4>
+                  <p>Wash finished</p>
+                </div>
+              </div>
+              <div className="timeline-connector completed"></div>
+              
+              <div className="timeline-step completed">
+                <div className="step-icon"><FaCreditCard /></div>
+                <div className="step-content">
+                  <h4>Payment Processed</h4>
+                  <p>R{((modalOrder.amount || 0) / 100).toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="service-details">
+              <h3>Service Information</h3>
+              <div className="detail-table">
+                <div className="table-row">
+                  <span className="label">Service</span>
+                  <span className="value">{modalOrder.service_name || 'Full Wash'}</span>
+                </div>
+                <div className="table-row">
+                  <span className="label">Order ID</span>
+                  <span className="value">#{modalOrder.id}</span>
+                </div>
+                <div className="table-row">
+                  <span className="label">Status</span>
+                  <span className={`value status-${getStatusBadge(modalOrder.status || '')}`}>
+                    {(modalOrder.status || '').toUpperCase()}
                   </span>
-                ) : (
-                  <span className="text-red-600 font-semibold">Not redeemed</span>
-                )}
+                </div>
+                <div className="table-row">
+                  <span className="label">Total Paid</span>
+                  <span className="value">R{((modalOrder.amount || 0) / 100).toFixed(2)}</span>
+                </div>
               </div>
-              <p id="order-details-desc" className="mt-2 text-gray-500 text-center">
-                Show this QR or PIN to staff.
-              </p>
-              <button
-                className="mt-6 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onClick={() => setModalOrder(null)}
-              >
-                Close
+              
+              <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+                <QRCode value={modalOrder.id || 'unknown'} size={180} />
+                <div style={{ marginTop: '1rem', fontSize: '1.1rem' }}>
+                  Payment PIN: <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#ffd700' }}>
+                    {modalOrder.payment_pin}
+                  </span>
+                </div>
+                <p style={{ marginTop: '0.5rem', opacity: 0.8, fontSize: '0.9rem' }}>
+                  Show this QR code or PIN to staff for verification
+                </p>
+              </div>
+            </div>
+
+            <div className="loyalty-section">
+              <div className="loyalty-card">
+                <FaTrophy className="loyalty-icon" />
+                <div className="loyalty-info">
+                  <h4>Loyalty Progress</h4>
+                  <p>You earned points from this order!</p>
+                  <div className="progress-container">
+                    <div className="progress-bar" style={{ width: '70%' }}></div>
+                  </div>
+                  <p className="progress-text">Keep visiting to unlock rewards</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="action-button secondary">
+                <FaReceipt /> Download Receipt
               </button>
+              <button className="action-button primary" onClick={() => window.location.href = '/order'}>
+                <FaRedo /> Book Again
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </PageLayout>
+    </div>
   );
 };
 

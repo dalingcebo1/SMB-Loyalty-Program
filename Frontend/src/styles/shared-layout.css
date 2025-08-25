@@ -1,0 +1,280 @@
+/* Shared Layout Styles */
+/* Common patterns used across OrderForm, Payment, OrderConfirmation, and other pages */
+
+/* Page-level styles - consistent gradient background and typography */
+.page-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  
+  /* Layout */
+  padding: 1.5rem 1rem 6rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  line-height: 1.6;
+  box-sizing: border-box;
+  
+  /* Content container */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Glassmorphism containers - consistent across all pages */
+.glass-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+/* Center-aligned glass containers (for forms, payments, etc.) */
+.glass-container.centered {
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  overflow: hidden;
+}
+
+/* Wide glass containers (for listings, tables, etc.) */
+.glass-container.wide {
+  width: 100%;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Full-width glass containers */
+.glass-container.full-width {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Card-style containers with tighter spacing */
+.glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+/* Info cards for key-value displays */
+.info-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+/* Typography patterns */
+.page-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.page-subtitle {
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: white;
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1rem;
+}
+
+/* Header sections */
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* Common spacing patterns */
+.section-spacing {
+  margin-bottom: 2rem;
+}
+
+.content-spacing {
+  margin-bottom: 1.5rem;
+}
+
+.tight-spacing {
+  margin-bottom: 1rem;
+}
+
+/* Common flex layouts */
+.flex-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.flex-row.wrap {
+  flex-wrap: wrap;
+}
+
+.flex-row.center {
+  justify-content: center;
+}
+
+.flex-row.space-between {
+  justify-content: space-between;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.flex-column.center {
+  align-items: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .page-wrapper {
+    padding: 1.25rem 1rem 7rem 1rem;
+  }
+  
+  .glass-container {
+    padding: 1.5rem;
+  }
+  
+  .glass-card {
+    padding: 1.25rem;
+  }
+  
+  .info-card {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding: 1rem 0.75rem 8rem 0.75rem;
+  }
+  
+  .glass-container {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+  
+  .glass-card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  
+  .info-card {
+    padding: 0.875rem;
+    border-radius: 10px;
+  }
+  
+  .page-title {
+    font-size: 2rem;
+  }
+  
+  .section-title {
+    font-size: 1.25rem;
+  }
+  
+  .flex-row {
+    gap: 0.75rem;
+  }
+  
+  .flex-column {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-wrapper {
+    padding: 0.75rem 0.5rem 9rem 0.5rem;
+  }
+  
+  .glass-container {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  
+  .glass-card {
+    padding: 0.875rem;
+    border-radius: 10px;
+  }
+  
+  .info-card {
+    padding: 0.75rem;
+    border-radius: 8px;
+  }
+  
+  .page-title {
+    font-size: 1.75rem;
+  }
+  
+  .section-title {
+    font-size: 1.125rem;
+  }
+  
+  .flex-row {
+    gap: 0.5rem;
+  }
+  
+  .flex-column {
+    gap: 0.5rem;
+  }
+}
+
+/* Safe area support for modern devices */
+@supports (padding: max(0px)) {
+  .page-wrapper {
+    padding-bottom: max(6rem, env(safe-area-inset-bottom) + 4rem);
+  }
+  
+  @media (max-width: 1024px) {
+    .page-wrapper {
+      padding-bottom: max(7rem, env(safe-area-inset-bottom) + 5rem);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .page-wrapper {
+      padding-bottom: max(8rem, env(safe-area-inset-bottom) + 6rem);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .page-wrapper {
+      padding-bottom: max(9rem, env(safe-area-inset-bottom) + 7rem);
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { moduleFlags } from '../config/modules';
 import { FaHome, FaCar, FaHistory, FaGift, FaUser, FaClipboardList } from 'react-icons/fa';
+import './BottomNav.css';
 
 const BottomNav: React.FC = () => {
   const { user } = useAuth();
@@ -20,17 +21,17 @@ const BottomNav: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-2 shadow md:hidden">
+    <nav className="bottom-nav">
       {navOptions.map(opt => (
         <NavLink
           key={opt.to}
           to={opt.to}
           className={({ isActive }) =>
-            (isActive ? 'text-blue-600' : 'text-gray-600') + ' flex flex-col items-center text-sm'
+            `bottom-nav-item ${isActive ? 'active' : ''}`
           }
         >
-          {opt.icon}
-          <span className="mt-1">{opt.label}</span>
+          <div className="bottom-nav-icon">{opt.icon}</div>
+          <span className="bottom-nav-label">{opt.label}</span>
         </NavLink>
       ))}
     </nav>

@@ -3,15 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../../api/api';
 
 export interface RewardReady {
+  milestone: number;
   reward: string;
-  expiry?: string;
-  milestone?: number;
+  qr_reference?: string;
+  pin?: string;
+  status?: string;
+  expiry_at?: string;
+}
+
+export interface UpcomingReward {
+  milestone: number;
+  visits_needed: number;
+  reward: string;
 }
 
 export interface LoyaltyResponse {
-  points?: number;
-  rewards_ready?: RewardReady[];
-  // add other loyalty fields as needed
+  name: string;
+  phone: string;
+  visits: number;
+  rewards_ready: RewardReady[];
+  upcoming_rewards: UpcomingReward[];
 }
 
 /**

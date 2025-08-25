@@ -1,0 +1,208 @@
+/* YOCO Modal Enhancement */
+
+/* Target YOCO modal elements */
+.yoco-sdk-overlay {
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.yoco-sdk-modal {
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  overflow: hidden !important;
+}
+
+/* Title styling */
+.yoco-sdk-modal h2,
+.yoco-sdk-modal .yoco-modal-title {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: #1a202c !important;
+  margin-bottom: 1.5rem !important;
+  text-align: center !important;
+}
+
+/* Payment amount styling */
+.yoco-sdk-modal .yoco-amount {
+  font-size: 1.8rem !important;
+  font-weight: 700 !important;
+  color: #2d3748 !important;
+  text-align: center !important;
+  margin: 1rem 0 !important;
+}
+
+/* Card input styling */
+.yoco-sdk-modal input[type="text"],
+.yoco-sdk-modal input[type="tel"],
+.yoco-sdk-modal .yoco-input {
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 0.875rem 1rem !important;
+  font-size: 1rem !important;
+  transition: all 0.2s ease !important;
+  background: white !important;
+}
+
+.yoco-sdk-modal input[type="text"]:focus,
+.yoco-sdk-modal input[type="tel"]:focus,
+.yoco-sdk-modal .yoco-input:focus {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+  outline: none !important;
+}
+
+/* Card icons */
+.yoco-sdk-modal .yoco-card-icons {
+  display: flex !important;
+  gap: 0.5rem !important;
+  justify-content: center !important;
+  margin: 1rem 0 !important;
+}
+
+.yoco-sdk-modal .yoco-card-icon {
+  width: 40px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Pay button styling */
+.yoco-sdk-modal button[type="submit"],
+.yoco-sdk-modal .yoco-pay-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 1rem 2rem !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  width: 100% !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  margin-top: 1.5rem !important;
+}
+
+.yoco-sdk-modal button[type="submit"]:hover,
+.yoco-sdk-modal .yoco-pay-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
+}
+
+.yoco-sdk-modal button[type="submit"]:active,
+.yoco-sdk-modal .yoco-pay-button:active {
+  transform: translateY(0) !important;
+}
+
+/* Close button styling */
+.yoco-sdk-modal .yoco-close-button,
+.yoco-sdk-modal button[aria-label="Close"] {
+  position: absolute !important;
+  top: 1rem !important;
+  right: 1rem !important;
+  background: rgba(0, 0, 0, 0.1) !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  color: #666 !important;
+  font-size: 1.2rem !important;
+}
+
+.yoco-sdk-modal .yoco-close-button:hover,
+.yoco-sdk-modal button[aria-label="Close"]:hover {
+  background: rgba(0, 0, 0, 0.2) !important;
+  color: #333 !important;
+}
+
+/* Secured by YOCO footer */
+.yoco-sdk-modal .yoco-footer,
+.yoco-sdk-modal .yoco-branding {
+  text-align: center !important;
+  margin-top: 1.5rem !important;
+  padding-top: 1rem !important;
+  border-top: 1px solid #e2e8f0 !important;
+  color: #666 !important;
+  font-size: 0.9rem !important;
+}
+
+.yoco-sdk-modal .yoco-footer .yoco-brand,
+.yoco-sdk-modal .yoco-branding .yoco-brand {
+  color: #00d4aa !important;
+  font-weight: 600 !important;
+}
+
+/* Loading state */
+.yoco-sdk-modal .yoco-loading {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  color: #667eea !important;
+}
+
+/* Error styling */
+.yoco-sdk-modal .yoco-error {
+  background: rgba(248, 113, 113, 0.1) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(248, 113, 113, 0.3) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem !important;
+  margin: 1rem 0 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Success state */
+.yoco-sdk-modal .yoco-success {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #059669 !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem !important;
+  margin: 1rem 0 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Form layout improvements */
+.yoco-sdk-modal .yoco-form-group {
+  margin-bottom: 1rem !important;
+}
+
+.yoco-sdk-modal .yoco-form-row {
+  display: flex !important;
+  gap: 0.75rem !important;
+}
+
+.yoco-sdk-modal .yoco-form-row > * {
+  flex: 1 !important;
+}
+
+/* Label styling */
+.yoco-sdk-modal label {
+  display: block !important;
+  margin-bottom: 0.5rem !important;
+  font-weight: 500 !important;
+  color: #374151 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .yoco-sdk-modal {
+    margin: 1rem !important;
+    max-width: calc(100vw - 2rem) !important;
+  }
+  
+  .yoco-sdk-modal .yoco-form-row {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+}

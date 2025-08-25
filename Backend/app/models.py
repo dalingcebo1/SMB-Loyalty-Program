@@ -100,8 +100,8 @@ class Reward(Base):
 
 class Order(Base):
     __tablename__ = "orders"
-    # Use UUID string for order IDs
-    id         = Column(String, primary_key=True, index=True)
+    # Existing DB uses integer primary key; keep in sync with current schema
+    id         = Column(Integer, primary_key=True, index=True, autoincrement=True)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
     quantity   = Column(Integer, nullable=False, default=1)
     # Store extras as JSON list in SQLite
@@ -199,7 +199,7 @@ class InviteToken(Base):
 class OrderItem(Base):
     __tablename__ = "order_items"
     id         = Column(Integer, primary_key=True)
-    order_id   = Column(String, ForeignKey("orders.id"), nullable=False)
+    order_id   = Column(Integer, ForeignKey("orders.id"), nullable=False)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
     category   = Column(String, nullable=False)
     qty        = Column(Integer, nullable=False)
@@ -213,7 +213,7 @@ class OrderItem(Base):
 class OrderVehicle(Base):
     __tablename__ = "order_vehicles"
     id           = Column(Integer, primary_key=True)
-    order_id     = Column(String, ForeignKey("orders.id"),   nullable=False)
+    order_id     = Column(Integer, ForeignKey("orders.id"),   nullable=False)
     vehicle_id   = Column(Integer, ForeignKey("vehicles.id"),nullable=False)
 
     order   = relationship("Order", back_populates="vehicles")
@@ -223,7 +223,7 @@ class OrderVehicle(Base):
 class Payment(Base):
     __tablename__ = "payments"
     id            = Column(Integer, primary_key=True)
-    order_id      = Column(String, ForeignKey("orders.id"), nullable=False)
+    order_id      = Column(Integer, ForeignKey("orders.id"), nullable=False)
     # Make amount optional with default to support webhook updates without initial amount
     amount        = Column(Integer, nullable=True, default=0)
     # Make method optional with default to support webhook entries without initial method

@@ -5,7 +5,6 @@ import { Order } from "../types";
 import PageLayout from "../components/PageLayout";
 import api from "../api/api";
 import { toast } from "react-toastify";
-import FocusTrap from 'focus-trap-react';
 
 const PastOrders: React.FC = () => {
   const { data: orderData, loading: dataLoading, error } = useFetch<Order[]>("/orders/my-past-orders");
@@ -15,14 +14,66 @@ const PastOrders: React.FC = () => {
   const [showAll, setShowAll] = useState(false);
 
   // fetch a single order on “View”
+  type ExtraLike = string | { id?: number; name?: string; title?: string; price_map?: Record<string, number> };
+  interface RawOrderResponse {
+    id?: string | number;
+    orderId?: string | number;
+    service_id?: number;
+    serviceId?: number;
+  extras?: ExtraLike[]; // will normalize below
+    payment_pin?: string;
+    paymentPin?: string;
+    status?: string;
+    user_id?: number;
+    userId?: number;
+    created_at?: string;
+    createdAt?: string;
+    redeemed?: boolean;
+    started_at?: string | null;
+    startedAt?: string | null;
+    ended_at?: string | null;
+    endedAt?: string | null;
+    amount?: number;
+    service_name?: string;
+    serviceName?: string;
+    order_redeemed_at?: string | null;
+    orderRedeemedAt?: string | null;
+  }
+
   const loadOrderDetails = async (id: string) => {
     setModalLoading(true);
     try {
-      const { data } = await api.get<Order>(`/orders/${id}`);
-      setModalOrder(data);
+  const { data } = await api.get<RawOrderResponse>(`/orders/${id}`);
+      // Normalize differing backend field styles (camelCase vs snake_case)
+      const normalized: Order = {
+        id: String(data.id ?? data.orderId ?? id),
+        service_id: data.service_id ?? data.serviceId ?? 0,
+        extras: Array.isArray(data.extras)
+          ? data.extras.map((ex: ExtraLike, idx: number) =>
+              typeof ex === 'string'
+                ? { id: idx, name: ex, price_map: {} }
+                : {
+                    id: ex.id ?? idx,
+                    name: ex.name ?? ex.title ?? 'Extra',
+                    price_map: ex.price_map ?? {},
+                  }
+            )
+          : [],
+        payment_pin: data.payment_pin ?? data.paymentPin ?? '',
+        status: data.status ?? 'unknown',
+        user_id: data.user_id ?? data.userId ?? 0,
+        created_at: data.created_at ?? data.createdAt ?? new Date().toISOString(),
+        redeemed: Boolean(data.redeemed),
+        started_at: data.started_at ?? data.startedAt ?? null,
+        ended_at: data.ended_at ?? data.endedAt ?? null,
+        amount: data.amount,
+        service_name: data.service_name ?? data.serviceName,
+        order_redeemed_at: data.order_redeemed_at ?? data.orderRedeemedAt ?? null,
+      };
+      setModalOrder(normalized);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to load order details");
+      console.error('[PastOrders] loadOrderDetails error', err);
+      toast.error('Failed to load order details');
     } finally {
       setModalLoading(false);
     }
@@ -125,8 +176,13 @@ const PastOrders: React.FC = () => {
       {/* once loaded, show the modal */}
       {modalOrder && !modalLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <FocusTrap focusTrapOptions={{ onDeactivate: () => setModalOrder(null), clickOutsideDeactivates: true, escapeDeactivates: true }}>
-            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full flex flex-col items-center relative">
+          <div
+            className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full flex flex-col items-center relative"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-details-title"
+            aria-describedby="order-details-desc"
+          >
               <button
                 autoFocus
                 className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -138,7 +194,7 @@ const PastOrders: React.FC = () => {
               <h2 id="order-details-title" className="text-xl font-bold mb-2 text-center">
                 {getOrderSummary(modalOrder)}
               </h2>
-              <QRCode value={modalOrder.id} size={180} className="mb-4" />
+              <QRCode value={modalOrder.id || 'unknown'} size={180} className="mb-4" />
               <div className="mt-2 text-base text-gray-600 text-center">
                 Payment PIN: <span className="font-mono font-bold text-blue-600">{modalOrder.payment_pin}</span>
               </div>
@@ -171,8 +227,7 @@ const PastOrders: React.FC = () => {
               >
                 Close
               </button>
-            </div>
-          </FocusTrap>
+          </div>
         </div>
       )}
     </PageLayout>

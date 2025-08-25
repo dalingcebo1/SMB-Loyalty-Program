@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field  # type: ignore
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 
 # Legacy order creation schema for legacy endpoints
@@ -23,14 +23,14 @@ class OrderCreateRequest(BaseModel):
     extras: List[ExtraItem]
 
 class OrderCreateResponse(BaseModel):
-    order_id: str
-    qr_data: str
+    order_id: Union[str, int]
+    qr_data: Union[str, int]
     payment_pin: Optional[str] = None
     # ID of the user's default vehicle, if auto-assigned
     default_vehicle_id: Optional[int] = None
 
 class OrderBase(BaseModel):
-    id: str = Field(alias="orderId")
+    id: Union[str, int] = Field(alias="orderId")
     service_id: int = Field(alias="serviceId")
     quantity: int
     extras: list

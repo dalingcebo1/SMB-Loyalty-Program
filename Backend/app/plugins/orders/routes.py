@@ -1,9 +1,9 @@
 # Orders plugin routes (migrated from Backend/routes/orders.py)
-import uuid
 import random
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException  # type: ignore
 from sqlalchemy.orm import Session  # type: ignore
+from sqlalchemy.exc import IntegrityError  # type: ignore
 
 from datetime import datetime
 from app.core.database import get_db
@@ -30,18 +30,30 @@ from app.plugins.orders.schemas import (
  
 def _build_order_response(order, next_action_url: str = None):
     """Serialize Order to OrderDetailResponse-compatible dict."""
+    # Provide BOTH legacy snake_case and new camelCase keys for maximum compatibility.
     data = {
-        "id": order.id,
+        # ID
+        "id": str(order.id),
+        "orderId": str(order.id),
+        # Service
         "service_id": order.service_id,
+        "serviceId": order.service_id,
+        # Core order fields
         "quantity": order.quantity,
         "extras": order.extras,
         "payment_pin": order.payment_pin,
+        "paymentPin": order.payment_pin,
         "status": order.status,
         "user_id": order.user_id,
+        "userId": order.user_id,
         "created_at": order.created_at,
+        "createdAt": order.created_at,
         "redeemed": order.redeemed,
         "started_at": order.started_at,
+        "startedAt": order.started_at,
         "ended_at": order.ended_at,
+        "endedAt": order.ended_at,
+        # Related vehicles
         "vehicles": [ov.vehicle_id for ov in order.vehicles],
     }
     if next_action_url:
@@ -55,6 +67,11 @@ router = APIRouter(
 )
 
 def generate_payment_pin(db: Session) -> str:
+    """Generate a unique 4‑digit payment pin.
+
+    Uses a tight loop with DB existence check; probability of > a few iterations
+    is negligible. Kept separate so we can call again on IntegrityError retries.
+    """
     while True:
         pin = f"{random.randint(1000, 9999)}"
         if not db.query(Order).filter_by(payment_pin=pin).first():
@@ -71,16 +88,31 @@ def create_order(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    try:
-        for e in req.extras:
-            if not db.query(Extra).filter(Extra.id == e.id).first():
-                raise HTTPException(status_code=400, detail=f"Invalid extra id {e.id}")
+    """Create an order.
+
+    Improvements:
+    - Validate service exists (otherwise FK violation produced a 500 before)
+    - Validate extras up-front with clear 400s
+    - Retry payment pin generation on race-condition unique collisions
+    - Return clearer 500 only for unexpected errors
+    """
+    # 1. Validate service
+    svc = db.query(Service).filter(Service.id == req.service_id).first()
+    if not svc:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    # 2. Validate extras
+    for e in req.extras:
+        if not db.query(Extra).filter(Extra.id == e.id).first():
+            raise HTTPException(status_code=400, detail=f"Invalid extra id {e.id}")
+
+    extras_list = [{"id": e.id, "quantity": e.quantity} for e in req.extras]
+
+    # 3. Attempt create with at most a few retries for rare payment_pin collisions
+    last_error: Optional[str] = None
+    for attempt in range(5):
         pin = generate_payment_pin(db)
-        # Store extras as Python list for JSON column
-        extras_list = [{"id": e.id, "quantity": e.quantity} for e in req.extras]
-        # Store extras list for JSON column
         new_order = Order(
-            id=str(uuid.uuid4()),
             service_id=req.service_id,
             quantity=req.quantity,
             extras=extras_list,
@@ -88,26 +120,42 @@ def create_order(
             user_id=user.id,
         )
         db.add(new_order)
-        db.commit()
-        db.refresh(new_order)
-        # auto-assign default vehicle if user has exactly one vehicle
-        default_vehicle_id: Optional[int] = None
-        user_vehicles = db.query(Vehicle).filter_by(user_id=user.id).all()
-        if len(user_vehicles) == 1:
-            default_vehicle_id = user_vehicles[0].id
-            db.add(OrderVehicle(order_id=new_order.id, vehicle_id=default_vehicle_id))
+        try:
             db.commit()
             db.refresh(new_order)
-        return OrderCreateResponse(
-            order_id=new_order.id,
-            qr_data=new_order.id,
-            payment_pin=pin,
-            default_vehicle_id=default_vehicle_id,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Order creation failed: {str(e)}")
+            # Auto-assign default vehicle if exactly one user vehicle
+            default_vehicle_id: Optional[int] = None
+            user_vehicles = db.query(Vehicle).filter_by(user_id=user.id).all()
+            if len(user_vehicles) == 1:
+                default_vehicle_id = user_vehicles[0].id
+                db.add(OrderVehicle(order_id=new_order.id, vehicle_id=default_vehicle_id))
+                db.commit(); db.refresh(new_order)
+            return OrderCreateResponse(
+                order_id=str(new_order.id),  # keep response as string for backward compat
+                qr_data=str(new_order.id),
+                payment_pin=pin,
+                default_vehicle_id=default_vehicle_id,
+            )
+        except IntegrityError as ie:  # likely payment_pin race or FK (should be prevalidated)
+            db.rollback()
+            last_error = str(ie.orig)
+            # retry only for unique constraint on payment_pin
+            if "orders_payment_pin_key" in last_error or "duplicate key" in last_error:
+                continue
+            # other integrity errors are not retryable
+            break
+        except HTTPException:
+            db.rollback(); raise
+        except Exception as e:
+            db.rollback()
+            last_error = str(e)
+            break
+
+    # If we reach here, we failed to create
+    detail = "Order creation failed"
+    if last_error:
+        detail += f": {last_error}"
+    raise HTTPException(status_code=500, detail=detail)
 
 @router.get("", response_model=List[OrderResponse], summary="List all orders, optional status filter")
 def list_orders(
@@ -117,7 +165,23 @@ def list_orders(
     q = db.query(Order)
     if status:
         q = q.filter(Order.status == status)
-    return q.all()
+    orders = q.all()
+    serialized = []
+    for o in orders:
+        serialized.append({
+            "orderId": str(o.id),
+            "serviceId": o.service_id,
+            "quantity": o.quantity,
+            "extras": o.extras or [],
+            "paymentPin": o.payment_pin,
+            "status": o.status,
+            "userId": o.user_id,
+            "createdAt": o.created_at,
+            "redeemed": getattr(o, "redeemed", False),
+            "startedAt": getattr(o, "started_at", None),
+            "endedAt": getattr(o, "ended_at", None),
+        })
+    return serialized
 
 @router.post("", response_model=OrderResponse, summary="Legacy order creation endpoint (deprecated)")
 def create_order_legacy(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
@@ -130,12 +194,24 @@ def create_order_legacy(payload: dict, db: Session = Depends(get_db), user=Depen
     svc = db.query(Service).filter_by(id=svc_id).first()
     if not svc:
         raise HTTPException(status_code=404, detail=f"Service {svc_id} not found")
-    # generate unique order ID for legacy compatibility
-    order = Order(id=str(uuid.uuid4()), service_id=svc_id, quantity=qty, extras=extras, user_id=user.id)
+    # Let DB autogenerate integer PK; still return as string in response model
+    order = Order(service_id=svc_id, quantity=qty, extras=extras, user_id=user.id)
     db.add(order)
     db.commit()
     db.refresh(order)
-    return order
+    return {
+        "orderId": str(order.id),
+        "serviceId": order.service_id,
+        "quantity": order.quantity,
+        "extras": order.extras or [],
+        "paymentPin": order.payment_pin,
+        "status": order.status,
+        "userId": order.user_id,
+        "createdAt": order.created_at,
+        "redeemed": getattr(order, "redeemed", False),
+        "startedAt": getattr(order, "started_at", None),
+        "endedAt": getattr(order, "ended_at", None),
+    }
 
 @router.get("/my-past-orders", summary="Get user's past paid orders with amount and extras details")
 def my_past_orders(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -163,6 +239,11 @@ def my_past_orders(user: User = Depends(get_current_user), db: Session = Depends
                 "name": extra_obj.name if extra_obj else None
             })
         data = OrderResponse.from_orm(order).dict()
+        # Normalize id/orderId to string
+        if "id" in data:
+            data["id"] = str(data["id"])
+        if "orderId" in data:
+            data["orderId"] = str(data["orderId"])
         data.update({"amount": amount, "order_redeemed_at": getattr(order, "order_redeemed_at", None), "extras": extras})
         results.append(data)
     return results
@@ -190,7 +271,8 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
     )
     # base response
     ret = {
-        "orderId": order.id,
+        "id": str(order.id),
+        "orderId": str(order.id),
         "serviceId": order.service_id,
         "quantity": order.quantity,
         "extras": extras_names,
@@ -205,7 +287,7 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
         "serviceName": service_name,
         "loyaltyEligible": loyalty_eligible,
         "category": category,
-        "qrData": payment.qr_code_base64 if payment else order.id,
+    "qrData": payment.qr_code_base64 if payment else str(order.id),
         "amount": payment.amount if payment else None,
     }
     # include loyalty status

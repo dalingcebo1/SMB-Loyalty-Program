@@ -27,16 +27,16 @@ const palette = ['#2563eb', '#0891b2', '#16a34a', '#d97706', '#dc2626', '#7c3aed
 
 const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ title, series, height = 260, yLabel, tooltipFormatter }) => {
   const data = useMemo(() => {
-    const dateMap: Record<string, any> = {};
+    const dateMap: Record<string, Record<string, unknown>> = {};
     series.forEach(s => {
       s.data.forEach(p => {
         const key = p.date;
         if (!dateMap[key]) dateMap[key] = { date: key };
         const dk = s.dataKey || ('value' in p ? 'value' : 'count');
-        dateMap[key][s.name] = (p as any)[dk];
+        dateMap[key][s.name] = p[dk as keyof SeriesPoint];
       });
     });
-    return Object.values(dateMap).sort((a: any, b: any) => a.date.localeCompare(b.date));
+    return Object.values(dateMap).sort((a, b) => String(a.date).localeCompare(String(b.date)));
   }, [series]);
 
   const lines = useMemo(() => series.map((s, i) => {
@@ -46,7 +46,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ title, series, height
     }
     return <Line key={s.name} type="monotone" dataKey={s.name} stroke={color} strokeWidth={2} dot={false} />;
   }), [series]);
-  const ChartComp: any = series.some(s => s.type === 'area') ? AreaChart : LineChart;
+  const ChartComp = series.some(s => s.type === 'area') ? AreaChart : LineChart;
   return (
     <div className="bg-white rounded shadow-sm p-4">
       {title && <h3 className="text-sm font-semibold mb-3 tracking-wide text-gray-700">{title}</h3>}
@@ -55,7 +55,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ title, series, height
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 } } : undefined} />
-          <Tooltip formatter={tooltipFormatter ? (value: any) => tooltipFormatter(Number(value)) : undefined} />
+          <Tooltip formatter={tooltipFormatter ? (value: number) => tooltipFormatter(Number(value)) : undefined} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {lines}
         </ChartComp>

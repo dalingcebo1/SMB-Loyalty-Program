@@ -57,7 +57,7 @@ const GoalsPanel: React.FC = () => {
           );
       }
     }
-  }, [summary, prevSummary, toast]);
+  }, [summary, prevSummary]);
 
   const handleSave = () => {
     localStorage.setItem('monthlyTarget', String(target));

@@ -22,12 +22,13 @@ export function AdminMetricsPage<T>({ title, queryKeyBase, fetcher, render }: Ad
     queryFn: async () => {
       try {
         return await fetcher(start, end);
-      } catch (e: any) {
+      } catch (e: unknown) {
         // repackage axios error for richer message
-        if (e?.response) {
-          const status = e.response.status;
-            const detail = typeof e.response.data === 'object' ? JSON.stringify(e.response.data) : e.response.data;
-          throw new Error(`HTTP ${status}: ${detail || e.message}`);
+        const error = e as { response?: { status: number; data: unknown }; message?: string };
+        if (error?.response) {
+          const status = error.response.status;
+            const detail = typeof error.response.data === 'object' ? JSON.stringify(error.response.data) : error.response.data;
+          throw new Error(`HTTP ${status}: ${detail || error.message}`);
         }
         throw e;
       }

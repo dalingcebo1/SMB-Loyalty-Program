@@ -8,21 +8,22 @@ interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Checkbox: React.FC<CheckboxProps> = ({ label, helperText, error, className, id, ...props }) => {
-  const generatedId = id || React.useId();
-  const helperId = helperText ? `${generatedId}-helper` : undefined;
+  const generatedId = React.useId();
+  const componentId = id || generatedId;
+  const helperId = helperText ? `${componentId}-helper` : undefined;
 
   return (
     <div className="flex items-start space-x-2">
       <input
         type="checkbox"
-        id={generatedId}
+        id={componentId}
         aria-invalid={!!error}
         aria-describedby={helperId}
         className={`mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${className || ''}`}
         {...props}
       />
       <div className="flex flex-col">
-        <label htmlFor={generatedId} className="text-sm font-medium">
+        <label htmlFor={componentId} className="text-sm font-medium">
           {label}
         </label>
         {helperText && (

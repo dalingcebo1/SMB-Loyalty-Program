@@ -56,7 +56,12 @@ const STORAGE_KEY = 'moduleFlags';
 export function getModuleFlags(): ModuleFlags {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
-    try { return { ...ENV_FLAGS, ...JSON.parse(stored) }; } catch {};
+    try { 
+      return { ...ENV_FLAGS, ...JSON.parse(stored) }; 
+    } catch {
+      // Invalid JSON in localStorage, return defaults
+      return ENV_FLAGS;
+    }
   }
   return ENV_FLAGS;
 }

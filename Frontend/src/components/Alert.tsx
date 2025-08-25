@@ -11,7 +11,7 @@ interface AlertProps {
 }
 
 const Alert: React.FC<AlertProps> = ({ type = 'info', message, actionLabel, onAction, onClose }) => {
-  let baseClasses = ['border-l-4', 'p-4', 'mb-4', 'flex', 'items-center', 'justify-between'];
+  const baseClasses = ['border-l-4', 'p-4', 'mb-4', 'flex', 'items-center', 'justify-between'];
   let textClasses = 'text-sm';
 
   // Add variant styles

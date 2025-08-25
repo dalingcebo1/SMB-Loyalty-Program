@@ -1,6 +1,7 @@
 // src/api/queries.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
+import { Wash } from '../types';
 
 // Fetch all active washes
 export function useActiveWashes() {
@@ -8,7 +9,7 @@ export function useActiveWashes() {
     queryKey: ['washes', 'active'],
     queryFn: async () => {
       const { data } = await api.get('/payments/active-washes');
-      return data as any;
+      return data as Wash[];
     },
   });
 }
@@ -93,7 +94,7 @@ export function useWashHistory(params: { startDate?: string; endDate?: string; p
     queryKey: ['washes', 'history', params],
     queryFn: async () => {
       const { data } = await api.get('/payments/history', { params });
-      return data as any[];
+      return data as Wash[];
     },
   });
 }

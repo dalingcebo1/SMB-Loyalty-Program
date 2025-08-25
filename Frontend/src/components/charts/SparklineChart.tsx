@@ -17,7 +17,7 @@ const SparklineChart: React.FC<SparklineChartProps> = ({ data, color = '#8884d8'
   <div style={{ width, height }}>
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-        <Tooltip formatter={(val: any) => val} labelFormatter={() => ''} />
+        <Tooltip formatter={(val: number) => val} labelFormatter={() => ''} />
         <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
       </LineChart>
     </ResponsiveContainer>

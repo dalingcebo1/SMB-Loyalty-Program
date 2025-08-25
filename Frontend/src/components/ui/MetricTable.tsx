@@ -2,7 +2,7 @@ import React from 'react';
 import { humanizeMetric } from '../../utils/metrics';
 
 export interface MetricTableProps {
-  data: Record<string, any>;
+  data: Record<string, number | string | boolean>;
   labels?: Record<string, string>;
 }
 

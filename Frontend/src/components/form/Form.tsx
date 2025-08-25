@@ -10,6 +10,7 @@ export interface FormProps<T extends FieldValues> {
   children: React.ReactNode;
   className?: string;
   /** Optional Zod schema for validation */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   schema?: ZodType<any, any>;
 }
 
@@ -18,7 +19,8 @@ export function Form<T extends FieldValues>({ defaultValues, onSubmit, children,
   const methods = useForm<T>({
     defaultValues: defaultValues as DefaultValues<T>,
     resolver: schema ? zodResolver(schema) : undefined,
-  });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
 
   return (
     <FormProvider {...methods}>

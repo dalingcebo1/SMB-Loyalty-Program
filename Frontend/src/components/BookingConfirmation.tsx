@@ -12,6 +12,8 @@ interface BookingConfirmationProps {
     total: number;
     estimatedDuration?: number;
     bayNumber?: number;
+  quantity?: number;
+  extras?: { name: string; quantity: number; price: number }[];
   };
 }
 
@@ -25,6 +27,8 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
 
   useEffect(() => {
     if (isVisible) {
+  // lock background scroll
+  document.body.style.overflow = 'hidden';
       const timer1 = setTimeout(() => setAnimationStage(1), 500);
       const timer2 = setTimeout(() => setAnimationStage(2), 1500);
       const timer3 = setTimeout(() => setShowAddToCalendar(true), 2000);
@@ -37,6 +41,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
     } else {
       setAnimationStage(0);
       setShowAddToCalendar(false);
+  document.body.style.overflow = '';
     }
   }, [isVisible]);
 
@@ -188,9 +193,19 @@ const containerVariants = {
                   <h3 className="font-semibold text-gray-800 mb-3">Booking Details</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
+                      <span className="text-gray-600">Order ID:</span>
+                      <span className="font-medium">#{orderDetails.id}</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-gray-600">Service:</span>
                       <span className="font-medium">{orderDetails.serviceName}</span>
                     </div>
+                    {orderDetails.quantity !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Quantity:</span>
+                        <span className="font-medium">{orderDetails.quantity}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-600">Date:</span>
                       <span className="font-medium">
@@ -202,6 +217,10 @@ const containerVariants = {
                       <span className="font-medium">{orderDetails.time}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-gray-600">Duration:</span>
+                      <span className="font-medium">~{orderDetails.estimatedDuration || 30} min</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-gray-600">Total:</span>
                       <span className="font-medium">R{orderDetails.total}</span>
                     </div>
@@ -209,6 +228,19 @@ const containerVariants = {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Bay:</span>
                         <span className="font-medium">#{orderDetails.bayNumber}</span>
+                      </div>
+                    )}
+                    {orderDetails.extras && orderDetails.extras.length > 0 && (
+                      <div className="pt-2 border-t border-gray-200">
+                        <div className="text-gray-600 mb-1">Extras:</div>
+                        <ul className="space-y-1">
+                          {orderDetails.extras.map((ex, i) => (
+                            <li key={i} className="flex justify-between text-xs">
+                              <span>{ex.name} × {ex.quantity}</span>
+                              <span>R{ex.price}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                   </div>

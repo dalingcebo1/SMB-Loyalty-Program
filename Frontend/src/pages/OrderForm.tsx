@@ -31,6 +31,18 @@ interface Extra {
   price_map: Record<string, number>;
 }
 
+interface ConfirmedOrderDetails {
+  id: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  total: number;
+  estimatedDuration?: number;
+  bayNumber?: number;
+  quantity: number;
+  extras?: { name: string; quantity: number; price: number }[];
+}
+
 interface ConfirmedOrder {
   id: string;
   serviceName: string;
@@ -38,7 +50,9 @@ interface ConfirmedOrder {
   time: string;
   total: number;
   estimatedDuration?: number;
-  bayNumber: number;
+  bayNumber?: number;
+  quantity?: number;
+  extras?: { name: string; quantity: number; price: number }[];
 }
 
 const OrderForm: React.FC = () => {
@@ -253,15 +267,32 @@ const OrderForm: React.FC = () => {
       const res = await api.post("/orders/create", payload);
       const { order_id, qr_data } = res.data;
 
-      const orderDetails = {
+  const orderDetails: ConfirmedOrderDetails = {
         id: order_id,
         serviceName: selectedService.name,
         date: selectedDate,
         time: selectedTime,
         total,
         estimatedDuration: selectedService.duration,
-        bayNumber: Math.floor(Math.random() * 5) + 1 // Mock bay assignment
+  bayNumber: Math.floor(Math.random() * 5) + 1, // Mock bay assignment
+  quantity: serviceQuantity
       };
+
+      // Attach extras breakdown if any
+      const chosenExtras = Object.entries(extraQuantities)
+        .filter(([, qty]) => qty > 0)
+        .map(([id, qty]) => {
+          const extra = extras.find(e => e.id === Number(id));
+          const priceEach = extra ? (extra.price_map[selectedCategory] ?? 0) : 0;
+          return {
+            name: extra?.name || 'Extra',
+            quantity: qty,
+            price: priceEach * qty
+          };
+        });
+      if (chosenExtras.length) {
+        orderDetails.extras = chosenExtras;
+      }
 
       setConfirmedOrder(orderDetails);
       setShowConfirmation(true);

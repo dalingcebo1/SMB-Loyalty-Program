@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate, useLocation, Navigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -11,7 +11,6 @@ import { useAuth } from "../auth/AuthProvider";
 import StepIndicator from "../components/StepIndicator";
 import ServiceCard from "../components/ServiceCard";
 import DateTimePicker from "../components/DateTimePicker";
-import BookingConfirmation from "../components/BookingConfirmation";
 import { track } from '../utils/analytics';
 import './OrderForm.css';
 import '../styles/shared-buttons.css';
@@ -31,29 +30,6 @@ interface Extra {
   price_map: Record<string, number>;
 }
 
-interface ConfirmedOrderDetails {
-  id: string;
-  serviceName: string;
-  date: string;
-  time: string;
-  total: number;
-  estimatedDuration?: number;
-  bayNumber?: number;
-  quantity: number;
-  extras?: { name: string; quantity: number; price: number }[];
-}
-
-interface ConfirmedOrder {
-  id: string;
-  serviceName: string;
-  date: string;
-  time: string;
-  total: number;
-  estimatedDuration?: number;
-  bayNumber?: number;
-  quantity?: number;
-  extras?: { name: string; quantity: number; price: number }[];
-}
 
 const OrderForm: React.FC = () => {
   const { user, loading } = useAuth();
@@ -150,8 +126,7 @@ const OrderForm: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmedOrder, setConfirmedOrder] = useState<ConfirmedOrder | null>(null);
+  // Removed confirmation modal state
 
   // Set default category to "Fullhouse" (case-insensitive) when services load
   useEffect(() => {
@@ -267,47 +242,19 @@ const OrderForm: React.FC = () => {
       const res = await api.post("/orders/create", payload);
       const { order_id, qr_data } = res.data;
 
-  const orderDetails: ConfirmedOrderDetails = {
-        id: order_id,
-        serviceName: selectedService.name,
-        date: selectedDate,
-        time: selectedTime,
-        total,
-        estimatedDuration: selectedService.duration,
-  bayNumber: Math.floor(Math.random() * 5) + 1, // Mock bay assignment
-  quantity: serviceQuantity
-      };
-
-      // Attach extras breakdown if any
-      const chosenExtras = Object.entries(extraQuantities)
-        .filter(([, qty]) => qty > 0)
-        .map(([id, qty]) => {
-          const extra = extras.find(e => e.id === Number(id));
-          const priceEach = extra ? (extra.price_map[selectedCategory] ?? 0) : 0;
-          return {
-            name: extra?.name || 'Extra',
-            quantity: qty,
-            price: priceEach * qty
-          };
-        });
-      if (chosenExtras.length) {
-        orderDetails.extras = chosenExtras;
-      }
-
-      setConfirmedOrder(orderDetails);
-      setShowConfirmation(true);
-      
-      // Store for payment flow
       const paymentState = {
         orderId: order_id,
         qrData: qr_data,
         total: total * 100,
         summary: orderSummary,
         timestamp: Date.now(),
+        serviceName: selectedService.name,
+        quantity: serviceQuantity
       };
+
       localStorage.setItem('pendingOrder', JSON.stringify(paymentState));
-      
-      toast.success("Booking confirmed!");
+      toast.success("Booking confirmed! Redirecting to payment...");
+      navigate('/order/payment', { state: paymentState });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       toast.error(error.response?.data?.detail || "Failed to place order");
@@ -321,28 +268,18 @@ const OrderForm: React.FC = () => {
     setSelectedTime(time);
   };
 
-  const handleConfirmationComplete = () => {
-    setShowConfirmation(false);
-    if (confirmedOrder) {
-      navigate("/order/payment", { 
-        state: JSON.parse(localStorage.getItem('pendingOrder') || '{}')
-      });
-    }
-  };
+  // Confirmation modal removed; direct navigation implemented.
 
   // Show auth loading and block anonymous users
   if (loading) return <Loading text="Authenticating..." />;
-  if (!user) return <Navigate to="/login" replace />;
-
-  // Handle loading and errors for catalog data
   if (servicesQuery.isLoading || extrasQuery.isLoading) {
-    return <Loading text="Loading services..." />;
+    return <Loading text="Loading catalog..." />;
   }
   if (servicesQuery.error || extrasQuery.error) {
     return (
       <ErrorMessage
         message={
-          servicesQuery.error?.message || extrasQuery.error?.message || 'Error loading data'
+          (servicesQuery.error as Error)?.message || (extrasQuery.error as Error)?.message || 'Error loading data'
         }
         onRetry={() => window.location.reload()}
       />
@@ -590,14 +527,7 @@ const OrderForm: React.FC = () => {
               )}
             </AnimatePresence>
 
-        {/* Booking Confirmation Modal */}
-        {confirmedOrder && (
-          <BookingConfirmation
-            isVisible={showConfirmation}
-            onComplete={handleConfirmationComplete}
-            orderDetails={confirmedOrder}
-          />
-        )}
+  {/* Confirmation modal removed */}
       </div>
     </div>
   );

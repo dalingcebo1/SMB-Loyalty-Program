@@ -32,7 +32,8 @@ const Account = lazy(() => import('../pages/Account'));
 const PaymentVerification = lazy(() => import('../features/staff/pages/PaymentVerification'));
 const ManualVisitLogger = lazy(() => import('../features/staff/pages/ManualVisitLogger'));
 const VehicleManager = lazy(() => import('../features/staff/pages/VehicleManager'));
-const CarWashDashboard = lazy(() => import('../features/staff/pages/CarWashDashboard'));
+const ModernStaffDashboard = lazy(() => import('../features/staff/pages/ModernStaffDashboard'));
+const StaffLayout = lazy(() => import('../features/staff/components/StaffLayout'));
 
 // Layouts
 const DashboardLayout = lazy(() => import('../components/DashboardLayout'));
@@ -96,10 +97,17 @@ const AppRoutes: React.FC = () => {
             enableOrders && { path: '/order/confirmation/:orderId?', element: <OrderConfirmation /> },
             enableUsers && { path: '/account', element: <Account /> },
             enableOrders && { path: '/past-orders', element: <PastOrders /> },
+          ].filter(Boolean),
+        },
+        // Staff Routes with StaffLayout
+        {
+          path: '/staff',
+          element: <StaffLayout />,
+          children: [
+            { path: '/staff/dashboard', element: <ModernStaffDashboard /> },
             enablePayments && { path: '/staff/payment', element: <PaymentVerification /> },
             { path: '/staff/manual-visit', element: <ManualVisitLogger /> },
             { path: '/staff/vehicle-manager', element: <VehicleManager /> },
-            { path: '/staff/dashboard', element: <CarWashDashboard /> },
           ].filter(Boolean),
         },
       ],

@@ -221,16 +221,24 @@ def social_login(req: SocialLoginRequest, db: Session = Depends(get_db)):
     onboarding_required = False
     next_step = None
     
-    if not user.first_name or not user.last_name:
-        onboarding_required = True
-        next_step = "PROFILE_INFO"
-    elif not user.phone:
-        onboarding_required = True
-        next_step = "PHONE_VERIFICATION"  
-    elif not user.onboarded:
-        # User has profile and phone but verification may be incomplete
-        onboarding_required = True
-        next_step = "PHONE_VERIFICATION"
+    if user.role in ("staff", "admin", "developer"):
+        # Privileged roles bypass onboarding entirely
+        if not user.onboarded:
+            user.onboarded = True
+            db.commit()
+        onboarding_required = False
+        next_step = None
+    else:
+        if not user.first_name or not user.last_name:
+            onboarding_required = True
+            next_step = "PROFILE_INFO"
+        elif not user.phone:
+            onboarding_required = True
+            next_step = "PHONE_VERIFICATION"  
+        elif not user.onboarded:
+            # User has profile and phone but verification may be incomplete
+            onboarding_required = True
+            next_step = "PHONE_VERIFICATION"
     token = create_access_token(email)
     return LoginResponse(
         access_token=token,
@@ -257,16 +265,22 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     onboarding_required = False
     next_step = None
     
-    if not user.first_name or not user.last_name:
-        onboarding_required = True
-        next_step = "PROFILE_INFO"
-    elif not user.phone:
-        onboarding_required = True
-        next_step = "PHONE_VERIFICATION"  
-    elif not user.onboarded:
-        # User has profile and phone but verification may be incomplete
-        onboarding_required = True
-        next_step = "PHONE_VERIFICATION"
+    if user.role in ("staff", "admin", "developer"):
+        if not user.onboarded:
+            user.onboarded = True
+            db.commit()
+        onboarding_required = False
+        next_step = None
+    else:
+        if not user.first_name or not user.last_name:
+            onboarding_required = True
+            next_step = "PROFILE_INFO"
+        elif not user.phone:
+            onboarding_required = True
+            next_step = "PHONE_VERIFICATION"  
+        elif not user.onboarded:
+            onboarding_required = True
+            next_step = "PHONE_VERIFICATION"
     token = create_access_token(user.email)
     return LoginResponse(
         access_token=token,
@@ -335,7 +349,7 @@ async def confirm_otp(req: ConfirmOtpRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserOut)
 def me(current: User = Depends(get_current_user)):
-    if not current.onboarded:
+    if not current.onboarded and current.role not in ("staff", "admin", "developer"):
         raise HTTPException(status_code=403, detail="User not onboarded")
     return UserOut(
         id=current.id, email=current.email, first_name=current.first_name, last_name=current.last_name,
@@ -458,7 +472,7 @@ def complete_invite(req: CompleteInviteRequest, db: Session = Depends(get_db)):
 def update_user_role(user_id: int, new_role: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     user = db.query(User).filter_by(id=user_id).first();
     if not user: raise HTTPException(status_code=404, detail="User not found")
-    if new_role not in ("user","staff","admin"): raise HTTPException(status_code=400, detail="Invalid role")
+    if new_role not in ("user","staff","admin","developer"): raise HTTPException(status_code=400, detail="Invalid role")
     user.role = new_role; db.commit()
     return {"message": f"User role updated to {new_role}"}
 

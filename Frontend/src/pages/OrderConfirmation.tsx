@@ -1,6 +1,7 @@
 // src/pages/OrderConfirmation.tsx
 import React, { useEffect, useState } from "react";
 import StepIndicator from "../components/StepIndicator";
+import CalendarModal from "../components/CalendarModal";
 import { track } from '../utils/analytics';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -26,6 +27,8 @@ interface LocationState {
   serviceName?: string;
   loyaltyEligible?: boolean;
   status?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
 }
 
 const OrderConfirmation: React.FC = () => {
@@ -66,6 +69,9 @@ const OrderConfirmation: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [orderStatus, setOrderStatus] = useState<string>("");
   const [loyaltyEligible, setLoyaltyEligible] = useState<boolean>(false);
+  const [scheduledDate, setScheduledDate] = useState<string | null>(null);
+  const [scheduledTime, setScheduledTime] = useState<string | null>(null);
+  const [showCalendarModal, setShowCalendarModal] = useState<boolean>(false);
   const [loyaltyProgress, setLoyaltyProgress] = useState<{
     visits: number;
     nextMilestone: number;
@@ -91,6 +97,8 @@ const OrderConfirmation: React.FC = () => {
         setError(s.error);
         setSummary(s.summary || []);
         setTimestamp(s.timestamp);
+        setScheduledDate(s.scheduledDate || null);
+        setScheduledTime(s.scheduledTime || null);
         setIsLoading(false);
         didSet = true;
       }
@@ -132,6 +140,12 @@ const OrderConfirmation: React.FC = () => {
           setNextActionUrl(res.data.nextActionUrl || null);
           setOrderStatus(res.data.status || "");
           setLoyaltyEligible(res.data.loyaltyEligible || false);
+          if (res.data.scheduledDate || res.data.scheduled_date) {
+            setScheduledDate(res.data.scheduledDate || res.data.scheduled_date);
+          }
+          if (res.data.scheduledTime || res.data.scheduled_time) {
+            setScheduledTime(res.data.scheduledTime || res.data.scheduled_time);
+          }
           // Update amount and summary from order details if available
           if (res.data.amount && !amount) {
             setAmount(res.data.amount);
@@ -418,11 +432,27 @@ const OrderConfirmation: React.FC = () => {
           </div>
         )}
 
-        {/* Instructions Card */}
+        {/* Add to Calendar Card */}
         <div className="info-card instructions-card">
-          <p className="instructions-text">
-            Show this QR code or PIN to staff to verify your payment. You can also find it in the Past Orders tab.
-          </p>
+          <h3 className="card-title">📅 Add to Your Calendar</h3>
+          {scheduledDate && scheduledTime ? (
+            <p className="instructions-text">
+              Your service is scheduled for <strong>{new Date(scheduledDate).toLocaleDateString()}</strong> at <strong>{scheduledTime}</strong>.
+            </p>
+          ) : (
+            <p className="instructions-text">
+              Save your booking details to your calendar for easy reference.
+            </p>
+          )}
+          <button
+            className="action-button primary-button"
+            onClick={() => {
+              setShowCalendarModal(true);
+              track('cta_click', { label: 'Add to Calendar', page: 'OrderConfirmation' });
+            }}
+          >
+            ➕ Add to Calendar
+          </button>
         </div>
         
         {/* Action Buttons */}
@@ -480,12 +510,24 @@ const OrderConfirmation: React.FC = () => {
               </button>
             )}
           </div>
+          
+          {/* Footer */}
+          <div className="security-footer">
+            Secured by <span className="yoco-brand">YOCO</span>
+          </div>
         </div>
-        
-        {/* Footer */}
-        <div className="security-footer">
-          Secured by <span className="yoco-brand">YOCO</span>
-        </div>
+        {/* Calendar Modal */}
+        <CalendarModal
+          isVisible={showCalendarModal}
+          onClose={() => setShowCalendarModal(false)}
+          orderDetails={{
+            orderId,
+            serviceName: summary[0] || 'Car Wash Service',
+            scheduledDate: scheduledDate || undefined,
+            scheduledTime: scheduledTime || undefined,
+            estimatedDuration: estimatedWashTime || undefined
+          }}
+        />
       </div>
     </div>
   );

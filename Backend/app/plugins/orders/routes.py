@@ -353,16 +353,17 @@ def complete_wash(order_id: str, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    # complete wash and update visit counts
+    # Only increment visit here if order not already paid (visit logged at payment time)
+    was_paid = order.status == "paid"
     order.status = "completed"
-    # include tenant filter for visit count
-    vc = db.query(VisitCount).filter_by(user_id=order.user_id, tenant_id=order.user.tenant_id).first()
-    if not vc:
-        vc = VisitCount(user_id=order.user_id, tenant_id=order.user.tenant_id, count=0,
-                        updated_at=datetime.utcnow())
-        db.add(vc)
-    vc.count += sum(item.qty for item in order.items)
-    vc.updated_at = datetime.utcnow()
+    if not was_paid:
+        vc = db.query(VisitCount).filter_by(user_id=order.user_id, tenant_id=order.user.tenant_id).first()
+        if not vc:
+            vc = VisitCount(user_id=order.user_id, tenant_id=order.user.tenant_id, count=0,
+                            updated_at=datetime.utcnow())
+            db.add(vc)
+        vc.count += sum(item.qty for item in order.items) or 1  # fallback 1 if no items
+        vc.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(order)
     # build nextActionUrl for front-end to redeem wash for loyalty points

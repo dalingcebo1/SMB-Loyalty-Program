@@ -1,156 +1,199 @@
-/* MyLoyalty.css */
+/* MyLoyalty.css - Modern responsive design consistent with navigation system */
 
 /* 
- * Unified Typography Scale:
- * h1 (Page Headers): 2.5rem (desktop) / 2rem (mobile)
- * h2 (Section Headers): 1.5rem  
- * h3 (Card Titles): 1.2rem
- * Subtitle/Large Text: 1.1rem
- * Body Text: 1rem
- * Small Text: 0.9rem
- * Extra Small: 0.8rem
- * Font Family: System fonts for optimal performance
- * Line Height: 1.6 for readability
- * Special: Large numbers can use 2rem-4rem for emphasis
+ * Modern Design Principles:
+ * - Clean background with content cards
+ * - Consistent spacing and typography
+ * - Modern glassmorphism effects
+ * - Responsive grid layouts
+ * - Accessible color contrasts
  */
 
 .loyalty-page {
-	padding: 1.5rem;
-	max-width: 1200px;
-	margin: 0 auto;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	padding: 0;
+	max-width: none;
+	margin: 0;
+	background: #f8fafc;
 	min-height: 100vh;
-	color: white;
+	color: #1a202c;
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 	line-height: 1.6;
 }
 
 /* Header Section */
 .loyalty-header {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	padding: 2rem 1.5rem;
 	text-align: center;
 	margin-bottom: 2rem;
+	color: white;
 }
 
 .loyalty-header h1 {
 	font-size: 2.5rem;
-	font-weight: bold;
+	font-weight: 700;
 	margin-bottom: 0.5rem;
-	color: white;
-	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 	line-height: 1.2;
 }
 
 .loyalty-subtitle {
 	font-size: 1.1rem;
-	opacity: 0.9;
-	margin: 0 0 1rem 0;
+	opacity: 0.95;
+	margin: 0;
+	font-weight: 400;
 }
 
 /* Stats Card */
 .loyalty-stats-card {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	border-radius: 20px;
-	padding: 1.5rem;
-	margin-bottom: 2rem;
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: white;
+	border-radius: 16px;
+	padding: 2rem;
+	margin: 0 1.5rem 2rem 1.5rem;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+	border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .loyalty-stats {
-	display: flex;
-	justify-content: space-around;
-	align-items: center;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 2rem;
+	max-width: 400px;
+	margin: 0 auto;
 }
 
 .loyalty-stat-item {
 	text-align: center;
 	padding: 1rem;
+	background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+	border-radius: 12px;
+	transition: transform 0.2s ease;
+}
+
+.loyalty-stat-item:hover {
+	transform: translateY(-2px);
+}
+
+.visits .stat-icon {
+	color: #3b82f6;
+}
+
+.rewards .stat-icon {
+	color: #f59e0b;
 }
 
 .stat-icon {
 	font-size: 2rem;
-	margin-bottom: 0.5rem;
-	color: #ffd700;
+	margin-bottom: 0.75rem;
+	display: block;
 }
 
 .stat-value {
-	font-size: 2.5rem;
-	font-weight: bold;
-	margin-bottom: 0.25rem;
+	font-size: 3rem;
+	font-weight: 800;
+	margin-bottom: 0.5rem;
+	color: #1a202c;
+	line-height: 1;
 }
 
 .stat-label {
-	font-size: 0.9rem;
-	opacity: 0.8;
+	font-size: 1rem;
+	color: #64748b;
+	font-weight: 500;
 }
 
 /* Progress Section */
 .loyalty-progress-section {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	border-radius: 20px;
-	padding: 1.5rem;
-	margin-bottom: 2rem;
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: white;
+	border-radius: 16px;
+	padding: 2rem;
+	margin: 0 1.5rem 2rem 1.5rem;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+	border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .loyalty-progress-section h2 {
-	color: white;
-	margin-bottom: 1rem;
+	color: #1a202c;
+	margin-bottom: 1.5rem;
 	text-align: center;
+	font-size: 1.5rem;
+	font-weight: 600;
 }
 
 .progress-container {
-	margin-bottom: 1rem;
+	max-width: 400px;
+	margin: 0 auto;
 }
 
 .progress-bar-container {
-	background: rgba(255, 255, 255, 0.2);
-	border-radius: 10px;
+	background: #e2e8f0;
+	border-radius: 12px;
 	height: 12px;
 	overflow: hidden;
-	margin-bottom: 0.5rem;
+	margin-bottom: 1rem;
+	position: relative;
 }
 
 .progress-bar {
-	background: linear-gradient(90deg, #ffd700, #ffed4e);
+	background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
 	height: 100%;
-	border-radius: 10px;
-	transition: width 0.5s ease;
+	border-radius: 12px;
+	transition: width 0.6s ease;
+	position: relative;
+}
+
+.progress-bar::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+	animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+	0% { transform: translateX(-100%); }
+	100% { transform: translateX(100%); }
 }
 
 .progress-labels {
 	display: flex;
 	justify-content: space-between;
 	font-size: 0.9rem;
-	opacity: 0.9;
+	color: #64748b;
+	font-weight: 500;
 }
 
 .next-milestone {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin-top: 1rem;
-	padding: 0.75rem;
-	background: rgba(255, 255, 255, 0.1);
-	border-radius: 10px;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+	padding: 1rem;
+	background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+	border-radius: 12px;
+	color: #1a202c;
 }
 
 .milestone-icon {
-	color: #ffd700;
-	margin-right: 0.5rem;
+	color: #f59e0b;
+	font-size: 1.2rem;
 }
 
 /* Rewards Section */
 .loyalty-rewards-section {
-	margin-bottom: 2rem;
+	margin: 0 1.5rem 2rem 1.5rem;
 }
 
 .loyalty-rewards-section h2 {
-	color: white;
+	color: #1a202c;
 	margin-bottom: 1.5rem;
 	text-align: center;
-	font-size: 1.8rem;
+	font-size: 1.5rem;
+	font-weight: 600;
 }
 
 .rewards-grid {
@@ -161,22 +204,30 @@
 }
 
 .reward-card {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	border-radius: 15px;
+	background: white;
+	border-radius: 16px;
 	padding: 1.5rem;
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+	border: 1px solid rgba(0, 0, 0, 0.05);
 	cursor: pointer;
 	transition: all 0.3s ease;
-	display: flex;
-	align-items: center;
-	gap: 1rem;
+	position: relative;
+	overflow: hidden;
+}
+
+.reward-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 4px;
+	background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
 }
 
 .reward-card:hover {
-	transform: translateY(-5px);
-	background: rgba(255, 255, 255, 0.15);
-	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+	transform: translateY(-4px);
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .reward-card.upcoming {
@@ -184,9 +235,13 @@
 	cursor: default;
 }
 
+.reward-card.upcoming::before {
+	background: #e2e8f0;
+}
+
 .reward-card.upcoming:hover {
 	transform: none;
-	background: rgba(255, 255, 255, 0.1);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .reward-badge {

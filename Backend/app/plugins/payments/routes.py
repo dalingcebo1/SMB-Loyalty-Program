@@ -13,9 +13,44 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.database import get_db
-from app.models import Order, Payment, User, Vehicle, OrderVehicle, Redemption, Reward, Service
+from app.models import Order, Payment, User, Vehicle, OrderVehicle, Redemption, Reward, Service, VisitCount
 from app.utils.qr import generate_qr_code
 from app.plugins.loyalty.routes import _create_jwt, SECRET_KEY
+
+# --- Visit logging helper --------------------------------------------------
+def _log_visit_for_paid_order(db: Session, order: Order):
+    """Ensure a visit is logged for a successfully paid order.
+
+    Rules / safeguards:
+    - Only increment once per order.
+    - If order was already completed (wash finished) we assume visit already counted.
+    - If a payment occurs after completion (status == 'completed'), skip to avoid double count.
+    - If payment happens first (status transitions to 'paid'), we log immediately.
+    - We rely on payment + status gating instead of a schema change flag.
+    """
+    if not order:
+        return
+    # Avoid duplicate increment if order already completed
+    if order.status == 'completed':
+        return
+    # Heuristic: if order has an ended_at timestamp, treat as completed
+    if getattr(order, 'ended_at', None):
+        return
+    # Prevent double increment if another success payment already handled within this txn.
+    # (Caller ensures we only invoke when status flips to success.)
+    # Fetch / create VisitCount
+    if not order.user:  # ensure relationship loaded
+        order = db.query(Order).filter_by(id=order.id).first()
+    user = order.user
+    if not user:
+        return
+    vc = db.query(VisitCount).filter_by(user_id=order.user_id, tenant_id=user.tenant_id).first()
+    if not vc:
+        vc = VisitCount(user_id=order.user_id, tenant_id=user.tenant_id, count=0, updated_at=datetime.utcnow())
+        db.add(vc)
+    # Increment by 1 visit per paid order (can be refined later using quantity / items)
+    vc.count += 1
+    vc.updated_at = datetime.utcnow()
 from app.plugins.auth.routes import get_current_user
 
 YOCO_SECRET_KEY = settings.yoco_secret_key
@@ -95,6 +130,8 @@ def charge_yoco(
     )
     db.add(payment)
     order.status = "paid"
+    # Log visit immediately upon first successful payment
+    _log_visit_for_paid_order(db, order)
     db.commit()
     return {"message": "Payment successful", "order_id": orderId, "payment_id": payment.id}
 
@@ -118,12 +155,15 @@ async def yoco_webhook(
     if not payment:
         return {"status": "ignored"}
     if status_ == "successful":
+        already_success = payment.status == "success"
         payment.status = "success"
         if not payment.qr_code_base64:
             payment.qr_code_base64 = generate_qr_code(payment.reference)["qr_code_base64"]
         order = db.query(Order).filter_by(id=payment.order_id).first()
         if order:
             order.status = "paid"
+            if not already_success:  # only log on transition to success
+                _log_visit_for_paid_order(db, order)
     elif status_ == "failed":
         payment.status = "failed"
     payment.raw_response = payload
@@ -256,6 +296,10 @@ def verify_pos(
     if not order:
         raise HTTPException(404, "Order not found")
     order.order_redeemed_at = datetime.utcnow()
+    # Ensure status & visit log if not already counted
+    if order.status != 'paid':
+        order.status = 'paid'
+        _log_visit_for_paid_order(db, order)
     db.commit()
     return {"status": "ok", "type": "pos", "order_id": order.id}
 

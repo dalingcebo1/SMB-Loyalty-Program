@@ -1,0 +1,44 @@
+/* DashboardLayout.css - Layout styling with modern navigation support */
+
+/* Ensure proper spacing for the new navigation system */
+.dashboard-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9fafb;
+}
+
+/* Mobile: Account for bottom navigation */
+.dashboard-main {
+  flex: 1;
+  max-width: 1536px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 5rem; /* Space for bottom nav on mobile */
+}
+
+/* Tablet and Desktop: Account for top navigation */
+@media (min-width: 768px) {
+  .dashboard-main {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem; /* No bottom nav on larger screens */
+  }
+}
+
+/* Ensure content doesn't jump when navigation loads */
+.dashboard-content {
+  transition: padding 0.2s ease;
+}
+
+/* Loading state styling */
+.dashboard-loading {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+}

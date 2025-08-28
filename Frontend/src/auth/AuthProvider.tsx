@@ -101,7 +101,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               if (payload.sub) email = payload.sub;
             } catch { /* ignore */ }
             // Avoid redirect loop: only navigate if not already on onboarding
-            if (!window.location.pathname.startsWith('/onboarding')) {
+            // We need role to decide, so attempt lightweight decode from local cache first.
+            // If role is unknown (because /auth/me failed), proceed to onboarding ONLY for non-privileged users.
+            // Privileged roles (staff/admin/developer) are allowed even if backend flagged onboarding earlier.
+            const cachedRole = localStorage.getItem('cachedRole');
+            if (cachedRole && ['staff','admin','developer'].includes(cachedRole)) {
+              // Skip onboarding redirect; let subsequent calls refresh state.
+            } else if (!window.location.pathname.startsWith('/onboarding')) {
               navigate('/onboarding', { replace: true, state: { email, fromSocialLogin: true } });
             }
           } else {
@@ -148,7 +154,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
     const me = await api.get("/auth/me");
-    const u = me.data;
+  const u = me.data;
+  // cache role for onboarding bypass logic
+  try { localStorage.setItem('cachedRole', u.role); } catch { /* ignore quota / privacy errors */ }
     const newUser: User = {
       id: u.id,
       email: u.email,
@@ -171,7 +179,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     localStorage.setItem("token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     const me = await api.get("/auth/me");
-    const u = me.data;
+  const u = me.data;
+  try { localStorage.setItem('cachedRole', u.role); } catch { /* ignore */ }
     const newUser: User = {
       id: u.id,
       email: u.email,

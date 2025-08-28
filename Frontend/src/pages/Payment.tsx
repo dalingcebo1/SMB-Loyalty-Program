@@ -16,6 +16,8 @@ interface LocationState {
   summary?: string[];
   qrData?: string;
   paymentPin?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
 }
 
 interface RewardData {
@@ -84,7 +86,7 @@ const Payment: React.FC = () => {
       }
     }
   }, [state, navigate]);
-  const { orderId, total, summary = [] } = (state as LocationState) || {};
+  const { orderId, total, summary = [], scheduledDate, scheduledTime } = (state as LocationState) || {};
 
   const [paying, setPaying] = useState(false);
   const [yocoLoaded, setYocoLoaded] = useState(false);
@@ -246,6 +248,8 @@ const Payment: React.FC = () => {
           paymentPin: null,
           summary,
           timestamp: Date.now(),
+          scheduledDate,
+          scheduledTime,
         },
       });
       return;
@@ -299,6 +303,8 @@ const Payment: React.FC = () => {
                 paymentPin,
                 summary,
                 timestamp: Date.now(),
+                scheduledDate,
+                scheduledTime,
               };
               localStorage.setItem("lastOrderConfirmation", JSON.stringify(confirmationData));
 

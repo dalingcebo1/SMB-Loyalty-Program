@@ -14,8 +14,7 @@ import {
   FaSprayCan, 
   FaCreditCard, 
   FaTrophy, 
-  FaStar, 
-  FaFileAlt
+  FaStar
 } from 'react-icons/fa';
 import './PastOrders.css';
 
@@ -339,8 +338,8 @@ const PastOrders: React.FC = () => {
   return (
     <div className="past-orders-page">
       <div className="page-header">
-        <h1>Past Orders</h1>
-        <p className="subtitle">View your car wash history and reorder your favorites</p>
+        <h1>Order History</h1>
+        <p className="subtitle">Track your car wash orders and service history</p>
         <div className="filters">
           <select 
             className="filter-dropdown"
@@ -364,204 +363,234 @@ const PastOrders: React.FC = () => {
         </div>
       </div>
 
-      {error && (
-        <div className="error-container">
-          <h2>Unable to load orders</h2>
-          <p className="error-message">{error}</p>
-          <button onClick={() => window.location.reload()} className="retry-button">
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {orders.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">
-            <FaFileAlt className="icon" />
+      <div className="orders-container">
+        {error && (
+          <div className="no-orders">
+            <h3>Unable to load orders</h3>
+            <p>{error}</p>
           </div>
-          <h3>No Orders Yet</h3>
-          <p>Your past orders will appear here once you've made a purchase.</p>
-          <button className="primary-button" onClick={() => window.location.href = '/order'}>
-            Book a Service
-          </button>
-        </div>
-      ) : (
-        <div className="orders-timeline">
-          {groupedOrders.today.length > 0 && (
-            <div className="time-section">
-              <h2>Today <span className="count">({groupedOrders.today.length})</span></h2>
-              <div className="orders-grid">
-                {groupedOrders.today.map((order) => (
-                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
-                ))}
-              </div>
-            </div>
-          )}
+        )}
 
-          {groupedOrders.thisWeek.length > 0 && (
-            <div className="time-section">
-              <h2>This Week <span className="count">({groupedOrders.thisWeek.length})</span></h2>
-              <div className="orders-grid">
-                {groupedOrders.thisWeek.map((order) => (
-                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
-                ))}
-              </div>
-            </div>
-          )}
+        {dataLoading && (
+          <div className="loading">
+            <div className="loading-spinner"></div>
+            <p>Loading your orders...</p>
+          </div>
+        )}
 
-          {groupedOrders.thisMonth.length > 0 && (
-            <div className="time-section">
-              <h2>This Month <span className="count">({groupedOrders.thisMonth.length})</span></h2>
-              <div className="orders-grid">
-                {groupedOrders.thisMonth.map((order) => (
-                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
-                ))}
-              </div>
-            </div>
-          )}
+        {!dataLoading && orders.length === 0 && !error && (
+          <div className="no-orders">
+            <h3>No Orders Yet</h3>
+            <p>Your past orders will appear here once you've made a purchase.</p>
+          </div>
+        )}
 
-          {groupedOrders.earlier.length > 0 && (
-            <div className="time-section">
-              <h2>Earlier <span className="count">({groupedOrders.earlier.length})</span></h2>
-              <div className="orders-grid">
-                {groupedOrders.earlier.slice(0, showAll ? undefined : 3).map((order) => (
-                  <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
-                ))}
-              </div>
-              {!showAll && groupedOrders.earlier.length > 3 && (
-                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                  <button
-                    className="primary-button"
-                    onClick={() => setShowAll(true)}
-                    style={{ background: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                  >
-                    View More Orders
-                  </button>
+        {!dataLoading && orders.length > 0 && (
+          <div className="orders-timeline">
+            {groupedOrders.today.length > 0 && (
+              <div className="time-section">
+                <h2>Today <span className="count">{groupedOrders.today.length}</span></h2>
+                <div className="orders-grid">
+                  {groupedOrders.today.map((order) => (
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+              </div>
+            )}
 
-      {/* Loading overlay while fetching a single order */}
+            {groupedOrders.thisWeek.length > 0 && (
+              <div className="time-section">
+                <h2>This Week <span className="count">{groupedOrders.thisWeek.length}</span></h2>
+                <div className="orders-grid">
+                  {groupedOrders.thisWeek.map((order) => (
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {groupedOrders.thisMonth.length > 0 && (
+              <div className="time-section">
+                <h2>This Month <span className="count">{groupedOrders.thisMonth.length}</span></h2>
+                <div className="orders-grid">
+                  {groupedOrders.thisMonth.map((order) => (
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {groupedOrders.earlier.length > 0 && (
+              <div className="time-section">
+                <h2>Older <span className="count">{groupedOrders.earlier.length}</span></h2>
+                <div className="orders-grid">
+                  {groupedOrders.earlier.slice(0, showAll ? undefined : 3).map((order) => (
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                  ))}
+                </div>
+                {!showAll && groupedOrders.earlier.length > 3 && (
+                  <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                    <button
+                      className="view-details-btn"
+                      onClick={() => setShowAll(true)}
+                    >
+                      View More Orders
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Loading Modal */}
       {modalLoading && (
-        <div className="order-modal-overlay">
-          <div className="bg-white rounded p-6 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading order details...</p>
+        <div className="order-modal">
+          <div className="modal-content">
+            <div className="loading">
+              <div className="loading-spinner"></div>
+              <p>Loading order details...</p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Enhanced order modal */}
+      {/* Modern Order Modal */}
       {modalOrder && !modalLoading && (
-        <div className="order-modal-overlay" onClick={() => setModalOrder(null)}>
-          <div className="order-modal" onClick={e => e.stopPropagation()}>
+        <div className="order-modal" onClick={() => setModalOrder(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <button
-                className="close-button"
+                className="modal-close"
                 onClick={() => setModalOrder(null)}
                 aria-label="Close dialog"
               >
-                &times;
+                ×
               </button>
-              <h2>{getOrderSummary(modalOrder)}</h2>
-              <span className="order-id">Order #{modalOrder.id}</span>
+              <h2 className="modal-title">{getOrderSummary(modalOrder)}</h2>
+              <div className="modal-order-id">Order #{modalOrder.id}</div>
             </div>
 
-            <div className="order-timeline">
-              <div className="timeline-step completed">
-                <div className="step-icon"><FaCheckCircle /></div>
-                <div className="step-content">
-                  <h4>Order Placed</h4>
-                  <p>{formatOrderDate(modalOrder.created_at || '')}</p>
-                </div>
-              </div>
-              <div className="timeline-connector completed"></div>
-              
-              <div className="timeline-step completed">
-                <div className="step-icon"><FaCarSide /></div>
-                <div className="step-content">
-                  <h4>Service Assigned</h4>
-                  <p>Bay assigned</p>
-                </div>
-              </div>
-              <div className="timeline-connector completed"></div>
-              
-              <div className="timeline-step completed">
-                <div className="step-icon"><FaSprayCan /></div>
-                <div className="step-content">
-                  <h4>Service Completed</h4>
-                  <p>Wash finished</p>
-                </div>
-              </div>
-              <div className="timeline-connector completed"></div>
-              
-              <div className="timeline-step completed">
-                <div className="step-icon"><FaCreditCard /></div>
-                <div className="step-content">
-                  <h4>Payment Processed</h4>
-                  <p>R{((modalOrder.amount || 0) / 100).toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="service-details">
-              <h3>Service Information</h3>
-              <div className="detail-table">
-                <div className="table-row">
-                  <span className="label">Service</span>
-                  <span className="value">{modalOrder.service_name || 'Full Wash'}</span>
-                </div>
-                <div className="table-row">
-                  <span className="label">Order ID</span>
-                  <span className="value">#{modalOrder.id}</span>
-                </div>
-                <div className="table-row">
-                  <span className="label">Status</span>
-                  <span className={`value status-${getStatusBadge(modalOrder.status || '')}`}>
-                    {(modalOrder.status || '').toUpperCase()}
-                  </span>
-                </div>
-                <div className="table-row">
-                  <span className="label">Total Paid</span>
-                  <span className="value">R{((modalOrder.amount || 0) / 100).toFixed(2)}</span>
-                </div>
-              </div>
-              
-              <div style={{ textAlign: 'center', margin: '2rem 0' }}>
-                <QRCode value={modalOrder.id || 'unknown'} size={180} />
-                <div style={{ marginTop: '1rem', fontSize: '1.1rem' }}>
-                  Payment PIN: <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#ffd700' }}>
-                    {modalOrder.payment_pin}
-                  </span>
-                </div>
-                <p style={{ marginTop: '0.5rem', opacity: 0.8, fontSize: '0.9rem' }}>
-                  Show this QR code or PIN to staff for verification
-                </p>
-              </div>
-            </div>
-
-            <div className="loyalty-section">
-              <div className="loyalty-card">
-                <FaTrophy className="loyalty-icon" />
-                <div className="loyalty-info">
-                  <h4>Loyalty Progress</h4>
-                  <p>You earned points from this order!</p>
-                  <div className="progress-container">
-                    <div className="progress-bar" style={{ width: '70%' }}></div>
+            <div className="modal-body">
+              <div className="order-timeline">
+                <div className="timeline-container">
+                  <div className="timeline-step completed">
+                    <div className="step-icon"><FaCheckCircle /></div>
+                    <div className="step-content">
+                      <h4>Order Placed</h4>
+                      <p>Your order was received and confirmed</p>
+                      <div className="step-time">{formatOrderDate(modalOrder.created_at || '')}</div>
+                    </div>
                   </div>
-                  <p className="progress-text">Keep visiting to unlock rewards</p>
+                  <div className="timeline-connector completed"></div>
+                  
+                  <div className="timeline-step completed">
+                    <div className="step-icon"><FaCarSide /></div>
+                    <div className="step-content">
+                      <h4>Service Assigned</h4>
+                      <p>Wash bay assigned and service preparation started</p>
+                      <div className="step-time">Ready for service</div>
+                    </div>
+                  </div>
+                  <div className="timeline-connector completed"></div>
+                  
+                  <div className="timeline-step completed">
+                    <div className="step-icon"><FaSprayCan /></div>
+                    <div className="step-content">
+                      <h4>Service Completed</h4>
+                      <p>Car wash service has been finished successfully</p>
+                      <div className="step-time">Service complete</div>
+                    </div>
+                  </div>
+                  <div className="timeline-connector completed"></div>
+                  
+                  <div className="timeline-step completed">
+                    <div className="step-icon"><FaCreditCard /></div>
+                    <div className="step-content">
+                      <h4>Payment Processed</h4>
+                      <p>Payment confirmed and receipt generated</p>
+                      <div className="step-time">R{((modalOrder.amount || 0) / 100).toFixed(2)} paid</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="service-details">
+                <h3>Service Information</h3>
+                <div className="detail-table">
+                  <div className="table-row">
+                    <span className="label">Service</span>
+                    <span className="value">{modalOrder.service_name || 'Full Wash'}</span>
+                  </div>
+                  <div className="table-row">
+                    <span className="label">Order ID</span>
+                    <span className="value">#{modalOrder.id}</span>
+                  </div>
+                  <div className="table-row">
+                    <span className="label">Status</span>
+                    <span className={`value`}>
+                      <span className={`badge ${getStatusBadge(modalOrder.status || '')}`}>
+                        {(modalOrder.status || '').toUpperCase()}
+                      </span>
+                    </span>
+                  </div>
+                  {modalOrder.extras && modalOrder.extras.length > 0 && (
+                    <div className="table-row">
+                      <span className="label">Extras</span>
+                      <span className="value">
+                        {modalOrder.extras.map(extra => extra.name).join(', ')}
+                      </span>
+                    </div>
+                  )}
+                  <div className="table-row">
+                    <span className="label">Total Paid</span>
+                    <span className="value">R{((modalOrder.amount || 0) / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="qr-section">
+                <div className="qr-container">
+                  <div className="qr-code">
+                    <QRCode value={modalOrder.id || 'unknown'} size={160} />
+                  </div>
+                  <h4 className="qr-title">Payment Verification</h4>
+                  <p className="qr-description">
+                    PIN: <strong>{modalOrder.payment_pin}</strong>
+                  </p>
+                  <p className="qr-description">
+                    Show this QR code or PIN to staff for verification
+                  </p>
+                </div>
+              </div>
+
+              <div className="loyalty-section">
+                <div className="loyalty-card">
+                  <FaTrophy className="loyalty-icon" />
+                  <div className="loyalty-info">
+                    <h4>Loyalty Progress</h4>
+                    <p>You earned loyalty points from this order!</p>
+                    <div className="progress-container">
+                      <div className="progress-bar" style={{ width: '70%' }}></div>
+                    </div>
+                    <p className="progress-text">7 out of 10 visits to unlock free wash</p>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="modal-actions">
-              <button className="action-button secondary">
+              <button className="modal-action-btn secondary">
                 <FaReceipt /> Download Receipt
               </button>
-              <button className="action-button primary" onClick={() => window.location.href = '/order'}>
+              <button 
+                className="modal-action-btn primary" 
+                onClick={() => {
+                  setModalOrder(null);
+                  window.location.href = '/order';
+                }}
+              >
                 <FaRedo /> Book Again
               </button>
             </div>

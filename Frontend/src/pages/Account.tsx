@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import api from "../api/api";
-import { FaUser, FaEnvelope, FaPhone, FaEdit, FaSave, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaEdit, FaSave, FaTimes, FaExclamationTriangle, FaSignOutAlt } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import './Account.css';
 
 const Account: React.FC = () => {
-  const { user, refreshUser, loading } = useAuth();
+  const { user, refreshUser, loading, logout } = useAuth();
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
@@ -48,14 +50,24 @@ const Account: React.FC = () => {
     setError(null);
     try {
       await api.put("/auth/me", {
-        first_name: firstName,
-        last_name: lastName,
+        firstName,
+        lastName,
       });
       await refreshUser();
       setEditing(false);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } }; message?: string };
-      setError(error.response?.data?.detail || error.message || "Error updating name");
+      setError(err instanceof Error ? err.message : "Failed to update profile");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Successfully logged out');
+      navigate('/login');
+    } catch (err) {
+      toast.error('Error logging out');
+      console.error('Logout error:', err);
     }
   };
 
@@ -132,6 +144,17 @@ const Account: React.FC = () => {
           </div>
           <div className="detail-value">{user.phone}</div>
         </div>
+      </div>
+
+      {/* Logout Section */}
+      <div className="logout-section">
+        <button 
+          className="btn btn-logout" 
+          onClick={handleLogout}
+          type="button"
+        >
+          <FaSignOutAlt /> Logout
+        </button>
       </div>
 
       <div className="page-footer">

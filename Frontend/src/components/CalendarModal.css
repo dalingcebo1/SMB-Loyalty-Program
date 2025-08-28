@@ -1,0 +1,227 @@
+/* Calendar Modal Styles */
+.calendar-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.calendar-modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.calendar-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 0 24px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.calendar-modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.calendar-modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #666;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.calendar-modal-close:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.calendar-modal-body {
+  padding: 0 24px 20px 24px;
+}
+
+.calendar-event-details {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.calendar-event-details h4 {
+  margin: 0 0 12px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.calendar-event-details p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+
+.calendar-date {
+  font-weight: 500;
+}
+
+.calendar-time {
+  font-weight: 500;
+}
+
+.calendar-location {
+  opacity: 0.8;
+}
+
+.calendar-info {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+}
+
+.calendar-contact {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.calendar-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendar-option-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  background: #f8f9fa;
+  color: #333;
+}
+
+.calendar-option-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.google-calendar {
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+  color: white;
+}
+
+.google-calendar:hover {
+  background: linear-gradient(135deg, #3367d6 0%, #2d9444 100%);
+}
+
+.outlook-calendar {
+  background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+  color: white;
+}
+
+.outlook-calendar:hover {
+  background: linear-gradient(135deg, #106ebe 0%, #005a9e 100%);
+}
+
+.download-calendar {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  color: white;
+}
+
+.download-calendar:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+}
+
+.calendar-modal-footer {
+  padding: 16px 24px 24px 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.calendar-modal-cancel {
+  background: #f5f5f5;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-modal-cancel:hover {
+  background: #e5e5e5;
+  color: #333;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .calendar-modal-overlay {
+    padding: 10px;
+  }
+  
+  .calendar-modal-content {
+    max-width: 100%;
+    border-radius: 12px;
+  }
+  
+  .calendar-modal-header {
+    padding: 20px 20px 0 20px;
+  }
+  
+  .calendar-modal-header h3 {
+    font-size: 1.25rem;
+  }
+  
+  .calendar-modal-body {
+    padding: 0 20px 16px 20px;
+  }
+  
+  .calendar-event-details {
+    padding: 16px;
+  }
+  
+  .calendar-option-button {
+    padding: 12px 16px;
+    font-size: 0.95rem;
+  }
+  
+  .calendar-modal-footer {
+    padding: 12px 20px 20px 20px;
+  }
+}

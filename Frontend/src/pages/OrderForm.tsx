@@ -249,7 +249,9 @@ const OrderForm: React.FC = () => {
         summary: orderSummary,
         timestamp: Date.now(),
         serviceName: selectedService.name,
-        quantity: serviceQuantity
+        quantity: serviceQuantity,
+        scheduledDate: selectedDate,
+        scheduledTime: selectedTime
       };
 
       localStorage.setItem('pendingOrder', JSON.stringify(paymentState));

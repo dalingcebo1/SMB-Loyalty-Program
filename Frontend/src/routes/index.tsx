@@ -33,6 +33,7 @@ const PaymentVerification = lazy(() => import('../features/staff/pages/PaymentVe
 const ManualVisitLogger = lazy(() => import('../features/staff/pages/ManualVisitLogger'));
 const VehicleManager = lazy(() => import('../features/staff/pages/VehicleManager'));
 const ModernStaffDashboard = lazy(() => import('../features/staff/pages/ModernStaffDashboard'));
+const WashHistory = lazy(() => import('../features/staff/pages/WashHistory'));
 const StaffLayout = lazy(() => import('../features/staff/components/StaffLayout'));
 
 // Layouts
@@ -105,9 +106,10 @@ const AppRoutes: React.FC = () => {
           element: <StaffLayout />,
           children: [
             { path: '/staff/dashboard', element: <ModernStaffDashboard /> },
+            { path: '/staff/vehicle-manager', element: <VehicleManager /> },
+            { path: '/staff/wash-history', element: <WashHistory /> },
             enablePayments && { path: '/staff/payment', element: <PaymentVerification /> },
             { path: '/staff/manual-visit', element: <ManualVisitLogger /> },
-            { path: '/staff/vehicle-manager', element: <VehicleManager /> },
           ].filter(Boolean),
         },
       ],

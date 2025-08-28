@@ -24,6 +24,12 @@ const navigationItems: NavigationItem[] = [
     description: 'Vehicle Management'
   },
   {
+    path: '/staff/wash-history',
+    label: 'History',
+    icon: '📋',
+    description: 'Wash History & Analytics'
+  },
+  {
     path: '/staff/payment',
     label: 'Payments',
     icon: '💳',

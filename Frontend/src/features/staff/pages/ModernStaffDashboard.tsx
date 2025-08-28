@@ -2,6 +2,7 @@
 import React from 'react';
 import DashboardOverview from '../components/DashboardOverview';
 import ActiveWashesManager from '../components/ActiveWashesManager';
+import EnhancedWashHistory from '../components/EnhancedWashHistory';
 import './ModernStaffDashboard.css';
 
 const ModernStaffDashboard: React.FC = () => {

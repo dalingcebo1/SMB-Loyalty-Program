@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import ChartContainer from '../../../components/ui/ChartContainer';
 import TableContainer from '../../../components/ui/TableContainer';
 import { Wash } from '../../../types';
+import VirtualizedWashHistory from '../components/VirtualizedWashHistory';
 
 const CarWashDashboard: React.FC = () => {
   const { data: activeWashes = [], isLoading, refetch } = useActiveWashes();
@@ -123,6 +124,8 @@ const CarWashDashboard: React.FC = () => {
           <LoadingFallback message="Loading history…" />
         ) : history.length === 0 ? (
           <p className="text-gray-500">No washes found for selected filters.</p>
+        ) : history.length > 80 ? (
+          <VirtualizedWashHistory washes={history} className="border rounded" />
         ) : (
           <ul>
             {history.map((wash: Wash) => (

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useActiveWashes, useEndWash, useWashHistory } from '../../../api/queries';
+import { useActiveWashes, useEndWash } from '../../../api/queries';
+import { useWashHistory } from '../hooks';
 import { toast } from 'react-toastify';
 import LoadingFallback from '../../../components/LoadingFallback';
 import ConfirmDialog from '../../../components/ConfirmDialog';

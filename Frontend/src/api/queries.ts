@@ -88,13 +88,3 @@ export function useOrderUser(orderId?: string) {
     enabled: !!orderId,
   });
 }
-// Query: fetch wash history with optional filters
-export function useWashHistory(params: { startDate?: string; endDate?: string; paymentType?: string }) {
-  return useQuery({
-    queryKey: ['washes', 'history', params],
-    queryFn: async () => {
-      const { data } = await api.get('/payments/history', { params });
-      return data as Wash[];
-    },
-  });
-}

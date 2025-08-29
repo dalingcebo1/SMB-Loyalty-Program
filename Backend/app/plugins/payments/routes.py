@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from config import settings
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body, Query
 from pydantic import BaseModel
+from typing import Optional
 from sqlalchemy.orm import Session, joinedload
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -428,6 +429,183 @@ def wash_history(date: str, db: Session = Depends(get_db)):
             "status": "ended" if order.ended_at else "started",
         })
     return result
+
+# New richer history endpoint expected by frontend hooks
+@router.get("/history")
+def history(
+    start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD (defaults to today if none provided)"),
+    end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD (inclusive)"),
+    status: Optional[str] = Query(None, description="Filter by status: started|ended"),
+    paymentType: Optional[str] = Query(None, description="Filter by payment type: paid|loyalty (maps to Order.type/status heuristics)"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db)
+):
+    """Return wash/order history between optional dates with lightweight filtering.
+
+    Notes:
+    - Falls back to today's date range if none supplied.
+    - Status is derived from presence of ended_at.
+    - paymentType 'loyalty' filters orders that have a zero-amount successful loyalty Payment OR amount==0.
+    - Pagination is naive (offset/limit) for now.
+    """
+    today = datetime.utcnow().date()
+    try:
+        if start_date:
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        else:
+            start = today
+        if end_date:
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        else:
+            end = start
+        if end < start:
+            raise ValueError("end_date before start_date")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format or range")
+
+    # Base query for orders that started in range
+    from sqlalchemy import and_, or_
+    q = db.query(Order).filter(
+        Order.started_at != None,
+        Order.started_at >= start,
+        Order.started_at < (end + timedelta(days=1)),
+    )
+
+    # Filter by derived status
+    if status in ("started", "ended"):
+        if status == "started":
+            q = q.filter(Order.ended_at == None)
+        else:
+            q = q.filter(Order.ended_at != None)
+
+    # paymentType heuristic
+    if paymentType in ("paid", "loyalty"):
+        if paymentType == "loyalty":
+            # loyalty: amount 0 payments or payment.source == 'loyalty'
+            q = q.join(Payment, Payment.order_id == Order.id, isouter=True).filter(
+                or_(Payment.amount == 0, Payment.source == 'loyalty')
+            )
+        else:  # paid
+            q = q.join(Payment, Payment.order_id == Order.id, isouter=True).filter(
+                Payment.amount != None, Payment.amount > 0
+            )
+
+    total = q.count()
+    items = (
+        q.order_by(Order.started_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    result = []
+    for order in items:
+        user = db.query(User).filter_by(id=order.user_id).first()
+        ov = db.query(OrderVehicle).filter_by(order_id=order.id).first()
+        vehicle = db.query(Vehicle).filter_by(id=ov.vehicle_id).first() if ov else None
+        result.append({
+            "order_id": order.id,
+            "user": {
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "phone": user.phone,
+            } if user else None,
+            "vehicle": {
+                "make": vehicle.make,
+                "model": vehicle.model,
+                "reg": vehicle.plate,
+            } if vehicle else None,
+            "payment_pin": order.payment_pin,
+            "started_at": order.started_at,
+            "ended_at": order.ended_at,
+            "status": "ended" if order.ended_at else "started",
+        })
+    return {"total": total, "items": result, "page": page, "limit": limit}
+
+@router.get("/dashboard-analytics")
+def dashboard_analytics(
+    start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    """Basic analytics for staff dashboard without admin restrictions."""
+    from sqlalchemy import func, cast, Date
+    
+    today = datetime.utcnow().date()
+    if not start_date or not end_date:
+        end = today
+        start = today - timedelta(days=6)  # last 7 days
+    else:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
+
+    # Total washes in period
+    total_washes = db.query(func.count(Order.id)).filter(
+        Order.started_at != None,
+        cast(Order.started_at, Date) >= start,
+        cast(Order.started_at, Date) <= end
+    ).scalar() or 0
+
+    # Completed washes
+    completed_washes = db.query(func.count(Order.id)).filter(
+        Order.ended_at != None,
+        cast(Order.ended_at, Date) >= start,
+        cast(Order.ended_at, Date) <= end
+    ).scalar() or 0
+
+    # Revenue from payments
+    revenue = db.query(func.sum(Payment.amount)).filter(
+        Payment.status == "success",
+        cast(Payment.created_at, Date) >= start,
+        cast(Payment.created_at, Date) <= end
+    ).scalar() or 0
+
+    # Customer count (unique users)
+    customer_count = db.query(func.count(func.distinct(Order.user_id))).filter(
+        Order.started_at != None,
+        cast(Order.started_at, Date) >= start,
+        cast(Order.started_at, Date) <= end
+    ).scalar() or 0
+
+    # Daily wash counts for chart data
+    daily_data = db.query(
+        cast(Order.started_at, Date).label('date'),
+        func.count(Order.id).label('count')
+    ).filter(
+        Order.started_at != None,
+        cast(Order.started_at, Date) >= start,
+        cast(Order.started_at, Date) <= end
+    ).group_by('date').all()
+
+    daily_washes = {}
+    for row in daily_data:
+        daily_washes[row.date.strftime('%Y-%m-%d')] = row.count
+
+    # Fill in missing dates with 0
+    chart_data = []
+    cur = start
+    while cur <= end:
+        date_str = cur.strftime('%Y-%m-%d')
+        chart_data.append({
+            "date": date_str,
+            "washes": daily_washes.get(date_str, 0)
+        })
+        cur += timedelta(days=1)
+
+    return {
+        "total_washes": total_washes,
+        "completed_washes": completed_washes,
+        "revenue": revenue / 100,  # convert cents to rands
+        "customer_count": customer_count,
+        "chart_data": chart_data,
+        "period": {
+            "start_date": start.strftime('%Y-%m-%d'),
+            "end_date": end.strftime('%Y-%m-%d')
+        }
+    }
 
 @router.get("/user-wash-status")
 def user_wash_status(db: Session = Depends(get_db), user=Depends(get_current_user)):

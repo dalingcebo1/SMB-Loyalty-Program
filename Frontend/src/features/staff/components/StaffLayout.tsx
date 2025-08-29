@@ -27,13 +27,19 @@ const navigationItems: NavigationItem[] = [
     path: '/staff/wash-history',
     label: 'History',
     icon: '📋',
-    description: 'Wash History & Analytics'
+    description: 'Wash History & Tracking'
   },
   {
     path: '/staff/payment',
     label: 'Payments',
     icon: '💳',
     description: 'Payment Verification'
+  },
+  {
+    path: '/staff/analytics',
+    label: 'Analytics',
+    icon: '📈',
+    description: 'Business Analytics & Reports'
   },
   {
     path: '/staff/manual-visit',

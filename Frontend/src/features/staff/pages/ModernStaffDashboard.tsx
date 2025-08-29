@@ -2,7 +2,7 @@
 import React from 'react';
 import DashboardOverview from '../components/DashboardOverview';
 import ActiveWashesManager from '../components/ActiveWashesManager';
-import EnhancedWashHistory from '../components/EnhancedWashHistory';
+import EnhancedAnalytics from '../components/EnhancedAnalytics';
 import './ModernStaffDashboard.css';
 
 const ModernStaffDashboard: React.FC = () => {
@@ -24,6 +24,15 @@ const ModernStaffDashboard: React.FC = () => {
       <div className="dashboard-content">
         <DashboardOverview />
         <ActiveWashesManager />
+        
+        {/* Quick Analytics Preview */}
+        <div className="dashboard-section">
+          <div className="section-header">
+            <h2>📈 Quick Analytics</h2>
+            <p>Today's performance at a glance</p>
+          </div>
+          <EnhancedAnalytics />
+        </div>
       </div>
     </div>
   );

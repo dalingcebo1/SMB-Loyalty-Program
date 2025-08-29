@@ -1,6 +1,6 @@
 // src/features/staff/components/EnhancedAnalytics.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useWashHistory } from '../hooks';
+import { useWashHistory, useDashboardAnalytics, useActiveWashes } from '../hooks';
 import './EnhancedAnalytics.css';
 
 interface AnalyticsData {
@@ -79,142 +79,176 @@ const EnhancedAnalytics: React.FC = () => {
     };
   }, [selectedPeriod]);
 
+  // Historical wash data still used for certain derived metrics & fallback
   const { data: washHistoryData } = useWashHistory({
     startDate: periodDates.startDate,
     endDate: periodDates.endDate
   });
+  // Real backend analytics
+  const { data: backendAnalytics, isLoading: backendLoading } = useDashboardAnalytics({
+    startDate: periodDates.startDate,
+    endDate: periodDates.endDate
+  });
+  // Active washes for current status (not included in analytics payload)
+  const { data: activeWashesData = [] } = useActiveWashes();
 
   const calculateAnalytics = useCallback(() => {
+    // Prefer backend analytics; fallback to washHistory mock if unavailable
+    const periodDays = (new Date(periodDates.endDate).getTime() - new Date(periodDates.startDate).getTime()) / 86400000 + 1;
+    if (backendAnalytics) {
+      const total = backendAnalytics.total_washes;
+      const completed = backendAnalytics.completed_washes;
+      const revenue = backendAnalytics.revenue; // already in Rands
+  // avgPricePerWash could be used for future per-wash pricing insights (not displayed yet)
+      // Derive daily revenue distribution proportional to washes per day
+  const totalChartWashes = backendAnalytics.chart_data.reduce((s: number, d: { date: string; washes: number }) => s + d.washes, 0) || 1;
+      // Estimate today's revenue (last date in range)
+      const lastDate = backendAnalytics.period.end_date;
+  const todaysWashes = backendAnalytics.chart_data.find((d: { date: string; washes: number }) => d.date === lastDate)?.washes || 0;
+      const todayRevenue = totalChartWashes > 0 ? (todaysWashes / totalChartWashes) * revenue : 0;
+      // Month projection naive (scale by 30/periodDays)
+      const monthRevenue = revenue * (30 / periodDays);
+      const active = activeWashesData.length; // live active washes now
+
+      // Duration estimation from washHistoryData if available (fallback)
+      let avgDuration = 0;
+      if (washHistoryData) {
+        const completedWashes = washHistoryData.filter(w => w.status === 'ended');
+        avgDuration = completedWashes.length > 0 ? Math.round(
+          completedWashes.reduce((sum, w) => {
+            if (w.ended_at && w.started_at) {
+              return sum + (new Date(w.ended_at).getTime() - new Date(w.started_at).getTime()) / 60000;
+            }
+            return sum;
+          }, 0) / completedWashes.length
+        ) : 0;
+      }
+
+      const efficiency = total > 0 ? (completed / total) * 100 : 0;
+      const utilization = Math.min(100, efficiency * 0.9); // heuristic
+      const uniqueUsers = backendAnalytics.customer_count; // backend unique users
+      setAnalyticsData({
+        revenue: {
+          today: todayRevenue,
+            week: revenue, // treat current selected period aggregate as 'week' field for UI label
+          month: monthRevenue,
+          growth: 0 // placeholder until comparative period implemented
+        },
+        washes: {
+          completed,
+          active,
+          total,
+          avgDuration
+        },
+        customers: {
+          total: uniqueUsers,
+          returning: Math.round(uniqueUsers * 0.6),
+          new: uniqueUsers - Math.round(uniqueUsers * 0.6),
+          satisfaction: 4.7 // placeholder
+        },
+        performance: {
+          efficiency,
+          utilization,
+          errorRate: Math.max(0.5, 5 - efficiency / 10),
+          avgWaitTime: Math.max(2, Math.round(15 - efficiency / 10))
+        }
+      });
+      setIsLoading(false);
+      return;
+    }
+    // Fallback: if backend not ready but we have history, reuse previous mock path
     if (!washHistoryData) return;
-
-    setIsLoading(true);
-
-    // Mock analytics calculation - in real implementation, this would come from backend
     const completedWashes = washHistoryData.filter(w => w.status === 'ended');
     const activeWashes = washHistoryData.filter(w => w.status === 'started');
-    
-    // Calculate revenue (mock prices)
     const avgServicePrice = 150;
-    const todayRevenue = completedWashes.length * avgServicePrice * 0.3; // Mock today portion
     const weekRevenue = completedWashes.length * avgServicePrice;
-    const monthRevenue = weekRevenue * 4.2; // Mock month projection
-
-    // Calculate wash metrics
     const totalWashes = washHistoryData.length;
-    const avgDuration = completedWashes.length > 0 
-      ? completedWashes.reduce((sum, wash) => {
-          if (wash.ended_at && wash.started_at) {
-            const duration = new Date(wash.ended_at).getTime() - new Date(wash.started_at).getTime();
-            return sum + (duration / 60000); // Convert to minutes
-          }
-          return sum;
-        }, 0) / completedWashes.length
-      : 0;
-
-    // Mock customer data - assuming each wash has a user
-    const uniqueUsers = new Set(washHistoryData.map(w => w.order_id)).size; // Use order_id as proxy for unique users
-    
-    // Mock performance data
-    const efficiency = Math.min(95, (completedWashes.length / totalWashes) * 100);
-    const utilization = Math.min(85, totalWashes * 2.5); // Mock utilization
-    
+    const avgDuration = completedWashes.length > 0 ? Math.round(
+      completedWashes.reduce((sum, wash) => {
+        if (wash.ended_at && wash.started_at) {
+          return sum + (new Date(wash.ended_at).getTime() - new Date(wash.started_at).getTime()) / 60000;
+        }
+        return sum;
+      }, 0) / completedWashes.length
+    ) : 0;
+    const efficiency = totalWashes > 0 ? (completedWashes.length / totalWashes) * 100 : 0;
+    const uniqueUsers = new Set(washHistoryData.map(w => w.order_id)).size;
     setAnalyticsData({
-      revenue: {
-        today: todayRevenue,
-        week: weekRevenue,
-        month: monthRevenue,
-        growth: 12.5 // Mock growth percentage
-      },
-      washes: {
-        completed: completedWashes.length,
-        active: activeWashes.length,
-        total: totalWashes,
-        avgDuration: Math.round(avgDuration)
-      },
-      customers: {
-        total: uniqueUsers,
-        returning: Math.round(uniqueUsers * 0.65), // Mock returning customers
-        new: Math.round(uniqueUsers * 0.35), // Mock new customers
-        satisfaction: 4.7 // Mock satisfaction score
-      },
-      performance: {
-        efficiency,
-        utilization,
-        errorRate: Math.max(0.5, 5 - efficiency/10), // Mock error rate
-        avgWaitTime: Math.round(15 - (efficiency/10)) // Mock wait time
-      }
+      revenue: { today: weekRevenue * 0.2, week: weekRevenue, month: weekRevenue * 4.2, growth: 0 },
+      washes: { completed: completedWashes.length, active: activeWashes.length, total: totalWashes, avgDuration },
+      customers: { total: uniqueUsers, returning: Math.round(uniqueUsers * 0.6), new: Math.round(uniqueUsers * 0.4), satisfaction: 4.7 },
+      performance: { efficiency, utilization: Math.min(100, efficiency * 0.9), errorRate: Math.max(0.5, 5 - efficiency / 10), avgWaitTime: Math.max(2, Math.round(15 - efficiency / 10)) }
     });
-
     setIsLoading(false);
-  }, [washHistoryData]);
+  }, [backendAnalytics, washHistoryData, activeWashesData, periodDates.endDate, periodDates.startDate]);
 
   const generateChartData = useCallback(() => {
+    // If backend analytics available, build charts from its chart_data (washes); synthesize revenue
+    if (backendAnalytics) {
+  const labels = backendAnalytics.chart_data.map((d: { date: string; washes: number }) => {
+        const dt = new Date(d.date + 'T00:00:00Z');
+        return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      });
+  const washCounts = backendAnalytics.chart_data.map((d: { date: string; washes: number }) => d.washes);
+  const totalWashCounts = washCounts.reduce((s: number, v: number) => s + v, 0) || 1;
+      const revenuePerUnit = backendAnalytics.revenue / totalWashCounts;
+  const revenueSeries = washCounts.map((c: number) => c * revenuePerUnit);
+      setRevenueChartData({
+        labels,
+        datasets: [{
+          label: 'Revenue',
+          data: revenueSeries,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          fill: true
+        }]
+      });
+      setWashVolumeData({
+        labels,
+        datasets: [{
+          label: 'Wash Volume',
+          data: washCounts,
+          borderColor: '#764ba2',
+          backgroundColor: 'rgba(118, 75, 162, 0.1)',
+          fill: true
+        }]
+      });
+      return;
+    }
+    // Fallback to local history-derived mock
     if (!washHistoryData) return;
-
     const period = filterPeriods.find(p => p.value === selectedPeriod);
     const days = period?.days || 7;
-    
-    // Generate labels for the chart
-    const labels = [];
-    const revenueData = [];
-    const washVolumeData = [];
-    
+    const labels: string[] = [];
+    const revenueData: number[] = [];
+    const washVolume: number[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      
       const dateStr = date.toISOString().split('T')[0];
-      const dayLabel = selectedPeriod === 'today' 
-        ? date.getHours() + ':00'
-        : date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-          });
-      
-      labels.push(dayLabel);
-      
-      // Mock data generation based on wash history
-      const dayWashes = washHistoryData.filter(w => 
-        w.started_at && w.started_at.startsWith(dateStr)
-      );
-      
-      const avgServicePrice = 150;
-      const dayRevenue = dayWashes.length * avgServicePrice;
-      const washCount = dayWashes.length;
-      
-      revenueData.push(dayRevenue);
-      washVolumeData.push(washCount);
+      labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+      const dayWashes = washHistoryData.filter(w => w.started_at && w.started_at.startsWith(dateStr));
+      const count = dayWashes.length;
+      washVolume.push(count);
+      revenueData.push(count * 150);
     }
-
     setRevenueChartData({
       labels,
-      datasets: [{
-        label: 'Revenue',
-        data: revenueData,
-        borderColor: '#667eea',
-        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-        fill: true
-      }]
+      datasets: [{ label: 'Revenue', data: revenueData, borderColor: '#667eea', backgroundColor: 'rgba(102,126,234,0.1)', fill: true }]
     });
-
     setWashVolumeData({
       labels,
-      datasets: [{
-        label: 'Wash Volume',
-        data: washVolumeData,
-        borderColor: '#764ba2',
-        backgroundColor: 'rgba(118, 75, 162, 0.1)',
-        fill: true
-      }]
+      datasets: [{ label: 'Wash Volume', data: washVolume, borderColor: '#764ba2', backgroundColor: 'rgba(118,75,162,0.1)', fill: true }]
     });
-  }, [washHistoryData, selectedPeriod]);
+  }, [backendAnalytics, washHistoryData, selectedPeriod]);
 
   useEffect(() => {
-    if (washHistoryData) {
+    // Trigger recalculation when either backend analytics or fallback history changes
+    if (backendAnalytics || washHistoryData) {
       calculateAnalytics();
       generateChartData();
     }
-  }, [washHistoryData, selectedPeriod, calculateAnalytics, generateChartData]);
+  }, [backendAnalytics, washHistoryData, selectedPeriod, calculateAnalytics, generateChartData]);
 
   const formatCurrency = (amount: number) => `R${amount.toFixed(2)}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
@@ -240,7 +274,7 @@ const EnhancedAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {isLoading ? (
+  {isLoading || backendLoading ? (
         <div className="analytics-loading">
           <div className="loading-spinner"></div>
           <p>Loading analytics data...</p>

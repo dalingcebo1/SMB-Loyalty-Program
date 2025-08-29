@@ -12,13 +12,18 @@ export interface DashboardAnalyticsResponse {
 }
 
 export function useDashboardAnalytics(params: { startDate: string; endDate: string }) {
-  return useQuery<DashboardAnalyticsResponse>({
+  return useQuery<DashboardAnalyticsResponse, Error>({
     queryKey: ['dashboard-analytics', params],
+    enabled: !!params.startDate && !!params.endDate,
+    staleTime: 60_000, // 1 min – analytics less volatile
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data } = await api.get('/payments/dashboard-analytics', {
         params: { start_date: params.startDate, end_date: params.endDate },
       });
       return data as DashboardAnalyticsResponse;
     },
+    select: (raw) => raw, // placeholder for potential future shaping
+    meta: { description: 'Dashboard analytics with tuned staleTime (Phase 2)' }
   });
 }

@@ -16,8 +16,13 @@ export interface WashHistoryParams {
 
 /** Fetch wash history (wraps /payments/history). */
 export function useWashHistory(params?: WashHistoryParams) {
-  return useQuery<Wash[]>({
+  return useQuery<Wash[], Error>({
     queryKey: ['washes', 'history', params],
+    enabled: !(params && params.startDate && params.endDate && params.startDate > params.endDate),
+  // Maintain previous-like data during refetch (v5 replacement for keepPreviousData)
+  placeholderData: (previous) => previous ?? [],
+    // History doesn't change second-to-second; allow brief caching window
+    staleTime: 30_000, // 30s
     queryFn: async () => {
       const mapped: {
         start_date?: string;
@@ -40,5 +45,8 @@ export function useWashHistory(params?: WashHistoryParams) {
       const { data } = await api.get('/payments/history', { params: mapped });
       return (data.items || data) as Wash[];
     },
+    // Select: ensure only minimal shape (if further trimming needed, implement map)
+    select: (data) => data,
+    meta: { description: 'Wash history with caching & minimal re-renders (Phase 2)' }
   });
 }

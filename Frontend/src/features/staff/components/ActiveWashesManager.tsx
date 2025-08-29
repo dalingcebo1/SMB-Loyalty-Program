@@ -1,5 +1,6 @@
 // src/features/staff/components/ActiveWashesManager.tsx
 import React, { useState, useMemo } from 'react';
+import { timeDerivation } from '../perf/counters';
 import { useActiveWashes, useEndWash } from '../hooks';
 import { toast } from 'react-toastify';
 import LoadingFallback from '../../../components/LoadingFallback';
@@ -119,7 +120,10 @@ const ActiveWashesManager: React.FC = () => {
   const { data: activeWashes = [], isLoading, refetch } = useActiveWashes();
   const endWashMutation = useEndWash();
   const [confirmWash, setConfirmWash] = useState<string | null>(null);
-  const { total, longRunning } = useMemo(() => {
+  const { total, longRunning } = useMemo(() => timeDerivation(
+    'activeWashesStatusPasses',
+    'activeWashesStatusDerivationMs',
+    () => {
     const total = activeWashes.length;
     let longRunning = 0;
     const now = Date.now();
@@ -127,7 +131,7 @@ const ActiveWashesManager: React.FC = () => {
       if (now - new Date(wash.started_at).getTime() > 60 * 60 * 1000) longRunning++;
     }
     return { total, longRunning };
-  }, [activeWashes]);
+  }), [activeWashes]);
 
   if (isLoading) {
     return <LoadingFallback message="Loading active washes..." />;

@@ -1,5 +1,6 @@
 // src/features/staff/components/DashboardOverview.tsx
 import React, { useMemo } from 'react';
+import { timeDerivation } from '../perf/counters';
 import { useWashHistory } from '../hooks';
 import { Wash } from '../../../types';
 import './DashboardOverview.css';
@@ -57,7 +58,10 @@ const DashboardOverview: React.FC = () => {
   const thisWeekStartStr = thisWeekStart.toISOString().slice(0, 10);
 
   // Aggregate metrics in a single pass (memoized)
-  const metrics = useMemo(() => {
+  const metrics = useMemo(() => timeDerivation(
+    'dashboardOverviewMetricPasses',
+    'dashboardOverviewDerivationMs',
+    () => {
     let todayCount = 0;
     let yesterdayCount = 0;
     let thisWeekCount = 0;
@@ -98,7 +102,7 @@ const DashboardOverview: React.FC = () => {
       weeklyAvg,
       completionRate
     };
-  }, [history, todayStr, yesterdayStr, thisWeekStartStr]);
+  }), [history, todayStr, yesterdayStr, thisWeekStartStr]);
 
   if (isLoading) {
     return (

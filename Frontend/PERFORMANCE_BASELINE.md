@@ -50,6 +50,28 @@ ActiveWashesManager:
 4. Bundle size (later Phase 4): Run `vite build --analyze` (already have bundle-stats.html) – capture pre-optimization size for staff bundle chunk.
 5. Backend timing sampling: Use browser Network panel to log average latency for /payments/history (10 samples) & /payments/dashboard-analytics.
 
+### Added Instrumentation (Phase 1 Post Commit)
+- Optional in-browser counters now available. To enable before navigating to staff pages, run in DevTools console:
+   `window.__ENABLE_STAFF_PERF = true;`
+- After interacting, inspect: `window.__STAFF_PERF` for:
+   - `dashboardOverviewMetricPasses`
+   - `carWashDashboardMetricPasses`
+   - `activeWashesStatusPasses`
+   - Derivation timing arrays (`*DerivationMs`) to compute mean / p95.
+
+Example quick summary snippet you can paste after usage:
+```
+const p = window.__STAFF_PERF; const summarize = arr => ({n: arr.length, mean: (arr.reduce((s,v)=>s+v,0)/Math.max(arr.length,1)).toFixed(2), p95: arr.slice().sort((a,b)=>a-b)[Math.floor(arr.length*0.95)]});
+({
+   overviewPasses: p.dashboardOverviewMetricPasses,
+   overviewTiming: summarize(p.dashboardOverviewDerivationMs),
+   carWashPasses: p.carWashDashboardMetricPasses,
+   carWashTiming: summarize(p.carWashDashboardDerivationMs),
+   activeStatusPasses: p.activeWashesStatusPasses,
+   activeStatusTiming: summarize(p.activeWashesStatusDerivationMs)
+});
+```
+
 ## Success Criteria for Phase 1
 - Reduce DashboardOverview filter passes from 5+ to 1 (aggregate pass) via a single loop or pre-grouping (useMemo) → ~80% reduction in per-render array traversal cost.
 - Eliminate inline anonymous IIFE recomputation in CarWashDashboard – move to useMemo with stable dependencies.

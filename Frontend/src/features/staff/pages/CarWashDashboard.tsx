@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { timeDerivation } from '../../staff/perf/counters';
 import { useActiveWashes, useEndWash } from '../../../api/queries';
 import { useWashHistory } from '../hooks';
 import { toast } from 'react-toastify';
@@ -21,7 +22,10 @@ const CarWashDashboard: React.FC = () => {
     paymentType: filters.paymentType || undefined,
   });
   // Aggregate historical metrics (single memoized pass) -- must be before conditional return to keep hook order stable
-  const metrics = useMemo(() => {
+  const metrics = useMemo(() => timeDerivation(
+    'carWashDashboardMetricPasses',
+    'carWashDashboardDerivationMs',
+    () => {
     let completedCount = 0;
     let inProgressCount = 0;
     let durationSum = 0;
@@ -39,7 +43,7 @@ const CarWashDashboard: React.FC = () => {
     const avgDurationMin = completedCount > 0 ? Math.round((durationSum / completedCount) / 60000) : 0;
     const chartData = Object.entries(dateCounts).map(([date, count]) => ({ date, count }));
     return { completedCount, inProgressCount, avgDurationMin, chartData };
-  }, [history]);
+  }), [history]);
   const endWashMutation = useEndWash();
   const [confirmWash, setConfirmWash] = useState<string | null>(null);
 

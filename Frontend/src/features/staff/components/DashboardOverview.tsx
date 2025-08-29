@@ -1,5 +1,5 @@
 // src/features/staff/components/DashboardOverview.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useWashHistory } from '../hooks';
 import { Wash } from '../../../types';
 import './DashboardOverview.css';
@@ -15,7 +15,7 @@ interface MetricCardProps {
   description: string;
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, description }) => (
+const MetricCardComponent: React.FC<MetricCardProps> = ({ title, value, icon, trend, description }) => (
   <div className="metric-card">
     <div className="metric-header">
       <div className="metric-icon">{icon}</div>
@@ -40,8 +40,65 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, desc
   </div>
 );
 
+// Prevent unnecessary rerenders when props unchanged
+const MetricCard = React.memo(MetricCardComponent);
+
 const DashboardOverview: React.FC = () => {
   const { data: history = [], isLoading } = useWashHistory({});
+
+  // Calculate metrics
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const thisWeekStart = new Date(today);
+  thisWeekStart.setDate(today.getDate() - today.getDay());
+  const thisWeekStartStr = thisWeekStart.toISOString().slice(0, 10);
+
+  // Aggregate metrics in a single pass (memoized)
+  const metrics = useMemo(() => {
+    let todayCount = 0;
+    let yesterdayCount = 0;
+    let thisWeekCount = 0;
+    let completedCount = 0;
+    let activeCount = 0;
+    let durationSum = 0;
+
+    for (const w of history as Wash[]) {
+      const dateStr = w.started_at?.slice(0, 10);
+      if (dateStr === todayStr) todayCount++;
+      if (dateStr === yesterdayStr) yesterdayCount++;
+      if (dateStr && dateStr >= thisWeekStartStr) thisWeekCount++;
+      if (w.status === 'ended' && w.ended_at) {
+        completedCount++;
+        const end = new Date(w.ended_at).getTime();
+        const start = new Date(w.started_at).getTime();
+        durationSum += (end - start);
+      } else if (w.status === 'started') {
+        activeCount++;
+      }
+    }
+
+    const avgDurationMin = completedCount > 0 ? Math.round((durationSum / completedCount) / 60000) : 0;
+    const dailyTrend = yesterdayCount > 0
+      ? Math.round(((todayCount - yesterdayCount) / yesterdayCount) * 100)
+      : todayCount > 0 ? 100 : 0;
+    const weeklyAvg = Math.round(thisWeekCount / 7);
+    const completionRate = history.length > 0 ? Math.round((completedCount / history.length) * 100) : 0;
+
+    return {
+      todayCount,
+      yesterdayCount,
+      thisWeekCount,
+      completedCount,
+      activeCount,
+      avgDurationMin,
+      dailyTrend,
+      weeklyAvg,
+      completionRate
+    };
+  }, [history, todayStr, yesterdayStr, thisWeekStartStr]);
 
   if (isLoading) {
     return (
@@ -54,46 +111,6 @@ const DashboardOverview: React.FC = () => {
     );
   }
 
-  // Calculate metrics
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
-  const thisWeekStart = new Date(today);
-  thisWeekStart.setDate(today.getDate() - today.getDay());
-  const thisWeekStartStr = thisWeekStart.toISOString().slice(0, 10);
-
-  // Filter data
-  const todayWashes = history.filter((w: Wash) => w.started_at.slice(0, 10) === todayStr);
-  const yesterdayWashes = history.filter((w: Wash) => w.started_at.slice(0, 10) === yesterdayStr);
-  const thisWeekWashes = history.filter((w: Wash) => w.started_at.slice(0, 10) >= thisWeekStartStr);
-  const completedWashes = history.filter((w: Wash) => w.status === 'ended' && w.ended_at);
-  const activeWashes = history.filter((w: Wash) => w.status === 'started');
-
-  // Calculate averages
-  const avgDurationMs = completedWashes.length > 0
-    ? completedWashes.reduce((sum: number, w: Wash) => {
-        const duration = new Date(w.ended_at!).getTime() - new Date(w.started_at).getTime();
-        return sum + duration;
-      }, 0) / completedWashes.length
-    : 0;
-  const avgDurationMin = Math.round(avgDurationMs / 60000);
-
-  // Calculate trends
-  const todayCount = todayWashes.length;
-  const yesterdayCount = yesterdayWashes.length;
-  const dailyTrend = yesterdayCount > 0 
-    ? Math.round(((todayCount - yesterdayCount) / yesterdayCount) * 100)
-    : todayCount > 0 ? 100 : 0;
-
-  const thisWeekCount = thisWeekWashes.length;
-  const weeklyAvg = Math.round(thisWeekCount / 7);
-
-  const completionRate = history.length > 0 
-    ? Math.round((completedWashes.length / history.length) * 100)
-    : 0;
-
   return (
     <div className="dashboard-overview">
       <div className="overview-header">
@@ -104,58 +121,58 @@ const DashboardOverview: React.FC = () => {
       <div className="metrics-grid">
         <MetricCard
           title="Today's Washes"
-          value={todayCount}
+          value={metrics.todayCount}
           icon="🚗"
           trend={{
-            value: dailyTrend,
-            isPositive: dailyTrend >= 0
+            value: metrics.dailyTrend,
+            isPositive: metrics.dailyTrend >= 0
           }}
           description="Washes started today"
         />
 
         <MetricCard
           title="Active Washes"
-          value={activeWashes.length}
+          value={metrics.activeCount}
           icon="🧽"
           description="Currently in progress"
         />
 
         <MetricCard
           title="Weekly Total"
-          value={thisWeekCount}
+          value={metrics.thisWeekCount}
           icon="📊"
-          description={`Daily average: ${weeklyAvg}`}
+          description={`Daily average: ${metrics.weeklyAvg}`}
         />
 
         <MetricCard
           title="Avg Duration"
-          value={`${avgDurationMin}m`}
+          value={`${metrics.avgDurationMin}m`}
           icon="⏱️"
           description="Average completion time"
         />
 
         <MetricCard
           title="Completion Rate"
-          value={`${completionRate}%`}
+          value={`${metrics.completionRate}%`}
           icon="✅"
           description="Successfully completed"
         />
 
         <MetricCard
           title="Total Completed"
-          value={completedWashes.length}
+          value={metrics.completedCount}
           icon="🎯"
           description="All time completions"
         />
       </div>
 
-      {activeWashes.length > 0 && (
+  {metrics.activeCount > 0 && (
         <div className="quick-actions">
           <h3>Quick Actions</h3>
           <div className="action-buttons">
             <button className="action-btn primary">
               <span className="btn-icon">👀</span>
-              View Active ({activeWashes.length})
+      View Active ({metrics.activeCount})
             </button>
             <button className="action-btn secondary">
               <span className="btn-icon">📊</span>

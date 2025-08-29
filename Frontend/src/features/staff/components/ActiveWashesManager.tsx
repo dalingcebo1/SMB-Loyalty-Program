@@ -1,5 +1,5 @@
 // src/features/staff/components/ActiveWashesManager.tsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useActiveWashes, useEndWash } from '../hooks';
 import { toast } from 'react-toastify';
 import LoadingFallback from '../../../components/LoadingFallback';
@@ -13,7 +13,7 @@ interface ActiveWashCardProps {
   isEnding: boolean;
 }
 
-const ActiveWashCard: React.FC<ActiveWashCardProps> = ({ wash, onEndWash, isEnding }) => {
+const ActiveWashCardComponent: React.FC<ActiveWashCardProps> = ({ wash, onEndWash, isEnding }) => {
   const startTime = new Date(wash.started_at);
   const currentTime = new Date();
   const durationMs = currentTime.getTime() - startTime.getTime();
@@ -112,10 +112,22 @@ const ActiveWashCard: React.FC<ActiveWashCardProps> = ({ wash, onEndWash, isEndi
   );
 };
 
+// Avoid re-rendering unchanged cards
+const ActiveWashCard = React.memo(ActiveWashCardComponent);
+
 const ActiveWashesManager: React.FC = () => {
   const { data: activeWashes = [], isLoading, refetch } = useActiveWashes();
   const endWashMutation = useEndWash();
   const [confirmWash, setConfirmWash] = useState<string | null>(null);
+  const { total, longRunning } = useMemo(() => {
+    const total = activeWashes.length;
+    let longRunning = 0;
+    const now = Date.now();
+    for (const wash of activeWashes) {
+      if (now - new Date(wash.started_at).getTime() > 60 * 60 * 1000) longRunning++;
+    }
+    return { total, longRunning };
+  }, [activeWashes]);
 
   if (isLoading) {
     return <LoadingFallback message="Loading active washes..." />;
@@ -141,17 +153,7 @@ const ActiveWashesManager: React.FC = () => {
     });
   };
 
-  const getStatusSummary = () => {
-    const total = activeWashes.length;
-    const longRunning = activeWashes.filter(wash => {
-      const durationMs = new Date().getTime() - new Date(wash.started_at).getTime();
-      return durationMs > 60 * 60 * 1000; // > 1 hour
-    }).length;
-
-    return { total, longRunning };
-  };
-
-  const { total, longRunning } = getStatusSummary();
+  // metrics already memoized above
 
   return (
     <div className="active-washes-manager">

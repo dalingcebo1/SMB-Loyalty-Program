@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useActiveWashes, useEndWash } from '../../../api/queries';
 import { useWashHistory } from '../hooks';
 import { toast } from 'react-toastify';
@@ -20,6 +20,26 @@ const CarWashDashboard: React.FC = () => {
     endDate: filters.endDate || undefined,
     paymentType: filters.paymentType || undefined,
   });
+  // Aggregate historical metrics (single memoized pass) -- must be before conditional return to keep hook order stable
+  const metrics = useMemo(() => {
+    let completedCount = 0;
+    let inProgressCount = 0;
+    let durationSum = 0;
+    const dateCounts: Record<string, number> = {};
+    for (const w of history as Wash[]) {
+      if (w.status === 'ended' && w.ended_at) {
+        completedCount++;
+        durationSum += (new Date(w.ended_at).getTime() - new Date(w.started_at).getTime());
+      } else if (w.status === 'started') {
+        inProgressCount++;
+      }
+      const d = w.started_at.slice(0,10);
+      dateCounts[d] = (dateCounts[d] || 0) + 1;
+    }
+    const avgDurationMin = completedCount > 0 ? Math.round((durationSum / completedCount) / 60000) : 0;
+    const chartData = Object.entries(dateCounts).map(([date, count]) => ({ date, count }));
+    return { completedCount, inProgressCount, avgDurationMin, chartData };
+  }, [history]);
   const endWashMutation = useEndWash();
   const [confirmWash, setConfirmWash] = useState<string | null>(null);
 
@@ -43,19 +63,6 @@ const CarWashDashboard: React.FC = () => {
     });
   };
 
-  // Aggregate historical metrics
-  const completedList = history.filter((w: Wash) => w.status === 'ended' && w.ended_at);
-  const inProgressList = history.filter((w: Wash) => w.status === 'started');
-  const totalHistory = history.length;
-  const completedCount = completedList.length;
-  const inProgressCount = inProgressList.length;
-  const avgDurationMs = completedCount > 0
-    ? completedList.reduce(
-        (sum: number, w: Wash) => sum + (new Date(w.ended_at!).getTime() - new Date(w.started_at).getTime()),
-        0
-      ) / completedCount
-    : 0;
-  const avgDurationMin = Math.round(avgDurationMs / 60000);
   
   return (
     <div className="p-4 max-w-4xl mx-auto">
@@ -99,10 +106,10 @@ const CarWashDashboard: React.FC = () => {
 
       {/* Summary */}
       <SummaryStats
-        totalHistory={totalHistory}
-        completedCount={completedCount}
-        inProgressCount={inProgressCount}
-        avgDurationMin={avgDurationMin}
+        totalHistory={history.length}
+        completedCount={metrics.completedCount}
+        inProgressCount={metrics.inProgressCount}
+        avgDurationMin={metrics.avgDurationMin}
       />
       {/* Wash History */}
       <section className="bg-white shadow rounded p-4 mb-6">
@@ -143,18 +150,11 @@ const CarWashDashboard: React.FC = () => {
       </section>
 
       {/* Washes by Date Chart */}
-      {history.length > 0 && (
+  {history.length > 0 && (
         <div className="bg-white shadow rounded p-4 mb-6 overflow-x-auto">
           <h2 className="text-xl font-semibold mb-2">Washes by Date</h2>
           <ChartContainer aspect={2} className="w-full">
-            <BarChart data={(() => {
-              const counts: Record<string, number> = {};
-              history.forEach((w: Wash) => {
-                const date = w.started_at.slice(0, 10);
-                counts[date] = (counts[date] || 0) + 1;
-              });
-              return Object.entries(counts).map(([date, count]) => ({ date, count }));
-            })()}>
+    <BarChart data={metrics.chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />

@@ -12,10 +12,24 @@ export interface StaffPerfCounters {
   activeWashesStatusDerivationMs: number[];
 }
 
+type PassKey =
+  | 'dashboardOverviewMetricPasses'
+  | 'carWashDashboardMetricPasses'
+  | 'activeWashesStatusPasses';
+type TimingKey =
+  | 'dashboardOverviewDerivationMs'
+  | 'carWashDashboardDerivationMs'
+  | 'activeWashesStatusDerivationMs';
+
+interface GlobalWithPerf extends Window {
+  __STAFF_PERF?: StaffPerfCounters;
+  __ENABLE_STAFF_PERF?: boolean;
+}
+
 // Ensure global singleton (browser only)
 function ensureGlobal(): StaffPerfCounters | undefined {
   if (typeof window === 'undefined') return undefined;
-  const w = window as any;
+  const w = window as GlobalWithPerf;
   if (!w.__STAFF_PERF) {
     w.__STAFF_PERF = {
       dashboardOverviewMetricPasses: 0,
@@ -24,36 +38,40 @@ function ensureGlobal(): StaffPerfCounters | undefined {
       dashboardOverviewDerivationMs: [],
       carWashDashboardDerivationMs: [],
       activeWashesStatusDerivationMs: [],
-    } as StaffPerfCounters;
+    };
   }
-  return w.__STAFF_PERF as StaffPerfCounters;
+  return w.__STAFF_PERF;
 }
 
-export function recordPerf(
-  key: keyof StaffPerfCounters,
-  durationMs?: number
-) {
+function isPassKey(key: PassKey | TimingKey): key is PassKey {
+  return (
+    key === 'dashboardOverviewMetricPasses' ||
+    key === 'carWashDashboardMetricPasses' ||
+    key === 'activeWashesStatusPasses'
+  );
+}
+
+export function recordPerf(key: PassKey | TimingKey, durationMs?: number) {
   if (typeof window === 'undefined') return;
-  const w = window as any;
+  const w = window as GlobalWithPerf;
   if (!w.__ENABLE_STAFF_PERF) return; // opt-in gate
   const store = ensureGlobal();
   if (!store) return;
-  if (key.endsWith('Passes')) {
-    // increment numeric counter
-    (store as any)[key] += 1;
-  } else if (Array.isArray((store as any)[key]) && typeof durationMs === 'number') {
-    (store as any)[key].push(durationMs);
+  if (isPassKey(key)) {
+    store[key] += 1;
+  } else if (typeof durationMs === 'number') {
+    store[key].push(durationMs);
   }
 }
 
 // Helper to wrap a derivation for timing
 export function timeDerivation<T>(
-  passKey: keyof StaffPerfCounters,
-  timingsKey: keyof StaffPerfCounters,
+  passKey: PassKey,
+  timingsKey: TimingKey,
   fn: () => T
 ): T {
   if (typeof window === 'undefined') return fn();
-  const w = window as any;
+  const w = window as GlobalWithPerf;
   if (!w.__ENABLE_STAFF_PERF) return fn();
   const start = performance.now();
   recordPerf(passKey);

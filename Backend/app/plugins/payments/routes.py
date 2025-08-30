@@ -18,15 +18,15 @@ from slowapi.util import get_remote_address
 from app.core.database import get_db
 from app.models import (
     Order,
+    OrderVehicle,
     Payment,
     User,
+    Service,
     Vehicle,
-    OrderVehicle,
+    OrderItem,
     Redemption,
     Reward,
-    Service,
     VisitCount,
-    OrderItem,
 )
 from app.utils.qr import generate_qr_code
 from app.plugins.loyalty.routes import _create_jwt, SECRET_KEY
@@ -607,7 +607,9 @@ def history(
     start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD (defaults to today if none provided)"),
     end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD (inclusive)"),
     status: Optional[str] = Query(None, description="Filter by status: started|ended"),
-    paymentType: Optional[str] = Query(None, description="Filter by payment type: paid|loyalty (maps to Order.type/status heuristics)"),
+    paymentType: Optional[str] = Query(None, description="Filter by payment type: paid|loyalty (maps to Payment heuristics)"),
+    service_type: Optional[str] = Query(None, description="Substring match on service name / category (first item)"),
+    customer: Optional[str] = Query(None, description="Substring match on user first/last name or phone"),
     page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db)
@@ -652,15 +654,25 @@ def history(
 
     # paymentType heuristic
     if paymentType in ("paid", "loyalty"):
+        # join payments once for filtering
+        q = q.join(Payment, Payment.order_id == Order.id, isouter=True)
         if paymentType == "loyalty":
-            # loyalty: amount 0 payments or payment.source == 'loyalty'
-            q = q.join(Payment, Payment.order_id == Order.id, isouter=True).filter(
-                or_(Payment.amount == 0, Payment.source == 'loyalty')
-            )
+            q = q.filter(or_(Payment.amount == 0, Payment.source == 'loyalty', Payment.method == 'loyalty'))
         else:  # paid
-            q = q.join(Payment, Payment.order_id == Order.id, isouter=True).filter(
-                Payment.amount != None, Payment.amount > 0
+            q = q.filter(Payment.amount != None, Payment.amount > 0)
+
+    # service type substring search (simple ILIKE on first order item service/category) – done post-query if needed
+    # customer substring search
+    if customer:
+        like = f"%{customer.lower()}%"
+        from sqlalchemy import func
+        q = q.join(User, User.id == Order.user_id, isouter=True).filter(
+            or_(
+                func.lower(User.first_name).like(like),
+                func.lower(User.last_name).like(like),
+                func.lower(User.phone).like(like),
             )
+        )
 
     total = q.count()
     items = (
@@ -673,6 +685,30 @@ def history(
     result = []
     for order in items:
         vehicle = order.vehicles[0].vehicle if order.vehicles else None
+        # Determine service name/category
+        service_name = None
+        if order.items:
+            first_item = order.items[0]
+            if first_item.service:
+                service_name = first_item.service.name
+            else:
+                service_name = first_item.category
+        elif getattr(order, "service", None):
+            service_name = order.service.name
+
+        # service_type filter post-eval (since join conditions vary) – skip if not match
+        if service_type and service_name:
+            if service_type.lower() not in service_name.lower():
+                continue
+
+        # Fetch latest payment for amount/method (optional)
+        pay = (
+            db.query(Payment)
+              .filter_by(order_id=order.id, status="success")
+              .order_by(Payment.created_at.desc())
+              .first()
+        )
+        amount_val = pay.amount if pay and pay.amount is not None else order.amount
         result.append({
             "order_id": order.id,
             "user": {
@@ -689,6 +725,9 @@ def history(
             "started_at": order.started_at,
             "ended_at": order.ended_at,
             "status": "ended" if order.ended_at else "started",
+            "service_name": service_name,
+            "amount": amount_val,
+            "duration_seconds": int((order.ended_at - order.started_at).total_seconds()) if order.started_at and order.ended_at else None,
         })
     return {"total": total, "items": result, "page": page, "limit": limit}
 
@@ -1007,10 +1046,34 @@ def business_analytics(
           .subquery()
     ).scalar() or 0
 
-    # Upsell rate: orders with extras length >0 / total
-    upsell_numer = db.query(func.count(Order.id)).filter(Order.started_at >= start_range, Order.extras != '[]').scalar() or 0
+    # Upsell rate: orders with at least one extra (JSON/JSONB array length > 0) / total
+    # Use JSON array length for Postgres compatibility instead of string comparison
+    from sqlalchemy.dialects.postgresql import JSONB
+    try:
+        # COALESCE to empty array to handle NULL extras; jsonb_array_length only valid for arrays
+        upsell_numer = db.query(func.count(Order.id)).filter(
+            Order.started_at >= start_range,
+            func.jsonb_array_length(func.coalesce(Order.extras.cast(JSONB), '[]' )) > 0  # type: ignore
+        ).scalar() or 0
+    except Exception:
+        # Fallback generic check: extras not null / empty string (SQLite dev)
+        upsell_numer = db.query(func.count(Order.id)).filter(
+            Order.started_at >= start_range,
+            Order.extras.isnot(None),
+        ).scalar() or 0
     upsell_rate = (upsell_numer / orders_in_range) if orders_in_range else 0
-    upsell_prev_numer = db.query(func.count(Order.id)).filter(Order.started_at >= prev_start, Order.started_at < prev_end, Order.extras != '[]').scalar() or 0
+    try:
+        upsell_prev_numer = db.query(func.count(Order.id)).filter(
+            Order.started_at >= prev_start,
+            Order.started_at < prev_end,
+            func.jsonb_array_length(func.coalesce(Order.extras.cast(JSONB), '[]' )) > 0  # type: ignore
+        ).scalar() or 0
+    except Exception:
+        upsell_prev_numer = db.query(func.count(Order.id)).filter(
+            Order.started_at >= prev_start,
+            Order.started_at < prev_end,
+            Order.extras.isnot(None),
+        ).scalar() or 0
     upsell_rate_prev = (upsell_prev_numer / orders_in_prev_range) if orders_in_prev_range else 0
 
     # Previous period duration stats for p95 delta

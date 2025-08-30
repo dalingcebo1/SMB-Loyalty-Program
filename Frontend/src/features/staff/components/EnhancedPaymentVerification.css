@@ -486,6 +486,32 @@
   color: #9ca3af;
 }
 
+/* Enhanced formatting improvements */
+.verification-meta {
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.25px;
+}
+
+.timestamp {
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  cursor: help;
+}
+
+.history-item.success .amount { color: #059669; }
+.history-item.failed .amount { color: #b91c1c; }
+
+.history-item:not(.failed) .status-badge.success { box-shadow: 0 0 0 1px rgba(16,185,129,0.15) inset; }
+.history-item.failed .status-badge.failed { box-shadow: 0 0 0 1px rgba(239,68,68,0.15) inset; }
+
 /* Confirmation Dialog Styles */
 .confirm-payment-details {
   text-align: left;

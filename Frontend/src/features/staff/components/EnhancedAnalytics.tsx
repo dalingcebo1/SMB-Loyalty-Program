@@ -1,8 +1,10 @@
 // src/features/staff/components/EnhancedAnalytics.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSharedPeriod } from '../hooks/useSharedPeriod';
 import { useWashHistory, useDashboardAnalytics, useActiveWashes, useBusinessAnalytics } from '../hooks';
 import type { TopService } from '../hooks/useBusinessAnalytics';
 import './EnhancedAnalytics.css';
+import { StaffIcon } from './StaffIcon';
 
 interface AnalyticsData {
   revenue: {
@@ -56,7 +58,7 @@ const filterPeriods: FilterPeriod[] = [
 ];
 
 const EnhancedAnalytics: React.FC = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [selectedPeriod, setSelectedPeriod] = useSharedPeriod('week');
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
     revenue: { today: 0, week: 0, month: 0, growth: 0 },
     washes: { completed: 0, active: 0, total: 0, avgDuration: 0 },
@@ -313,7 +315,7 @@ const EnhancedAnalytics: React.FC = () => {
             {/* Wash Metrics */}
             <div className="metric-card washes">
               <div className="metric-header">
-                <h3>🚗 Washes</h3>
+                <h3><StaffIcon name="car" /> Washes</h3>
                 <div className="metric-trend neutral">
                   {analyticsData.washes.active} active
                 </div>
@@ -347,9 +349,9 @@ const EnhancedAnalytics: React.FC = () => {
             {/* Performance Metrics */}
             <div className="metric-card performance">
               <div className="metric-header">
-                <h3>📊 Performance</h3>
+                <h3><StaffIcon name="analytics" /> Performance</h3>
                 <div className="metric-trend positive">
-                  ✅ {formatPercentage(analyticsData.performance.efficiency)}
+                  <StaffIcon name="completed" /> {formatPercentage(analyticsData.performance.efficiency)}
                 </div>
               </div>
               <div className="metric-values">
@@ -512,7 +514,7 @@ const EnhancedAnalytics: React.FC = () => {
               <h3>💼 Business Insights</h3>
               <div className="insights-grid">
                 <div className="insight-card">
-                  <div className="insight-icon">📈</div>
+                  <div className="insight-icon"><StaffIcon name="performance" /></div>
                   <div className="insight-content">
                     <h4>Peak Hours</h4>
                     <p>Highest activity between 10 AM - 2 PM</p>
@@ -536,7 +538,7 @@ const EnhancedAnalytics: React.FC = () => {
                   </div>
                 </div>
                 <div className="insight-card">
-                  <div className="insight-icon">🔄</div>
+                  <div className="insight-icon"><StaffIcon name="inProgress" /></div>
                   <div className="insight-content">
                     <h4>Customer Retention</h4>
                     <p>Loyal customers return weekly</p>

@@ -37,6 +37,16 @@ const NavTabs: React.FC = () => {
     ];
   }
 
+  // Safety: ensure we never render duplicate/overlapping nav links (same 'to')
+  if (navOptions.length > 1) {
+    const seen = new Set<string>();
+    navOptions = navOptions.filter(item => {
+      if (seen.has(item.to)) return false;
+      seen.add(item.to);
+      return true;
+    });
+  }
+
   const handleLogout = async () => {
     try {
       await logout();

@@ -238,3 +238,30 @@ class Payment(Base):
     source        = Column(String, default="yoco")
 
     order = relationship("Order")
+
+
+# Precomputed customer analytics metrics (refreshable snapshot)
+class AggregatedCustomerMetrics(Base):
+    __tablename__ = "aggregated_customer_metrics"
+    user_id              = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    last_visit_at        = Column(DateTime)
+    first_visit_at       = Column(DateTime)
+    lifetime_washes      = Column(Integer, default=0)
+    lifetime_revenue     = Column(Integer, default=0)  # cents
+    washes_30d           = Column(Integer, default=0)
+    washes_90d           = Column(Integer, default=0)
+    revenue_30d          = Column(Integer, default=0)  # cents
+    revenue_90d          = Column(Integer, default=0)  # cents
+    loyalty_washes_total = Column(Integer, default=0)
+    loyalty_washes_30d   = Column(Integer, default=0)
+    points_redeemed_total= Column(Integer, default=0)
+    points_outstanding   = Column(Integer, default=0)
+    points_redeemed_30d  = Column(Integer, default=0)
+    r_score              = Column(Integer, default=0)
+    f_score              = Column(Integer, default=0)
+    m_score              = Column(Integer, default=0)
+    segment              = Column(String, nullable=True)
+    snapshot_at          = Column(DateTime, default=datetime.utcnow)
+    tenant_id            = Column(String, ForeignKey("tenants.id"), nullable=True)
+
+    user = relationship("User")

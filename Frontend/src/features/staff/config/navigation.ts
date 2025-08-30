@@ -11,12 +11,13 @@ export interface StaffNavItem {
 }
 
 export const staffNavItems: StaffNavItem[] = [
-  { path: '/staff/dashboard', label: 'Dashboard', icon: '📊', description: 'Overview & Active Washes' },
-  { path: '/staff/vehicle-manager', label: 'Vehicles', icon: '🚗', description: 'Vehicle Management' },
-  { path: '/staff/wash-history', label: 'History', icon: '📋', description: 'Wash History & Tracking' },
-  { path: '/staff/payment', label: 'Payments', icon: '💳', description: 'Payment Verification' },
-  { path: '/staff/analytics', label: 'Analytics', icon: '📈', description: 'Business Analytics & Reports' },
-  { path: '/staff/manual-visit', label: 'Manual Log', icon: '📝', description: 'Manual Visit Logger' },
+  { path: '/staff/dashboard', label: 'Dashboard', icon: 'analytics', description: 'Overview & Active Washes' },
+  { path: '/staff/vehicle-manager', label: 'Vehicles', icon: 'car', description: 'Vehicle Management' },
+  { path: '/staff/wash-history', label: 'History', icon: 'wash', description: 'Wash History & Tracking' },
+  { path: '/staff/payment', label: 'Payments', icon: 'revenue', description: 'Payment Verification' },
+  { path: '/staff/analytics', label: 'Analytics', icon: 'performance', description: 'Business Analytics & Reports' },
+  { path: '/staff/customer-analytics', label: 'Customers', icon: 'user', description: 'Top & Loyalty Analytics' },
+  { path: '/staff/manual-visit', label: 'Manual Log', icon: 'inProgress', description: 'Manual Visit Logger' },
 ];
 
 type StaffRole = 'staff' | 'admin';

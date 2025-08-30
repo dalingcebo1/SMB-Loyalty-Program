@@ -72,6 +72,8 @@ export interface Wash {
   status: "started" | "ended";
   service_name?: string;
   extras?: string[];
+  amount?: number; // amount in cents (from backend history enrichment)
+  duration_seconds?: number; // precomputed duration for performance & consistency
 }
 
 export interface VerifiedOrder {

@@ -39,6 +39,25 @@
   align-items: center;
 }
 
+.staff-header-title {
+  cursor: default;
+}
+
+.staff-header-title.home-button {
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 2px solid transparent;
+}
+
+.staff-header-title.home-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
 .staff-header-title h1 {
   color: white;
   font-size: 1.75rem;
@@ -54,7 +73,7 @@
   margin-top: 0.25rem;
 }
 
-.home-link {
+.logout-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -66,9 +85,10 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
   font-weight: 500;
+  cursor: pointer;
 }
 
-.home-link:hover {
+.logout-button:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }

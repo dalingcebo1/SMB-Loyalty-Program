@@ -1,0 +1,141 @@
+/* src/features/staff/components/LoyaltyOverviewPanel.css */
+
+.panel {
+  width: 100%;
+}
+
+.panel.loading,
+.panel.error {
+  padding: 2rem;
+  text-align: center;
+  color: #718096;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.panel.error {
+  color: #e53e3e;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(102, 126, 234, 0.03);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.stat:hover {
+  background: rgba(102, 126, 234, 0.05);
+  transform: translateY(-1px);
+}
+
+.stat span {
+  display: block;
+  font-size: 0.75rem;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.stat strong {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.churn-section {
+  margin-top: 1.5rem;
+}
+
+.churn-section h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.data-table.small {
+  font-size: 0.75rem;
+}
+
+.data-table th {
+  background: rgba(102, 126, 234, 0.05);
+  color: #4a5568;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.1);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.data-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: #2d3748;
+}
+
+.data-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.02);
+}
+
+.data-table tbody tr.risk {
+  background: rgba(245, 101, 101, 0.05);
+}
+
+.data-table tbody tr.risk:hover {
+  background: rgba(245, 101, 101, 0.08);
+}
+
+.data-table tbody tr.risk td {
+  color: #c53030;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .stat {
+    padding: 0.75rem;
+  }
+  
+  .stat strong {
+    font-size: 1.125rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 0.375rem;
+  }
+}

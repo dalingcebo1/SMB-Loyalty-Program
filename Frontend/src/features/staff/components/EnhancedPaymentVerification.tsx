@@ -7,6 +7,7 @@ import { useStartWash } from '../hooks/useStartWash';
 import { useRecentVerifications, useVerifyPayment, VerifiedPaymentDetails } from '../hooks/usePaymentVerification';
 import ConfirmDialog from '../../../components/ConfirmDialog';
 import './EnhancedPaymentVerification.css';
+import { formatCurrency, formatRelativeTime, formatDateTime } from '../../../utils/format';
 
 // Using VerifiedPaymentDetails directly from hook types
 
@@ -244,13 +245,8 @@ const EnhancedPaymentVerification: React.FC = () => {
     }
   };
 
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString();
-  };
-
-  const formatCurrency = (amount: number) => {
-    return `R${amount.toFixed(2)}`;
-  };
+  // Local thin wrappers (kept for backward compatibility with component code below if needed)
+  // (Removed old formatTime / formatCurrency implementations; using shared utils)
 
   return (
     <div className="enhanced-payment-verification">
@@ -442,8 +438,8 @@ const EnhancedPaymentVerification: React.FC = () => {
                   </div>
                 </div>
                 <div className="verification-meta">
-                  <div className="amount">{formatCurrency(v.amount || 0)}</div>
-                  <div className="timestamp">{formatTime(v.timestamp)}</div>
+                  <div className="amount" title={v.amount != null ? formatCurrency(v.amount) : ''}>{formatCurrency(v.amount || 0)}</div>
+                  <div className="timestamp" title={formatDateTime(v.timestamp)}>{formatRelativeTime(v.timestamp)}</div>
                 </div>
               </div>
             );

@@ -17,6 +17,42 @@ class TopRewardItem(BaseModel):
     title: str
     count: int
     
+class TopCustomerItem(BaseModel):
+    user_id: int
+    name: str
+    total_washes: int
+    completed_washes: int
+    revenue_cents: int
+    avg_spend_cents: int
+    last_visit: Optional[str]
+    loyalty_wash_count: int
+    loyalty_share: float
+    points_redeemed: int
+    points_outstanding: int
+
+class LoyaltyOverview(BaseModel):
+    loyalty_penetration: float
+    avg_points_redeemed_per_wash: float
+    total_points_redeemed: int
+    total_points_earned: int
+    outstanding_points: int
+
+class ChurnCandidate(BaseModel):
+    user_id: int
+    name: str
+    days_since_last: int
+    percentile: float
+    churn_risk_flag: bool
+
+class TopCustomersResponse(BaseModel):
+    items: List[TopCustomerItem]
+    total: int
+
+class LoyaltyAnalyticsResponse(BaseModel):
+    overview: LoyaltyOverview
+    top_customers: List[TopCustomerItem]
+    churn_candidates: List[ChurnCandidate]
+
 
 class AnalyticsSummaryResponse(BaseModel):
     user_count: int

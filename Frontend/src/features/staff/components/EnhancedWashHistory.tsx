@@ -1,8 +1,10 @@
 // src/features/staff/components/EnhancedWashHistory.tsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useSharedPeriod } from '../hooks/useSharedPeriod';
 import { usePagedWashHistory } from '../hooks/useWashHistory';
 import { Wash } from '../../../types';
 import './EnhancedWashHistory.css';
+import { StaffIcon } from './StaffIcon';
 
 interface FilterOptions {
   startDate: string;
@@ -10,11 +12,23 @@ interface FilterOptions {
   status: 'all' | 'started' | 'ended';
   serviceType: string;
   customerSearch: string;
+  paymentType: 'all' | 'paid' | 'loyalty';
+  sort: 'started_desc' | 'duration_desc' | 'amount_desc';
 }
 
 interface WashWithDuration extends Wash {
   duration_minutes?: number;
+  duration_seconds?: number; // mirrored from backend
+  amount?: number; // ensure amount recognized in this component
 }
+
+const periodPresets = [
+  { label: 'Today', value: 'today', days: 1 },
+  { label: 'Week', value: 'week', days: 7 },
+  { label: 'Month', value: 'month', days: 30 },
+  { label: 'Quarter', value: 'quarter', days: 90 },
+  { label: 'Custom', value: 'custom', days: 0 }
+];
 
 const EnhancedWashHistory: React.FC = () => {
   const [filters, setFilters] = useState<FilterOptions>({
@@ -22,20 +36,39 @@ const EnhancedWashHistory: React.FC = () => {
     endDate: '',
     status: 'all',
     serviceType: '',
-    customerSearch: ''
+	customerSearch: '',
+	paymentType: 'all',
+    sort: 'started_desc'
   });
+  const [period, setPeriod] = useSharedPeriod('week');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [selectedWash, setSelectedWash] = useState<WashWithDuration | null>(null);
 
   // Build query parameters
+  // Derive date range from period presets if manual dates not chosen
+  const derivedRange = useMemo(() => {
+    if (period === 'custom' && filters.startDate && filters.endDate) {
+      return { start: filters.startDate, end: filters.endDate };
+    }
+    const preset = periodPresets.find(p => p.value === period && p.value !== 'custom') || periodPresets[1];
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (preset.days - 1));
+    return {
+      start: start.toISOString().slice(0,10),
+      end: end.toISOString().slice(0,10)
+    };
+  }, [period, filters.startDate, filters.endDate]);
+
   const queryParams = {
-    startDate: filters.startDate || undefined,
-    endDate: filters.endDate || undefined,
+    startDate: derivedRange.start,
+    endDate: derivedRange.end,
     status: filters.status !== 'all' ? filters.status : undefined,
     serviceType: filters.serviceType || undefined,
     customerSearch: filters.customerSearch || undefined,
+  paymentType: filters.paymentType !== 'all' ? filters.paymentType : undefined,
     page: currentPage,
     limit: pageSize
   };
@@ -45,17 +78,17 @@ const EnhancedWashHistory: React.FC = () => {
   // Process history data
   const washes: WashWithDuration[] = React.useMemo(() => {
     if (!pagedHistory) return [];
-    
-    return pagedHistory.items.map((wash: Wash) => {
+    return pagedHistory.items.map((wash) => {
+      const w = wash as WashWithDuration; // may already include duration_seconds
       let duration_minutes: number | undefined;
-      
-      if (wash.status === 'ended' && wash.ended_at) {
-        const startTime = new Date(wash.started_at);
-        const endTime = new Date(wash.ended_at);
+      if (typeof w.duration_seconds === 'number') {
+        duration_minutes = Math.floor(w.duration_seconds / 60);
+      } else if (w.status === 'ended' && w.ended_at) {
+        const startTime = new Date(w.started_at);
+        const endTime = new Date(w.ended_at);
         duration_minutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
       }
-      
-      return { ...wash, duration_minutes };
+      return { ...w, duration_minutes };
     });
   }, [pagedHistory]);
 
@@ -100,9 +133,21 @@ const EnhancedWashHistory: React.FC = () => {
       endDate: '',
       status: 'all',
       serviceType: '',
-      customerSearch: ''
+	customerSearch: '',
+	paymentType: 'all',
+      sort: 'started_desc'
     });
     setCurrentPage(1);
+  };
+
+  // Debounce for text inputs
+  const [debouncers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
+  const debounceChange = (key: keyof FilterOptions, value: string) => {
+    if (debouncers[key]) clearTimeout(debouncers[key]);
+    debouncers[key] = setTimeout(() => {
+      setFilters(prev => ({ ...prev, [key]: value }));
+      setCurrentPage(1);
+    }, 300);
   };
 
   const formatDateTime = (dateString: string) => {
@@ -142,7 +187,7 @@ const EnhancedWashHistory: React.FC = () => {
       <div className="analytics-section">
         <div className="analytics-grid">
           <div className="analytics-card">
-            <div className="card-icon">📊</div>
+            <div className="card-icon"><StaffIcon name="analytics" /></div>
             <div className="card-content">
               <div className="card-value">{analytics.totalWashes}</div>
               <div className="card-label">Total Washes</div>
@@ -150,7 +195,7 @@ const EnhancedWashHistory: React.FC = () => {
           </div>
           
           <div className="analytics-card">
-            <div className="card-icon">✅</div>
+            <div className="card-icon"><StaffIcon name="completed" /></div>
             <div className="card-content">
               <div className="card-value">{analytics.completedCount}</div>
               <div className="card-label">Completed</div>
@@ -158,7 +203,7 @@ const EnhancedWashHistory: React.FC = () => {
           </div>
           
           <div className="analytics-card">
-            <div className="card-icon">🔄</div>
+            <div className="card-icon"><StaffIcon name="inProgress" /></div>
             <div className="card-content">
               <div className="card-value">{analytics.activeCount}</div>
               <div className="card-label">In Progress</div>
@@ -166,7 +211,7 @@ const EnhancedWashHistory: React.FC = () => {
           </div>
           
           <div className="analytics-card">
-            <div className="card-icon">⏱️</div>
+            <div className="card-icon"><StaffIcon name="duration" /></div>
             <div className="card-content">
               <div className="card-value">{formatDuration(analytics.avgDuration)}</div>
               <div className="card-label">Avg Duration</div>
@@ -174,7 +219,7 @@ const EnhancedWashHistory: React.FC = () => {
           </div>
           
           <div className="analytics-card">
-            <div className="card-icon">📈</div>
+            <div className="card-icon"><StaffIcon name="performance" /></div>
             <div className="card-content">
               <div className="card-value">{analytics.completionRate}%</div>
               <div className="card-label">Completion Rate</div>
@@ -183,68 +228,93 @@ const EnhancedWashHistory: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Period & Filters */}
       <div className="filters-section">
+        <div className="period-tabs" role="tablist" aria-label="Period presets">
+          {periodPresets.map(p => (
+            <button
+              key={p.value}
+              className={`period-tab ${period === p.value ? 'active' : ''}`}
+              onClick={() => { setPeriod(p.value); setCurrentPage(1); }}
+              role="tab"
+              aria-selected={period === p.value}
+            >{p.label}</button>
+          ))}
+          <div className="range-indicator">{derivedRange.start} → {derivedRange.end}</div>
+        </div>
         <div className="filters-grid">
-          <div className="filter-group">
-            <label>Start Date</label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => handleFilterChange('startDate', e.target.value)}
-              className="filter-input"
-            />
-          </div>
-          
-          <div className="filter-group">
-            <label>End Date</label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => handleFilterChange('endDate', e.target.value)}
-              className="filter-input"
-            />
-          </div>
-          
-          <div className="filter-group">
-            <label>Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="filter-input"
-            >
-              <option value="all">All Status</option>
-              <option value="started">In Progress</option>
-              <option value="ended">Completed</option>
-            </select>
-          </div>
-          
-          <div className="filter-group">
+          {period === 'custom' && (
+            <>
+              <div className="filter-group">
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+              <div className="filter-group">
+                <label>End Date</label>
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+            </>
+          )}
+          <div className="filter-group wide">
             <label>Service Type</label>
             <input
               type="text"
-              value={filters.serviceType}
-              onChange={(e) => handleFilterChange('serviceType', e.target.value)}
-              placeholder="Service name..."
+              defaultValue={filters.serviceType}
+              onChange={(e) => debounceChange('serviceType', e.target.value)}
+              placeholder="Search service..."
               className="filter-input"
             />
           </div>
-          
-          <div className="filter-group">
+          <div className="filter-group wide">
             <label>Customer</label>
             <input
               type="text"
-              value={filters.customerSearch}
-              onChange={(e) => handleFilterChange('customerSearch', e.target.value)}
-              placeholder="Customer name..."
+              defaultValue={filters.customerSearch}
+              onChange={(e) => debounceChange('customerSearch', e.target.value)}
+              placeholder="Search customer..."
               className="filter-input"
             />
           </div>
-          
+          <div className="filter-group pills">
+            <label>Status</label>
+            <div className="pill-group">
+              {['all','started','ended'].map(s => (
+                <button key={s} type="button" className={`pill ${filters.status === s ? 'active' : ''}`} onClick={() => handleFilterChange('status', s)}>
+                  {s === 'all' ? 'All' : s === 'started' ? 'In Progress' : 'Completed'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-group pills">
+            <label>Payment</label>
+            <div className="pill-group">
+              {['all','paid','loyalty'].map(p => (
+                <button key={p} type="button" className={`pill ${filters.paymentType === p ? 'active' : ''}`} onClick={() => handleFilterChange('paymentType', p)}>
+                  {p === 'all' ? 'All' : p.charAt(0).toUpperCase()+p.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-group">
+            <label>Sort</label>
+            <select value={filters.sort} onChange={e => handleFilterChange('sort', e.target.value)} className="filter-input">
+              <option value="started_desc">Start Time (Latest)</option>
+              <option value="duration_desc">Duration (Longest)</option>
+              <option value="amount_desc">Amount (Highest)</option>
+            </select>
+          </div>
           <div className="filter-actions">
-            <button onClick={clearFilters} className="clear-filters-btn">
-              Clear Filters
-            </button>
+            <button onClick={clearFilters} className="clear-filters-btn">Clear Filters</button>
           </div>
         </div>
       </div>
@@ -253,12 +323,12 @@ const EnhancedWashHistory: React.FC = () => {
       <div className="history-section">
         {isLoading ? (
           <div className="loading-state">
-            <div className="loading-spinner">⏳</div>
+            <div className="loading-spinner"><StaffIcon name="loading" /></div>
             <p>Loading wash history...</p>
           </div>
         ) : washes.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">🧽</div>
+            <div className="empty-icon"><StaffIcon name="wash" /></div>
             <h3>No washes found</h3>
             <p>Try adjusting your filters or check back later</p>
           </div>
@@ -269,6 +339,7 @@ const EnhancedWashHistory: React.FC = () => {
                 <div className="header-cell">Customer</div>
                 <div className="header-cell">Vehicle</div>
                 <div className="header-cell">Service</div>
+                <div className="header-cell">Amount</div>
                 <div className="header-cell">Started</div>
                 <div className="header-cell">Ended</div>
                 <div className="header-cell">Duration</div>
@@ -310,6 +381,9 @@ const EnhancedWashHistory: React.FC = () => {
                       {wash.service_name || 'Unknown Service'}
                     </div>
                   </div>
+                  <div className="table-cell">
+                    <div className="amount-cell">{wash.amount != null ? `R${(wash.amount/100).toFixed(2)}` : '—'}</div>
+                  </div>
                   
                   <div className="table-cell">
                     <div className="datetime">{formatDateTime(wash.started_at)}</div>
@@ -347,12 +421,12 @@ const EnhancedWashHistory: React.FC = () => {
               </button>
               
               <span className="pagination-info">
-                Page {currentPage} • Showing {washes.length} washes
+                Page {currentPage} • Showing {washes.length} of {pagedHistory?.total ?? washes.length} washes
               </span>
               
               <button
                 onClick={() => setCurrentPage(prev => prev + 1)}
-                disabled={washes.length < pageSize}
+                disabled={(pagedHistory?.total ?? 0) <= currentPage * pageSize}
                 className="pagination-btn"
               >
                 Next →
@@ -372,7 +446,7 @@ const EnhancedWashHistory: React.FC = () => {
                 onClick={() => setSelectedWash(null)}
                 className="modal-close"
               >
-                ✕
+                <StaffIcon name="close" />
               </button>
             </div>
             

@@ -4,6 +4,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../auth/AuthProvider';
 import './StaffLayout.css';
 import { filterStaffNav } from '../config/navigation';
+import { StaffIcon, StaffIconName } from './StaffIcon';
 import { StaffSectionProvider } from '../context/StaffSectionContext';
 
 
@@ -18,15 +19,15 @@ const StaffLayout: React.FC = () => {
       {/* Header */}
       <header className="staff-header">
         <div className="staff-header-content">
-          <div className="staff-header-title">
+          <Link to="/staff/dashboard" className="staff-header-title home-button">
             <h1>Staff Dashboard</h1>
             <p>Car Wash Management System</p>
-          </div>
+          </Link>
           <div className="staff-header-actions">
             <button
               type="button"
               onClick={logout}
-              className="home-link"
+              className="logout-button"
               aria-label="Log out"
             >
               <span className="icon">🔒</span>
@@ -45,7 +46,10 @@ const StaffLayout: React.FC = () => {
               to={item.path}
               className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
             >
-              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-icon">
+                {/* item.icon now represents a key for StaffIcon mapping */}
+                <StaffIcon name={item.icon as StaffIconName} />
+              </span>
               <div className="nav-content">
                 <span className="nav-label">{item.label}</span>
                 <span className="nav-description">{item.description}</span>

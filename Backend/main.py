@@ -64,7 +64,9 @@ for prefix, router in [
     ("/api/orders",    orders_router),
     ("/api/payments",  payments_router),
     ("/api/tenants",   tenants_router),
-    ("/api/analytics", analytics_router),
+    # NOTE: analytics_router already declares prefix="/analytics" in its APIRouter.
+    # To avoid double prefix (/api/analytics/analytics/...), mount at just /api.
+    ("/api",           analytics_router),
     ("/api/dev",       dev_router),
 ]:
     app.include_router(router, prefix=prefix)

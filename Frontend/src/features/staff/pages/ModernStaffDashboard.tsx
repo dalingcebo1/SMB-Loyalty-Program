@@ -2,7 +2,7 @@
 import React from 'react';
 import DashboardOverview from '../components/DashboardOverview';
 import ActiveWashesManager from '../components/ActiveWashesManager';
-import EnhancedAnalytics from '../components/EnhancedAnalytics';
+import EnhancedAnalyticsLazy from '../components/EnhancedAnalyticsLazy';
 import './ModernStaffDashboard.css';
 
 const ModernStaffDashboard: React.FC = () => {
@@ -31,7 +31,7 @@ const ModernStaffDashboard: React.FC = () => {
             <h2>📈 Quick Analytics</h2>
             <p>Today's performance at a glance</p>
           </div>
-          <EnhancedAnalytics />
+          <EnhancedAnalyticsLazy />
         </div>
       </div>
     </div>

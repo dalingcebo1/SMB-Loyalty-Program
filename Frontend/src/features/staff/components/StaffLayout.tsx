@@ -1,58 +1,19 @@
 // src/features/staff/components/StaffLayout.tsx
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../../auth/AuthProvider';
 import './StaffLayout.css';
+import { filterStaffNav } from '../config/navigation';
+import { StaffSectionProvider } from '../context/StaffSectionContext';
 
-interface NavigationItem {
-  path: string;
-  label: string;
-  icon: string;
-  description: string;
-}
-
-const navigationItems: NavigationItem[] = [
-  {
-    path: '/staff/dashboard',
-    label: 'Dashboard',
-    icon: '📊',
-    description: 'Overview & Active Washes'
-  },
-  {
-    path: '/staff/vehicle-manager',
-    label: 'Vehicles',
-    icon: '🚗',
-    description: 'Vehicle Management'
-  },
-  {
-    path: '/staff/wash-history',
-    label: 'History',
-    icon: '📋',
-    description: 'Wash History & Tracking'
-  },
-  {
-    path: '/staff/payment',
-    label: 'Payments',
-    icon: '💳',
-    description: 'Payment Verification'
-  },
-  {
-    path: '/staff/analytics',
-    label: 'Analytics',
-    icon: '📈',
-    description: 'Business Analytics & Reports'
-  },
-  {
-    path: '/staff/manual-visit',
-    label: 'Manual Log',
-    icon: '📝',
-    description: 'Manual Visit Logger'
-  }
-];
 
 const StaffLayout: React.FC = () => {
   const location = useLocation();
+  const { logout, user } = useAuth();
+  const itemsToRender = filterStaffNav(user?.role, location.pathname);
 
   return (
+    <StaffSectionProvider>
     <div className="staff-layout">
       {/* Header */}
       <header className="staff-header">
@@ -62,10 +23,15 @@ const StaffLayout: React.FC = () => {
             <p>Car Wash Management System</p>
           </div>
           <div className="staff-header-actions">
-            <Link to="/" className="home-link">
-              <span className="icon">🏠</span>
-              Back to App
-            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="home-link"
+              aria-label="Log out"
+            >
+              <span className="icon">🔒</span>
+              Log out
+            </button>
           </div>
         </div>
       </header>
@@ -73,7 +39,7 @@ const StaffLayout: React.FC = () => {
       {/* Navigation */}
       <nav className="staff-navigation">
         <div className="nav-container">
-          {navigationItems.map((item) => (
+          {itemsToRender.map((item) => (
             <Link
               key={item.path}
               to={item.path}
@@ -95,7 +61,8 @@ const StaffLayout: React.FC = () => {
           <Outlet />
         </div>
       </main>
-    </div>
+  </div>
+  </StaffSectionProvider>
   );
 };
 

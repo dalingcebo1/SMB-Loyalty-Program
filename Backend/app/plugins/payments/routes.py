@@ -5,16 +5,29 @@ import hashlib
 import requests
 import jwt
 from datetime import datetime, timedelta
+import time
 from config import settings
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body, Query, Response
 from pydantic import BaseModel
 from typing import Optional
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, subqueryload
+from sqlalchemy import case, distinct, and_
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.database import get_db
-from app.models import Order, Payment, User, Vehicle, OrderVehicle, Redemption, Reward, Service, VisitCount
+from app.models import (
+    Order,
+    Payment,
+    User,
+    Vehicle,
+    OrderVehicle,
+    Redemption,
+    Reward,
+    Service,
+    VisitCount,
+    OrderItem,
+)
 from app.utils.qr import generate_qr_code
 from app.plugins.loyalty.routes import _create_jwt, SECRET_KEY
 
@@ -67,7 +80,7 @@ router = APIRouter(
 
 class YocoChargeRequest(BaseModel):
     token: str
-    orderId: str
+    orderId: int  # align with integer Order.id PK
     amount: int  # in cents
 
 @router.post("/charge")
@@ -203,34 +216,140 @@ def get_payment_qr(order_id: str, db: Session = Depends(get_db)):
 def verify_payment(
     pin: str = Query(None, description="Payment PIN"),
     qr: str = Query(None, description="Payment QR code"),
-    db: Session = Depends(get_db)
+    ref: str = Query(None, description="Payment reference or transaction id (alias)"),
+    db: Session = Depends(get_db),
 ):
-    order = None
+    """Verify a payment via one of: PIN, QR reference, or explicit reference.
+
+    Enhancements:
+    - Added `ref` alias to support legacy frontend usage (?ref=...)
+    - Enriched response with user, vehicle, amount, method, service & extras
+    - Returns consistent payload even for already redeemed orders
+    """
+    token = pin or qr or ref
+    order: Order | None = None
+    located_payment: Payment | None = None
+
     if pin:
-        # Try matching Order.payment_pin, else fallback to transaction_id or reference
+        # Direct PIN match on Order first
         order = db.query(Order).filter_by(payment_pin=pin).first()
         if not order:
-            # lookup Payment by transaction_id or reference
-            payment = db.query(Payment).filter_by(transaction_id=pin, status="success").first()
-            if not payment:
-                payment = db.query(Payment).filter_by(reference=pin, status="success").first()
-            if payment:
-                order = db.query(Order).filter_by(id=payment.order_id).first()
-    elif qr:
-        payment = db.query(Payment).filter_by(reference=qr, status="success").first()
-        if not payment:
-            payment = db.query(Payment).filter_by(transaction_id=qr, status="success").first()
-        if payment:
-            order = db.query(Order).filter_by(id=payment.order_id).first()
+            # fallback to payment transaction_id / reference
+            located_payment = (
+                db.query(Payment)
+                .filter_by(transaction_id=pin, status="success")
+                .first()
+            ) or (
+                db.query(Payment)
+                .filter_by(reference=pin, status="success")
+                .first()
+            )
+            if located_payment:
+                order = db.query(Order).filter_by(id=located_payment.order_id).first()
+    elif qr or ref:
+        code = qr or ref
+        located_payment = (
+            db.query(Payment).filter_by(reference=code, status="success").first()
+            or db.query(Payment).filter_by(transaction_id=code, status="success").first()
+        )
+        if located_payment:
+            order = db.query(Order).filter_by(id=located_payment.order_id).first()
         else:
-            order = db.query(Order).filter_by(id=qr).first()
+            # final fallback: treat code as order id (string/int conversion tolerant)
+            order = db.query(Order).filter_by(id=code).first()
+
     if not order:
-        raise HTTPException(404, "Invalid payment PIN or QR code")
-    if order.order_redeemed_at:
-        return {"status": "already_redeemed", "type": "payment"}
-    order.order_redeemed_at = datetime.utcnow()
-    db.commit()
-    return {"status": "ok", "type": "payment", "order_id": order.id, "payment_pin": order.payment_pin}
+        raise HTTPException(404, "Invalid payment PIN / QR / reference")
+
+    # Re-load order with relationships for enrichment
+    order = (
+        db.query(Order)
+        .options(
+            joinedload(Order.user),
+            joinedload(Order.vehicles).joinedload(OrderVehicle.vehicle),
+            joinedload(Order.items).joinedload(OrderItem.service),
+        )
+        .filter(Order.id == order.id)
+        .first()
+    )
+
+    # Try to find a successful payment if not already resolved
+    if not located_payment:
+        located_payment = (
+            db.query(Payment)
+            .filter_by(order_id=order.id, status="success")
+            .order_by(Payment.created_at.desc())
+            .first()
+        )
+
+    vehicle_obj = None
+    if order and order.vehicles:
+        # Use first linked vehicle
+        first_ov = order.vehicles[0]
+        if first_ov and first_ov.vehicle:
+            vehicle_obj = first_ov.vehicle
+
+    service_name = None
+    if order.items:
+        # Use first item service name/category if present
+        first_item = order.items[0]
+        if first_item.service:
+            service_name = first_item.service.name
+        else:
+            service_name = first_item.category
+    elif getattr(order, "service", None):
+        service_name = order.service.name
+
+    amount_val = (
+        (located_payment.amount if located_payment and located_payment.amount is not None else None)
+        or order.amount
+        or 0
+    )
+    method_val = (
+        (located_payment.method if located_payment and located_payment.method else None)
+        or (located_payment.source if located_payment else None)
+        or ""
+    )
+
+    already = bool(order.order_redeemed_at)
+    if not already:
+        order.order_redeemed_at = datetime.utcnow()
+        db.commit()
+
+    resp = {
+        "status": "already_redeemed" if already else "ok",
+        "type": "payment",
+        "order_id": order.id,
+        "payment_pin": order.payment_pin,
+        "user": {
+            "id": order.user.id,
+            "first_name": order.user.first_name,
+            "last_name": order.user.last_name,
+            "phone": order.user.phone,
+        } if order.user else None,
+        "vehicle": {
+            "id": vehicle_obj.id,
+            "reg": vehicle_obj.plate,
+            "make": vehicle_obj.make,
+            "model": vehicle_obj.model,
+        } if vehicle_obj else None,
+        # Provide list of existing vehicles for user if none attached so staff can associate
+        "available_vehicles": None if vehicle_obj else [
+            {
+                "id": v.id,
+                "reg": v.plate,
+                "make": v.make,
+                "model": v.model,
+            }
+            for v in (db.query(Vehicle).filter_by(user_id=order.user_id).all() if order.user_id else [])
+        ],
+        "amount": amount_val,
+        "payment_method": method_val,
+        "service_name": service_name,
+        "extras": order.extras,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    return resp
 
 @router.get("/verify-loyalty")
 def verify_loyalty(
@@ -304,31 +423,68 @@ def verify_pos(
     db.commit()
     return {"status": "ok", "type": "pos", "order_id": order.id}
 
+@router.get("/recent-verifications")
+def recent_verifications(
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db)
+):
+    """Return recent verified payments (orders with order_redeemed_at set).
+
+    Provides lightweight info for staff sidebar/history. Includes whether
+    a wash has been started or completed to allow contextual navigation.
+    """
+    orders = (
+        db.query(Order)
+        .options(joinedload(Order.user), subqueryload(Order.vehicles).joinedload(OrderVehicle.vehicle))
+        .filter(Order.order_redeemed_at != None)
+        .order_by(Order.order_redeemed_at.desc())
+        .limit(limit)
+        .all()
+    )
+    out = []
+    for o in orders:
+        vehicle = o.vehicles[0].vehicle if o.vehicles else None
+        pay = (
+            db.query(Payment)
+            .filter_by(order_id=o.id, status="success")
+            .order_by(Payment.created_at.desc())
+            .first()
+        )
+        amount = pay.amount if pay and pay.amount is not None else o.amount
+        out.append({
+            "order_id": o.id,
+            "timestamp": (o.order_redeemed_at or o.created_at).isoformat() if (o.order_redeemed_at or o.created_at) else None,
+            "status": "success",
+            "user": {
+                "first_name": o.user.first_name if o.user else None,
+                "last_name": o.user.last_name if o.user else None,
+                "phone": o.user.phone if o.user else None,
+            } if o.user else None,
+            "vehicle": {
+                "id": vehicle.id,
+                "make": vehicle.make,
+                "model": vehicle.model,
+                "reg": vehicle.plate,
+            } if vehicle else None,
+            "payment_method": (pay.method or pay.source) if pay else None,
+            "payment_reference": (pay.reference or pay.transaction_id) if pay else None,
+            "amount": amount,
+            "started": bool(o.started_at),
+            "completed": bool(o.ended_at),
+        })
+    return out
+
+from app.core.wash_lifecycle import start_wash as _start_wash_shared, end_wash as _end_wash_shared
+
 @router.post("/start-wash/{order_id}")
 def start_wash(order_id: str, data: dict = Body(...), db: Session = Depends(get_db)):
-    order = db.query(Order).filter_by(id=order_id).first()
-    if not order:
-        raise HTTPException(404, "Order not found")
-    vehicle_id = data.get("vehicle_id")
-    if not vehicle_id:
-        raise HTTPException(400, "vehicle_id required")
-    existing = db.query(OrderVehicle).filter_by(order_id=order_id, vehicle_id=vehicle_id).first()
-    if not existing:
-        db.add(OrderVehicle(order_id=order_id, vehicle_id=vehicle_id))
-    order.started_at = datetime.utcnow()
-    order.status = "started"
-    db.commit()
-    return {"status": "started", "order_id": order_id, "started_at": order.started_at}
+    """Start a wash (shared lifecycle logic)."""
+    return _start_wash_shared(db, order_id, vehicle_id=data.get("vehicle_id"))
 
 @router.post("/end-wash/{order_id}")
 def end_wash(order_id: str, db: Session = Depends(get_db)):
-    order = db.query(Order).filter_by(id=order_id).first()
-    if not order:
-        raise HTTPException(404, "Order not found")
-    order.ended_at = datetime.utcnow()
-    order.status = "completed"
-    db.commit()
-    return {"status": "ended", "order_id": order_id, "ended_at": order.ended_at}
+    """End a wash (shared lifecycle logic)."""
+    return _end_wash_shared(db, order_id, invalidate_analytics_cb=_invalidate_analytics_cache)
 
 @router.post("/start-manual-wash")
 def start_manual_wash(data: dict = Body(...), db: Session = Depends(get_db)):
@@ -336,10 +492,25 @@ def start_manual_wash(data: dict = Body(...), db: Session = Depends(get_db)):
     user = db.query(User).filter_by(phone=user_phone).first()
     if not user:
         raise HTTPException(404, "User not found")
-    order = Order(user_id=user.id, status="started", started_at=datetime.utcnow(), redeemed=False)
+    # Pick any available service to satisfy FK + NOT NULL columns (fallback to first service)
+    service = db.query(Service).first()
+    if not service:
+        service = Service(category="wash", name="Manual Wash", base_price=0)
+        db.add(service)
+        db.flush()
+    order = Order(
+        user_id=user.id,
+        service_id=service.id,
+        quantity=1,
+        extras=[],
+        status="started",
+        started_at=datetime.utcnow(),
+        redeemed=False,
+    )
     db.add(order)
     db.commit()
     db.refresh(order)
+    _invalidate_analytics_cache()
     return {"status": "started", "order_id": order.id}
 
 @router.get("/order-user/{order_id}")
@@ -358,25 +529,24 @@ def active_washes(db: Session = Depends(get_db)):
     tomorrow = today + timedelta(days=1)
     orders = (
         db.query(Order)
-        .filter(
-            Order.started_at != None,
-            Order.started_at >= today,
-            Order.started_at < tomorrow,
-        )
-        .all()
+          .options(joinedload(Order.user), subqueryload(Order.vehicles).joinedload(OrderVehicle.vehicle))
+          .filter(
+              Order.started_at != None,
+              Order.started_at >= today,
+              Order.started_at < tomorrow,
+          )
+          .all()
     )
     result = []
     for order in orders:
-        user = db.query(User).filter_by(id=order.user_id).first()
-        ov = db.query(OrderVehicle).filter_by(order_id=order.id).first()
-        vehicle = db.query(Vehicle).filter_by(id=ov.vehicle_id).first() if ov else None
+        vehicle = order.vehicles[0].vehicle if order.vehicles else None
         result.append({
             "order_id": order.id,
             "user": {
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone": user.phone,
-            } if user else None,
+                "first_name": order.user.first_name if order.user else None,
+                "last_name": order.user.last_name if order.user else None,
+                "phone": order.user.phone if order.user else None,
+            } if order.user else None,
             "vehicle": {
                 "make": vehicle.make,
                 "model": vehicle.model,
@@ -386,6 +556,7 @@ def active_washes(db: Session = Depends(get_db)):
             "started_at": order.started_at,
             "ended_at": order.ended_at,
             "status": "ended" if order.ended_at else "started",
+            "duration_seconds": int((order.ended_at - order.started_at).total_seconds()) if order.started_at and order.ended_at else None,
         })
     return result
 
@@ -399,25 +570,24 @@ def wash_history(date: str, db: Session = Depends(get_db)):
     next_day = dt + timedelta(days=1)
     orders = (
         db.query(Order)
-        .filter(
-            Order.started_at != None,
-            Order.started_at >= dt,
-            Order.started_at < next_day,
-        )
-        .all()
+          .options(joinedload(Order.user), subqueryload(Order.vehicles).joinedload(OrderVehicle.vehicle))
+          .filter(
+              Order.started_at != None,
+              Order.started_at >= dt,
+              Order.started_at < next_day,
+          )
+          .all()
     )
     result = []
     for order in orders:
-        user = db.query(User).filter_by(id=order.user_id).first()
-        ov = db.query(OrderVehicle).filter_by(order_id=order.id).first()
-        vehicle = db.query(Vehicle).filter_by(id=ov.vehicle_id).first() if ov else None
+        vehicle = order.vehicles[0].vehicle if order.vehicles else None
         result.append({
             "order_id": order.id,
             "user": {
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone": user.phone,
-            } if user else None,
+                "first_name": order.user.first_name if order.user else None,
+                "last_name": order.user.last_name if order.user else None,
+                "phone": order.user.phone if order.user else None,
+            } if order.user else None,
             "vehicle": {
                 "make": vehicle.make,
                 "model": vehicle.model,
@@ -427,6 +597,7 @@ def wash_history(date: str, db: Session = Depends(get_db)):
             "started_at": order.started_at,
             "ended_at": order.ended_at,
             "status": "ended" if order.ended_at else "started",
+            "duration_seconds": int((order.ended_at - order.started_at).total_seconds()) if order.started_at and order.ended_at else None,
         })
     return result
 
@@ -493,23 +664,22 @@ def history(
 
     total = q.count()
     items = (
-        q.order_by(Order.started_at.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
+        q.options(joinedload(Order.user), subqueryload(Order.vehicles).joinedload(OrderVehicle.vehicle))
+         .order_by(Order.started_at.desc())
+         .offset((page - 1) * limit)
+         .limit(limit)
+         .all()
     )
     result = []
     for order in items:
-        user = db.query(User).filter_by(id=order.user_id).first()
-        ov = db.query(OrderVehicle).filter_by(order_id=order.id).first()
-        vehicle = db.query(Vehicle).filter_by(id=ov.vehicle_id).first() if ov else None
+        vehicle = order.vehicles[0].vehicle if order.vehicles else None
         result.append({
             "order_id": order.id,
             "user": {
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone": user.phone,
-            } if user else None,
+                "first_name": order.user.first_name if order.user else None,
+                "last_name": order.user.last_name if order.user else None,
+                "phone": order.user.phone if order.user else None,
+            } if order.user else None,
             "vehicle": {
                 "make": vehicle.make,
                 "model": vehicle.model,
@@ -522,90 +692,389 @@ def history(
         })
     return {"total": total, "items": result, "page": page, "limit": limit}
 
+from collections import OrderedDict
+_ANALYTICS_CACHE: "OrderedDict[str, tuple[float, dict]]" = OrderedDict()
+_ANALYTICS_CACHE_MAX = 32  # Phase 6: LRU bound to prevent unbounded growth
+_ANALYTICS_TTL_SECONDS = 30  # base TTL – adaptive extension applied when hit rate high
+from collections import deque
+_ANALYTICS_METRICS = {
+    "calls": 0,
+    "cache_hits": 0,
+    "latencies_ms": deque(maxlen=200),  # rolling window for p95
+}
+
+def _analytics_percentile(pct: float):
+    data = list(_ANALYTICS_METRICS["latencies_ms"])
+    if not data:
+        return None
+    data.sort()
+    k = int(len(data) * pct) - 1
+    k = max(0, min(k, len(data) - 1))
+    return data[k]
+
+def _invalidate_analytics_cache():
+    """Clear analytics cache (Phase 5)."""
+    _ANALYTICS_CACHE.clear()
+
+@router.get("/dashboard-analytics/meta")
+def dashboard_analytics_meta():
+    hit_rate = 0.0
+    if _ANALYTICS_METRICS["calls"]:
+        hit_rate = _ANALYTICS_METRICS["cache_hits"] / _ANALYTICS_METRICS["calls"]
+    return {
+        "cache_size": len(_ANALYTICS_CACHE),
+        "cache_max": _ANALYTICS_CACHE_MAX,
+        "keys": list(_ANALYTICS_CACHE.keys())[:20],
+        "base_ttl_seconds": _ANALYTICS_TTL_SECONDS,
+        "metrics": {
+            "calls": _ANALYTICS_METRICS["calls"],
+            "cache_hits": _ANALYTICS_METRICS["cache_hits"],
+            "hit_rate": round(hit_rate, 3),
+            "latencies_count": len(_ANALYTICS_METRICS["latencies_ms"]),
+            "p95_ms": _analytics_percentile(0.95),
+            "p50_ms": _analytics_percentile(0.50),
+        },
+    }
+
 @router.get("/dashboard-analytics")
 def dashboard_analytics(
     start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
     db: Session = Depends(get_db)
 ):
-    """Basic analytics for staff dashboard without admin restrictions."""
+    """Basic analytics for staff dashboard without admin restrictions.
+
+    Optimizations (Phase 5):
+    - Single consolidated stats query using conditional aggregation (reduces round trips).
+    - In‑process TTL cache to avoid recomputing identical range repeatedly within 30s.
+    - Lightweight timing instrumentation for observability (returned inside payload under meta.elapsed_ms).
+    """
     from sqlalchemy import func, cast, Date
-    
+
+    t0 = time.perf_counter()
     today = datetime.utcnow().date()
     if not start_date or not end_date:
         end = today
-        start = today - timedelta(days=6)  # last 7 days
+        start = today - timedelta(days=6)
     else:
         try:
             start = datetime.strptime(start_date, "%Y-%m-%d").date()
             end = datetime.strptime(end_date, "%Y-%m-%d").date()
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format")
+    if end < start:
+        raise HTTPException(status_code=400, detail="end_date before start_date")
 
-    # Total washes in period
-    total_washes = db.query(func.count(Order.id)).filter(
-        Order.started_at != None,
-        cast(Order.started_at, Date) >= start,
-        cast(Order.started_at, Date) <= end
-    ).scalar() or 0
+    cache_key = f"{start}:{end}"
+    _ANALYTICS_METRICS["calls"] += 1
+    now = time.time()
+    cached = _ANALYTICS_CACHE.get(cache_key)
+    if cached:
+        age = now - cached[0]
+        hit_rate = (_ANALYTICS_METRICS["cache_hits"] / _ANALYTICS_METRICS["calls"]) if _ANALYTICS_METRICS["calls"] else 0
+        adaptive_ttl = _ANALYTICS_TTL_SECONDS + 15 if hit_rate > 0.6 else _ANALYTICS_TTL_SECONDS
+        adaptive_ttl = min(60, adaptive_ttl)
+        if age < adaptive_ttl:
+            payload = dict(cached[1])
+            payload["meta"] = {**payload.get("meta", {}), "cached": True, "elapsed_ms": round((time.perf_counter()-t0)*1000,2), "cache_ttl_s": int(adaptive_ttl - age)}
+            _ANALYTICS_METRICS["cache_hits"] += 1
+            _ANALYTICS_METRICS["latencies_ms"].append(payload["meta"]["elapsed_ms"])
+            # Promote entry for LRU ordering
+            _ANALYTICS_CACHE.move_to_end(cache_key)
+            return payload
 
-    # Completed washes
-    completed_washes = db.query(func.count(Order.id)).filter(
-        Order.ended_at != None,
-        cast(Order.ended_at, Date) >= start,
-        cast(Order.ended_at, Date) <= end
-    ).scalar() or 0
+    # Conditional aggregation for total/completed/customer_count in one query
+    started_cond = and_(Order.started_at != None, cast(Order.started_at, Date) >= start, cast(Order.started_at, Date) <= end)
+    completed_cond = and_(Order.ended_at != None, cast(Order.ended_at, Date) >= start, cast(Order.ended_at, Date) <= end)
+    stats_row = db.query(
+        func.coalesce(func.sum(case((started_cond, 1), else_=0)), 0).label("total_washes"),
+        func.coalesce(func.sum(case((completed_cond, 1), else_=0)), 0).label("completed_washes"),
+        func.coalesce(func.count(distinct(case((started_cond, Order.user_id), else_=None))), 0).label("customer_count")
+    ).one()
 
-    # Revenue from payments
+    # Revenue (keep separate – involves payments table & status filter)
     revenue = db.query(func.sum(Payment.amount)).filter(
         Payment.status == "success",
         cast(Payment.created_at, Date) >= start,
         cast(Payment.created_at, Date) <= end
     ).scalar() or 0
 
-    # Customer count (unique users)
-    customer_count = db.query(func.count(func.distinct(Order.user_id))).filter(
-        Order.started_at != None,
-        cast(Order.started_at, Date) >= start,
-        cast(Order.started_at, Date) <= end
-    ).scalar() or 0
+    # Duration stats for washes completed in period
+    duration_rows = db.query(Order.started_at, Order.ended_at).filter(
+        completed_cond
+    ).all()
+    durations = [int((r.ended_at - r.started_at).total_seconds()) for r in duration_rows if r.started_at and r.ended_at]
+    avg_duration = sum(durations) / len(durations) if durations else None
+    median_duration = None
+    p95_duration = None
+    if durations:
+        sorted_d = sorted(durations)
+        mid = len(sorted_d) // 2
+        if len(sorted_d) % 2:
+            median_duration = sorted_d[mid]
+        else:
+            median_duration = (sorted_d[mid - 1] + sorted_d[mid]) / 2
+        idx95 = int(round(0.95 * len(sorted_d) + 1e-9)) - 1
+        idx95 = max(0, min(idx95, len(sorted_d) - 1))
+        p95_duration = sorted_d[idx95]
 
-    # Daily wash counts for chart data
-    daily_data = db.query(
-        cast(Order.started_at, Date).label('date'),
-        func.count(Order.id).label('count')
-    ).filter(
-        Order.started_at != None,
-        cast(Order.started_at, Date) >= start,
-        cast(Order.started_at, Date) <= end
-    ).group_by('date').all()
-
-    daily_washes = {}
-    for row in daily_data:
-        daily_washes[row.date.strftime('%Y-%m-%d')] = row.count
-
-    # Fill in missing dates with 0
+    # Daily wash counts – single grouped query
+    daily_rows = db.query(
+        cast(Order.started_at, Date).label("date"), func.count(Order.id).label("count")
+    ).filter(started_cond).group_by("date").all()
+    day_map = {r.date.strftime('%Y-%m-%d'): r.count for r in daily_rows}
     chart_data = []
     cur = start
     while cur <= end:
-        date_str = cur.strftime('%Y-%m-%d')
-        chart_data.append({
-            "date": date_str,
-            "washes": daily_washes.get(date_str, 0)
-        })
+        ds = cur.strftime('%Y-%m-%d')
+        chart_data.append({"date": ds, "washes": day_map.get(ds, 0)})
         cur += timedelta(days=1)
 
-    return {
-        "total_washes": total_washes,
-        "completed_washes": completed_washes,
-        "revenue": revenue / 100,  # convert cents to rands
-        "customer_count": customer_count,
+    elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
+    _ANALYTICS_METRICS["latencies_ms"].append(elapsed_ms)
+    payload = {
+        "total_washes": int(stats_row.total_washes),
+        "completed_washes": int(stats_row.completed_washes),
+        "revenue": revenue / 100,  # cents -> rands
+        "customer_count": int(stats_row.customer_count),
         "chart_data": chart_data,
         "period": {
             "start_date": start.strftime('%Y-%m-%d'),
             "end_date": end.strftime('%Y-%m-%d')
+        },
+        "wash_duration_seconds": {
+            "average": avg_duration,
+            "median": median_duration,
+            "p95": p95_duration,
+            "sample_size": len(durations),
+        },
+        "meta": {
+            "cached": False,
+            "elapsed_ms": elapsed_ms,
+            "cache_ttl_s": _ANALYTICS_TTL_SECONDS
         }
     }
+    _ANALYTICS_CACHE[cache_key] = (now, payload)
+    _ANALYTICS_CACHE.move_to_end(cache_key)
+    if len(_ANALYTICS_CACHE) > _ANALYTICS_CACHE_MAX:
+        _ANALYTICS_CACHE.popitem(last=False)
+    return payload
+
+
+# Phase 1 & 2 consolidated business analytics endpoint
+@router.get("/business-analytics", summary="Phase 1 & 2 business metrics for staff dashboard")
+def business_analytics(
+    request: Request,
+    response: Response,
+    range_days: int = Query(30, ge=1, le=90, description="Lookback window for trend metrics"),
+    recent_days: int = Query(7, ge=1, le=30, description="Short window for deltas (e.g. last 7 days)"),
+    db: Session = Depends(get_db),
+):
+    """Return a bundle of high‑leverage operational + customer metrics.
+
+    Phase 1 metrics implemented:
+    - wash_volume_trend (daily started/completed)
+    - revenue_trend & avg_ticket
+    - duration_stats (avg/median/p95 & slow count > 30m)
+    - first_vs_returning (share new vs returning in recent_days)
+    - loyalty_share (pct zero / loyalty orders)
+    - active_customers (unique users in range)
+    - top_services (count & revenue share)
+    - payment_mix (manual vs paid)
+    - pending_orders_over_10m
+
+    Phase 2 early metrics (needs no new columns):
+    - churn_risk_count (>=2 visits, >45d since last started_at)
+    - upsell_rate (extras lines >0 / orders)
+    """
+    from sqlalchemy import func, case, and_, desc
+    from datetime import timedelta
+
+    now = datetime.utcnow()
+    start_range = now - timedelta(days=range_days)
+    start_recent = now - timedelta(days=recent_days)
+    prev_start = start_range - timedelta(days=range_days)
+    prev_end = start_range
+
+    # Base query for orders within long range
+    q_range = db.query(Order).filter(Order.started_at != None, Order.started_at >= start_range)
+    orders_in_range = q_range.count()
+    q_prev = db.query(Order).filter(Order.started_at != None, Order.started_at >= prev_start, Order.started_at < prev_end)
+    orders_in_prev_range = q_prev.count()
+
+    # Wash volume trend (group per day)
+    volume_rows = (
+        db.query(func.date(Order.started_at).label("day"),
+                 func.count(Order.id).label("started"),
+                 func.count(case((Order.ended_at != None, 1))).label("completed"))
+          .filter(Order.started_at != None, Order.started_at >= start_range)
+          .group_by("day").order_by("day").all()
+    )
+    wash_volume_trend = [
+        {"day": r.day.isoformat(), "started": int(r.started), "completed": int(r.completed)} for r in volume_rows
+    ]
+
+    # Revenue trend (paid only)
+    rev_rows = (
+        db.query(func.date(Payment.created_at).label("day"), func.sum(Payment.amount).label("revenue"))
+          .filter(Payment.status == "success", Payment.created_at >= start_range)
+          .group_by("day").order_by("day").all()
+    )
+    revenue_trend = [
+        {"day": r.day.isoformat(), "revenue": (int(r.revenue) / 100) if r.revenue else 0} for r in rev_rows
+    ]
+    total_revenue_cents = sum(int(r.revenue) for r in rev_rows if r.revenue)
+    completed_orders = db.query(func.count(Order.id)).filter(Order.ended_at != None, Order.started_at >= start_range).scalar() or 0
+    avg_ticket = (total_revenue_cents / 100 / completed_orders) if completed_orders else 0
+    rev_prev_rows = (
+        db.query(func.sum(Payment.amount).label("revenue"))
+        .filter(Payment.status == "success", Payment.created_at >= prev_start, Payment.created_at < prev_end)
+        .all()
+    )
+    total_revenue_prev_cents = sum(int(r.revenue) for r in rev_prev_rows if r.revenue)
+    completed_prev = db.query(func.count(Order.id)).filter(Order.ended_at != None, Order.started_at >= prev_start, Order.started_at < prev_end).scalar() or 0
+    avg_ticket_prev = (total_revenue_prev_cents / 100 / completed_prev) if completed_prev else 0
+
+    # Duration stats (completed in range)
+    dur_rows = db.query(Order.started_at, Order.ended_at).filter(Order.ended_at != None, Order.started_at >= start_range).all()
+    durations = [int((r.ended_at - r.started_at).total_seconds()) for r in dur_rows if r.started_at and r.ended_at]
+    if durations:
+        sorted_d = sorted(durations)
+        avg_duration = sum(durations) / len(durations)
+        mid = len(sorted_d)//2
+        median_duration = sorted_d[mid] if len(sorted_d)%2 else (sorted_d[mid-1]+sorted_d[mid])/2
+        idx95 = max(0, min(int(round(0.95*len(sorted_d))) - 1, len(sorted_d)-1))
+        p95_duration = sorted_d[idx95]
+        slow_wash_threshold = 30*60  # 30 minutes
+        slow_wash_count = sum(1 for d in durations if d > slow_wash_threshold)
+    else:
+        avg_duration = median_duration = p95_duration = slow_wash_count = None
+
+    # First vs Returning (recent window)
+    recent_users = db.query(Order.user_id).filter(Order.started_at != None, Order.started_at >= start_recent).distinct().all()
+    user_ids_recent = {u.user_id for u in recent_users}
+    first_visit_map = dict(
+        db.query(Order.user_id, func.min(func.date(Order.started_at))).group_by(Order.user_id).all()
+    )
+    new_count = sum(1 for uid in user_ids_recent if first_visit_map.get(uid) and first_visit_map[uid] >= start_recent.date())
+    returning_count = len(user_ids_recent) - new_count
+
+    # Loyalty share (amount==0 or type=='loyalty')
+    loyalty_total = db.query(func.count(Order.id)).filter(
+        Order.started_at >= start_range,
+        Order.started_at != None,
+        case((Order.amount == 0, True), else_=False) | case((Order.type == 'loyalty', True), else_=False)
+    ).scalar() or 0
+    loyalty_share = (loyalty_total / orders_in_range) if orders_in_range else 0
+    loyalty_total_prev = db.query(func.count(Order.id)).filter(
+        Order.started_at >= prev_start,
+        Order.started_at < prev_end,
+        Order.started_at != None,
+        case((Order.amount == 0, True), else_=False) | case((Order.type == 'loyalty', True), else_=False)
+    ).scalar() or 0
+    loyalty_share_prev = (loyalty_total_prev / orders_in_prev_range) if orders_in_prev_range else 0
+
+    # Active customers
+    active_customers = len(user_ids_recent)
+
+    # Top services (count & revenue share based on payments)
+    service_rows = (
+        db.query(Service.name, func.count(Order.id).label('cnt'))
+          .join(Order, Order.service_id == Service.id)
+          .filter(Order.started_at != None, Order.started_at >= start_range)
+          .group_by(Service.name)
+          .order_by(desc('cnt'))
+          .limit(5).all()
+    )
+    top_services = [{"service": r.name, "count": int(r.cnt)} for r in service_rows]
+
+    # Payment mix (manual vs paid) heuristic: manual = amount==0 AND status in started/completed but not loyalty type
+    manual_started = db.query(func.count(Order.id)).filter(Order.started_at >= start_range, Order.amount == 0, Order.type != 'loyalty').scalar() or 0
+    paid_started = db.query(func.count(Order.id)).filter(Order.started_at >= start_range, Order.amount > 0).scalar() or 0
+
+    # Pending > 10 minutes (started_at null but created_at older) OR started but not ended and older than threshold
+    ten_min_ago = now - timedelta(minutes=10)
+    pending_orders = db.query(func.count(Order.id)).filter(
+        ((Order.started_at == None) & (Order.created_at < ten_min_ago)) | ((Order.started_at != None) & (Order.ended_at == None) & (Order.started_at < ten_min_ago))
+    ).scalar() or 0
+
+    # Churn risk: >=2 washes and last visit >45d
+    fortyfive = now - timedelta(days=45)
+    churn_risk_count = db.query(func.count()).select_from(
+        db.query(Order.user_id, func.count(Order.id).label('c'), func.max(Order.started_at).label('last'))
+          .group_by(Order.user_id)
+          .having(func.count(Order.id) >= 2, func.max(Order.started_at) < fortyfive)
+          .subquery()
+    ).scalar() or 0
+
+    # Upsell rate: orders with extras length >0 / total
+    upsell_numer = db.query(func.count(Order.id)).filter(Order.started_at >= start_range, Order.extras != '[]').scalar() or 0
+    upsell_rate = (upsell_numer / orders_in_range) if orders_in_range else 0
+    upsell_prev_numer = db.query(func.count(Order.id)).filter(Order.started_at >= prev_start, Order.started_at < prev_end, Order.extras != '[]').scalar() or 0
+    upsell_rate_prev = (upsell_prev_numer / orders_in_prev_range) if orders_in_prev_range else 0
+
+    # Previous period duration stats for p95 delta
+    dur_prev_rows = db.query(Order.started_at, Order.ended_at).filter(Order.ended_at != None, Order.started_at >= prev_start, Order.started_at < prev_end).all()
+    prev_durations = [int((r.ended_at - r.started_at).total_seconds()) for r in dur_prev_rows if r.started_at and r.ended_at]
+    p95_prev = None
+    if prev_durations:
+        s_prev = sorted(prev_durations)
+        idx_prev = max(0, min(int(round(0.95 * len(s_prev))) - 1, len(s_prev) - 1))
+        p95_prev = s_prev[idx_prev]
+
+    def pct_delta(current: float, previous: float) -> Optional[float]:
+        if previous == 0:
+            return None
+        try:
+            return round(((current - previous) / previous) * 100, 2)
+        except ZeroDivisionError:
+            return None
+
+    deltas = {
+        "revenue_pct": pct_delta(total_revenue_cents/100, total_revenue_prev_cents/100),
+        "avg_ticket_pct": pct_delta(avg_ticket, avg_ticket_prev),
+        "loyalty_share_pct": pct_delta(loyalty_share, loyalty_share_prev),
+        "p95_duration_pct": pct_delta(p95_duration or 0, p95_prev or 0),
+        "upsell_rate_pct": pct_delta(upsell_rate, upsell_rate_prev),
+    }
+
+    payload = {
+        "range_days": range_days,
+        "recent_days": recent_days,
+        "wash_volume_trend": wash_volume_trend,
+        "revenue_trend": revenue_trend,
+        "avg_ticket": round(avg_ticket, 2),
+        "duration_stats": {
+            "average_s": round(avg_duration,2) if avg_duration is not None else None,
+            "median_s": median_duration,
+            "p95_s": p95_duration,
+            "slow_wash_count": slow_wash_count,
+        },
+        "first_vs_returning": {"new": new_count, "returning": returning_count},
+        "loyalty_share": round(loyalty_share, 4),
+        "active_customers": active_customers,
+        "top_services": top_services,
+        "payment_mix": {"manual_started": manual_started, "paid_started": paid_started},
+        "pending_orders_over_10m": pending_orders,
+        "churn_risk_count": churn_risk_count,
+        "upsell_rate": round(upsell_rate, 4),
+        "deltas": deltas,
+        "meta": {"generated_at": now.isoformat()}
+    }
+
+    # Weak ETag based on payload hash
+    try:
+        import json, hashlib
+        body_str = json.dumps(payload, sort_keys=True, default=str)
+        etag = 'W/"' + hashlib.sha256(body_str.encode()).hexdigest()[:32] + '"'
+        if request.headers.get('if-none-match') == etag:
+            return Response(status_code=304)
+        response.headers['ETag'] = etag
+        response.headers['Cache-Control'] = 'public, max-age=30'
+    except Exception:
+        pass
+
+    return payload
 
 @router.get("/user-wash-status")
 def user_wash_status(db: Session = Depends(get_db), user=Depends(get_current_user)):

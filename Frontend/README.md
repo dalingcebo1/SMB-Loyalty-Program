@@ -81,3 +81,18 @@ export default tseslint.config({
   },
 })
 ```
+
+## Performance: Idle Prefetch (Phase 6)
+
+Heavy analytics & chart bundles are code-split via `React.lazy`. To reduce user-perceived latency when navigating to analytics/staff dashboards, we prefetch these chunks during browser idle time:
+
+- `src/prefetch/index.ts` defines `scheduleAnalyticsPrefetch` using `requestIdleCallback` (with a timeout + setTimeout fallback) to warm the EnhancedAnalytics component and charting vendor modules (`recharts`, `react-circular-progressbar`).
+- `useIdlePrefetch` hook triggers once the user visits `/` or any `/staff` route (likely future navigation to analytics).
+- A guard boolean prevents duplicate fetches.
+
+Future enhancements:
+1. Add admin route prefetch heuristics.
+2. Prewarm initial analytics summary API via React Query prefetch.
+3. Record prefetch timing (Performance API) and expose in a lightweight dev overlay.
+
+This keeps initial TTI small while smoothing subsequent navigation to heavy views.

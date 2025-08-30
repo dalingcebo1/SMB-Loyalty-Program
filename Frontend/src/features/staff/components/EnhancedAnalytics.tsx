@@ -1,6 +1,7 @@
 // src/features/staff/components/EnhancedAnalytics.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useWashHistory, useDashboardAnalytics, useActiveWashes } from '../hooks';
+import { useWashHistory, useDashboardAnalytics, useActiveWashes, useBusinessAnalytics } from '../hooks';
+import type { TopService } from '../hooks/useBusinessAnalytics';
 import './EnhancedAnalytics.css';
 
 interface AnalyticsData {
@@ -89,13 +90,15 @@ const EnhancedAnalytics: React.FC = () => {
     startDate: periodDates.startDate,
     endDate: periodDates.endDate
   });
+  // Phase 1 & 2 consolidated metrics
+  const { data: businessAnalytics } = useBusinessAnalytics({ rangeDays: 30, recentDays: 7 });
   // Active washes for current status (not included in analytics payload)
   const { data: activeWashesData = [] } = useActiveWashes();
 
   const calculateAnalytics = useCallback(() => {
     // Prefer backend analytics; fallback to washHistory mock if unavailable
     const periodDays = (new Date(periodDates.endDate).getTime() - new Date(periodDates.startDate).getTime()) / 86400000 + 1;
-    if (backendAnalytics) {
+  if (backendAnalytics) {
       const total = backendAnalytics.total_washes;
       const completed = backendAnalytics.completed_washes;
       const revenue = backendAnalytics.revenue; // already in Rands
@@ -127,7 +130,7 @@ const EnhancedAnalytics: React.FC = () => {
       const efficiency = total > 0 ? (completed / total) * 100 : 0;
       const utilization = Math.min(100, efficiency * 0.9); // heuristic
       const uniqueUsers = backendAnalytics.customer_count; // backend unique users
-      setAnalyticsData({
+  setAnalyticsData({
         revenue: {
           today: todayRevenue,
             week: revenue, // treat current selected period aggregate as 'week' field for UI label
@@ -252,6 +255,13 @@ const EnhancedAnalytics: React.FC = () => {
 
   const formatCurrency = (amount: number) => `R${amount.toFixed(2)}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
+  const formatDelta = (pct: number | null | undefined) => {
+    if (pct === null || pct === undefined) return <span className="delta neutral">—</span>;
+    const sign = pct > 0 ? '+' : '';
+    const cls = pct > 0 ? 'positive' : pct < 0 ? 'negative' : 'neutral';
+    const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '▶';
+    return <span className={`delta ${cls}`}>{arrow} {sign}{pct}%</span>;
+  };
 
   return (
     <div className="enhanced-analytics">
@@ -352,6 +362,42 @@ const EnhancedAnalytics: React.FC = () => {
             </div>
           </div>
 
+          {/* Phase 1 & 2 KPI Strip */}
+          {businessAnalytics && (
+            <div className="metrics-grid" style={{marginTop:'1.5rem'}}>
+              <div className="metric-card">
+                <div className="metric-header"><h3>Avg Ticket</h3>{formatDelta(businessAnalytics.deltas?.avg_ticket_pct)}</div>
+                <div className="metric-values"><div className="primary-value">R{businessAnalytics.avg_ticket.toFixed(2)}</div></div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-header"><h3>Loyalty Share</h3>{formatDelta(businessAnalytics.deltas?.loyalty_share_pct)}</div>
+                <div className="metric-values"><div className="primary-value">{(businessAnalytics.loyalty_share*100).toFixed(1)}%</div></div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-header"><h3>Churn Risk</h3></div>
+                <div className="metric-values"><div className="primary-value">{businessAnalytics.churn_risk_count}</div></div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-header"><h3>Upsell Rate</h3>{formatDelta(businessAnalytics.deltas?.upsell_rate_pct)}</div>
+                <div className="metric-values"><div className="primary-value">{(businessAnalytics.upsell_rate*100).toFixed(1)}%</div></div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-header"><h3>Manual %</h3></div>
+                <div className="metric-values"><div className="primary-value">{((businessAnalytics.payment_mix.manual_started / Math.max(1, (businessAnalytics.payment_mix.manual_started + businessAnalytics.payment_mix.paid_started)))*100).toFixed(1)}%</div></div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-header"><h3>Pending &gt;10m</h3></div>
+                <div className="metric-values"><div className="primary-value">{businessAnalytics.pending_orders_over_10m}</div></div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-header"><h3>p95 Duration</h3>{formatDelta(businessAnalytics.deltas?.p95_duration_pct)}</div>
+                <div className="metric-values"><div className="primary-value">{businessAnalytics.duration_stats?.p95_s ? Math.round(businessAnalytics.duration_stats.p95_s/60) + 'm' : '—'}</div>
+                  <div className="metric-breakdown"><span>Slow (&gt;30m): {businessAnalytics.duration_stats?.slow_wash_count ?? '—'}</span></div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Charts Section */}
           <div className="charts-section">
             <div className="chart-container">
@@ -409,6 +455,55 @@ const EnhancedAnalytics: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {businessAnalytics && (
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Loyalty vs Non‑Loyalty</h3>
+                  <div className="chart-summary">{(businessAnalytics.loyalty_share*100).toFixed(1)}% loyalty</div>
+                </div>
+                <div className="chart-placeholder">
+                  <div className="chart-mock" style={{display:'flex',alignItems:'flex-end',height:'140px',gap:'12px'}}>
+                    {(() => {
+                      const loyalty = businessAnalytics.loyalty_share || 0;
+                      const non = 1 - loyalty;
+                      const max = Math.max(loyalty, non) || 1;
+                      return [
+                        { label: 'Loyalty', value: loyalty, color: 'linear-gradient(135deg,#2563eb,#3b82f6)' },
+                        { label: 'Other', value: non, color: 'linear-gradient(135deg,#9ca3af,#6b7280)' }
+                      ].map(b => (
+                        <div key={b.label} style={{flex:1,textAlign:'center'}}>
+                          <div className="chart-bar" style={{height:`${(b.value/max)*100}%`,background:b.color}} title={`${b.label}: ${(b.value*100).toFixed(1)}%`}></div>
+                          <div style={{marginTop:4,fontSize:12}}>{b.label}</div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {businessAnalytics && (
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h3>Top Services</h3>
+                  <div className="chart-summary">Top {businessAnalytics.top_services?.length || 0}</div>
+                </div>
+                <div className="chart-placeholder">
+                  <div className="chart-mock" style={{display:'flex', alignItems:'flex-end', height:'140px', gap:'8px'}}>
+                    {businessAnalytics.top_services?.map((s: TopService) => {
+                      const max = Math.max(...businessAnalytics.top_services.map((x: TopService) => x.count), 1);
+                      return (
+                        <div key={s.service} style={{flex:1,textAlign:'center'}}>
+                          <div className="chart-bar" style={{height:`${(s.count/max)*100}%`,background:'linear-gradient(135deg,#10b981,#059669)'}} title={`${s.service}: ${s.count}`}></div>
+                          <div style={{marginTop:4,fontSize:12}}>{s.service}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Detailed Analytics */}

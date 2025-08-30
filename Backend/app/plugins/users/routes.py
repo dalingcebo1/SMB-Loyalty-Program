@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.core.database import get_db
-from app.models import User, Vehicle
+from app.models import User, Vehicle, Order, OrderVehicle
 from app.plugins.auth.routes import require_staff
 from pydantic import BaseModel, EmailStr
 from typing import Optional
@@ -82,6 +82,56 @@ def search_users(query: str = Query(..., min_length=1), db: Session = Depends(ge
          "phone": u.phone, "email": u.email, "role": u.role}
         for u in users
     ]
+
+@router.get("/vehicles/search")
+def search_vehicles(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    """Search vehicles by plate/make/model or owner name/phone; include total washes & last wash date.
+    This supports the staff vehicle manager UI."""
+    pattern = f"%{q}%"
+    # Join user for owner filtering
+    vehs = (
+        db.query(Vehicle, User)
+          .join(User, Vehicle.user_id == User.id)
+          .filter(
+              or_(
+                  Vehicle.plate.ilike(pattern),
+                  Vehicle.make.ilike(pattern),
+                  Vehicle.model.ilike(pattern),
+                  User.first_name.ilike(pattern),
+                  User.last_name.ilike(pattern),
+                  User.phone.ilike(pattern),
+              )
+          )
+          .limit(50)
+          .all()
+    )
+    results = []
+    for v, u in vehs:
+        # Compute total washes and last wash timestamp via orders join
+        ov_q = (
+            db.query(Order)
+              .join(OrderVehicle, OrderVehicle.order_id == Order.id)
+              .filter(OrderVehicle.vehicle_id == v.id, Order.status.in_(["paid", "completed"]))
+              .order_by(Order.created_at.desc())
+        )
+        orders = ov_q.all()
+        total_washes = len(orders)
+        last_wash = orders[0].created_at.isoformat() if orders else None
+        results.append({
+            "id": v.id,
+            "plate": v.plate,
+            "make": v.make,
+            "model": v.model,
+            "user": {
+                "id": u.id,
+                "first_name": u.first_name,
+                "last_name": u.last_name,
+                "phone": u.phone,
+            },
+            "total_washes": total_washes,
+            "last_wash": last_wash,
+        })
+    return results
  
 @router.get("", response_model=PaginatedUsers)
 def list_users(

@@ -1,6 +1,6 @@
 // src/features/staff/components/EnhancedWashHistory.tsx
 import React, { useState } from 'react';
-import { useWashHistory } from '../hooks';
+import { usePagedWashHistory } from '../hooks/useWashHistory';
 import { Wash } from '../../../types';
 import './EnhancedWashHistory.css';
 
@@ -40,13 +40,13 @@ const EnhancedWashHistory: React.FC = () => {
     limit: pageSize
   };
 
-  const { data: historyData, isLoading } = useWashHistory(queryParams);
+  const { data: pagedHistory, isLoading } = usePagedWashHistory(queryParams);
   
   // Process history data
   const washes: WashWithDuration[] = React.useMemo(() => {
-    if (!historyData) return [];
+    if (!pagedHistory) return [];
     
-    return historyData.map((wash: Wash) => {
+    return pagedHistory.items.map((wash: Wash) => {
       let duration_minutes: number | undefined;
       
       if (wash.status === 'ended' && wash.ended_at) {
@@ -57,12 +57,12 @@ const EnhancedWashHistory: React.FC = () => {
       
       return { ...wash, duration_minutes };
     });
-  }, [historyData]);
+  }, [pagedHistory]);
 
   // Analytics calculations
   const analytics = React.useMemo(() => {
     const completedWashes = washes.filter(w => w.status === 'ended' && w.duration_minutes);
-    const totalWashes = washes.length;
+  const totalWashes = pagedHistory?.total ?? washes.length;
     const completedCount = completedWashes.length;
     const activeCount = washes.filter(w => w.status === 'started').length;
     
@@ -87,7 +87,7 @@ const EnhancedWashHistory: React.FC = () => {
       completionRate,
       serviceBreakdown
     };
-  }, [washes]);
+  }, [washes, pagedHistory?.total]);
 
   const handleFilterChange = (key: keyof FilterOptions, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));

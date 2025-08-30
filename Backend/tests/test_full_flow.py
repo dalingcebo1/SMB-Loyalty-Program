@@ -54,15 +54,20 @@ def test_full_order_payment_loyalty_flow(client: TestClient, db_session: Session
     db_session.add(reward)
     db_session.commit()
 
-    # Seed visit count equal to one interval for the test user
+    # Ensure visit count equals one interval for the test user (update existing if present)
     user = db_session.query(User).first()
-    vc = VisitCount(
-        tenant_id=settings.default_tenant,
-        user_id=user.id,
-        count=REWARD_INTERVAL,
-        updated_at=datetime.utcnow(),
-    )
-    db_session.add(vc)
+    vc = db_session.query(VisitCount).filter_by(user_id=user.id, tenant_id=settings.default_tenant).first()
+    if vc:
+        vc.count = REWARD_INTERVAL
+        vc.updated_at = datetime.utcnow()
+    else:
+        vc = VisitCount(
+            tenant_id=settings.default_tenant,
+            user_id=user.id,
+            count=REWARD_INTERVAL,
+            updated_at=datetime.utcnow(),
+        )
+        db_session.add(vc)
     db_session.commit()
 
     # Check loyalty endpoint

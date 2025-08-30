@@ -1,9 +1,9 @@
 // src/features/staff/pages/Analytics.tsx
 import React from 'react';
-import EnhancedAnalytics from '../components/EnhancedAnalytics';
+import EnhancedAnalyticsLazy from '../components/EnhancedAnalyticsLazy';
 
 const Analytics: React.FC = () => {
-  return <EnhancedAnalytics />;
+  return <EnhancedAnalyticsLazy />;
 };
 
 export default Analytics;

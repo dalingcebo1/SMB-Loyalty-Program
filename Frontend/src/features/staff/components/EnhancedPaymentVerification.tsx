@@ -1,56 +1,30 @@
 // src/features/staff/components/EnhancedPaymentVerification.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useActiveWashes } from '../hooks/useActiveWashes';
 import { useStartWash } from '../hooks/useStartWash';
+import { useRecentVerifications, useVerifyPayment, VerifiedPaymentDetails } from '../hooks/usePaymentVerification';
 import ConfirmDialog from '../../../components/ConfirmDialog';
 import './EnhancedPaymentVerification.css';
 
-interface Vehicle {
-  id: number;
-  reg: string;
-  make: string;
-  model: string;
-}
-
-interface User {
-  id: number;
-  first_name: string;
-  last_name: string;
-  phone: string;
-}
-
-interface PaymentDetails {
-  order_id: string;
-  user?: User;
-  vehicle?: Vehicle;
-  payment_pin?: string;
-  service_name?: string;
-  extras?: string[];
-  amount?: number;
-  payment_method?: string;
-  timestamp?: string;
-}
-
-interface VerificationHistory {
-  id: string;
-  timestamp: string;
-  order_id: string;
-  status: 'success' | 'failed';
-  user_info: string;
-  vehicle_info: string;
-  payment_method: string;
-  amount: number;
-}
+// Using VerifiedPaymentDetails directly from hook types
 
 const EnhancedPaymentVerification: React.FC = () => {
   const [verificationMethod, setVerificationMethod] = useState<'qr' | 'manual' | 'pin'>('qr');
   const [manualRef, setManualRef] = useState('');
   const [manualPin, setManualPin] = useState('');
-  const [verificationHistory, setVerificationHistory] = useState<VerificationHistory[]>([]);
+  const { data: verificationHistory = [], refetch: refetchRecent } = useRecentVerifications(10, true);
+  const [starting, setStarting] = useState(false);
+  const [autoRefreshHistory, setAutoRefreshHistory] = useState(true);
+  const [historyTick, setHistoryTick] = useState(0);
+  const navigate = useNavigate();
   const [isScanning, setIsScanning] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentDetails | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<VerifiedPaymentDetails | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [newVehicle, setNewVehicle] = useState({ plate: '', make: '', model: '' });
+  const [linkingVehicleId, setLinkingVehicleId] = useState<number | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [dailyStats, setDailyStats] = useState({
     total_verified: 0,
@@ -75,7 +49,7 @@ const EnhancedPaymentVerification: React.FC = () => {
       
       const total_verified = todayVerifications.length;
       const successful = todayVerifications.filter(v => v.status === 'success');
-      const total_amount = successful.reduce((sum, v) => sum + v.amount, 0);
+  const total_amount = successful.reduce((sum, v) => sum + (v.amount || 0), 0);
       const success_rate = total_verified > 0 ? (successful.length / total_verified) * 100 : 0;
       
       setDailyStats({
@@ -89,35 +63,78 @@ const EnhancedPaymentVerification: React.FC = () => {
     }
   }, [verificationHistory]);
 
-  const loadVerificationHistory = useCallback(() => {
-    // Mock data for now - in real implementation, this would come from an API
-    const mockHistory: VerificationHistory[] = [
-      {
-        id: '1',
-        timestamp: new Date().toISOString(),
-        order_id: 'ORD-001',
-        status: 'success',
-        user_info: 'John Doe (+27 81 234 5678)',
-        vehicle_info: 'Toyota Corolla (ABC123GP)',
-        payment_method: 'Card',
-        amount: 150
-      },
-      // Add more mock data as needed
-    ];
-    setVerificationHistory(mockHistory);
-  }, []);
+  const loadVerificationHistory = useCallback(() => { refetchRecent(); }, [refetchRecent]);
 
   useEffect(() => {
     loadDailyStats();
     loadVerificationHistory();
   }, [loadDailyStats, loadVerificationHistory]);
 
-  const handleQRScan = async (result: { text?: string } | null) => {
-    if (result?.text) {
-      setIsScanning(false);
-      await verifyPayment(result.text);
+  // Auto refresh recent verifications
+  useEffect(() => {
+    if (!autoRefreshHistory) return;
+    const id = setInterval(() => setHistoryTick(t => t + 1), 10000); // 10s
+    return () => clearInterval(id);
+  }, [autoRefreshHistory]);
+  useEffect(() => { if (autoRefreshHistory) loadVerificationHistory(); }, [historyTick, autoRefreshHistory, loadVerificationHistory]);
+
+  // Keep reference to active QR scanner so we can stop it on unmount / toggle
+  interface QRLike {
+    stop: () => Promise<void> | void;
+    clear: () => Promise<void> | void;
+  }
+  const qrInstanceRef = useRef<QRLike | null>(null);
+
+  // Lazy load html5-qrcode only when scanning to keep initial bundle light
+  const startRealScanner = async () => {
+    try {
+  const { Html5Qrcode } = await import('html5-qrcode');
+  // Type for html5-qrcode config; minimal fields used
+  const cameraConfig: { fps: number; qrbox: number } = { fps: 10, qrbox: 250 };
+      const scannerId = 'real-qr-reader';
+      const el = document.getElementById(scannerId);
+      if (!el) return;
+      const html5QrCode = new Html5Qrcode(scannerId);
+      qrInstanceRef.current = html5QrCode;
+      await html5QrCode.start(
+        { facingMode: 'environment' },
+        cameraConfig,
+        (decodedText: string) => {
+          html5QrCode.stop().catch(() => {});
+          setIsScanning(false); // triggers cleanup effect
+          verifyPayment(decodedText);
+        },
+        (err: unknown) => {
+          // Silently ignore scan errors (common with partial/blurred frames)
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('QR scan frame error', err);
+          }
+        }
+      );
+    } catch (err) {
+      console.error('QR scanner init failed, fallback to mock:', err);
     }
   };
+
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      if (qrInstanceRef.current) {
+  try { qrInstanceRef.current.stop(); } catch { /* ignore */ }
+  try { qrInstanceRef.current.clear(); } catch { /* ignore */ }
+        qrInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // When scanning toggled off, ensure camera released
+  useEffect(() => {
+    if (!isScanning && qrInstanceRef.current) {
+      try { qrInstanceRef.current.stop(); } catch { /* ignore */ }
+      try { qrInstanceRef.current.clear(); } catch { /* ignore */ }
+      qrInstanceRef.current = null;
+    }
+  }, [isScanning]);
 
   const handleManualVerification = async () => {
     if (verificationMethod === 'manual' && manualRef) {
@@ -127,47 +144,14 @@ const EnhancedPaymentVerification: React.FC = () => {
     }
   };
 
+  const verifyMutation = useVerifyPayment();
   const verifyPayment = async (reference: string) => {
     setProcessingPayment(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/payments/verify-payment?ref=${reference}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const paymentData = await response.json();
-        setSelectedPayment(paymentData);
-        setShowConfirmDialog(true);
-        
-        // Add to verification history
-        const newVerification: VerificationHistory = {
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-          order_id: paymentData.order_id,
-          status: 'success',
-          user_info: `${paymentData.user?.first_name} ${paymentData.user?.last_name} (${paymentData.user?.phone})`,
-          vehicle_info: `${paymentData.vehicle?.make} ${paymentData.vehicle?.model} (${paymentData.vehicle?.reg})`,
-          payment_method: 'Card',
-          amount: paymentData.amount || 0
-        };
-        
-        setVerificationHistory(prev => [newVerification, ...prev]);
-        toast.success('Payment verified successfully!');
-      } else {
-        toast.error('Payment verification failed');
-        const failedVerification: VerificationHistory = {
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-          order_id: reference,
-          status: 'failed',
-          user_info: 'Unknown',
-          vehicle_info: 'Unknown',
-          payment_method: 'Unknown',
-          amount: 0
-        };
-        setVerificationHistory(prev => [failedVerification, ...prev]);
-      }
+  const data = await verifyMutation.mutateAsync({ token: reference, type: 'ref' });
+  setSelectedPayment(data);
+      setShowConfirmDialog(true);
+      toast.success(data.status === 'already_redeemed' ? 'Payment already redeemed' : 'Payment verified successfully!');
     } catch (error) {
       console.error('Verification error:', error);
       toast.error('Error during verification');
@@ -181,19 +165,10 @@ const EnhancedPaymentVerification: React.FC = () => {
   const verifyByPin = async (pin: string) => {
     setProcessingPayment(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/payments/verify-payment?pin=${pin}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const paymentData = await response.json();
-        setSelectedPayment(paymentData);
-        setShowConfirmDialog(true);
-        toast.success('Payment verified by PIN!');
-      } else {
-        toast.error('PIN verification failed');
-      }
+  const data = await verifyMutation.mutateAsync({ token: pin, type: 'pin' });
+  setSelectedPayment(data);
+      setShowConfirmDialog(true);
+      toast.success(data.status === 'already_redeemed' ? 'Payment already redeemed' : 'Payment verified by PIN!');
     } catch (error) {
       console.error('PIN verification error:', error);
       toast.error('Error during PIN verification');
@@ -204,25 +179,68 @@ const EnhancedPaymentVerification: React.FC = () => {
   };
 
   const confirmStartWash = async () => {
-    if (!selectedPayment) return;
-    
+    if (!selectedPayment || starting) return;
     try {
       if (!selectedPayment.vehicle?.id) {
-        toast.error('No vehicle associated with this payment; cannot start wash.');
+        setShowVehicleModal(true);
         return;
       }
-      const washData = {
-        orderId: selectedPayment.order_id,
-        vehicleId: selectedPayment.vehicle.id
-      };
-      await startWashMutation.mutateAsync(washData);
+      setStarting(true);
+      await startWashMutation.mutateAsync({ orderId: selectedPayment.order_id, vehicleId: selectedPayment.vehicle.id });
       setShowConfirmDialog(false);
       setSelectedPayment(null);
-      refetchActiveWashes();
-      toast.success('Wash started successfully!');
-    } catch (error) {
-      console.error('Error starting wash:', error);
-      toast.error('Failed to start wash');
+  refetchActiveWashes();
+  loadVerificationHistory();
+  // Navigate to dashboard to monitor active wash
+  navigate('/staff/dashboard');
+    } catch (error: unknown) {
+      interface RespLike { data?: { detail?: string } }
+      interface ErrorLike { response?: RespLike }
+      let detail: string | undefined
+      if (typeof error === 'object' && error) {
+        const maybe = error as ErrorLike
+        detail = maybe.response?.data?.detail
+      }
+      if (!detail && error instanceof Error) detail = error.message
+      console.error('Error starting wash:', detail, error)
+      toast.error(`Failed to start wash${detail ? ': ' + detail : ''}`)
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const handleCreateVehicle = async () => {
+    if (!selectedPayment?.user) return;
+    try {
+      const token = localStorage.getItem('token');
+      const resp = await fetch(`/api/users/${selectedPayment.user.id}/vehicles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plate: newVehicle.plate, make: newVehicle.make, model: newVehicle.model })
+      });
+      if (!resp.ok) throw new Error('Failed to add vehicle');
+      const veh = await resp.json();
+      setSelectedPayment(prev => prev ? { ...prev, vehicle: { id: veh.id, reg: veh.plate, make: veh.make, model: veh.model } } : prev);
+      setShowVehicleModal(false);
+      toast.success('Vehicle added and linked');
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not add vehicle');
+    }
+  };
+
+  const handleLinkVehicle = async () => {
+    if (!selectedPayment?.user || linkingVehicleId == null) return;
+    try {
+      // Linking simply sets the selected vehicle client-side; if order->vehicle relation needed we could call an API
+      const v = selectedPayment.available_vehicles?.find(v => v.id === linkingVehicleId);
+      if (!v) return;
+      setSelectedPayment(prev => prev ? { ...prev, vehicle: v } : prev);
+      setShowVehicleModal(false);
+      toast.success('Vehicle linked');
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not link vehicle');
     }
   };
 
@@ -294,13 +312,8 @@ const EnhancedPaymentVerification: React.FC = () => {
               <div className="scanner-container">
                 {isScanning ? (
                   <div className="qr-reader-wrapper">
-                    <div className="qr-mock-scanner">
-                      <p>QR Scanner would be here</p>
-                      <button onClick={() => handleQRScan({ text: 'MOCK-QR-123' })}>
-                        Simulate QR Scan
-                      </button>
-                    </div>
-                    <button 
+                    <div id="real-qr-reader" style={{ width: '100%', minHeight: 300 }} />
+                    <button
                       className="stop-scanning-btn"
                       onClick={() => setIsScanning(false)}
                     >
@@ -312,9 +325,9 @@ const EnhancedPaymentVerification: React.FC = () => {
                     <div className="scanner-icon">📱</div>
                     <h3>QR Code Scanner</h3>
                     <p>Position the QR code within the camera view</p>
-                    <button 
+                    <button
                       className="start-scanning-btn"
-                      onClick={() => setIsScanning(true)}
+                      onClick={() => { setIsScanning(true); startRealScanner(); }}
                     >
                       Start Scanning
                     </button>
@@ -377,31 +390,64 @@ const EnhancedPaymentVerification: React.FC = () => {
       <div className="verification-history">
         <div className="history-header">
           <h3>Recent Verifications</h3>
-          <button className="refresh-btn" onClick={loadVerificationHistory}>
-            🔄 Refresh
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button className="refresh-btn" onClick={loadVerificationHistory} title="Manual refresh">
+              🔄 Refresh
+            </button>
+            <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <input
+                type="checkbox"
+                checked={autoRefreshHistory}
+                onChange={e => setAutoRefreshHistory(e.target.checked)}
+              /> Auto
+            </label>
+          </div>
         </div>
         <div className="history-list">
-          {verificationHistory.slice(0, 10).map((verification) => (
-            <div key={verification.id} className={`history-item ${verification.status}`}>
-              <div className="verification-info">
-                <div className="verification-primary">
-                  <span className="order-id">{verification.order_id}</span>
-                  <span className={`status-badge ${verification.status}`}>
-                    {verification.status === 'success' ? '✅' : '❌'} {verification.status.toUpperCase()}
-                  </span>
+          {verificationHistory.slice(0, 10).map(v => {
+            const userInfo = v.user ? `${v.user.first_name || ''} ${v.user.last_name || ''} (${v.user.phone || ''})` : '—';
+            const vehicleInfo = v.vehicle ? `${v.vehicle.make} ${v.vehicle.model} (${v.vehicle.reg})` : 'No vehicle';
+            return (
+              <div
+                key={`${v.order_id}-${v.timestamp}`}
+                className={`history-item ${v.status}`}
+                onClick={async () => {
+                  // Re-fetch verify-payment for details & open start dialog if not yet started
+                  try {
+                    const token = localStorage.getItem('token');
+                    if (!v.payment_reference) return;
+                    const resp = await fetch(`/api/payments/verify-payment?ref=${encodeURIComponent(v.payment_reference)}`, { headers: { Authorization: `Bearer ${token}` } });
+                    if (!resp.ok) return;
+                    const paymentData: VerifiedPaymentDetails = await resp.json();
+                    setSelectedPayment(paymentData);
+                    setShowConfirmDialog(true);
+                  } catch (e) {
+                    console.error('Failed to load verification details', e);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="verification-info">
+                  <div className="verification-primary">
+                    <span className="order-id">{v.order_id}</span>
+                    <span className={`status-badge ${v.status}`}>
+                      {v.status === 'success' ? '✅' : '❌'} {v.status.toUpperCase()}
+                    </span>
+                    {v.started && !v.completed && <span className="status-chip in-progress">In Progress</span>}
+                    {v.completed && <span className="status-chip completed">Completed</span>}
+                  </div>
+                  <div className="verification-details">
+                    <span className="user-info">{userInfo}</span>
+                    <span className="vehicle-info">{vehicleInfo}</span>
+                  </div>
                 </div>
-                <div className="verification-details">
-                  <span className="user-info">{verification.user_info}</span>
-                  <span className="vehicle-info">{verification.vehicle_info}</span>
+                <div className="verification-meta">
+                  <div className="amount">{formatCurrency(v.amount || 0)}</div>
+                  <div className="timestamp">{formatTime(v.timestamp)}</div>
                 </div>
               </div>
-              <div className="verification-meta">
-                <div className="amount">{formatCurrency(verification.amount)}</div>
-                <div className="timestamp">{formatTime(verification.timestamp)}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -412,10 +458,65 @@ const EnhancedPaymentVerification: React.FC = () => {
           onCancel={() => setShowConfirmDialog(false)}
           onConfirm={confirmStartWash}
           title="Start Wash Service"
-          description={`Payment Verified Successfully! Customer: ${selectedPayment.user?.first_name} ${selectedPayment.user?.last_name}, Phone: ${selectedPayment.user?.phone}, Vehicle: ${selectedPayment.vehicle?.make} ${selectedPayment.vehicle?.model} (${selectedPayment.vehicle?.reg}), Service: ${selectedPayment.service_name}. Do you want to start the wash service now?`}
-          confirmLabel="Start Wash"
-          cancelLabel="Cancel"
+          description={`Customer: ${selectedPayment.user?.first_name} ${selectedPayment.user?.last_name} (${selectedPayment.user?.phone}) | Vehicle: ${selectedPayment.vehicle?.make} ${selectedPayment.vehicle?.model} (${selectedPayment.vehicle?.reg}) | Service: ${selectedPayment.service_name}.`}
+          confirmLabel={starting ? 'Starting...' : 'Start Wash'}
+          cancelLabel="Close"
+          loading={starting}
         />
+      )}
+
+      {/* Vehicle Association Modal */}
+      {showVehicleModal && selectedPayment && (
+        <div className="vehicle-modal-overlay">
+          <div className="vehicle-modal">
+            <h3>Associate Vehicle</h3>
+            {selectedPayment.available_vehicles && selectedPayment.available_vehicles.length > 0 && (
+              <div className="existing-vehicles">
+                <h4>Select Existing</h4>
+                <ul>
+                  {selectedPayment.available_vehicles.map(v => (
+                    <li key={v.id}>
+                      <label>
+                        <input
+                          type="radio"
+                          name="vehicleChoice"
+                          value={v.id}
+                          onChange={() => setLinkingVehicleId(v.id)}
+                        /> {v.make} {v.model} ({v.reg})
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <button className="verify-btn" disabled={linkingVehicleId == null} onClick={handleLinkVehicle}>Link Selected Vehicle</button>
+              </div>
+            )}
+            <div className="divider">OR</div>
+            <div className="new-vehicle-form">
+              <h4>Add New Vehicle</h4>
+              <input
+                placeholder="Plate"
+                value={newVehicle.plate}
+                onChange={e => setNewVehicle({ ...newVehicle, plate: e.target.value })}
+              />
+              <input
+                placeholder="Make"
+                value={newVehicle.make}
+                onChange={e => setNewVehicle({ ...newVehicle, make: e.target.value })}
+              />
+              <input
+                placeholder="Model"
+                value={newVehicle.model}
+                onChange={e => setNewVehicle({ ...newVehicle, model: e.target.value })}
+              />
+              <button
+                className="verify-btn"
+                disabled={!newVehicle.plate || !newVehicle.make || !newVehicle.model}
+                onClick={handleCreateVehicle}
+              >Add & Link Vehicle</button>
+            </div>
+            <button className="cancel-btn" onClick={() => setShowVehicleModal(false)}>Close</button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -88,6 +88,7 @@ export interface Wash {
   status: "started" | "ended";
   service_name?: string;
   extras?: string[];
+  duration_seconds?: number | null;
 }
 
 // Verified order response

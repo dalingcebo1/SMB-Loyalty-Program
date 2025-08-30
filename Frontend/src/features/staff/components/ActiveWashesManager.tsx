@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { timeDerivation } from '../perf/counters';
 import { useActiveWashes, useEndWash } from '../hooks';
+import type { EndWashResponse } from '../hooks/useEndWash';
 import { toast } from 'react-toastify';
 import LoadingFallback from '../../../components/LoadingFallback';
 import ConfirmDialog from '../../../components/ConfirmDialog';
@@ -17,7 +18,7 @@ interface ActiveWashCardProps {
 const ActiveWashCardComponent: React.FC<ActiveWashCardProps> = ({ wash, onEndWash, isEnding }) => {
   const startTime = new Date(wash.started_at);
   const currentTime = new Date();
-  const durationMs = currentTime.getTime() - startTime.getTime();
+  const durationMs = wash.ended_at ? (new Date(wash.ended_at).getTime() - startTime.getTime()) : (currentTime.getTime() - startTime.getTime());
   const durationMinutes = Math.floor(durationMs / 60000);
   const durationHours = Math.floor(durationMinutes / 60);
   const remainingMinutes = durationMinutes % 60;
@@ -84,7 +85,7 @@ const ActiveWashCardComponent: React.FC<ActiveWashCardProps> = ({ wash, onEndWas
           <div className="time-detail">
             <span className="time-label">Duration:</span>
             <span className={`time-value ${getDurationClass()}`}>
-              {formatDuration()}
+              {wash.duration_seconds && wash.ended_at ? `${Math.floor((wash.duration_seconds)/60)}m` : formatDuration()}
             </span>
           </div>
         </div>
@@ -117,7 +118,10 @@ const ActiveWashCardComponent: React.FC<ActiveWashCardProps> = ({ wash, onEndWas
 const ActiveWashCard = React.memo(ActiveWashCardComponent);
 
 const ActiveWashesManager: React.FC = () => {
-  const { data: activeWashes = [], isLoading, refetch } = useActiveWashes();
+  // Allow faster local UI duration tick separate from network polling
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const { data: activeWashes = [], isLoading, refetch } = useActiveWashes(autoRefresh ? 15000 : 0);
+
   const endWashMutation = useEndWash();
   const [confirmWash, setConfirmWash] = useState<string | null>(null);
   const { total, longRunning } = useMemo(() => timeDerivation(
@@ -145,8 +149,15 @@ const ActiveWashesManager: React.FC = () => {
     if (!confirmWash) return;
     
     endWashMutation.mutate(confirmWash, {
-      onSuccess: () => {
-        toast.success('Wash completed successfully! 🎉');
+      onSuccess: (data: EndWashResponse) => {
+        if (data.status === 'already_completed') {
+          toast.info('Wash was already completed.');
+        } else if (data.status === 'ended') {
+          const dur = data.duration_seconds ? Math.round(data.duration_seconds / 60) : null;
+          toast.success(`Wash completed successfully! ${dur !== null ? `(${dur}m)` : ''} 🎉`);
+        } else {
+          toast.success('Wash updated.');
+        }
         refetch();
       },
       onError: (error) => {
@@ -188,6 +199,20 @@ const ActiveWashesManager: React.FC = () => {
               <span className="status-label">Long Running</span>
             </div>
           )}
+          <div className="status-card controls">
+            <label className="auto-refresh-toggle">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={() => setAutoRefresh(a => !a)}
+              /> Auto Refresh
+            </label>
+            <button
+              className="manual-refresh-btn"
+              onClick={() => refetch()}
+              aria-label="Manual refresh active washes"
+            >↻</button>
+          </div>
         </div>
       </div>
 

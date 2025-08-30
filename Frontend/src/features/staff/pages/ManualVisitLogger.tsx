@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { toast } from 'react-toastify';
 import TableContainer from '../../../components/ui/TableContainer';
+import './ManualVisitLogger.css';
 
 // Types for backend response and log history
 interface VisitResponse {
@@ -122,77 +123,91 @@ const ManualVisitLogger: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded shadow mt-10">
-  {/* react-toastify handles notifications */}
-      <h1 className="text-2xl font-bold mb-4 text-center">Manual Visit Logging</h1>
-      <p className="text-gray-600 mb-6 text-center">
-        For clients paying at the till (POS). Enter the customer's phone number to log a visit and start a wash. No payment or QR code required.
-      </p>
-      <div className="flex flex-col items-center gap-4">
-        <input
-          type="tel"
-          placeholder="Client Cellphone (e.g. 0731234567)"
-          aria-label="Client cellphone number"
-          value={cell}
-          onChange={e => setCell(e.target.value.replace(/[^0-9]/g, ""))}
-          className="w-full px-4 py-2 border border-gray-300 rounded text-lg"
-          disabled={loading}
-          maxLength={10}
-          inputMode="numeric"
-        />
-        <button
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded font-medium text-lg hover:bg-blue-700 transition"
-          onClick={confirmAndLog}
-          disabled={!isValidCell || loading}
-        >
-          {loading ? "Logging..." : "Log Visit"}
-        </button>
-        {status && (
-          <div role="status" aria-live="polite" className="text-center text-base text-green-700">
-            {status}
+    <div className="manual-visit-page">
+      {/* Hero / Intro */}
+      <section className="manual-visit-hero">
+        <h1>Manual Visit Logging</h1>
+        <p>
+          Record loyalty visits & start washes for POS / cash customers without QR codes.
+          Enter their phone number (073…) to update loyalty and optionally initiate a wash.
+        </p>
+      </section>
+
+      <div className="manual-visit-grid">
+        {/* Form Card */}
+        <div className="manual-visit-card">
+          <h2><span className="emoji">📝</span> Log a Visit</h2>
+          <div className="manual-visit-form">
+            <input
+              type="tel"
+              placeholder="Client Cellphone (e.g. 0731234567)"
+              aria-label="Client cellphone number"
+              value={cell}
+              onChange={e => setCell(e.target.value.replace(/[^0-9]/g, ""))}
+              disabled={loading}
+              maxLength={10}
+              inputMode="numeric"
+            />
           </div>
-        )}
-        {lastVisit && status?.startsWith("Visit logged") && (
-          <div className="w-full mt-4 bg-blue-50 p-4 rounded shadow text-center">
-            <div className="font-semibold text-lg mb-2">Client: {lastVisit.name}</div>
-            <div className="mb-1 text-base">Phone: {normalizePhone(lastVisit.phone)}</div>
-            <div className="mb-1 text-base">Total Visits: {lastVisit.count}</div>
-            {nextMilestone !== null && (
-              <div className="mb-2 text-sm text-gray-600">
-                {nextMilestone - lastVisit.count} to go until free wash
+          <div className="manual-visit-actions">
+            <button
+              className="manual-visit-btn"
+              onClick={confirmAndLog}
+              disabled={!isValidCell || loading}
+            >
+              {loading ? "Logging…" : "Log Visit"}
+            </button>
+            {lastVisit && status?.startsWith("Visit logged") && (
+              <button
+                className="manual-visit-btn secondary"
+                onClick={handleStartWash}
+                disabled={loading}
+              >
+                {loading ? "Starting…" : "Start Wash"}
+              </button>
+            )}
+          </div>
+          {status && (
+            <div
+              className={`manual-visit-status ${status.toLowerCase().includes('could not') || status.toLowerCase().includes('invalid') ? 'error' : ''}`}
+              role="status" aria-live="polite"
+            >
+              {status}
+            </div>
+          )}
+          {lastVisit && status?.startsWith("Visit logged") && (
+            <div className="manual-visit-summary">
+              <h3>✅ Visit Recorded</h3>
+              <p>{lastVisit.name} ({normalizePhone(lastVisit.phone)})</p>
+              <div className="meta">Total Visits: {lastVisit.count}</div>
+              {nextMilestone !== null && (
+                <div className="manual-visit-tip">{nextMilestone - lastVisit.count} to free wash</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Recent History Card */}
+        <div className="manual-visit-card">
+            <h2><span className="emoji">🕒</span> Recent Logs</h2>
+            <div className="manual-visit-divider" />
+            {history.length === 0 && <p style={{opacity:.7,fontSize:'.85rem'}}>No visits this session yet.</p>}
+            {history.length > 0 && (
+              <div className="manual-visit-history">
+                <TableContainer>
+                  <ul>
+                    {history.map((log, idx) => (
+                      <li key={idx}>
+                        <span className="time">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <span className="primary">{log.name} ({normalizePhone(log.phone)})</span>
+                        <span className="manual-visit-badge">{log.count} visits</span>
+                      </li>
+                    ))}
+                  </ul>
+                </TableContainer>
               </div>
             )}
-            <button
-              className="mt-2 px-4 py-2 bg-green-600 text-white rounded font-medium text-base hover:bg-green-700 transition"
-              onClick={handleStartWash}
-              disabled={loading}
-            >
-              {loading ? "Starting..." : "Start Wash"}
-            </button>
-          </div>
-        )}
-        {history.length > 0 && (
-          <div className="w-full mt-8">
-            <h4 className="font-semibold mb-2 text-center">Recent Visit Logs</h4>
-            <TableContainer>
-              <ul className="space-y-2">
-                {history.map((log, idx) => (
-                  <li
-                    key={idx}
-                    className="bg-gray-100 rounded px-3 py-2 flex flex-col md:flex-row md:items-center md:justify-between text-base"
-                  >
-                    <span className="text-gray-500 mb-1 md:mb-0 md:mr-2" style={{ minWidth: 80 }}>
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
-                    <span className="flex-1 text-center md:text-left">
-                      <strong>{log.name}</strong> ({normalizePhone(log.phone)}) — Visits: {log.count}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </TableContainer>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -1,12 +1,12 @@
 // src/features/staff/components/EnhancedVehicleManager.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import './EnhancedVehicleManager.css';
 
 interface Vehicle {
   id: number;
-  reg: string;
+  plate: string; // backend uses 'plate'
   make: string;
   model: string;
   user?: User;
@@ -23,6 +23,7 @@ interface VehicleSearchResult extends Vehicle {
   user: User;
   total_washes?: number;
   last_wash?: string;
+  reg?: string; // legacy field mapping for UI display
 }
 
 const EnhancedVehicleManager: React.FC = () => {
@@ -44,61 +45,71 @@ const EnhancedVehicleManager: React.FC = () => {
   });
 
   const token = localStorage.getItem('token');
-  const axiosAuth = axios.create({
+  // Memoize axios instance so effects don't re-run each render (preventing input "loop")
+  const axiosAuth = useMemo(() => axios.create({
+    baseURL: '/api',
     headers: { Authorization: `Bearer ${token}` }
-  });
+  }), [token]);
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const userDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Search vehicles with enhanced data
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
       setSearchResults([]);
       return;
     }
-
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    const controller = new AbortController();
     debounceTimeout.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await axiosAuth.get(`/users/search-vehicles?q=${encodeURIComponent(searchQuery)}`);
-        setSearchResults(response.data);
-      } catch (error) {
-        console.error('Vehicle search error:', error);
-        toast.error('Failed to search vehicles');
+        const response = await axiosAuth.get(`/users/vehicles/search?q=${encodeURIComponent(searchQuery)}`, { signal: controller.signal });
+        type BackendVehicle = { id: number; plate: string; make: string; model: string; user: User; total_washes?: number; last_wash?: string };
+        const mapped: VehicleSearchResult[] = (response.data as BackendVehicle[]).map(v => ({ ...v, reg: v.plate }));
+        setSearchResults(mapped);
+      } catch (error: unknown) {
+        const errObj = error as { name?: string; code?: string } | undefined;
+        if (errObj?.name !== 'CanceledError' && errObj?.code !== 'ERR_CANCELED') {
+          console.error('Vehicle search error:', error);
+          toast.error('Failed to search vehicles');
+        }
       } finally {
         setLoading(false);
       }
-    }, 500);
-
+    }, 350);
     return () => {
+      controller.abort();
       if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
     };
   }, [searchQuery, axiosAuth]);
 
   // Search users for adding vehicles
   useEffect(() => {
-    if (!userSearch.trim()) {
+    if (!userSearch.trim() || userSearch.trim().length < 2) {
       setUserResults([]);
       return;
     }
-
     if (userDebounceTimeout.current) clearTimeout(userDebounceTimeout.current);
+    const controller = new AbortController();
     userDebounceTimeout.current = setTimeout(async () => {
       setUserLoading(true);
       try {
-        const response = await axiosAuth.get(`/users/search?q=${encodeURIComponent(userSearch)}`);
+        const response = await axiosAuth.get(`/users/search?query=${encodeURIComponent(userSearch)}`, { signal: controller.signal });
         setUserResults(response.data);
-      } catch (error) {
-        console.error('User search error:', error);
-        toast.error('Failed to search users');
+      } catch (error: unknown) {
+        const errObj = error as { name?: string; code?: string } | undefined;
+        if (errObj?.name !== 'CanceledError' && errObj?.code !== 'ERR_CANCELED') {
+          console.error('User search error:', error);
+          toast.error('Failed to search users');
+        }
       } finally {
         setUserLoading(false);
       }
-    }, 500);
-
+    }, 300);
     return () => {
+      controller.abort();
       if (userDebounceTimeout.current) clearTimeout(userDebounceTimeout.current);
     };
   }, [userSearch, axiosAuth]);
@@ -115,9 +126,8 @@ const EnhancedVehicleManager: React.FC = () => {
 
     try {
       setLoading(true);
-      await axiosAuth.post('/users/vehicles', {
-        user_id: selectedUser.id,
-        reg: normalizeReg(newVehicle.reg),
+  await axiosAuth.post(`/users/${selectedUser.id}/vehicles`, {
+        plate: normalizeReg(newVehicle.reg),
         make: newVehicle.make.trim(),
         model: newVehicle.model.trim()
       });
@@ -160,7 +170,9 @@ const EnhancedVehicleManager: React.FC = () => {
     }
 
     try {
-      await axiosAuth.delete(`/users/vehicles/${vehicleId}`);
+  const target = selectedVehicle || searchResults.find(v => v.id === vehicleId) || null;
+  if (!target) return;
+  await axiosAuth.delete(`/users/${target.user.id}/vehicles/${vehicleId}`);
       toast.success('Vehicle deleted successfully');
       
       // Remove from search results
@@ -232,7 +244,7 @@ const EnhancedVehicleManager: React.FC = () => {
                     onClick={() => setSelectedVehicle(vehicle)}
                   >
                     <div className="vehicle-header">
-                      <div className="reg-plate">{vehicle.reg}</div>
+                      <div className="reg-plate">{vehicle.reg || vehicle.plate}</div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

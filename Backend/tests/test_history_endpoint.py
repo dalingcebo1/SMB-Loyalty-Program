@@ -1,17 +1,23 @@
 from datetime import datetime, timedelta
-from app.models import Order, User, Payment
-from config import settings
+from app.models import Order, User, Payment, Service
 
 def test_history_endpoint_basic(client, db_session):
     # Seed two orders today with different payment types
     user = db_session.query(User).first()
     today = datetime.utcnow()
-    o1 = Order(id="ord1", user_id=user.id, status="paid", started_at=today - timedelta(minutes=30))
-    o2 = Order(id="ord2", user_id=user.id, status="completed", started_at=today - timedelta(minutes=90), ended_at=today - timedelta(minutes=10))
+    service = db_session.query(Service).first()
+    if not service:
+        service = Service(category="wash", name="Hist Wash", base_price=1000)
+        db_session.add(service)
+        db_session.flush()
+    # Use autoincrement integer IDs (don't set id explicitly to avoid datatype mismatch)
+    o1 = Order(user_id=user.id, service_id=service.id, quantity=1, extras=[], status="paid", started_at=today - timedelta(minutes=30), redeemed=False)
+    o2 = Order(user_id=user.id, service_id=service.id, quantity=1, extras=[], status="completed", started_at=today - timedelta(minutes=90), ended_at=today - timedelta(minutes=10), redeemed=False)
     db_session.add_all([o1, o2])
     # payments
-    p1 = Payment(order_id="ord1", amount=1000, method="yoco", status="success", created_at=today, source="yoco")
-    p2 = Payment(order_id="ord2", amount=0, method="loyalty", status="success", created_at=today, source="loyalty")
+    db_session.flush()  # ensure IDs generated
+    p1 = Payment(order_id=o1.id, amount=1000, method="yoco", status="success", created_at=today, source="yoco")
+    p2 = Payment(order_id=o2.id, amount=0, method="loyalty", status="success", created_at=today, source="loyalty")
     db_session.add_all([p1, p2])
     db_session.commit()
 

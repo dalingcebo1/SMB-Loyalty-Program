@@ -90,3 +90,59 @@ const p = window.__STAFF_PERF; const summarize = arr => ({n: arr.length, mean: (
 - Phase 5: Optimize backend query joins (remove N+1) and add indices if needed.
 
 (Generated automatically – update after capturing real profiler numbers.)
+
+---
+
+## Phase 4 Progress (In Flight)
+
+Goals:
+- Reduce initial staff dashboard JS payload by deferring heavy, seldom-needed analytics & chart libraries.
+- Ensure no functional regressions (all UI still reachable; show lightweight skeletons while loading chunks).
+
+Actions Completed:
+1. Lazy-loaded `EnhancedAnalytics` via `EnhancedAnalyticsLazy` with lightweight skeleton fallback.
+2. Converted Recharts usage in `CarWashDashboard` to a lazily loaded `WashesByDateChart` component (separate dynamic chunk) guarded by a Suspense fallback.
+3. Maintained existing manual chunk config (charts chunk) while removing eager static import paths so charts load on demand.
+
+Planned / Optional Next Steps:
+- Capture bundle size diff (run production build & compare pre/post sizes; record in this section).
+- Evaluate further splitting: admin-only pages, large form resolvers, or Firebase sub-modules not needed at startup.
+- Consider prefetching analytics chunk on user idle after dashboard settles (using `requestIdleCallback`).
+
+Success Metrics (to record after build):
+- % reduction in initial loaded JS (before user interacts with analytics or chart area).
+- Time-to-interactive unchanged or improved on mid-range device.
+
+No functional changes introduced; fallbacks provide immediate feedback during lazy load.
+
+---
+
+## Phase 6 Kickoff (In Progress)
+
+Objectives:
+- Introduce lightweight backend performance guardrails (rolling latency & cache metrics for `/dashboard-analytics`).
+- Add database indexes to support range filtering and status/date lookups used in analytics and history endpoints.
+- Add automated test ensuring analytics cache hit + invalidation behavior works as expected (prevents silent regression).
+
+Implemented So Far:
+1. Rolling metrics in backend (`/api/payments/dashboard-analytics/meta`) now expose:
+   - calls, cache_hits, hit_rate, p50_ms, p95_ms (computed over last 200 samples).
+2. Added Alembic migration adding indexes:
+   - orders.started_at, orders.ended_at
+   - payments.created_at, (status, created_at)
+   - order_vehicles(order_id, vehicle_id) unique composite (supports fast existence checks)
+3. New test `test_analytics_cache.py` validating cache miss → hit → invalidation path.
+
+Planned Next (Phase 6 Remaining):
+- Frontend idle prefetch for analytics & chart chunks post-dashboard settle.
+- Bundle size snapshot & record pre/post numbers here.
+- Optional LRU bound on analytics cache (current usage minimal; may defer).
+- Persist structured log line for analytics latency (future central aggregation capability).
+
+Success Criteria:
+- Cache hit rate visible & >50% during rapid successive dashboard refreshes in a 30s window.
+- p95 analytics latency remains stable (< threshold to be defined after baseline capture).
+- Automated test protects cache/invalidation behavior.
+
+Metrics Capture TODO:
+- Record p50/p95 before & after indexes (will require pointing at non-empty dataset in staging / local with synthetic load).

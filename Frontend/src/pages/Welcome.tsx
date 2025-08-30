@@ -104,6 +104,10 @@ const Welcome: React.FC = () => {
   if (user?.role === 'admin') {
     return <Navigate to="/admin" replace />;
   }
+  if (user?.role === 'staff') {
+    // Staff should not view consumer welcome page; send them straight to their dashboard
+    return <Navigate to="/staff/dashboard" replace />;
+  }
   
   const handleCloseModal = () => {
     setJustOnboarded(false);

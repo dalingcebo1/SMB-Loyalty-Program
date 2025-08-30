@@ -11,16 +11,31 @@ const NavTabs: React.FC = () => {
   const { user, logout } = useAuth();
   const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
 
-  const navOptions: Array<{ to: string; label: string; icon: React.ReactNode }> = [
-    ...(enableOrders ? [{ to: '/', label: 'Home', icon: <FaHome /> }] : []),
-    ...(enableOrders ? [{ to: '/order', label: 'Book Service', icon: <FaClipboardList /> }] : []),
-    ...(enableLoyalty ? [{ to: '/myloyalty', label: 'My Rewards', icon: <FaGift /> }] : []),
-    ...(enableOrders ? [{ to: '/past-orders', label: 'Order History', icon: <FaHistory /> }] : []),
-    ...(enableUsers ? [{ to: '/account', label: 'Account', icon: <FaUser /> }] : []),
-    ...((user?.role === 'staff' || user?.role === 'admin') && enablePayments
-      ? [{ to: '/staff/dashboard', label: 'Staff Dashboard', icon: <FaCar /> }]
-      : []),
-  ];
+  // For staff users we suppress the consumer navigation (Home / Book Service / My Rewards)
+  // so they land directly inside their operational dashboard.
+  const isStaffOnly = user?.role === 'staff';
+  const isAdmin = user?.role === 'admin';
+
+  let navOptions: Array<{ to: string; label: string; icon: React.ReactNode }> = [];
+
+  if (isStaffOnly) {
+    // Minimal staff nav (can be extended later with other staff tools if desired)
+    navOptions = [
+      { to: '/staff/dashboard', label: 'Staff Dashboard', icon: <FaCar /> },
+    ];
+  } else {
+    // Regular consumer / admin (admin keeps consumer view plus staff dashboard link if needed)
+    navOptions = [
+      ...(enableOrders ? [{ to: '/', label: 'Home', icon: <FaHome /> }] : []),
+      ...(enableOrders ? [{ to: '/order', label: 'Book Service', icon: <FaClipboardList /> }] : []),
+      ...(enableLoyalty ? [{ to: '/myloyalty', label: 'My Rewards', icon: <FaGift /> }] : []),
+      ...(enableOrders ? [{ to: '/past-orders', label: 'Order History', icon: <FaHistory /> }] : []),
+      ...(enableUsers ? [{ to: '/account', label: 'Account', icon: <FaUser /> }] : []),
+      ...((isAdmin || isStaffOnly) && enablePayments
+        ? [{ to: '/staff/dashboard', label: 'Staff Dashboard', icon: <FaCar /> }]
+        : []),
+    ];
+  }
 
   const handleLogout = async () => {
     try {
@@ -36,7 +51,7 @@ const NavTabs: React.FC = () => {
         {/* Brand Logo/Title */}
         <div className="nav-brand">
           <NavLink
-            to="/"
+            to={isStaffOnly ? '/staff/dashboard' : '/'}
             className="brand-link"
           >
             <span className="brand-text">SMB Loyalty</span>

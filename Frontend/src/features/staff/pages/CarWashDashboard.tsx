@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { timeDerivation } from '../../staff/perf/counters';
 import { useActiveWashes, useEndWash } from '../../../api/queries';
 import { useWashHistory } from '../hooks';
@@ -7,8 +7,8 @@ import LoadingFallback from '../../../components/LoadingFallback';
 import ConfirmDialog from '../../../components/ConfirmDialog';
 import FilterBar, { Filters } from '../../../components/FilterBar';
 import SummaryStats from '../../../components/SummaryStats';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import ChartContainer from '../../../components/ui/ChartContainer';
+// Recharts moved to a lazy-loaded child chunk (Phase 4 code splitting)
+const WashesByDateChart = lazy(() => import('../components/WashesByDateChart'));
 import TableContainer from '../../../components/ui/TableContainer';
 import { Wash } from '../../../types';
 import VirtualizedWashHistory from '../components/VirtualizedWashHistory';
@@ -124,7 +124,8 @@ const CarWashDashboard: React.FC = () => {
           <LoadingFallback message="Loading history…" />
         ) : history.length === 0 ? (
           <p className="text-gray-500">No washes found for selected filters.</p>
-        ) : history.length > 80 ? (
+  // Phase 3: virtualize once list is moderately large to cut DOM nodes
+  ) : history.length > 50 ? (
           <VirtualizedWashHistory washes={history} className="border rounded" />
         ) : (
           <ul>
@@ -156,19 +157,13 @@ const CarWashDashboard: React.FC = () => {
         )}
       </section>
 
-      {/* Washes by Date Chart */}
-  {history.length > 0 && (
+      {/* Washes by Date Chart (lazy-loaded) */}
+      {history.length > 0 && (
         <div className="bg-white shadow rounded p-4 mb-6 overflow-x-auto">
           <h2 className="text-xl font-semibold mb-2">Washes by Date</h2>
-          <ChartContainer aspect={2} className="w-full">
-    <BarChart data={metrics.chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#8884d8" />
-            </BarChart>
-          </ChartContainer>
+          <Suspense fallback={<div className="text-gray-500 text-sm">Loading chart…</div>}>
+            <WashesByDateChart data={metrics.chartData} />
+          </Suspense>
         </div>
       )}
     </div>

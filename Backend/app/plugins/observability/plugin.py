@@ -10,7 +10,7 @@ from app.models import AuditLog, User
 from app.core.authz import tenant_admin_only
 from app.core.tenant_context import tenant_cache_state
 from app.core.rate_limit import bucket_snapshot
-from app.core.jobs import job_snapshot, registered_jobs
+from app.core.jobs import job_snapshot, registered_jobs, queue_metrics, dead_letter_snapshot
 from app.plugins.auth.routes import get_current_user
 
 router = APIRouter(prefix="/api/obs", tags=["observability"], dependencies=[Depends(tenant_admin_only)])
@@ -113,6 +113,26 @@ def rate_limits():
 @router.get("/jobs")
 def jobs_state():
     return {"registered": registered_jobs(), "recent": job_snapshot()}
+
+@router.get("/metrics")
+def metrics_text():  # pragma: no cover (format convenience)
+    snap = bucket_snapshot()
+    jm = queue_metrics()
+    lines = []
+    # Rate limit buckets
+    for b in snap.get('buckets', []):
+        lines.append(f"rate_limit_tokens{{scope=\"{b['scope']}\",key=\"{b['key']}\"}} {b['tokens']}")
+    # Penalties
+    for p in snap.get('penalties', []):
+        lines.append(f"rate_limit_penalty_strikes{{ip=\"{p['ip']}\"}} {p['strikes']}")
+    # Overrides
+    for s, cfg in snap.get('overrides', {}).items():
+        lines.append(f"rate_limit_override_capacity{{scope=\"{s}\"}} {cfg['capacity']}")
+    # Job queue metrics
+    for k, v in jm.items():
+        lines.append(f"job_queue_{k} {v}")
+    lines.append(f"dead_letter_jobs {len(dead_letter_snapshot())}")
+    return "\n".join(lines) + "\n"
 
 @router.get("/force-error")
 def force_error():  # pragma: no cover (covered indirectly by error test)

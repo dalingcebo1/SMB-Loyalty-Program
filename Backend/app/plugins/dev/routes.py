@@ -50,11 +50,16 @@ class RateLimitOverride(BaseModel):
 
 @router.get("/jobs")
 def list_jobs():
-    return {"registered": jobs.registered_jobs(), "recent": jobs.job_snapshot()}
+    return {"registered": jobs.registered_jobs(), "recent": jobs.job_snapshot(), "dead_letter": jobs.dead_letter_snapshot(), "queue": jobs.queue_metrics()}
 
 @router.post("/jobs/enqueue")
 def enqueue_job(body: EnqueueRequest):
-    rec = jobs.enqueue(body.name, body.payload, max_retries=body.max_retries, interval=body.interval_seconds)
+    try:
+        rec = jobs.enqueue(body.name, body.payload, max_retries=body.max_retries, interval=body.interval_seconds)
+    except RuntimeError as e:
+        if str(e) == 'queue_overflow':
+            raise HTTPException(status_code=429, detail={"error": "queue_overflow", "message": "Queue is full"})
+        raise
     return {"enqueued": rec.id, "status": rec.status, "name": rec.name}
 
 @router.post("/jobs/run-next")

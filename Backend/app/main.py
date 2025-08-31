@@ -10,7 +10,7 @@ from app.core.plugin_manager import PluginManager
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.rate_limit import check_rate
+from app.core.rate_limit import check_rate, compute_retry_after
 from app.core.rate_limit import set_limit
 from app.plugins.auth.routes import get_current_user
 from app.models import User
@@ -98,8 +98,13 @@ def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant
     """
     ip_key = _ip_key(request)
     # Inline rate limiting (capacity 60 per 60s per IP)
-    if not check_rate(scope="ip_public_meta", key=ip_key, capacity=60, per_seconds=60):
-        return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
+    scope_name = "ip_public_meta"
+    if not check_rate(scope=scope_name, key=ip_key, capacity=60, per_seconds=60):
+        retry_after = compute_retry_after(scope_name, ip_key, 60, 60)
+        resp = JSONResponse(status_code=429, content={"detail": "Rate limit exceeded", "scope": scope_name})
+        if retry_after:
+            resp.headers["Retry-After"] = f"{int(retry_after)}"
+        return resp
     request.state.tenant_id = ctx.id
     data = tenant_meta_dict(ctx)
     etag = _etag_for(data)
@@ -129,7 +134,11 @@ def secure_ping(
     user_scope = "user_tenant"
     key = f"{user.id}:{ctx.id}"
     if not check_rate(user_scope, key, capacity=30, per_seconds=60):
-        return JSONResponse(status_code=429, content={"detail": "User/Tenant rate limit"})
+        ra = compute_retry_after(user_scope, key, 30, 60)
+        resp = JSONResponse(status_code=429, content={"detail": "User/Tenant rate limit", "scope": user_scope})
+        if ra:
+            resp.headers["Retry-After"] = f"{int(ra)}"
+        return resp
     return {"ok": True, "tenant": ctx.id, "vertical": ctx.vertical}
 from app.plugins.users.routes import add_vehicle, delete_vehicle, VehicleOut
 from app.plugins.auth.routes import require_staff

@@ -35,6 +35,9 @@ class JobRecord:
 _registry: Dict[str, Callable[[Optional[dict]], Any]] = {}
 _jobs: Dict[str, JobRecord] = {}
 _queue: Deque[str] = deque()
+_DEAD_LETTER: Deque[str] = deque(maxlen=100)
+_overflow_rejections = 0
+_MAX_QUEUE = 500
 _lock = threading.Lock()
 _MAX_HISTORY = 200  # simple cap; stale jobs pruned FIFO
 _history: Deque[str] = deque(maxlen=_MAX_HISTORY)
@@ -72,6 +75,10 @@ def enqueue(name: str, payload: Optional[dict] = None, *, max_retries: int = 0, 
     with _lock:
         if name not in _registry:
             raise UnknownJob(name)
+        global _overflow_rejections
+        if len(_queue) >= _MAX_QUEUE:
+            _overflow_rejections += 1
+            raise RuntimeError("queue_overflow")
         jid = uuid.uuid4().hex[:12]
     rec = JobRecord(id=jid, name=name, status="queued", enqueued_at=time.time(), payload=payload, max_retries=max_retries, interval_seconds=interval)
     _jobs[jid] = rec
@@ -105,6 +112,10 @@ def _execute(rec: JobRecord):
         rec.next_run = time.time() + rec.interval_seconds
         with _lock:
             _scheduled[rec.id] = rec
+    # Exhausted retries -> dead letter
+    if rec.status == "error" and rec.attempts > rec.max_retries:
+        with _lock:
+            _DEAD_LETTER.append(rec.id)
 
 
 def run_next() -> Optional[JobRecord]:
@@ -163,6 +174,32 @@ def job_snapshot(limit: int = 50) -> List[dict]:
                     d[k] = round(d[k] * 1000)
             out.append(d)
         return out
+
+def dead_letter_snapshot() -> List[dict]:
+    with _lock:
+        ids = list(_DEAD_LETTER)
+    out: List[dict] = []
+    for jid in ids:
+        rec = _jobs.get(jid)
+        if not rec:
+            continue
+        d = asdict(rec)
+        for k in ("enqueued_at", "started_at", "finished_at"):
+            if d.get(k):
+                d[k] = round(d[k] * 1000)
+        out.append(d)
+    return out
+
+def queue_metrics():
+    with _lock:
+        return {
+            "queued": len(_queue),
+            "scheduled": len(_scheduled),
+            "dead_letter": len(_DEAD_LETTER),
+            "overflow_rejections": _overflow_rejections,
+            "history": len(_history),
+            "max_queue": _MAX_QUEUE,
+        }
 
 def registered_jobs() -> List[str]:
     with _lock:

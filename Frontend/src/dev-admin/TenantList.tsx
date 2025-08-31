@@ -60,15 +60,24 @@ export default function TenantList() {
 
   const handleSave = () => {
     if (!edit.tenant) return;
-  let parsedConfig: Record<string, unknown> | undefined = undefined;
-    try {
-      const raw = (document.getElementById('tenant-config-json') as HTMLTextAreaElement)?.value || '';
-      parsedConfig = raw ? JSON.parse(raw) : {};
-  } catch {
-      setUpdateError('Invalid JSON in config');
-      return;
-    }
-    updateMutation.mutate({ id: edit.tenant.id, patch: { config: parsedConfig } });
+    // collect fields
+    const nameEl = document.getElementById('tenant-edit-name') as HTMLInputElement;
+    const domainEl = document.getElementById('tenant-edit-domain') as HTMLInputElement;
+    const verticalEl = document.getElementById('tenant-edit-vertical') as HTMLSelectElement;
+    const configRawEl = document.getElementById('tenant-config-json') as HTMLTextAreaElement;
+    let parsedConfig: Record<string, unknown> = {};
+    try { parsedConfig = configRawEl.value ? JSON.parse(configRawEl.value) : {}; } catch { setUpdateError('Invalid JSON in config'); return; }
+    // feature toggles
+    const features: Record<string, boolean> = {};
+    document.querySelectorAll<HTMLInputElement>('input[data-feature-toggle]')
+      .forEach(cb => { features[cb.getAttribute('data-feature-toggle') || ''] = cb.checked; });
+    parsedConfig.features = { ...(parsedConfig.features as object || {}), ...features };
+    updateMutation.mutate({ id: edit.tenant.id, patch: {
+      name: nameEl.value,
+      primary_domain: domainEl.value || undefined,
+      vertical_type: verticalEl.value as VerticalType,
+      config: parsedConfig,
+    }});
   };
 
   const handleInvite = async () => {
@@ -135,8 +144,28 @@ export default function TenantList() {
       {edit.open && edit.tenant && (
         <div style={modalStyle}>
           <div style={panelStyle}>
-            <h4 style={{marginTop:0}}>Edit Config – {edit.tenant.name}</h4>
-            <textarea id="tenant-config-json" defaultValue={JSON.stringify(edit.tenant.config || {}, null, 2)} style={{width:'100%', height:200, fontFamily:'monospace', fontSize:12}} />
+            <h4 style={{marginTop:0}}>Edit Tenant – {edit.tenant.id}</h4>
+            <label style={editLabelStyle}>Name <input id="tenant-edit-name" defaultValue={edit.tenant.name} style={inputStyle} /></label>
+            <label style={editLabelStyle}>Primary Domain <input id="tenant-edit-domain" defaultValue={edit.tenant.primary_domain || ''} style={inputStyle} /></label>
+            <label style={editLabelStyle}>Vertical
+              <select id="tenant-edit-vertical" defaultValue={edit.tenant.vertical_type} style={inputStyle}>
+                {['carwash','dispensary','padel','flowershop','beauty'].map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </label>
+            <fieldset style={{border:'1px solid #ddd', padding:8, borderRadius:6}}>
+              <legend style={{fontSize:12, padding:'0 4px'}}>Features</legend>
+              {['enableLoyalty','enableOrders','enablePayments','enableUsers'].map(fk => {
+                const features = (edit.tenant!.config && typeof edit.tenant!.config === 'object'
+                  ? (edit.tenant!.config as { features?: Record<string, unknown> }).features
+                  : undefined) || {};
+                const enabled = Boolean(features[fk]);
+                return <label key={fk} style={{display:'inline-flex', alignItems:'center', marginRight:12, fontSize:12}}>
+                  <input type="checkbox" defaultChecked={enabled} data-feature-toggle={fk} style={{marginRight:4}} /> {fk}
+                </label>;
+              })}
+            </fieldset>
+            <div style={{marginTop:8, fontSize:12}}>Advanced JSON Config</div>
+            <textarea id="tenant-config-json" defaultValue={JSON.stringify(edit.tenant.config || {}, null, 2)} style={{width:'100%', height:160, fontFamily:'monospace', fontSize:12}} />
             {updateError && <div style={{color:'red', marginTop:8}}>{updateError}</div>}
             <div style={{display:'flex', justifyContent:'flex-end', gap:8, marginTop:12}}>
               <button onClick={() => setEdit({ open: false })} disabled={updateMutation.status === 'pending'}>Cancel</button>
@@ -169,3 +198,5 @@ const modalStyle: React.CSSProperties = {
 const panelStyle: React.CSSProperties = {
   background:'#fff', padding:'1.2rem 1rem', borderRadius:8, width:'520px', maxWidth:'90%', boxShadow:'0 4px 24px rgba(0,0,0,0.18)'
 };
+const editLabelStyle: React.CSSProperties = { display:'flex', flexDirection:'column', fontSize:12, marginBottom:6, gap:4 };
+const inputStyle: React.CSSProperties = { padding:'6px 8px', border:'1px solid #ccc', borderRadius:4, fontSize:12 };

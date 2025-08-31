@@ -15,7 +15,10 @@ def setup_module(module):
     if not db.query(Tenant).filter_by(id='default').first():
         db.add(Tenant(id='default', name='Default', loyalty_type='standard', vertical_type='carwash', primary_domain='default', created_at=datetime.utcnow(), config={}))
     if not db.query(User).filter_by(email=DEV_EMAIL).first():
-        db.add(User(email=DEV_EMAIL, phone='1', tenant_id='default', role='developer'))
+        # ensure phone uniqueness across parallel tests
+        existing = db.query(User).filter_by(phone='1').first()
+        phone_val = '1' if not existing else '3'
+        db.add(User(email=DEV_EMAIL, phone=phone_val, tenant_id='default', role='developer'))
     db.commit(); db.close()
 
 

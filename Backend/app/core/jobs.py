@@ -12,7 +12,7 @@ Future extensions (not implemented yet):
 """
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
-from typing import Callable, Any, Dict, Deque, Optional, List
+from typing import Callable, Any, Dict, Deque, Optional, List, Tuple
 from collections import deque
 import time, uuid, threading, traceback
 
@@ -28,6 +28,9 @@ class JobRecord:
     error: Optional[str] = None
     attempts: int = 0
     payload: Optional[dict] = None
+    max_retries: int = 0
+    interval_seconds: Optional[float] = None  # if set, auto re-enqueue after success
+    next_run: Optional[float] = None
 
 _registry: Dict[str, Callable[[Optional[dict]], Any]] = {}
 _jobs: Dict[str, JobRecord] = {}
@@ -35,6 +38,7 @@ _queue: Deque[str] = deque()
 _lock = threading.Lock()
 _MAX_HISTORY = 200  # simple cap; stale jobs pruned FIFO
 _history: Deque[str] = deque(maxlen=_MAX_HISTORY)
+_scheduled: Dict[str, JobRecord] = {}
 
 class JobAlreadyRegistered(Exception):
     pass
@@ -64,15 +68,15 @@ register_job("fail", _job_fail)
 
 # Core queue operations ------------------------------------------------------
 
-def enqueue(name: str, payload: Optional[dict] = None) -> JobRecord:
+def enqueue(name: str, payload: Optional[dict] = None, *, max_retries: int = 0, interval: Optional[float] = None) -> JobRecord:
     with _lock:
         if name not in _registry:
             raise UnknownJob(name)
         jid = uuid.uuid4().hex[:12]
-        rec = JobRecord(id=jid, name=name, status="queued", enqueued_at=time.time(), payload=payload)
-        _jobs[jid] = rec
-        _queue.append(jid)
-        return rec
+    rec = JobRecord(id=jid, name=name, status="queued", enqueued_at=time.time(), payload=payload, max_retries=max_retries, interval_seconds=interval)
+    _jobs[jid] = rec
+    _queue.append(jid)
+    return rec
 
 def _execute(rec: JobRecord):
     func = _registry[rec.name]
@@ -89,6 +93,18 @@ def _execute(rec: JobRecord):
     finally:
         rec.finished_at = time.time()
         _history.append(rec.id)
+    # Retry logic
+    if rec.status == "error" and rec.attempts <= rec.max_retries:
+        # exponential backoff: base 0.1s * 2^(attempts-1)
+        delay = 0.1 * (2 ** (rec.attempts - 1))
+        rec.next_run = time.time() + delay
+        with _lock:
+            _scheduled[rec.id] = rec
+    # Interval re-scheduling
+    elif rec.status == "success" and rec.interval_seconds:
+        rec.next_run = time.time() + rec.interval_seconds
+        with _lock:
+            _scheduled[rec.id] = rec
 
 
 def run_next() -> Optional[JobRecord]:
@@ -120,19 +136,28 @@ def run_job_id(job_id: str) -> Optional[JobRecord]:
 
 def job_snapshot(limit: int = 50) -> List[dict]:
     with _lock:
-        # history has executed jobs (success/error). Include queued tail as well.
-        ids: List[str] = list(_history)[-limit:]
-        # Add queued jobs not yet run (order preserved by queue)
+        # History has executed job ids (may contain duplicates for retries / intervals)
+        ids: List[str] = list(_history)
+        # Add queued jobs not yet executed (avoid duplicates at append time)
         for qid in list(_queue):
-            if qid not in ids:
-                ids.append(qid)
-        out = []
-        for jid in ids[-limit:]:
+            ids.append(qid)
+        # Deduplicate keeping ONLY the latest occurrence of each job id.
+        # Iterate reversed so first time we see an id is the most recent execution state.
+        seen = set()
+        dedup_reversed: List[str] = []
+        for jid in reversed(ids):
+            if jid in seen:
+                continue
+            seen.add(jid)
+            dedup_reversed.append(jid)
+        # Restore chronological order (oldest -> newest) while retaining latest state only.
+        unique_ids = list(reversed(dedup_reversed))[-limit:]
+        out: List[dict] = []
+        for jid in unique_ids:
             rec = _jobs.get(jid)
             if not rec:
                 continue
             d = asdict(rec)
-            # Convert timestamps to ms for readability
             for k in ("enqueued_at", "started_at", "finished_at"):
                 if d.get(k):
                     d[k] = round(d[k] * 1000)
@@ -142,3 +167,21 @@ def job_snapshot(limit: int = 50) -> List[dict]:
 def registered_jobs() -> List[str]:
     with _lock:
         return sorted(_registry.keys())
+
+def tick():
+    """Trigger execution of any due scheduled jobs (retry or interval)."""
+    due: List[JobRecord] = []
+    now = time.time()
+    with _lock:
+        for jid, rec in list(_scheduled.items()):
+            if rec.next_run and rec.next_run <= now:
+                due.append(rec)
+                rec.status = "queued"
+                rec.enqueued_at = time.time()
+                _queue.append(rec.id)
+                del _scheduled[jid]
+    # Execute as normal via run_next loop semantics
+    while True:
+        executed = run_next()
+        if not executed:
+            break

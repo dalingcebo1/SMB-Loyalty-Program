@@ -11,6 +11,7 @@ from app.core.tenant_context import get_tenant_context, tenant_meta_dict, Tenant
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rate_limit import check_rate
+from app.core.rate_limit import set_limit
 from app.plugins.auth.routes import get_current_user
 from app.models import User
 
@@ -124,6 +125,11 @@ def secure_ping(
     # Enforce tenant/user consistency
     if user.tenant_id != ctx.id:
         return JSONResponse(status_code=403, content={"detail": "Cross-tenant access forbidden"})
+    # Per-user within tenant rate limit: 30 per 60s (scope user_tenant)
+    user_scope = "user_tenant"
+    key = f"{user.id}:{ctx.id}"
+    if not check_rate(user_scope, key, capacity=30, per_seconds=60):
+        return JSONResponse(status_code=429, content={"detail": "User/Tenant rate limit"})
     return {"ok": True, "tenant": ctx.id, "vertical": ctx.vertical}
 from app.plugins.users.routes import add_vehicle, delete_vehicle, VehicleOut
 from app.plugins.auth.routes import require_staff

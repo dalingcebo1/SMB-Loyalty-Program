@@ -39,8 +39,12 @@ def test_public_meta_ip_limit(monkeypatch):
     # Replace the specific bucket entries to simulate near depletion not required; just call endpoint after adjusting capacity logic
     # We'll create a local helper using same function
     # Inline limiter now used; just assert it returns 200 (or 304 with cached ETag) and includes expected keys when 200.
+    # Ensure clean state for the ip_public_meta scope to avoid interference from prior tests
+    rl._BUCKETS = {k: v for k, v in rl._BUCKETS.items() if k[0] != 'ip_public_meta'}  # type: ignore
+    rl._PENALTIES.clear()  # type: ignore
     r = client.get('/api/public/tenant-meta', headers={'Host': 'default'})
+    # Fresh call should succeed (200) or be 304 if ETag matches (not in first run) but never 429
     assert r.status_code in (200, 304)
-    data = r.json() if r.status_code == 200 else {}
-    if data:
+    if r.status_code == 200:
+        data = r.json()
         assert 'tenant_id' in data

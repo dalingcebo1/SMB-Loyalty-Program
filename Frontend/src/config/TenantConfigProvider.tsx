@@ -1,6 +1,7 @@
 import React, { createContext, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ModuleFlags, getModuleFlags } from './modules';
+import { applyFeatureDefaults } from './features';
 
 type Vertical = 'carwash' | 'dispensary' | 'padel' | 'flowershop' | 'beauty';
 
@@ -67,7 +68,8 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const base = getModuleFlags();
     const vertical = meta?.vertical || 'carwash';
     const overrides = VERTICAL_FLAG_OVERRIDES[vertical] || {};
-    return { ...base, ...overrides, ...(meta?.features || {}) } as ModuleFlags;
+  const mergedFeatureFlags = applyFeatureDefaults(meta?.features || {});
+  return { ...base, ...overrides, ...mergedFeatureFlags } as ModuleFlags;
   }, [meta]);
 
   const value: TenantConfigContextValue = {

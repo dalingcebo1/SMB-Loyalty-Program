@@ -8,20 +8,20 @@ import './ModernStaffDashboard.css';
 const ModernStaffDashboard: React.FC = () => {
   return (
     <div className="modern-staff-dashboard">
-      <div className="dashboard-header">
-        <div className="header-content">
-          <h1>Staff Dashboard</h1>
-          <p>Monitor and manage car wash operations in real-time</p>
-        </div>
-        <div className="header-actions">
-          <div className="status-indicator online">
-            <span className="status-dot"></span>
-            <span className="status-text">System Online</span>
+      {/* Header removed (duplicated with StaffLayout). Keep status indicator inline with overview if needed. */}
+      <div className="dashboard-content">
+        <div className="dashboard-section" style={{padding: '1rem 1.5rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'1rem'}}>
+            <div>
+              <h2 style={{margin:'0 0 .25rem'}}>Dashboard Overview</h2>
+              <p style={{margin:0,fontSize:'.9rem',color:'#4a5568'}}>Monitor and manage car wash operations in real-time</p>
+            </div>
+            <div className="status-indicator online" style={{marginLeft:'auto'}}>
+              <span className="status-dot"></span>
+              <span className="status-text">System Online</span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="dashboard-content">
         <DashboardOverview />
         <ActiveWashesManager />
         

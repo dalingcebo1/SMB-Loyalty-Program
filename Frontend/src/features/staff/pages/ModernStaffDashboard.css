@@ -5,43 +5,7 @@
   padding: 0;
 }
 
-/* Dashboard Header */
-.dashboard-header {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 16px;
-  margin-bottom: 2rem;
-  padding: 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.header-content h1 {
-  color: #1a202c;
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.header-content p {
-  color: #4a5568;
-  margin: 0;
-  font-size: 1rem;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
+/* (Header styles removed – layout header handles top hero) */
 
 .status-indicator {
   display: flex;
@@ -123,33 +87,9 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 1.5rem;
-    padding: 1.5rem;
-  }
-
-  .header-content h1 {
-    font-size: 1.75rem;
-  }
-
-  .dashboard-content {
-    gap: 1.5rem;
-  }
+  .dashboard-content { gap: 1.5rem; }
 }
 
 @media (max-width: 480px) {
-  .dashboard-header {
-    padding: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .header-content h1 {
-    font-size: 1.5rem;
-  }
-
-  .dashboard-content {
-    gap: 1rem;
-  }
+  .dashboard-content { gap: 1rem; }
 }

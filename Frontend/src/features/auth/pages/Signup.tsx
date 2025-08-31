@@ -1,12 +1,10 @@
 // src/features/auth/pages/Signup.tsx
 
 import React, { useState } from "react";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../../api/api";
-import { TextFieldControlled } from "../../../components/form/TextFieldControlled";
-import Button from "../../../components/ui/Button";
-import PageLayout from "../../../components/PageLayout";
+import './Signup.css';
 
 type FormData = {
   email: string;
@@ -17,8 +15,9 @@ const Signup: React.FC = () => {
   const navigate = useNavigate();
   const [signUpError, setSignUpError] = useState<string>("");
 
-  const methods = useForm<FormData>({ defaultValues: { email: '', password: '' } });
-  const { handleSubmit, formState: { isSubmitting } } = methods;
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormData>({ 
+    defaultValues: { email: '', password: '' } 
+  });
 
   const onSubmit = async (data: FormData) => {
     setSignUpError("");
@@ -32,43 +31,56 @@ const Signup: React.FC = () => {
   };
 
   return (
-    <PageLayout
-      loading={isSubmitting}
-      error={signUpError || null}
-      onRetry={() => window.location.reload()}
-      loadingText="Signing up…"
-    >
-      <div className="max-w-sm mx-auto mt-16 p-4 space-y-6">
-        <h1 className="text-2xl font-semibold text-center">Sign Up</h1>
+    <div className="signup-container">
+      <div className="signup-card">
+        <div className="signup-header">
+          <h1 className="signup-title">Create Account</h1>
+          <p className="signup-subtitle">Join us to get started with your car wash experience</p>
+        </div>
 
-        <FormProvider {...methods}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <TextFieldControlled
-              name="email"
-              label="Email"
+        <form onSubmit={handleSubmit(onSubmit)} className="signup-form">
+          <div className="form-group">
+            <label htmlFor="email" className="form-label">Email</label>
+            <input
+              id="email"
               type="email"
-              helperText="We'll never share your email."
+              placeholder="Enter your email"
+              className="form-input"
+              {...register("email", { required: "Email is required" })}
             />
-            <TextFieldControlled
-              name="password"
-              label="Password"
-              type="password"
-              helperText="At least 8 characters."
-            />
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? "Signing up…" : "Sign Up"}
-            </Button>
-          </form>
-        </FormProvider>
+            <div className="form-helper">We'll never share your email.</div>
+          </div>
 
-        <p className="text-center text-sm">
+          <div className="form-group">
+            <label htmlFor="password" className="form-label">Password</label>
+            <input
+              id="password"
+              type="password"
+              placeholder="Create a password"
+              className="form-input"
+              {...register("password", { required: "Password is required" })}
+            />
+            <div className="form-helper">At least 8 characters.</div>
+          </div>
+
+          <button type="submit" disabled={isSubmitting} className="signup-button">
+            {isSubmitting && <span className="loading-spinner"></span>}
+            {isSubmitting ? "Creating account..." : "Create Account"}
+          </button>
+        </form>
+
+        {signUpError && (
+          <div className="error-message">
+            {signUpError}
+          </div>
+        )}
+
+        <div className="login-link">
           Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 underline">
-            Log in
-          </Link>
-        </p>
+          <Link to="/login">Sign in</Link>
+        </div>
       </div>
-    </PageLayout>
+    </div>
   );
 };
 

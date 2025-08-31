@@ -42,3 +42,19 @@ def test_rls_blocks_cross_tenant(seed_data):
     rows = db.execute("SELECT id, tenant_id FROM rewards").fetchall()
     assert all(row.tenant_id == 't1' for row in rows)
     db.close()
+
+@postgres_only
+def test_rls_prevents_cross_tenant_insert(seed_data):
+    db = SessionLocal()
+    # set tenant to t1 and attempt to insert reward for t2
+    db.execute("SELECT set_config('app.tenant_id', 't1', false)")
+    # Direct SQL insert with mismatched tenant should fail under policy
+    failed = False
+    try:
+        db.execute("INSERT INTO rewards (tenant_id, title, type, created_at) VALUES ('t2','X','points', now())")
+        db.commit()
+    except Exception:
+        failed = True
+        db.rollback()
+    db.close()
+    assert failed, "Cross-tenant insert should be blocked by RLS"

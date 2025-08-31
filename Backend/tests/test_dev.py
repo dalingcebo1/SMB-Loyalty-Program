@@ -10,7 +10,8 @@ from datetime import datetime
 def dev_client(client, db_session):
     # Ensure an admin user exists and override auth dependencies
     dev = db_session.query(User).first()
-    dev.role = 'admin'  # Change to admin role since require_admin checks for 'admin'
+    # Ensure the user has a role acceptable to developer_only dependency (developer or superadmin)
+    dev.role = 'developer'
     db_session.commit()
     app.dependency_overrides[require_admin] = lambda: dev
     app.dependency_overrides[get_current_user] = lambda: dev

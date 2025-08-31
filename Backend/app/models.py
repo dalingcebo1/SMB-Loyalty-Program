@@ -267,6 +267,17 @@ class Payment(Base):
     order = relationship("Order")
 
 
+# --- Audit logs ---
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id  = Column(String, nullable=True, index=True)
+    user_id    = Column(Integer, nullable=True, index=True)
+    action     = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    details    = Column(JSON, nullable=True)
+
+
 # Precomputed customer analytics metrics (refreshable snapshot)
 class AggregatedCustomerMetrics(Base):
     __tablename__ = "aggregated_customer_metrics"

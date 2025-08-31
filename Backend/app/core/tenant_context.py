@@ -26,23 +26,40 @@ current_tenant_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("
 _TENANT_CACHE: Dict[str, Tuple[str, float]] = {}
 _TENANT_CACHE_TTL = 60  # seconds
 _TENANT_CACHE_MAX = 512
+_TENANT_CACHE_METRICS = {"hits": 0, "misses": 0, "expired": 0}
 
-def _cache_get(host: str) -> Optional[str]:
-    entry = _TENANT_CACHE.get(host)
+def _cache_get(key: str) -> Optional[str]:
+    entry = _TENANT_CACHE.get(key)
     if not entry:
+        _TENANT_CACHE_METRICS["misses"] += 1
         return None
     tid, ts = entry
     if time.time() - ts > _TENANT_CACHE_TTL:
-        _TENANT_CACHE.pop(host, None)
+        _TENANT_CACHE.pop(key, None)
+        _TENANT_CACHE_METRICS["expired"] += 1
         return None
+    _TENANT_CACHE_METRICS["hits"] += 1
     return tid
 
-def _cache_set(host: str, tenant_id: str):
+def _cache_set(key: str, tenant_id: str):
     if len(_TENANT_CACHE) >= _TENANT_CACHE_MAX:
         # drop oldest (inefficient but small size)
         oldest = min(_TENANT_CACHE.items(), key=lambda kv: kv[1][1])[0]
         _TENANT_CACHE.pop(oldest, None)
-    _TENANT_CACHE[host] = (tenant_id, time.time())
+    _TENANT_CACHE[key] = (tenant_id, time.time())
+
+def tenant_cache_metrics() -> dict:
+    """Return a shallow copy of cache metrics (for diagnostics / tests)."""
+    return dict(_TENANT_CACHE_METRICS)
+
+def tenant_cache_state() -> dict:
+    """Return combined cache state: size, capacity, metrics."""
+    return {
+        'size': len(_TENANT_CACHE),
+        'capacity': _TENANT_CACHE_MAX,
+        'ttl_seconds': _TENANT_CACHE_TTL,
+        'metrics': tenant_cache_metrics(),
+    }
 
 
 class TenantContext:
@@ -56,6 +73,7 @@ async def get_tenant_context(
     request: Request,
     db: Session = Depends(get_db),
     x_tenant_id: Optional[str] = Header(default=None, alias="X-Tenant-ID"),
+    bypass_cache: Optional[str] = Header(default=None, alias="X-Bypass-Tenant-Cache"),
 ) -> TenantContext:
     host = request.headers.get("host", "")
     hostname = host.split(":")[0].lower()
@@ -73,27 +91,41 @@ async def get_tenant_context(
         set_current_tenant_id(tenant.id)
         return TenantContext(tenant)
 
-    # 2) Full primary domain match (with cache)
+    # 2) Full primary domain match (with cache unless bypass header present)
     if hostname:
-        cached_id = _cache_get(hostname)
-        if cached_id:
-            tenant = db.query(Tenant).filter(Tenant.id == cached_id).first()
-            if tenant:
-                set_current_tenant_id(tenant.id)
-                return TenantContext(tenant)
+        if not bypass_cache:
+            cached_id = _cache_get(hostname)
+            if cached_id:
+                tenant = db.query(Tenant).filter(Tenant.id == cached_id).first()
+                if tenant:
+                    set_current_tenant_id(tenant.id)
+                    request.state.tenant_id = tenant.id
+                    return TenantContext(tenant)
         tenant = db.query(Tenant).filter(Tenant.primary_domain == hostname).first()
         if tenant:
             _cache_set(hostname, tenant.id)
             set_current_tenant_id(tenant.id)
+            request.state.tenant_id = tenant.id
             return TenantContext(tenant)
 
     # 3) Subdomain extraction (foo.example.com) if we keep a configured root domain
     parts = hostname.split('.') if hostname else []
     if len(parts) > 2:
         sub = parts[0]
+        cache_key = f"sub:{sub}"
+        if not bypass_cache:
+            cached_id = _cache_get(cache_key)
+            if cached_id:
+                tenant = db.query(Tenant).filter(Tenant.id == cached_id).first()
+                if tenant:
+                    set_current_tenant_id(tenant.id)
+                    request.state.tenant_id = tenant.id
+                    return TenantContext(tenant)
         tenant = db.query(Tenant).filter(Tenant.subdomain == sub).first()
         if tenant:
+            _cache_set(cache_key, tenant.id)
             set_current_tenant_id(tenant.id)
+            request.state.tenant_id = tenant.id
             return TenantContext(tenant)
 
     # 4) Optional fallback default tenant (configurable) for public pages / bootstrap
@@ -101,6 +133,7 @@ async def get_tenant_context(
         fallback = db.query(Tenant).filter(Tenant.id == settings.default_tenant).first()
         if fallback:
             set_current_tenant_id(fallback.id)
+            request.state.tenant_id = fallback.id
             return TenantContext(fallback)
 
     raise HTTPException(status_code=400, detail="Unable to resolve tenant context")

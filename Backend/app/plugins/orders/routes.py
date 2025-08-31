@@ -269,6 +269,17 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
           .order_by(Payment.created_at.desc())
           .first()
     )
+    # Compute dynamic loyalty earn via vertical hook (if amount present)
+    dynamic_points = None
+    try:
+        if payment and payment.amount is not None:
+            # Attach vertical_type heuristic (from user's tenant)
+            vt = order.user.tenant.vertical_type if order.user and order.user.tenant else ''
+            setattr(order, 'vertical_type', vt)  # transient attribute for hook logic
+            from app.plugins.verticals.vertical_dispatch import dispatch as vdispatch
+            dynamic_points = vdispatch('compute_loyalty_earn', order)
+    except Exception:
+        dynamic_points = None
     # base response
     ret = {
         "id": str(order.id),
@@ -289,6 +300,7 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
         "category": category,
     "qrData": payment.qr_code_base64 if payment else str(order.id),
         "amount": payment.amount if payment else None,
+        "dynamicLoyaltyPoints": dynamic_points,
     }
     # include loyalty status
     from app.plugins.loyalty.routes import REWARD_INTERVAL, get_base_reward

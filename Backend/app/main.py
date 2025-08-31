@@ -1,5 +1,5 @@
 from config import settings
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -8,9 +8,9 @@ from fastapi.encoders import jsonable_encoder
 
 from app.core.plugin_manager import PluginManager
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
-from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.rate_limit import check_rate
 from app.plugins.auth.routes import get_current_user
 from app.models import User
 
@@ -54,24 +54,30 @@ if not logger.handlers:
     logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-RATE_LIMIT_BUCKET = {}
-RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX = 120    # basic protection for public tenant-meta
-
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
     rid = request.headers.get('X-Request-ID') or uuid.uuid4().hex[:12]
     start = time.time()
     # simple IP key for rate limit (public endpoint handled separately below)
     request.state.request_id = rid
+    response = None
     try:
         response = await call_next(request)
+        return response
+    except Exception as e:
+        # Create minimal error response placeholder for logging context only
+        class _Err: status_code = 500
+        response = _Err()  # type: ignore
+        raise
     finally:
         duration_ms = int((time.time() - start) * 1000)
         tenant_id = getattr(request.state, 'tenant_id', '-')
         logger.info(f"rid={rid} method={request.method} path={request.url.path} status={getattr(response,'status_code','?')} dur_ms={duration_ms} tenant={tenant_id}")
-    response.headers['X-Request-ID'] = rid
-    return response
+        if hasattr(response, 'headers'):
+            try:
+                response.headers['X-Request-ID'] = rid  # type: ignore[attr-defined]
+            except Exception:
+                pass
 # Legacy user vehicle endpoints for backward compatibility
 import hashlib, json
 
@@ -80,21 +86,19 @@ def _etag_for(data: dict) -> str:
     dumped = json.dumps(data, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(dumped).hexdigest()[:16]
 
+def _ip_key(request: Request):
+    return (request.client.host if request.client else 'unknown')
+
 @app.get("/api/public/tenant-meta")
 def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant_context)):
     """Public endpoint for frontend to discover vertical + feature flags by domain.
 
     Adds short-lived caching headers and light rate limiting.
     """
-    # rate limit (IP-based naive bucket)
-    ip = request.client.host if request.client else 'unknown'
-    now = time.time()
-    bucket = RATE_LIMIT_BUCKET.get(ip) or []
-    bucket = [t for t in bucket if now - t < RATE_LIMIT_WINDOW]
-    if len(bucket) >= RATE_LIMIT_MAX:
+    ip_key = _ip_key(request)
+    # Inline rate limiting (capacity 60 per 60s per IP)
+    if not check_rate(scope="ip_public_meta", key=ip_key, capacity=60, per_seconds=60):
         return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
-    bucket.append(now)
-    RATE_LIMIT_BUCKET[ip] = bucket
     request.state.tenant_id = ctx.id
     data = tenant_meta_dict(ctx)
     etag = _etag_for(data)

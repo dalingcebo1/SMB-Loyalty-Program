@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import Tenant, User, VerticalType
-from app.plugins.auth.routes import require_admin
+from app.plugins.auth.routes import require_admin, get_current_user
 from pydantic import BaseModel
 from typing import List, Optional
 from uuid import uuid4
@@ -14,6 +14,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
 from app.models import InviteToken
+from app.core.audit import record, flush
 
 router = APIRouter(prefix="", tags=["tenants"], dependencies=[Depends(require_admin)])
 
@@ -56,7 +57,7 @@ class AdminAssign(BaseModel):
 
 # CRUD Endpoints
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
-def create_tenant(payload: TenantCreate, db: Session = Depends(get_db)):
+def create_tenant(payload: TenantCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     if db.query(Tenant).filter_by(id=payload.id).first():
         raise HTTPException(status_code=400, detail="Tenant already exists")
     tenant = Tenant(
@@ -74,6 +75,8 @@ def create_tenant(payload: TenantCreate, db: Session = Depends(get_db)):
     db.add(tenant)
     db.commit()
     db.refresh(tenant)
+    record('tenant.create', tenant_id=tenant.id, user_id=current.id, details={'name': tenant.name})
+    flush(db)
     return TenantOut(
         id=tenant.id,
         name=tenant.name,
@@ -122,7 +125,7 @@ def get_tenant(tenant_id: str, db: Session = Depends(get_db)):
     )
 
 @router.patch("/{tenant_id}", response_model=TenantOut)
-def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(get_db)):
+def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     data = payload.dict(exclude_unset=True)
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     if not tenant:
@@ -146,6 +149,8 @@ def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(g
             setattr(tenant, key, val)
     db.commit()
     db.refresh(tenant)
+    record('tenant.update', tenant_id=tenant.id, user_id=current.id, details={'fields': list(data.keys())})
+    flush(db)
     return TenantOut(
         id=tenant.id,
         name=tenant.name,
@@ -160,17 +165,19 @@ def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(g
     )
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tenant(tenant_id: str, db: Session = Depends(get_db)):
+def delete_tenant(tenant_id: str, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     # Idempotent delete: remove if exists, otherwise no-op
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     if tenant:
         db.delete(tenant)
         db.commit()
+    record('tenant.delete', tenant_id=tenant_id, user_id=current.id)
+    flush(db)
     return
 
 # Admin assignment
 @router.post("/{tenant_id}/admins", response_model=TenantOut)
-def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get_db)):
+def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     # create tenant if not exists
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     if not tenant:
@@ -192,6 +199,8 @@ def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get
     tenant.admins.append(user)
     db.commit()
     db.refresh(tenant)
+    record('tenant.assign_admin', tenant_id=tenant.id, user_id=current.id, details={'assigned_user_id': payload.user_id})
+    flush(db)
     return TenantOut(
         id=tenant.id,
         name=tenant.name,
@@ -206,7 +215,7 @@ def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get
     )
 
 @router.delete("/{tenant_id}/admins/{user_id}", response_model=TenantOut)
-def remove_admin(tenant_id: str, user_id: int, db: Session = Depends(get_db)):
+def remove_admin(tenant_id: str, user_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     user = db.query(User).filter_by(id=user_id).first()
     if not tenant or not user:
@@ -216,6 +225,8 @@ def remove_admin(tenant_id: str, user_id: int, db: Session = Depends(get_db)):
     tenant.admins.remove(user)
     db.commit()
     db.refresh(tenant)
+    record('tenant.remove_admin', tenant_id=tenant.id, user_id=current.id, details={'removed_user_id': user_id})
+    flush(db)
     return TenantOut(
         id=tenant.id,
         name=tenant.name,
@@ -238,7 +249,7 @@ class InviteOut(BaseModel):
     expires_at: datetime
 
 @router.post("/{tenant_id}/invite", response_model=InviteOut)
-def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Depends(get_db)):
+def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     """Generate a one-time invite token and email it to the client-admin"""
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     if not tenant:
@@ -270,4 +281,6 @@ def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Dep
         except Exception:
             pass
     # Return the invite token and expiry
+    record('tenant.invite_admin', tenant_id=tenant_id, user_id=current.id, details={'email': payload.email})
+    flush(db)
     return InviteOut(token=invite.token, expires_at=invite.expires_at)

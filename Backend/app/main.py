@@ -73,6 +73,13 @@ async def request_logging_middleware(request: Request, call_next):
     response.headers['X-Request-ID'] = rid
     return response
 # Legacy user vehicle endpoints for backward compatibility
+import hashlib, json
+
+def _etag_for(data: dict) -> str:
+    # Stable JSON dump to produce content hash
+    dumped = json.dumps(data, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(dumped).hexdigest()[:16]
+
 @app.get("/api/public/tenant-meta")
 def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant_context)):
     """Public endpoint for frontend to discover vertical + feature flags by domain.
@@ -90,8 +97,17 @@ def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant
     RATE_LIMIT_BUCKET[ip] = bucket
     request.state.tenant_id = ctx.id
     data = tenant_meta_dict(ctx)
+    etag = _etag_for(data)
+    inm = request.headers.get('if-none-match')
+    if inm == etag:
+        # Not modified
+        resp = JSONResponse(status_code=304, content=None)
+        resp.headers['ETag'] = etag
+        resp.headers['Cache-Control'] = 'public, max-age=60'
+        return resp
     resp = JSONResponse(content=data)
     resp.headers['Cache-Control'] = 'public, max-age=60'
+    resp.headers['ETag'] = etag
     return resp
 
 

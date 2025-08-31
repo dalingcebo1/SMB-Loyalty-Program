@@ -2,12 +2,20 @@ import os
 import pkgutil
 import importlib
 from fastapi import FastAPI
+from typing import Protocol, runtime_checkable
 from app.core.database import Base
 
 from .database import engine
 
 PLUGIN_FOLDER = os.path.join(os.path.dirname(__file__), "..", "plugins")
 PLUGIN_PACKAGE = "app.plugins"
+
+
+@runtime_checkable
+class PluginProtocol(Protocol):  # Phase 1 formal contract
+    name: str
+    def register_models(self, metadata): ...  # pragma: no cover - interface only
+    def register_routes(self, app: FastAPI): ...  # pragma: no cover
 
 
 class PluginManager:
@@ -17,7 +25,10 @@ class PluginManager:
         self.metadata = Base.metadata
 
     def discover_plugins(self):
-        """Dynamically import all plugins in the plugins folder."""
+        """Dynamically import all plugins in the plugins folder.
+
+        Returns only modules exposing a Plugin class implementing PluginProtocol.
+        """
         for finder, name, ispkg in pkgutil.iter_modules([PLUGIN_FOLDER]):
             module_path = f"{PLUGIN_PACKAGE}.{name}.plugin"
             try:
@@ -25,7 +36,9 @@ class PluginManager:
             except ModuleNotFoundError:
                 continue
             if hasattr(module, "Plugin"):
-                yield module.Plugin()
+                inst = module.Plugin()
+                if isinstance(inst, PluginProtocol):
+                    yield inst
 
     def register_models(self):
         """Call register_models on each plugin, then create all tables."""

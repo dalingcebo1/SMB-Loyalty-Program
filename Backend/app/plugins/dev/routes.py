@@ -3,9 +3,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import Tenant
-from app.plugins.auth.routes import require_admin
+from app.core.authz import developer_only
 
-router = APIRouter(prefix="", tags=["dev"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="", tags=["dev"], dependencies=[Depends(developer_only)])
 
 @router.get("/", response_model=dict)
 def dev_status(db: Session = Depends(get_db)):

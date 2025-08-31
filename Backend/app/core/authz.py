@@ -74,3 +74,5 @@ def require_min_role(min_role: UserRole):
 developer_only = require_roles(UserRole.developer, UserRole.superadmin)
 tenant_admin_only = require_roles(UserRole.admin, UserRole.superadmin, UserRole.developer)
 staff_only = require_roles(UserRole.staff, UserRole.admin, UserRole.superadmin, UserRole.developer)
+superadmin_only = require_roles(UserRole.superadmin)
+

@@ -15,6 +15,7 @@ import time
 
 from app.core.database import get_db
 from app.models import Tenant, VerticalType
+from app.plugins.verticals.vertical_dispatch import dispatch
 from config import settings
 
 
@@ -112,7 +113,7 @@ async def get_tenant_context(
 
 def tenant_meta_dict(ctx: TenantContext) -> dict:
     cfg = ctx.tenant.config or {}
-    return {
+    meta = {
         "tenant_id": ctx.id,
         "vertical": ctx.vertical,
         "features": cfg.get("features", {}),
@@ -120,6 +121,12 @@ def tenant_meta_dict(ctx: TenantContext) -> dict:
         "name": ctx.tenant.name,
         "loyalty_type": ctx.tenant.loyalty_type,
     }
+    # Allow vertical plugins to decorate meta in-place
+    try:  # defensive: plugin errors shouldn't break core endpoint
+        dispatch('decorate_tenant_meta', meta, ctx.tenant)
+    except Exception:  # pragma: no cover - log future
+        pass
+    return meta
 
 def set_current_tenant_id(tenant_id: str):  # utility used in dependency
     try:

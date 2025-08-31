@@ -20,6 +20,9 @@
   pointer-events: none;
 }
 
+/* Prevent flash of duplicate dashboard sections if consumer layout markup briefly persists */
+body.staff-layout-active .modern-staff-dashboard .dashboard-header { display: none !important; }
+
 /* Header */
 .staff-header {
   position: relative;

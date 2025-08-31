@@ -166,6 +166,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       role: u.role,
     };
     setUser(newUser);
+    // If staff/admin, navigate directly to staff dashboard to avoid initial consumer layout flash
+    if (['staff','admin'].includes(newUser.role)) {
+      navigate('/staff/dashboard', { replace: true });
+    }
     return newUser;
   };
 
@@ -190,6 +194,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       role: u.role,
     };
     setUser(newUser);
+    if (['staff','admin'].includes(newUser.role)) {
+      navigate('/staff/dashboard', { replace: true });
+    }
     return newUser;
   };
 

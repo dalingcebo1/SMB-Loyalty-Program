@@ -1,5 +1,5 @@
 // src/features/staff/components/StaffLayout.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../auth/AuthProvider';
 import './StaffLayout.css';
@@ -12,6 +12,12 @@ const StaffLayout: React.FC = () => {
   const location = useLocation();
   const { logout, user } = useAuth();
   const itemsToRender = filterStaffNav(user?.role, location.pathname);
+
+  // Mark that staff layout is mounted to help suppress any transient UI overlap
+  useEffect(() => {
+    document.body.classList.add('staff-layout-active');
+    return () => { document.body.classList.remove('staff-layout-active'); };
+  }, []);
 
   return (
     <StaffSectionProvider>

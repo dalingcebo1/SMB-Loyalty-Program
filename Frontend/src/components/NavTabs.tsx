@@ -3,18 +3,35 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { moduleFlags } from '../config/modules';
+import { useTenantConfig } from '../config/useTenantConfig';
+
+interface BrandingShape { name?: string }
+function getBrandName(b: unknown): string | undefined {
+  if (b && typeof b === 'object' && 'name' in b) {
+    const v = (b as BrandingShape).name;
+    return typeof v === 'string' ? v : undefined;
+  }
+  return undefined;
+}
 import { FaHome, FaCar, FaHistory, FaGift, FaUser, FaClipboardList, FaSignOutAlt } from 'react-icons/fa';
 import './NavTabs.css';
 
 const NavTabs: React.FC = () => {
   const { user, logout } = useAuth();
+  const { moduleFlags, vertical, loading, error, branding } = useTenantConfig();
   const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
 
   // For staff users we suppress the consumer navigation (Home / Book Service / My Rewards)
   // so they land directly inside their operational dashboard.
   const isStaffOnly = user?.role === 'staff';
   const isAdmin = user?.role === 'admin';
+
+  if (loading) {
+    return <header className="nav-header"><div className="nav-container">Loading navigation…</div></header>;
+  }
+  if (error) {
+    return <header className="nav-header"><div className="nav-container">Config error: {error}</div></header>;
+  }
 
   let navOptions: Array<{ to: string; label: string; icon: React.ReactNode }> = [];
 
@@ -27,7 +44,7 @@ const NavTabs: React.FC = () => {
     // Regular consumer / admin (admin keeps consumer view plus staff dashboard link if needed)
     navOptions = [
       ...(enableOrders ? [{ to: '/', label: 'Home', icon: <FaHome /> }] : []),
-      ...(enableOrders ? [{ to: '/order', label: 'Book Service', icon: <FaClipboardList /> }] : []),
+  ...(enableOrders ? [{ to: '/order', label: vertical === 'flowershop' ? 'Order Flowers' : vertical === 'padel' ? 'Book Court' : vertical === 'beauty' ? 'Book Service' : vertical === 'dispensary' ? 'Order Products' : 'Book Service', icon: <FaClipboardList /> }] : []),
       ...(enableLoyalty ? [{ to: '/myloyalty', label: 'My Rewards', icon: <FaGift /> }] : []),
       ...(enableOrders ? [{ to: '/past-orders', label: 'Order History', icon: <FaHistory /> }] : []),
       ...(enableUsers ? [{ to: '/account', label: 'Account', icon: <FaUser /> }] : []),
@@ -64,7 +81,9 @@ const NavTabs: React.FC = () => {
             to={isStaffOnly ? '/staff/dashboard' : '/'}
             className="brand-link"
           >
-            <span className="brand-text">SMB Loyalty</span>
+            <span className="brand-text" style={{color: 'var(--brand-text)', fontWeight: 600}}>
+              {getBrandName(branding) || 'SMB Loyalty'}
+            </span>
           </NavLink>
         </div>
 

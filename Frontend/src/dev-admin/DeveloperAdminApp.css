@@ -1,0 +1,112 @@
+.dev-admin-shell {
+  display: flex;
+  min-height: 100vh;
+  background: #f7f8fa;
+}
+.dev-admin-sidebar {
+  width: 220px;
+  background: #232946;
+  color: #fff;
+  padding: 2rem 1rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-height: 100vh;
+}
+.dev-admin-sidebar h2 {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+  letter-spacing: 1px;
+}
+.dev-admin-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.dev-admin-sidebar nav a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.dev-admin-sidebar nav a.active, .dev-admin-sidebar nav a:hover {
+  background: #394867;
+}
+.dev-admin-main {
+  flex: 1;
+  padding: 2.5rem 2rem 2rem 2rem;
+  background: #f7f8fa;
+  min-height: 100vh;
+}
+.dev-admin-form {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 2rem;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.dev-admin-form label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  gap: 0.3rem;
+}
+.dev-admin-form input, .dev-admin-form select {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #c3c3c3;
+  border-radius: 4px;
+  font-size: 1rem;
+  margin-top: 0.2rem;
+}
+.dev-admin-form button {
+  background: #232946;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.15s;
+}
+.dev-admin-form button:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+.form-error {
+  color: #b00;
+  font-size: 0.98rem;
+  margin-top: 0.5rem;
+}
+.form-success {
+  color: #1a7f37;
+  font-size: 0.98rem;
+  margin-top: 0.5rem;
+}
+.dev-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  margin-top: 1.5rem;
+}
+.dev-admin-table th, .dev-admin-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #e5e5e5;
+  text-align: left;
+}
+.dev-admin-table th {
+  background: #f0f1f6;
+  font-weight: 600;
+}
+.dev-admin-table tr:last-child td {
+  border-bottom: none;
+}

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Tenant, User
+from app.models import Tenant, User, VerticalType
 from app.plugins.auth.routes import require_admin
 from pydantic import BaseModel
 from typing import List, Optional
@@ -22,25 +22,34 @@ class TenantCreate(BaseModel):
     id: str
     name: str
     loyalty_type: str
+    vertical_type: VerticalType = VerticalType.carwash
+    primary_domain: Optional[str] = None
     subdomain: Optional[str] = None
     logo_url: Optional[str] = None
     theme_color: Optional[str] = None
+    config: Optional[dict] = None
 
 class TenantUpdate(BaseModel):
     name: Optional[str] = None
     loyalty_type: Optional[str] = None
+    vertical_type: Optional[VerticalType] = None
+    primary_domain: Optional[str] = None
     subdomain: Optional[str] = None
     logo_url: Optional[str] = None
     theme_color: Optional[str] = None
+    config: Optional[dict] = None
 
 class TenantOut(BaseModel):
     id: str
     name: str
     loyalty_type: str
+    vertical_type: str
+    primary_domain: Optional[str]
     subdomain: Optional[str]
     logo_url: Optional[str]
     theme_color: Optional[str]
     admin_ids: List[int]
+    config: dict
 
 class AdminAssign(BaseModel):
     user_id: int
@@ -54,9 +63,12 @@ def create_tenant(payload: TenantCreate, db: Session = Depends(get_db)):
         id=payload.id,
         name=payload.name,
         loyalty_type=payload.loyalty_type,
+        vertical_type=payload.vertical_type.value,
+        primary_domain=payload.primary_domain,
         subdomain=payload.subdomain,
         logo_url=payload.logo_url,
         theme_color=payload.theme_color,
+        config=payload.config or {},
         created_at=datetime.utcnow(),
     )
     db.add(tenant)
@@ -66,10 +78,13 @@ def create_tenant(payload: TenantCreate, db: Session = Depends(get_db)):
         id=tenant.id,
         name=tenant.name,
         loyalty_type=tenant.loyalty_type,
+        vertical_type=tenant.vertical_type,
+        primary_domain=tenant.primary_domain,
         subdomain=tenant.subdomain,
         logo_url=tenant.logo_url,
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
+        config=tenant.config or {},
     )
 
 @router.get("", response_model=List[TenantOut])
@@ -79,10 +94,13 @@ def list_tenants(db: Session = Depends(get_db)):
         id=t.id,
         name=t.name,
         loyalty_type=t.loyalty_type,
+        vertical_type=t.vertical_type,
+        primary_domain=t.primary_domain,
         subdomain=t.subdomain,
         logo_url=t.logo_url,
         theme_color=t.theme_color,
-        admin_ids=[u.id for u in t.admins]
+        admin_ids=[u.id for u in t.admins],
+        config=t.config or {},
     ) for t in tenants]
 
 @router.get("/{tenant_id}", response_model=TenantOut)
@@ -94,10 +112,13 @@ def get_tenant(tenant_id: str, db: Session = Depends(get_db)):
         id=tenant.id,
         name=tenant.name,
         loyalty_type=tenant.loyalty_type,
+        vertical_type=tenant.vertical_type,
+        primary_domain=tenant.primary_domain,
         subdomain=tenant.subdomain,
         logo_url=tenant.logo_url,
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
+        config=tenant.config or {},
     )
 
 @router.patch("/{tenant_id}", response_model=TenantOut)
@@ -110,9 +131,12 @@ def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(g
             id=tenant_id,
             name=data.get('name', tenant_id),
             loyalty_type=data.get('loyalty_type', 'standard'),
+            vertical_type=data.get('vertical_type', VerticalType.carwash).value,
+            primary_domain=data.get('primary_domain'),
             subdomain=data.get('subdomain'),
             logo_url=data.get('logo_url'),
             theme_color=data.get('theme_color'),
+            config=data.get('config') or {},
             created_at=datetime.utcnow()
         )
         db.add(tenant)
@@ -126,10 +150,13 @@ def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(g
         id=tenant.id,
         name=tenant.name,
         loyalty_type=tenant.loyalty_type,
+        vertical_type=tenant.vertical_type,
+        primary_domain=tenant.primary_domain,
         subdomain=tenant.subdomain,
         logo_url=tenant.logo_url,
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
+        config=tenant.config or {},
     )
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -169,10 +196,13 @@ def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get
         id=tenant.id,
         name=tenant.name,
         loyalty_type=tenant.loyalty_type,
+        vertical_type=tenant.vertical_type,
+        primary_domain=tenant.primary_domain,
         subdomain=tenant.subdomain,
         logo_url=tenant.logo_url,
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
+        config=tenant.config or {},
     )
 
 @router.delete("/{tenant_id}/admins/{user_id}", response_model=TenantOut)
@@ -190,10 +220,13 @@ def remove_admin(tenant_id: str, user_id: int, db: Session = Depends(get_db)):
         id=tenant.id,
         name=tenant.name,
         loyalty_type=tenant.loyalty_type,
+        vertical_type=tenant.vertical_type,
+        primary_domain=tenant.primary_domain,
         subdomain=tenant.subdomain,
         logo_url=tenant.logo_url,
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
+        config=tenant.config or {},
     )
  
 # --- Invite a client-admin to a newly provisioned tenant

@@ -113,6 +113,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .signup-button:hover:not(:disabled) {

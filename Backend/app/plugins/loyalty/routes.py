@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
+from app.core.tenant_context import get_tenant_context, TenantContext
 from app.models import Tenant, User, VisitCount, Reward, Redemption, Order, Service, Extra, OrderItem
 from app.utils.qr import generate_qr_code
 from app.plugins.auth.routes import get_current_user
@@ -376,3 +377,31 @@ def expire_redemptions_endpoint(
 ):
     expire_old_redemptions(db)
     return {"expired": True}
+
+
+@router.get("/rewards", summary="List rewards for current tenant")
+def list_rewards(
+    ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    q = (
+        db.query(Reward)
+          .filter(Reward.tenant_id == ctx.id)
+          .order_by(Reward.created_at.desc().nullslast())
+          .limit(limit)
+          .offset(offset)
+    )
+    rows = q.all()
+    return [
+        {
+            "id": r.id,
+            "title": r.title,
+            "type": r.type,
+            "milestone": r.milestone,
+            "tenant_id": r.tenant_id,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]

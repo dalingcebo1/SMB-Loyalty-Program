@@ -1,6 +1,6 @@
 from config import settings
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
@@ -55,6 +55,22 @@ SessionLocal = sessionmaker(
 
 # 4) Base class for models
 Base = declarative_base()
+
+# Optional: Set tenant GUC for RLS automatically on connection checkout (Postgres only)
+try:
+    if engine.url.get_backend_name().startswith("postgres"):
+        from app.core.tenant_context import current_tenant_id  # local import to avoid circular at module import
+
+        @event.listens_for(SessionLocal, "after_begin")
+        def _configure_tenant(session, transaction, connection):  # pragma: no cover
+            tid = current_tenant_id.get(None)
+            if tid:
+                try:
+                    connection.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": tid})
+                except Exception:
+                    pass
+except Exception:  # pragma: no cover
+    pass
 
 # 5) Dependency for FastAPI routes
 def get_db() -> Generator[Session, None, None]:

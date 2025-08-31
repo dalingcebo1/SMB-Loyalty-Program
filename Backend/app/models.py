@@ -9,10 +9,27 @@ from sqlalchemy import (
     Boolean,
     Table,
     JSON,
+    Index,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
 from app.core.database import Base
+from enum import Enum
+
+
+class VerticalType(str, Enum):
+        """Business verticals supported by the unified multi-tenant platform.
+
+        NOTE: When adding a new vertical update:
+            - This enum
+            - Any validation lists (e.g. in create/update tenant schemas)
+            - Frontend vertical mapping (TenantConfigProvider)
+        """
+        carwash = "carwash"
+        dispensary = "dispensary"
+        padel = "padel"
+        flowershop = "flowershop"
+        beauty = "beauty"
 
 # association table for tenant admins
 tenant_admins = Table(
@@ -25,20 +42,30 @@ tenant_admins = Table(
 
 class Tenant(Base):
     __tablename__ = "tenants"
-    id           = Column(String, primary_key=True)
-    name         = Column(String, nullable=False)
-    loyalty_type = Column(String, nullable=False)
-    # New fields for tenant customization
-    subdomain    = Column(String, nullable=True)
-    logo_url     = Column(String, nullable=True)
-    theme_color  = Column(String, nullable=True)
-    created_at   = Column(DateTime)
-    rewards      = relationship("Reward", back_populates="tenant")
+    id             = Column(String, primary_key=True)
+    name           = Column(String, nullable=False)
+    loyalty_type   = Column(String, nullable=False)
+    # Multi-vertical support
+    vertical_type  = Column(String, nullable=False, default=VerticalType.carwash.value, index=True)
+    # Domain mapping (either full domain e.g. flowershop.com) for host-based resolution
+    primary_domain = Column(String, nullable=True, unique=True)
+    # Existing subdomain (retain for backward compatibility / internal routing)
+    subdomain      = Column(String, nullable=True)
+    logo_url       = Column(String, nullable=True)
+    theme_color    = Column(String, nullable=True)
+    # Arbitrary per-tenant configuration (feature flags, branding variants, etc.)
+    config         = Column(JSON, nullable=False, default=dict)
+    created_at     = Column(DateTime)
+    rewards        = relationship("Reward", back_populates="tenant")
     # tenant-admin many-to-many
-    admins       = relationship(
+    admins         = relationship(
         "User",
         secondary=tenant_admins,
         back_populates="tenants",
+    )
+
+    __table_args__ = (
+        Index("ix_tenants_vertical_domain", "vertical_type", "primary_domain"),
     )
 
 

@@ -9,14 +9,39 @@ If none are found raises 400/404 accordingly.
 """
 from fastapi import Header, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Dict, Tuple
 import contextvars
+import time
 
 from app.core.database import get_db
 from app.models import Tenant, VerticalType
+from config import settings
 
 
 current_tenant_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("current_tenant_id", default=None)
+
+# Simple in-process LRU-ish cache for domain-> tenant id resolution to cut DB lookups.
+# (key is normalized host). Not multi-process safe; fine for single worker dev / small scale.
+_TENANT_CACHE: Dict[str, Tuple[str, float]] = {}
+_TENANT_CACHE_TTL = 60  # seconds
+_TENANT_CACHE_MAX = 512
+
+def _cache_get(host: str) -> Optional[str]:
+    entry = _TENANT_CACHE.get(host)
+    if not entry:
+        return None
+    tid, ts = entry
+    if time.time() - ts > _TENANT_CACHE_TTL:
+        _TENANT_CACHE.pop(host, None)
+        return None
+    return tid
+
+def _cache_set(host: str, tenant_id: str):
+    if len(_TENANT_CACHE) >= _TENANT_CACHE_MAX:
+        # drop oldest (inefficient but small size)
+        oldest = min(_TENANT_CACHE.items(), key=lambda kv: kv[1][1])[0]
+        _TENANT_CACHE.pop(oldest, None)
+    _TENANT_CACHE[host] = (tenant_id, time.time())
 
 
 class TenantContext:
@@ -33,6 +58,9 @@ async def get_tenant_context(
 ) -> TenantContext:
     host = request.headers.get("host", "")
     hostname = host.split(":")[0].lower()
+    # Normalize: strip leading www.
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
 
     tenant = None
 
@@ -44,10 +72,17 @@ async def get_tenant_context(
         set_current_tenant_id(tenant.id)
         return TenantContext(tenant)
 
-    # 2) Full primary domain match
-    if not tenant and hostname:
+    # 2) Full primary domain match (with cache)
+    if hostname:
+        cached_id = _cache_get(hostname)
+        if cached_id:
+            tenant = db.query(Tenant).filter(Tenant.id == cached_id).first()
+            if tenant:
+                set_current_tenant_id(tenant.id)
+                return TenantContext(tenant)
         tenant = db.query(Tenant).filter(Tenant.primary_domain == hostname).first()
         if tenant:
+            _cache_set(hostname, tenant.id)
             set_current_tenant_id(tenant.id)
             return TenantContext(tenant)
 
@@ -59,6 +94,13 @@ async def get_tenant_context(
         if tenant:
             set_current_tenant_id(tenant.id)
             return TenantContext(tenant)
+
+    # 4) Optional fallback default tenant (configurable) for public pages / bootstrap
+    if settings.default_tenant:
+        fallback = db.query(Tenant).filter(Tenant.id == settings.default_tenant).first()
+        if fallback:
+            set_current_tenant_id(fallback.id)
+            return TenantContext(fallback)
 
     raise HTTPException(status_code=400, detail="Unable to resolve tenant context")
 

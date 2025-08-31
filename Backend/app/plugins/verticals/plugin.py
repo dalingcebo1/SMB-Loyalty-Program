@@ -11,13 +11,7 @@ class Plugin:  # registers vertical stubs collectively (meta plugin)
         pass
 
     def register_routes(self, app: FastAPI):  # no routes, just hooks
-        # Register common / default hook implementations
-        # Generic fallback loyalty earn: 1 point per order amount unit
-        def default_loyalty(order) -> int:
-            amt = getattr(order, 'amount', 0) or 0
-            return amt // 100  # cents -> points baseline
-        register_hook('compute_loyalty_earn', default_loyalty)
-
+        # Register specialization hooks first so they get precedence
         # Carwash specialization example
         def carwash_loyalty(order) -> int:
             if getattr(order, 'vertical_type', '') == 'carwash':
@@ -31,6 +25,12 @@ class Plugin:  # registers vertical stubs collectively (meta plugin)
                 return max(1, (getattr(order, 'amount', 0) or 0) // 120)
             return None
         register_hook('compute_loyalty_earn', flowershop_loyalty)
+
+        # Generic fallback loyalty earn: 1 point per order amount unit
+        def default_loyalty(order) -> int:
+            amt = getattr(order, 'amount', 0) or 0
+            return amt // 100  # cents -> points baseline
+        register_hook('compute_loyalty_earn', default_loyalty)
 
         # Tenant meta decoration example
         def decorate_meta(meta: dict, tenant):

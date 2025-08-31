@@ -23,6 +23,16 @@ class Settings(BaseSettings):
     price_csv_url: Optional[str] = None
     google_application_credentials: Optional[str] = None
 
+    # --- Rate limiting / jobs / observability (prod-oriented) ---
+    rate_limit_public_meta_capacity: int = Field(60, env="RATE_LIMIT_PUBLIC_META_CAPACITY")
+    rate_limit_public_meta_window_seconds: int = Field(60, env="RATE_LIMIT_PUBLIC_META_WINDOW")
+    rate_limit_user_tenant_capacity: int = Field(30, env="RATE_LIMIT_USER_TENANT_CAPACITY")
+    rate_limit_user_tenant_window_seconds: int = Field(60, env="RATE_LIMIT_USER_TENANT_WINDOW")
+    enable_rate_limit_overrides: bool = Field(True, env="ENABLE_RATE_LIMIT_OVERRIDES")  # disable in prod to lock config
+    enable_rate_limit_penalties: bool = Field(True, env="ENABLE_RATE_LIMIT_PENALTIES")
+    enable_job_queue: bool = Field(False, env="ENABLE_JOB_QUEUE")  # in-process queue generally off in prod
+    enable_metrics_endpoint: bool = Field(True, env="ENABLE_METRICS")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import Tenant
 from app.core.authz import developer_only
-from app.core.rate_limit import check_rate, set_limit, bucket_snapshot
+from app.core.rate_limit import check_rate, set_limit, bucket_snapshot, delete_limit, list_overrides, build_429_payload, compute_retry_after
+from config import settings
 from app.core import jobs
 from pydantic import BaseModel
 
@@ -31,9 +32,11 @@ def reset_db(db: Session = Depends(get_db)):
 def dev_rate_limited_probe(request: Request):
     # Simple per-IP (process local) limiter: 3 requests / 60s
     ip = request.client.host if request.client else 'unknown'
-    allowed = check_rate('dev_rl_test', ip, capacity=3, per_seconds=60)
+    scope = 'dev_rl_test'
+    allowed = check_rate(scope, ip, capacity=3, per_seconds=60)
     if not allowed:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Rate limit exceeded")
+        ra = compute_retry_after(scope, ip, 3, 60)
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=build_429_payload(scope, ra))
     return {"ok": True}
 
 # --- Job queue endpoints ----------------------------------------------------
@@ -83,9 +86,20 @@ def jobs_tick():
 
 @router.get("/rate-limits/config")
 def current_rate_limits():
-    return bucket_snapshot()
+    snap = bucket_snapshot()
+    snap["overrides"] = list_overrides()
+    return snap
 
 @router.post("/rate-limits/config")
 def override_rate_limit(body: RateLimitOverride):
+    if not settings.enable_rate_limit_overrides:
+        raise HTTPException(status_code=403, detail={"error": "disabled", "detail": "Overrides disabled in this environment"})
     set_limit(body.scope, body.capacity, body.per_seconds)
     return {"updated": body.scope, "config": bucket_snapshot(include_penalties=False)["overrides"].get(body.scope)}
+
+@router.delete("/rate-limits/config/{scope}")
+def delete_override(scope: str):
+    if not settings.enable_rate_limit_overrides:
+        raise HTTPException(status_code=403, detail={"error": "disabled", "detail": "Overrides disabled in this environment"})
+    existed = delete_limit(scope)
+    return {"deleted": scope, "existed": existed}

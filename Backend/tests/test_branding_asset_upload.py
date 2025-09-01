@@ -60,3 +60,25 @@ def test_branding_record_updated():
     b = db.query(TenantBranding).filter_by(tenant_id='default').first()
     assert b is not None and b.logo_dark_url is not None
     db.close()
+
+
+def test_asset_list_and_512_variant():
+    token = _admin_token()
+    # Generate a large (1024x1024) PNG so downscaled 512 variant is meaningful
+    try:
+        from PIL import Image
+        import io as _io
+        img = Image.new('RGBA', (1024, 1024), (255, 0, 0, 255))
+        buf = _io.BytesIO()
+        img.save(buf, format='PNG')
+        png_bytes = buf.getvalue()
+    except Exception:
+        # Fallback to simple header if Pillow import fails for some reason
+        png_bytes = b"\x89PNG\r\n\x1a\n" + b"3"*500
+    client.post('/api/tenants/default/branding/assets/logo_light', files={'file': ('light.png', png_bytes, 'image/png')}, headers={'Authorization': f'Bearer {token}'})
+    resp = client.get('/api/tenants/default/branding/assets', headers={'Authorization': f'Bearer {token}'})
+    assert resp.status_code == 200
+    assets = resp.json()['assets']
+    names = [a['name'] for a in assets]
+    # hashed primary plus potential variants
+    assert any('-512' in n for n in names) or any(n.endswith('-512.png') for n in names)

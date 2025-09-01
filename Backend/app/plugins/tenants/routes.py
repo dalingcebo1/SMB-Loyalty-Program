@@ -213,6 +213,20 @@ def _branding_asset_dir(tenant_id: str) -> pathlib.Path:
     base.mkdir(parents=True, exist_ok=True)
     return base
 
+def _list_branding_assets(tenant_id: str) -> list[dict]:
+    d = _branding_asset_dir(tenant_id)
+    assets = []
+    if not d.exists():
+        return assets
+    for p in d.iterdir():
+        if p.is_file():
+            assets.append({
+                'name': p.name,
+                'size': p.stat().st_size,
+                'url': f"/static/branding/{tenant_id}/{p.name}"
+            })
+    return sorted(assets, key=lambda x: x['name'])
+
 @router.post('/{tenant_id}/branding/assets/{field}', response_model=BrandingAssetUploadOut)
 def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(...), db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     if field not in ALLOWED_BRANDING_FIELDS:
@@ -269,7 +283,7 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
     def _process_variants(payload):  # executed in job queue
         try:
             img = Image.open(io.BytesIO(raw))
-            for size in [64, 128, 256]:
+            for size in [64, 128, 256, 512]:
                 try:
                     resized = img.copy()
                     resized.thumbnail((size, size))
@@ -293,7 +307,7 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
         else:
             _process_variants(None)
         # Populate variant URLs regardless (may exist shortly after)
-        for size in [64,128,256]:
+    for size in [64,128,256,512]:
             variant_name = f"{base_name}-{size}{ext}"
             variants[str(size)] = f"/static/branding/{tenant_id}/{variant_name}"
 
@@ -324,6 +338,13 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
     record('tenant.branding.asset_upload', tenant_id=tenant_id, user_id=current.id, details={'field': field, 'size': len(raw), 'created': created, 'variants': list(variants.keys())})
     flush(db)
     return BrandingAssetUploadOut(field=field, url=rel_url, size=len(raw), content_type=file.content_type, variants=variants or None, etag=etag)
+
+@router.get('/{tenant_id}/branding/assets')
+def list_branding_assets(tenant_id: str, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    return {
+        'tenant_id': tenant_id,
+        'assets': _list_branding_assets(tenant_id)
+    }
 
 @router.get("", response_model=List[TenantOut])
 def list_tenants(db: Session = Depends(get_db)):

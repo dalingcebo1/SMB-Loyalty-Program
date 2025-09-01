@@ -40,6 +40,18 @@ const BrandingPage: React.FC = () => {
         const res = await api.get(`/tenants/${tenantId}/branding`);
         if (cancelled) return;
         setForm({ ...empty, ...res.data });
+        // fetch assets list to show existing variants if any
+        try {
+          const assetsResp = await api.get(`/tenants/${tenantId}/branding/assets`);
+          type AssetEntry = { name: string; size: number; url: string };
+          const entries: AssetEntry[] = assetsResp.data.assets || [];
+            const variants: Record<string,string> = {};
+            entries.forEach((a) => {
+              const m = a.name.match(/-(64|128|256|512)\./);
+              if (m) variants[m[1]] = a.url;
+            });
+            if (Object.keys(variants).length) setLastVariants(variants);
+  } catch { /* ignore asset listing errors */ }
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -36,12 +36,10 @@ const Login: React.FC = () => {
     try {
       // login returns the authenticated user
       const currentUser = await login(data.email, data.password);
-      // Redirect based on role: staff/admin -> Car Wash, others -> Home
-      if (currentUser.role === "staff" || currentUser.role === "admin") {
-        navigate("/staff/dashboard", { replace: true });
-      } else {
-        navigate("/", { replace: true });
-      }
+  // Redirect based on role: admin -> /admin, staff -> /staff/dashboard, others -> /
+  if (currentUser.role === 'admin') navigate('/admin', { replace: true });
+  else if (currentUser.role === 'staff') navigate('/staff/dashboard', { replace: true });
+  else navigate('/', { replace: true });
     } catch (err: unknown) {
         // save what they just tried, so we can re-use it
         setLastCreds(data);

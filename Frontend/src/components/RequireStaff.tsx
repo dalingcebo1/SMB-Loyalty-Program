@@ -1,18 +1,13 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import api from "../api/api";
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 
+// Strict staff-only gate; admins should not use /staff/* URLs.
 const RequireStaff: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { data: user, isLoading } = useQuery({
-    queryKey: ["me"],
-    queryFn: async () => (await api.get("/auth/me")).data,
-  });
-
-  if (isLoading) return <div>Loading...</div>;
-  if (!user || (user.role !== "staff" && user.role !== "admin")) {
-    return <Navigate to="/login" replace />;
-  }
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-6">Loading…</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'staff') return <Navigate to="/admin" replace />;
   return <>{children}</>;
 };
 

@@ -14,24 +14,26 @@ import "./index.css";
 
 // Bootstraps React app with prefetched analytics summary for instant rendering
 import { queryClient } from './api/queryClient';
+import { useTenantTheme } from './branding/useTenantTheme';
+export const RootWithTheme: React.FC = () => {
+  // Hook triggers side-effects to inject CSS vars & favicon
+  useTenantTheme();
+  return <App />;
+};
+
 async function bootstrap() {
-  ReactDOM.createRoot(document.getElementById("root")!).render(
+  ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <TenantConfigProvider>
-          <AuthProvider>
-            <ErrorBoundary>
-              <QueryClientProvider client={queryClient}>
-                <App />
-              </QueryClientProvider>
-            </ErrorBoundary>
-          </AuthProvider>
-        </TenantConfigProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <QueryClientProvider client={queryClient}>
+          <TenantConfigProvider>
+            <AuthProvider>
+              <ErrorBoundary>
+                <RootWithTheme />
+              </ErrorBoundary>
+            </AuthProvider>
+          </TenantConfigProvider>
+        </QueryClientProvider>
       </BrowserRouter>
     </React.StrictMode>
   );

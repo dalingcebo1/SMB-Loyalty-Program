@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useState,
+  useRef,
   ReactNode,
 } from "react";
 import api from "../api/api";
@@ -19,6 +20,8 @@ export interface User {
   firstName: string;
   lastName: string;
   role: string;
+  capabilities?: string[];
+  tenant_id?: string;
 }
 
 interface AuthContextType {
@@ -57,6 +60,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const initializedRef = useRef(false); // prevents double init (React 18 StrictMode)
+  const lastMeFetch = useRef<number>(0);
+  let meInFlight: Promise<User | null> | null = null; // request coalescing (scoped per render pass)
   const navigate = useNavigate();
 
   // Always attach token to every request
@@ -76,56 +82,67 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   // On mount, check for stored token and fetch user (popup flow has no redirect handling)
   useEffect(() => {
-    const initializeAuth = async () => {
+    if (initializedRef.current) return; // guard against strict mode double invoke
+    initializedRef.current = true;
+    (async () => {
       const t = localStorage.getItem("token");
-      if (t) {
-        api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
-        try {
-          const res = await api.get("/auth/me");
-          const u = res.data;
-          setUser({
-            id: u.id,
-            email: u.email,
-            phone: u.phone,
-            firstName: u.first_name || u.firstName || "",
-            lastName: u.last_name || u.lastName || "",
-            role: u.role,
-          });
-        } catch (err: unknown) {
-          const status = (err as { response?: { status?: number } }).response?.status;
-          if (status === 403) {
-            // User has a token but backend requires onboarding; decode email from JWT so onboarding has context
-            let email: string | undefined;
-            try {
-              const payload = JSON.parse(atob(t.split('.')[1] || '')) as { sub?: string };
-              if (payload.sub) email = payload.sub;
-            } catch { /* ignore */ }
-            // Avoid redirect loop: only navigate if not already on onboarding
-            // We need role to decide, so attempt lightweight decode from local cache first.
-            // If role is unknown (because /auth/me failed), proceed to onboarding ONLY for non-privileged users.
-            // Privileged roles (staff/admin/developer) are allowed even if backend flagged onboarding earlier.
-            const cachedRole = localStorage.getItem('cachedRole');
-            if (cachedRole && ['staff','admin','developer'].includes(cachedRole)) {
-              // Skip onboarding redirect; let subsequent calls refresh state.
-            } else if (!window.location.pathname.startsWith('/onboarding')) {
-              navigate('/onboarding', { replace: true, state: { email, fromSocialLogin: true } });
-            }
-          } else {
-            console.error("Failed to fetch /auth/me", err);
-            localStorage.removeItem("token");
-            delete api.defaults.headers.common["Authorization"];
-            setUser(null);
-          }
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setUser(null);
+      if (!t) {
+        setUser(null); setLoading(false); return;
+      }
+      api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
+      try {
+        await internalFetchMe();
+      } finally {
         setLoading(false);
       }
-    };
-    initializeAuth();
-  }, [navigate]);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const internalFetchMe = async (force = false): Promise<User | null> => {
+    const now = Date.now();
+    if (!force && user && (now - lastMeFetch.current) < 60000) {
+      return user; // recent cache (<60s)
+    }
+    if (meInFlight) return meInFlight; // coalesce
+    const token = localStorage.getItem('token');
+    if (!token) { setUser(null); return null; }
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    meInFlight = api.get("/auth/me").then(res => {
+      const u = res.data;
+      const newUser: User = {
+        id: u.id,
+        email: u.email,
+        phone: u.phone,
+        firstName: u.first_name || u.firstName || "",
+        lastName: u.last_name || u.lastName || "",
+        role: u.role,
+        capabilities: u.capabilities || [],
+        tenant_id: u.tenant_id,
+      };
+      setUser(newUser);
+      try { localStorage.setItem('cachedRole', newUser.role); } catch { /* ignore */ }
+      lastMeFetch.current = Date.now();
+      return newUser;
+    }).catch(err => {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      if (status === 403) {
+        let email: string | undefined;
+  try { const payload = JSON.parse(atob(token.split('.')[1] || '')) as { sub?: string }; email = payload.sub; } catch { /* ignore decode errors */ }
+        const cachedRole = localStorage.getItem('cachedRole');
+        if (!(cachedRole && ['staff','admin','developer'].includes(cachedRole)) && !window.location.pathname.startsWith('/onboarding')) {
+          navigate('/onboarding', { replace: true, state: { email, fromSocialLogin: true } });
+        }
+      } else {
+        console.error('Failed /auth/me', err);
+        localStorage.removeItem('token');
+        delete api.defaults.headers.common["Authorization"];
+        setUser(null);
+      }
+      return null;
+    }).finally(() => { meInFlight = null; });
+    return meInFlight;
+  };
 
   const login = async (email: string, password: string): Promise<User> => {
     const form = new URLSearchParams();
@@ -152,24 +169,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     const token = res.data.access_token;
     localStorage.setItem("token", token);
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-    const me = await api.get("/auth/me");
-  const u = me.data;
-  // cache role for onboarding bypass logic
-  try { localStorage.setItem('cachedRole', u.role); } catch { /* ignore quota / privacy errors */ }
+    const u = res.data.user; // trust login response
+    try { localStorage.setItem('cachedRole', u.role); } catch { /* ignore */ }
     const newUser: User = {
       id: u.id,
       email: u.email,
-      phone: u.phone,
-      firstName: u.first_name || u.firstName || "",
-      lastName: u.last_name || u.lastName || "",
+      phone: u.phone || "",
+      firstName: u.first_name || "",
+      lastName: u.last_name || "",
       role: u.role,
+      capabilities: Array.isArray((u as { capabilities?: string[] }).capabilities) ? (u as { capabilities?: string[] }).capabilities : [],
+      tenant_id: (u as { tenant_id?: string }).tenant_id,
     };
     setUser(newUser);
-    // If staff/admin, navigate directly to staff dashboard to avoid initial consumer layout flash
-    if (['staff','admin'].includes(newUser.role)) {
-      navigate('/staff/dashboard', { replace: true });
-    }
+    lastMeFetch.current = Date.now();
+  // Role-based post-login navigation
+  if (newUser.role === 'admin') navigate('/admin', { replace: true });
+  else if (newUser.role === 'staff') navigate('/staff/dashboard', { replace: true });
     return newUser;
   };
 
@@ -180,24 +196,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const loginWithToken = async (token: string): Promise<User> => {
-    localStorage.setItem("token", token);
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    const me = await api.get("/auth/me");
-  const u = me.data;
-  try { localStorage.setItem('cachedRole', u.role); } catch { /* ignore */ }
-    const newUser: User = {
-      id: u.id,
-      email: u.email,
-      phone: u.phone,
-      firstName: u.first_name || u.firstName || "",
-      lastName: u.last_name || u.lastName || "",
-      role: u.role,
-    };
-    setUser(newUser);
-    if (['staff','admin'].includes(newUser.role)) {
-      navigate('/staff/dashboard', { replace: true });
-    }
-    return newUser;
+    localStorage.setItem('token', token);
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    const u = await internalFetchMe(true); // force fetch
+    if (!u) throw new Error('Unable to load user');
+  if (u.role === 'admin') navigate('/admin', { replace: true });
+  else if (u.role === 'staff') navigate('/staff/dashboard', { replace: true });
+    return u;
   };
 
   const logout = async () => {
@@ -270,30 +275,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  const refreshUser = async () => {
-    const t = localStorage.getItem("token");
-    if (t) {
-      api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
-      try {
-        const res = await api.get("/auth/me");
-        const u = res.data;
-        setUser({
-          id: u.id,
-          email: u.email,
-          phone: u.phone,
-          firstName: u.first_name || u.firstName || "",
-          lastName: u.last_name || u.lastName || "",
-          role: u.role,
-        });
-  } catch {
-        localStorage.removeItem("token");
-        delete api.defaults.headers.common["Authorization"];
-        setUser(null);
-      }
-    } else {
-      setUser(null);
-    }
-  };
+  const refreshUser = async () => { await internalFetchMe(true); };
 
   // Only render children when loading is false
   if (loading) {

@@ -11,8 +11,12 @@ export const StaffSectionContext = createContext<StaffSectionContextValue>({ sec
 export const StaffSectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
   const section = useMemo(() => {
-    if (!pathname.startsWith('/staff')) return 'dashboard';
-    const parts = pathname.split('/').filter(Boolean); // ['staff','xyz']
+    // Support both /staff/* and /admin/staff/* embedding (admin reuses staff feature pages)
+    if (!(pathname.startsWith('/staff') || pathname.startsWith('/admin/staff'))) return 'dashboard';
+    const parts = pathname.split('/').filter(Boolean); // e.g. ['staff','xyz'] OR ['admin','staff','xyz']
+    if (parts[0] === 'admin') {
+      return parts[2] || 'dashboard';
+    }
     return parts[1] || 'dashboard';
   }, [pathname]);
   return (

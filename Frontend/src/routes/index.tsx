@@ -3,7 +3,13 @@ import React, { Suspense, lazy } from 'react';
 import { useRoutes, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { moduleFlags } from '../config/modules';
 import { useAuth } from '../auth/AuthProvider';
+import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import LoadingFallback from '../components/LoadingFallback';
+// Dev admin area (developer portal)
+import DeveloperAdminApp from '../dev-admin/DeveloperAdminApp';
+import CreateTenant from '../dev-admin/CreateTenant';
+import TenantList from '../dev-admin/TenantList';
+import { RequireDeveloper as DevRequireDeveloper } from '../dev-admin/routeGuard';
 
 // Auth pages (using unified onboarding flow)
 const Signup = lazy(() => import('../features/auth/pages/Signup'));
@@ -37,6 +43,8 @@ const WashHistory = lazy(() => import('../features/staff/pages/WashHistory'));
 const Analytics = lazy(() => import('../features/staff/pages/Analytics'));
 const CustomerAnalytics = lazy(() => import('../features/staff/pages/CustomerAnalytics'));
 const StaffLayout = lazy(() => import('../features/staff/components/StaffLayout'));
+// Staff guard (strict staff only)
+const RequireStaff = lazy(() => import('../components/RequireStaff'));
 
 // Layouts
 const DashboardLayout = lazy(() => import('../components/DashboardLayout'));
@@ -45,11 +53,18 @@ const AdminLayout = lazy(() => import('../components/AdminLayout'));
 // Admin pages
 const AdminWelcome = lazy(() => import('../pages/admin/AdminWelcome'));
 const UsersList = lazy(() => import('../pages/admin/UsersList'));
-const StaffRegisterForm = lazy(() => import('../pages/admin/StaffRegisterForm'));  
 const ModuleSettings = lazy(() => import('../pages/admin/ModuleSettings'));
 const AdminUserEdit = lazy(() => import('../pages/AdminUserEdit'));
 const TenantsList = lazy(() => import('../pages/admin/TenantsList'));
 const TenantEdit = lazy(() => import('../pages/admin/TenantEdit'));
+// Expanded new admin feature scaffold pages
+const AdminOverview = lazy(() => import('../features/admin/pages/Overview'));
+const AdminUsers = lazy(() => import('../features/admin/pages/UsersAdmin'));
+const BrandingPage = lazy(() => import('../pages/admin/BrandingPage'));
+const AdminTenantSettings = lazy(() => import('../features/admin/pages/TenantSettings'));
+const AdminAuditLogs = lazy(() => import('../features/admin/pages/AuditLogs'));
+const AdminJobsMonitor = lazy(() => import('../features/admin/pages/JobsMonitor'));
+const AdminRateLimitEditor = lazy(() => import('../features/admin/pages/RateLimitEditor'));
 
 // Route guards
 function RequireAuth() {
@@ -59,12 +74,12 @@ function RequireAuth() {
   return <Outlet />;
 }
 
-function RequireDeveloper() {
+function RequireAdmin() {
   const { user, loading } = useAuth();
+  const { has } = useCapabilities();
   if (loading) return <LoadingFallback message="Loading…" />;
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (!has('tenant.edit')) return <Navigate to="/" replace />;
   return <Outlet />;
 }
 
@@ -102,18 +117,18 @@ const AppRoutes: React.FC = () => {
             enableOrders && { path: '/past-orders', element: <PastOrders /> },
           ].filter(Boolean),
         },
-        // Staff Routes with StaffLayout
+        // Staff Routes: now strictly staff only; admins redirected to /admin
         {
           path: '/staff',
-          element: <StaffLayout />,
+          element: <RequireStaff><StaffLayout /></RequireStaff>,
           children: [
-            { path: '/staff/dashboard', element: <ModernStaffDashboard /> },
-            { path: '/staff/vehicle-manager', element: <VehicleManager /> },
-            { path: '/staff/wash-history', element: <WashHistory /> },
-            enablePayments && { path: '/staff/payment', element: <PaymentVerification /> },
-            { path: '/staff/analytics', element: <Analytics /> },
-            { path: '/staff/customer-analytics', element: <CustomerAnalytics /> },
-            { path: '/staff/manual-visit', element: <ManualVisitLogger /> },
+            { path: 'dashboard', element: <ModernStaffDashboard /> },
+            { path: 'vehicle-manager', element: <VehicleManager /> },
+            { path: 'wash-history', element: <WashHistory /> },
+            enablePayments && { path: 'payment', element: <PaymentVerification /> },
+            { path: 'analytics', element: <Analytics /> },
+            { path: 'customer-analytics', element: <CustomerAnalytics /> },
+            { path: 'manual-visit', element: <ManualVisitLogger /> },
           ].filter(Boolean),
         },
       ],
@@ -122,18 +137,48 @@ const AppRoutes: React.FC = () => {
     // ADMIN ROUTES
     {
       path: '/admin',
-      element: <RequireDeveloper />,
+      element: <RequireAdmin />,
       children: [
         {
           element: <AdminLayout />,
           children: [
             { index: true, element: <AdminWelcome /> },
+            { path: 'overview', element: <AdminOverview /> },
+            { path: 'users-admin', element: <AdminUsers /> },
+            { path: 'branding', element: <BrandingPage /> },
+            { path: 'tenant-settings', element: <AdminTenantSettings /> },
+            { path: 'audit', element: <AdminAuditLogs /> },
+            { path: 'jobs', element: <AdminJobsMonitor /> },
+            { path: 'rate-limits', element: <AdminRateLimitEditor /> },
             { path: 'users', element: <UsersList /> },
-            { path: 'register-staff', element: <StaffRegisterForm /> },
+            { path: 'register-staff', element: <Navigate to='users-admin?registerStaff=1' replace /> },
             { path: 'users/:userId/edit', element: <AdminUserEdit /> },
             { path: 'modules', element: <ModuleSettings /> },
             { path: 'tenants', element: <TenantsList /> },
             { path: 'tenants/:tenantId/edit', element: <TenantEdit /> },
+            // Embed staff feature pages under /admin/staff/* so admins can access unified UI superset
+            { path: 'staff/dashboard', element: <ModernStaffDashboard /> },
+            { path: 'staff/vehicle-manager', element: <VehicleManager /> },
+            { path: 'staff/wash-history', element: <WashHistory /> },
+            enablePayments && { path: 'staff/payment', element: <PaymentVerification /> },
+            { path: 'staff/analytics', element: <Analytics /> },
+            { path: 'staff/customer-analytics', element: <CustomerAnalytics /> },
+            { path: 'staff/manual-visit', element: <ManualVisitLogger /> },
+          ],
+        },
+      ],
+    },
+
+    // DEVELOPER ADMIN PORTAL (separate from standard /admin)
+    {
+      path: '/dev-admin',
+  element: <DevRequireDeveloper><Outlet /></DevRequireDeveloper>,
+      children: [
+        {
+          element: <DeveloperAdminApp />, // provides its own layout + <Outlet/>
+          children: [
+            { path: 'tenants', element: <TenantList /> },
+            { path: 'create', element: <CreateTenant /> },
           ],
         },
       ],

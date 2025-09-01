@@ -17,3 +17,4 @@ sqlalchemy
 uvicorn[standard]
 PyJWT
 firebase-admin
+Pillow

@@ -6,7 +6,8 @@ from app.models import Tenant, User, VerticalType, TenantBranding
 from app.plugins.auth.routes import require_admin, get_current_user
 from pydantic import BaseModel
 from typing import List, Optional
-import os, pathlib, shutil
+import os, pathlib, shutil, io, hashlib
+from PIL import Image
 from uuid import uuid4
 from datetime import datetime, timedelta
 from pydantic import EmailStr
@@ -89,6 +90,8 @@ class BrandingAssetUploadOut(BaseModel):
     url: str
     size: int
     content_type: Optional[str]
+    variants: Optional[dict] = None  # size label -> url
+    etag: Optional[str] = None
 
 # CRUD Endpoints
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
@@ -211,14 +214,43 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
         'image/x-icon': '.ico'
     }.get(file.content_type, '')
     # Deterministic filename for cache busting using content hash
-    import hashlib
     digest = hashlib.sha256(raw).hexdigest()[:16]
-    fname = f"{field}-{digest}{ext}"
     dest_dir = _branding_asset_dir(tenant_id)
-    dest_path = dest_dir / fname
+    base_name = f"{field}-{digest}"
+    primary_fname = f"{base_name}{ext}"
+    dest_path = dest_dir / primary_fname
     with open(dest_path, 'wb') as out:
         out.write(raw)
-    rel_url = f"/static/branding/{tenant_id}/{fname}"
+
+    variants = {}
+    # Generate responsive sizes for logos (png/jpeg) excluding svg/ico
+    if file.content_type in {'image/png', 'image/jpeg'} and field in {'logo_light','logo_dark','app_icon'}:
+        try:
+            img = Image.open(io.BytesIO(raw))
+            for size in [64, 128, 256]:
+                resized = img.copy()
+                resized.thumbnail((size, size))
+                variant_name = f"{base_name}-{size}{ext}"
+                variant_path = dest_dir / variant_name
+                resized.save(variant_path)
+                variants[str(size)] = f"/static/branding/{tenant_id}/{variant_name}"
+        except Exception:
+            pass  # non-fatal
+
+    # Favicon conversions (derive .ico if uploading png larger than 32x32 and field favicon or app_icon)
+    if field in {'favicon','app_icon'} and file.content_type in {'image/png','image/jpeg'}:
+        try:
+            img = Image.open(io.BytesIO(raw))
+            favicon_sizes = [(16,16),(32,32),(48,48)]
+            ico_name = f"{base_name}.ico"
+            ico_path = dest_dir / ico_name
+            img.save(ico_path, sizes=favicon_sizes)
+            variants['ico'] = f"/static/branding/{tenant_id}/{ico_name}"
+        except Exception:
+            pass
+
+    rel_url = f"/static/branding/{tenant_id}/{primary_fname}"
+    etag = digest
     # Upsert branding record + set appropriate URL field
     b = db.query(TenantBranding).filter_by(tenant_id=tenant_id).first()
     created = False
@@ -228,9 +260,9 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
         created = True
     setattr(b, ALLOWED_BRANDING_FIELDS[field], rel_url)
     db.commit(); db.refresh(b)
-    record('tenant.branding.asset_upload', tenant_id=tenant_id, user_id=current.id, details={'field': field, 'size': len(raw), 'created': created})
+    record('tenant.branding.asset_upload', tenant_id=tenant_id, user_id=current.id, details={'field': field, 'size': len(raw), 'created': created, 'variants': list(variants.keys())})
     flush(db)
-    return BrandingAssetUploadOut(field=field, url=rel_url, size=len(raw), content_type=file.content_type)
+    return BrandingAssetUploadOut(field=field, url=rel_url, size=len(raw), content_type=file.content_type, variants=variants or None, etag=etag)
 
 @router.get("", response_model=List[TenantOut])
 def list_tenants(db: Session = Depends(get_db)):

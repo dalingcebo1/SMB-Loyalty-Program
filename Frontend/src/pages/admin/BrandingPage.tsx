@@ -93,6 +93,8 @@ const BrandingPage: React.FC = () => {
       };
       const k = mapping[field];
       setForm(f => ({ ...f, [k]: data.url }));
+  // Trigger global theme refresh so new favicon/colors propagate
+  window.dispatchEvent(new Event('tenant-theme:refresh'));
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {

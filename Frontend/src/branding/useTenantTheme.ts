@@ -16,25 +16,29 @@ export function useTenantTheme() {
   const [theme, setTheme] = useState<TenantTheme | null>(null);
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/public/tenant-theme')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!cancelled && data) {
-          setTheme(data);
-          const root = document.documentElement;
-          if (data.primary_color) root.style.setProperty('--color-primary', data.primary_color);
-          if (data.accent_color) root.style.setProperty('--color-accent', data.accent_color || data.primary_color);
-          // swap favicon if provided
-          if (data.favicon_url) {
-            const existing = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-            if (existing) existing.href = data.favicon_url; else {
-              const link = document.createElement('link');
-              link.rel = 'icon'; link.href = data.favicon_url; document.head.appendChild(link);
+    const load = () => {
+      fetch('/api/public/tenant-theme')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!cancelled && data) {
+            setTheme(data);
+            const root = document.documentElement;
+            if (data.primary_color) root.style.setProperty('--color-primary', data.primary_color);
+            if (data.accent_color) root.style.setProperty('--color-accent', data.accent_color || data.primary_color);
+            if (data.favicon_url) {
+              const existing = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+              if (existing) existing.href = data.favicon_url; else {
+                const link = document.createElement('link');
+                link.rel = 'icon'; link.href = data.favicon_url; document.head.appendChild(link);
+              }
             }
           }
-        }
-      })
-      .catch(()=>{});
+        })
+        .catch(()=>{});
+    };
+    load();
+    const handler = () => load();
+    window.addEventListener('tenant-theme:refresh', handler);
     return () => { cancelled = true; };
   }, []);
   return theme;

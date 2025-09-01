@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 from fastapi.encoders import jsonable_encoder
 import time, hashlib, json
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -36,7 +37,15 @@ app = FastAPI(
 )  # allow automatic redirects on trailing slash
 
 # Mount static directory (branding assets & SPA build output) early
-app.mount("/static", StaticFiles(directory=settings.static_dir or "static"), name="static")
+class BrandingStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):  # override to inject cache headers
+        resp: Response = await super().get_response(path, scope)
+        # Long cache for branding hashed assets
+        if path.startswith('branding/'):
+            resp.headers.setdefault('Cache-Control', 'public, max-age=31536000, immutable')
+        return resp
+
+app.mount("/static", BrandingStaticFiles(directory=settings.static_dir or "static"), name="static")
 
 # Middleware to add request timing header
 class TimingMiddleware(BaseHTTPMiddleware):

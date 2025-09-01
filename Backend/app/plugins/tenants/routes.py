@@ -8,6 +8,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os, pathlib, shutil, io, hashlib
 from PIL import Image
+from app.core import jobs
+from time import time
 from uuid import uuid4
 from datetime import datetime, timedelta
 from pydantic import EmailStr
@@ -191,6 +193,20 @@ ALLOWED_BRANDING_FIELDS = {
 
 MAX_UPLOAD_BYTES = 512 * 1024  # 512 KB per asset (initial conservative cap)
 ALLOWED_CONTENT_TYPES = {'image/png', 'image/jpeg', 'image/svg+xml', 'image/x-icon'}
+MAGIC_SIGNATURES = {
+    b"\x89PNG\r\n\x1a\n": 'image/png',
+    b"\xff\xd8\xff": 'image/jpeg',  # JPEG start
+    b"<svg": 'image/svg+xml',
+    b"GIF87a": 'image/gif',  # not allowed but we detect to reject explicitly
+    b"GIF89a": 'image/gif',
+}
+
+# Simple in-memory per-tenant upload counters (reset on process restart)
+_UPLOAD_QUOTA = {}
+UPLOAD_QUOTA_COUNT = 20  # max assets per tenant per process lifetime (simplistic)
+UPLOAD_RATE_WINDOW = 60
+UPLOAD_RATE_MAX = 10  # per-minute simple rate limit
+_RATE_BUCKET = {}  # tenant_id -> list[timestamps]
 
 def _branding_asset_dir(tenant_id: str) -> pathlib.Path:
     base = pathlib.Path(settings.static_dir or 'static') / 'branding' / tenant_id
@@ -206,6 +222,33 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
         raise HTTPException(status_code=413, detail='File too large')
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail='Unsupported content type')
+    # Magic byte validation (best-effort)
+    sample = raw[:16]
+    detected = None
+    for sig, mtype in MAGIC_SIGNATURES.items():
+        if sample.startswith(sig):
+            detected = mtype
+            break
+    if detected == 'image/gif':  # explicitly reject gifs for now
+        raise HTTPException(status_code=400, detail='GIF not supported')
+    if detected and detected != file.content_type and detected in ALLOWED_CONTENT_TYPES:
+        # Adjust (eg: some browsers send image/svg+xml with xml declaration) accept; else mismatch
+        file.content_type = detected
+    elif detected is None and file.content_type != 'image/svg+xml':
+        # Basic safeguard; allow svg textual without strict signature
+        raise HTTPException(status_code=400, detail='Unrecognized image format')
+
+    # Quota enforcement
+    count = _UPLOAD_QUOTA.get(tenant_id, 0)
+    if count >= UPLOAD_QUOTA_COUNT:
+        raise HTTPException(status_code=429, detail='Upload quota exceeded')
+    # Rate limiting (sliding window)
+    now = time()
+    bucket = _RATE_BUCKET.setdefault(tenant_id, [])
+    bucket[:] = [t for t in bucket if now - t < UPLOAD_RATE_WINDOW]
+    if len(bucket) >= UPLOAD_RATE_MAX:
+        raise HTTPException(status_code=429, detail='Upload rate exceeded')
+    bucket.append(now)
     # Basic extension mapping
     ext = {
         'image/png': '.png',
@@ -223,19 +266,36 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
         out.write(raw)
 
     variants = {}
-    # Generate responsive sizes for logos (png/jpeg) excluding svg/ico
-    if file.content_type in {'image/png', 'image/jpeg'} and field in {'logo_light','logo_dark','app_icon'}:
+    def _process_variants(payload):  # executed in job queue
         try:
             img = Image.open(io.BytesIO(raw))
             for size in [64, 128, 256]:
-                resized = img.copy()
-                resized.thumbnail((size, size))
-                variant_name = f"{base_name}-{size}{ext}"
-                variant_path = dest_dir / variant_name
-                resized.save(variant_path)
-                variants[str(size)] = f"/static/branding/{tenant_id}/{variant_name}"
+                try:
+                    resized = img.copy()
+                    resized.thumbnail((size, size))
+                    variant_name = f"{base_name}-{size}{ext}"
+                    variant_path = dest_dir / variant_name
+                    resized.save(variant_path)
+                except Exception:
+                    continue
         except Exception:
-            pass  # non-fatal
+            return {'ok': False}
+        return {'ok': True}
+
+    # For large files (>100KB) offload variant generation; else inline
+    if file.content_type in {'image/png', 'image/jpeg'} and field in {'logo_light','logo_dark','app_icon'}:
+        if len(raw) > 100 * 1024:
+            try:
+                jobs.register_job(f"branding_variants_{field}", _process_variants)
+            except Exception:
+                pass
+            jobs.enqueue(f"branding_variants_{field}")
+        else:
+            _process_variants(None)
+        # Populate variant URLs regardless (may exist shortly after)
+        for size in [64,128,256]:
+            variant_name = f"{base_name}-{size}{ext}"
+            variants[str(size)] = f"/static/branding/{tenant_id}/{variant_name}"
 
     # Favicon conversions (derive .ico if uploading png larger than 32x32 and field favicon or app_icon)
     if field in {'favicon','app_icon'} and file.content_type in {'image/png','image/jpeg'}:
@@ -260,6 +320,7 @@ def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(..
         created = True
     setattr(b, ALLOWED_BRANDING_FIELDS[field], rel_url)
     db.commit(); db.refresh(b)
+    _UPLOAD_QUOTA[tenant_id] = count + 1
     record('tenant.branding.asset_upload', tenant_id=tenant_id, user_id=current.id, details={'field': field, 'size': len(raw), 'created': created, 'variants': list(variants.keys())})
     flush(db)
     return BrandingAssetUploadOut(field=field, url=rel_url, size=len(raw), content_type=file.content_type, variants=variants or None, etag=etag)

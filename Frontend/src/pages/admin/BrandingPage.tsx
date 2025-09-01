@@ -31,6 +31,7 @@ const BrandingPage: React.FC = () => {
   const [previewKey, setPreviewKey] = useState(0); // trigger color preview re-render
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lastVariants, setLastVariants] = useState<Record<string,string>|null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +93,8 @@ const BrandingPage: React.FC = () => {
         app_icon: 'app_icon_url'
       };
       const k = mapping[field];
-      setForm(f => ({ ...f, [k]: data.url }));
+  setForm(f => ({ ...f, [k]: data.url }));
+  if (data.variants) setLastVariants(data.variants);
   // Trigger global theme refresh so new favicon/colors propagate
   window.dispatchEvent(new Event('tenant-theme:refresh'));
     } catch (err) {
@@ -185,6 +187,19 @@ const BrandingPage: React.FC = () => {
             </div>
             {uploading && <div className="text-xs text-blue-600">Uploading {uploading}…</div>}
             {uploadError && <div className="text-xs text-red-600">{uploadError}</div>}
+            {lastVariants && (
+              <div className="pt-2 border-t mt-2">
+                <div className="text-xs font-medium text-gray-600 mb-1">Generated Variants</div>
+                <div className="flex flex-wrap gap-4">
+                  {Object.entries(lastVariants).map(([k,url]) => (
+                    <div key={k} className="flex flex-col items-center gap-1">
+                      <img src={url} alt={k} className="h-12 w-12 object-contain border rounded bg-white" />
+                      <span className="text-[10px] text-gray-500">{k}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
           <div className="flex justify-end">
             <button disabled={!canEdit || saving} className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-500 disabled:opacity-50">

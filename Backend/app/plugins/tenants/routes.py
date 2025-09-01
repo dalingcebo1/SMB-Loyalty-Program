@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Tenant, User, VerticalType
+from app.models import Tenant, User, VerticalType, TenantBranding
 from app.plugins.auth.routes import require_admin, get_current_user
 from pydantic import BaseModel
 from typing import List, Optional
+import os, pathlib, shutil
 from uuid import uuid4
 from datetime import datetime, timedelta
 from pydantic import EmailStr
@@ -55,6 +56,40 @@ class TenantOut(BaseModel):
 class AdminAssign(BaseModel):
     user_id: int
 
+class BrandingOut(BaseModel):
+    public_name: Optional[str]
+    short_name: Optional[str]
+    primary_color: Optional[str]
+    secondary_color: Optional[str]
+    accent_color: Optional[str]
+    logo_light_url: Optional[str]
+    logo_dark_url: Optional[str]
+    favicon_url: Optional[str]
+    app_icon_url: Optional[str]
+    support_email: Optional[str]
+    support_phone: Optional[str]
+    extra: dict
+
+class BrandingUpdate(BaseModel):
+    public_name: Optional[str] = None
+    short_name: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    accent_color: Optional[str] = None
+    logo_light_url: Optional[str] = None
+    logo_dark_url: Optional[str] = None
+    favicon_url: Optional[str] = None
+    app_icon_url: Optional[str] = None
+    support_email: Optional[str] = None
+    support_phone: Optional[str] = None
+    extra: Optional[dict] = None
+
+class BrandingAssetUploadOut(BaseModel):
+    field: str
+    url: str
+    size: int
+    content_type: Optional[str]
+
 # CRUD Endpoints
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 def create_tenant(payload: TenantCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -89,6 +124,113 @@ def create_tenant(payload: TenantCreate, db: Session = Depends(get_db), current:
         admin_ids=[u.id for u in tenant.admins],
         config=tenant.config or {},
     )
+
+# ─── Branding Endpoints ───────────────────────────────────────────────────
+@router.get('/{tenant_id}/branding', response_model=BrandingOut)
+def get_branding(tenant_id: str, db: Session = Depends(get_db)):
+    b = db.query(TenantBranding).filter_by(tenant_id=tenant_id).first()
+    if not b:
+        return BrandingOut(public_name=None, short_name=None, primary_color=None, secondary_color=None, accent_color=None,
+                           logo_light_url=None, logo_dark_url=None, favicon_url=None, app_icon_url=None,
+                           support_email=None, support_phone=None, extra={})
+    return BrandingOut(
+        public_name=b.public_name,
+        short_name=b.short_name,
+        primary_color=b.primary_color,
+        secondary_color=b.secondary_color,
+        accent_color=b.accent_color,
+        logo_light_url=b.logo_light_url,
+        logo_dark_url=b.logo_dark_url,
+        favicon_url=b.favicon_url,
+        app_icon_url=b.app_icon_url,
+        support_email=b.support_email,
+        support_phone=b.support_phone,
+        extra=b.extra or {},
+    )
+
+@router.put('/{tenant_id}/branding', response_model=BrandingOut)
+def update_branding(tenant_id: str, payload: BrandingUpdate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    b = db.query(TenantBranding).filter_by(tenant_id=tenant_id).first()
+    created = False
+    if not b:
+        b = TenantBranding(tenant_id=tenant_id)
+        db.add(b)
+        created = True
+    data = payload.dict(exclude_unset=True)
+    for k,v in data.items():
+        setattr(b, k, v)
+    db.commit(); db.refresh(b)
+    record('tenant.branding.create' if created else 'tenant.branding.update', tenant_id=tenant_id, user_id=current.id, details={'fields': list(data.keys())})
+    flush(db)
+    return BrandingOut(
+        public_name=b.public_name,
+        short_name=b.short_name,
+        primary_color=b.primary_color,
+        secondary_color=b.secondary_color,
+        accent_color=b.accent_color,
+        logo_light_url=b.logo_light_url,
+        logo_dark_url=b.logo_dark_url,
+        favicon_url=b.favicon_url,
+        app_icon_url=b.app_icon_url,
+        support_email=b.support_email,
+        support_phone=b.support_phone,
+        extra=b.extra or {},
+    )
+
+
+# ─── Asset Upload (Phase 3) ────────────────────────────────────────────────
+ALLOWED_BRANDING_FIELDS = {
+    'logo_light': 'logo_light_url',
+    'logo_dark': 'logo_dark_url',
+    'favicon': 'favicon_url',
+    'app_icon': 'app_icon_url',
+}
+
+MAX_UPLOAD_BYTES = 512 * 1024  # 512 KB per asset (initial conservative cap)
+ALLOWED_CONTENT_TYPES = {'image/png', 'image/jpeg', 'image/svg+xml', 'image/x-icon'}
+
+def _branding_asset_dir(tenant_id: str) -> pathlib.Path:
+    base = pathlib.Path(settings.static_dir or 'static') / 'branding' / tenant_id
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+@router.post('/{tenant_id}/branding/assets/{field}', response_model=BrandingAssetUploadOut)
+def upload_branding_asset(tenant_id: str, field: str, file: UploadFile = File(...), db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    if field not in ALLOWED_BRANDING_FIELDS:
+        raise HTTPException(status_code=400, detail='Unsupported branding asset field')
+    raw = file.file.read()
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail='File too large')
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail='Unsupported content type')
+    # Basic extension mapping
+    ext = {
+        'image/png': '.png',
+        'image/jpeg': '.jpg',
+        'image/svg+xml': '.svg',
+        'image/x-icon': '.ico'
+    }.get(file.content_type, '')
+    # Deterministic filename for cache busting using content hash
+    import hashlib
+    digest = hashlib.sha256(raw).hexdigest()[:16]
+    fname = f"{field}-{digest}{ext}"
+    dest_dir = _branding_asset_dir(tenant_id)
+    dest_path = dest_dir / fname
+    with open(dest_path, 'wb') as out:
+        out.write(raw)
+    rel_url = f"/static/branding/{tenant_id}/{fname}"
+    # Upsert branding record + set appropriate URL field
+    b = db.query(TenantBranding).filter_by(tenant_id=tenant_id).first()
+    created = False
+    if not b:
+        b = TenantBranding(tenant_id=tenant_id)
+        db.add(b)
+        created = True
+    setattr(b, ALLOWED_BRANDING_FIELDS[field], rel_url)
+    db.commit(); db.refresh(b)
+    record('tenant.branding.asset_upload', tenant_id=tenant_id, user_id=current.id, details={'field': field, 'size': len(raw), 'created': created})
+    flush(db)
+    return BrandingAssetUploadOut(field=field, url=rel_url, size=len(raw), content_type=file.content_type)
 
 @router.get("", response_model=List[TenantOut])
 def list_tenants(db: Session = Depends(get_db)):

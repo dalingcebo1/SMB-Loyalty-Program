@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     default_tenant: str = "default"
     price_csv_url: Optional[str] = None
     google_application_credentials: Optional[str] = None
+    # Directory for serving static assets (branding uploads, compiled frontend)
+    static_dir: str = Field("static", env="STATIC_DIR")
 
     # --- Rate limiting / jobs / observability (prod-oriented) ---
     rate_limit_public_meta_capacity: int = Field(60, env="RATE_LIMIT_PUBLIC_META_CAPACITY")
@@ -32,6 +34,17 @@ class Settings(BaseSettings):
     enable_rate_limit_penalties: bool = Field(True, env="ENABLE_RATE_LIMIT_PENALTIES")
     enable_job_queue: bool = Field(False, env="ENABLE_JOB_QUEUE")  # in-process queue generally off in prod
     enable_metrics_endpoint: bool = Field(True, env="ENABLE_METRICS")
+
+    # --- Dev / safety feature flags ---
+    environment: str = Field("development", env="ENVIRONMENT")  # e.g. development|staging|production
+    enable_dev_dangerous: bool = Field(True, env="ENABLE_DEV_DANGEROUS")  # master switch for destructive ops
+    enable_dev_jobs: bool = Field(True, env="ENABLE_DEV_JOBS")
+    enable_dev_rate_limits: bool = Field(True, env="ENABLE_DEV_RATE_LIMITS")
+    enable_dev_audit_view: bool = Field(True, env="ENABLE_DEV_AUDIT_VIEW")
+
+    def dangerous_allowed(self) -> bool:
+        """Return True if destructive dev endpoints are permitted in this environment."""
+        return self.enable_dev_dangerous and self.environment != "production"
 
     class Config:
         env_file = ".env"

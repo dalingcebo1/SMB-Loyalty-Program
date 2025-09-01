@@ -1,12 +1,13 @@
 # backend/main.py
 
 from config import settings
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.encoders import jsonable_encoder
-import time
+import time, hashlib, json
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Explicitly import each router
@@ -17,14 +18,25 @@ from app.plugins.loyalty.routes import router as loyalty_router
 from app.plugins.orders.routes  import router as orders_router
 from app.plugins.payments.routes import router as payments_router
 from app.plugins.tenants.routes import router as tenants_router
-from app.plugins.dev.routes     import router as dev_router
+from app.plugins.dev            import router as dev_router
 from app.plugins.analytics.routes import router as analytics_router
+from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
+from app.core.rate_limit import check_rate, compute_retry_after, build_429_payload
+from app.core.rate_limit import bucket_snapshot  # used elsewhere optionally
+from app.core.rate_limit import set_limit  # future use
+from sqlalchemy.orm import Session
+from fastapi.responses import JSONResponse
+from app.core.database import get_db
+from app.models import TenantBranding, Tenant as _Tenant
 
 app = FastAPI(
     title="SMB Loyalty Program",
     version="0.1",
     openapi_url="/api/openapi.json",
 )  # allow automatic redirects on trailing slash
+
+# Mount static directory (branding assets & SPA build output) early
+app.mount("/static", StaticFiles(directory=settings.static_dir or "static"), name="static")
 
 # Middleware to add request timing header
 class TimingMiddleware(BaseHTTPMiddleware):
@@ -71,9 +83,101 @@ for prefix, router in [
 ]:
     app.include_router(router, prefix=prefix)
 
+# ─── Public Tenant Metadata Endpoint (moved here from legacy app/main.py) ───
+# NOTE: The project contains two FastAPI entrypoints (app/main.py and main.py).
+# Running `uvicorn main:app` (as done in development) loads THIS file, so routes
+# must be defined here. The /api/public/tenant-meta route previously lived only
+# in app/main.py causing 404s. We replicate its logic here to restore parity.
+
+def _etag_for(data: dict) -> str:
+    dumped = json.dumps(data, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(dumped).hexdigest()[:16]
+
+def _ip_key(request: Request) -> str:
+    return (request.client.host if request.client else 'unknown')
+
+@app.get("/api/public/tenant-meta")
+def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant_context)):
+    """Public discovery endpoint for frontend.
+
+    Returns lightweight tenant metadata (vertical, features, branding) resolved
+    from Host header or X-Tenant-ID. Includes ETag + 60s public cache and a
+    simple IP-based rate limit (capacity/window via settings).
+    """
+    from config import settings as _settings  # local import to avoid circulars
+    ip_key = _ip_key(request)
+    scope_name = "ip_public_meta"
+    cap = _settings.rate_limit_public_meta_capacity
+    win = _settings.rate_limit_public_meta_window_seconds
+    if not check_rate(scope=scope_name, key=ip_key, capacity=cap, per_seconds=win):
+        retry_after = compute_retry_after(scope_name, ip_key, cap, win)
+        payload = build_429_payload(scope_name, retry_after, detail="Rate limit exceeded")
+        resp = JSONResponse(status_code=429, content=payload)
+        if retry_after:
+            resp.headers["Retry-After"] = f"{int(retry_after)}"
+        return resp
+    # Expose tenant id to logging middleware (if present there)
+    request.state.tenant_id = ctx.id
+    data = tenant_meta_dict(ctx)
+    etag = _etag_for(data)
+    inm = request.headers.get('if-none-match')
+    if inm == etag:
+        from fastapi import Response
+        resp = Response(status_code=304)
+        resp.headers['ETag'] = etag
+        resp.headers['Cache-Control'] = 'public, max-age=60'
+        return resp
+    resp = JSONResponse(content=data)
+    resp.headers['Cache-Control'] = 'public, max-age=60'
+    resp.headers['ETag'] = etag
+    return resp
+
+@app.get('/api/public/tenant-theme')
+def public_tenant_theme(request: Request, ctx: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
+    """Lightweight branding/theme info for white-label bootstrap.
+
+    Returns minimal fields required to paint initial shell (colors + logos).
+    Cached similarly to /api/public/tenant-meta.
+    """
+    branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
+    tenant = db.query(_Tenant).filter_by(id=ctx.id).first()
+    data = {
+        'tenant_id': ctx.id,
+        'public_name': (branding.public_name if branding else None) or (tenant.name if tenant else None),
+        'short_name': branding.short_name if branding else None,
+        'primary_color': (branding.primary_color if branding else None) or (tenant.theme_color if tenant else None),
+        'secondary_color': branding.secondary_color if branding else None,
+        'accent_color': branding.accent_color if branding else None,
+        'logo_light_url': branding.logo_light_url if branding else None,
+        'logo_dark_url': branding.logo_dark_url if branding else None,
+        'favicon_url': branding.favicon_url if branding else None,
+    }
+    return data
+
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")
 def on_startup():
     # Create tables using shared Base and engine from the app core
     from app.core.database import Base, engine
     Base.metadata.create_all(bind=engine)
+    # Ensure default tenant exists so public meta endpoint works in dev without manual seeding
+    from sqlalchemy.orm import Session as _Session
+    from sqlalchemy import select as _select
+    from app.models import Tenant
+    from config import settings as _settings
+    if _settings.default_tenant:
+        with _Session(bind=engine) as _db:
+            exists = _db.execute(_select(Tenant).where(Tenant.id == _settings.default_tenant)).scalar_one_or_none()
+            if not exists:
+                t = Tenant(
+                    id=_settings.default_tenant,
+                    name="Default Tenant",
+                    loyalty_type="basic",
+                    vertical_type="carwash",
+                    config={"features": {}, "branding": {"primaryColor": "#3366ff"}},
+                )
+                _db.add(t)
+                try:
+                    _db.commit()
+                except Exception:
+                    _db.rollback()

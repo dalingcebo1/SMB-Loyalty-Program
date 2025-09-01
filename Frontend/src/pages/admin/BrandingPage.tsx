@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, ChangeEvent } from 'react';
 import api from '../../api/api';
 import { useCapabilities } from '../../features/admin/hooks/useCapabilities';
 
@@ -29,6 +29,8 @@ const BrandingPage: React.FC = () => {
   const [form, setForm] = useState<BrandingForm>(empty);
   const tenantId = 'default'; // TODO: derive from auth/tenant context
   const [previewKey, setPreviewKey] = useState(0); // trigger color preview re-render
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +70,36 @@ const BrandingPage: React.FC = () => {
       <span className="text-gray-600">{label}</span>
     </div>
   );
+
+  const handleFile = async (field: 'logo_light'|'logo_dark'|'favicon'|'app_icon', e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    setUploading(field);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/tenants/${tenantId}/branding/assets/${field}`, { method: 'POST', body: formData, headers: { 'Authorization': localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : '' }});
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Upload failed');
+      }
+      const data = await res.json();
+      const mapping: Record<string, keyof BrandingForm> = {
+        logo_light: 'logo_light_url',
+        logo_dark: 'logo_dark_url',
+        favicon: 'favicon_url',
+        app_icon: 'app_icon_url'
+      };
+      const k = mapping[field];
+      setForm(f => ({ ...f, [k]: data.url }));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(null);
+      e.target.value = '';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -129,12 +161,28 @@ const BrandingPage: React.FC = () => {
                 </label>
               ))}
             </div>
+            <div className="grid gap-4 md:grid-cols-2 pt-2">
+              <label className="text-xs font-medium text-gray-600">Upload Light Logo
+                <input type="file" accept="image/*" disabled={!canEdit || uploading==='logo_light'} onChange={e=>handleFile('logo_light', e)} className="mt-1 block w-full text-xs" />
+              </label>
+              <label className="text-xs font-medium text-gray-600">Upload Dark Logo
+                <input type="file" accept="image/*" disabled={!canEdit || uploading==='logo_dark'} onChange={e=>handleFile('logo_dark', e)} className="mt-1 block w-full text-xs" />
+              </label>
+              <label className="text-xs font-medium text-gray-600">Upload Favicon
+                <input type="file" accept="image/*,.ico" disabled={!canEdit || uploading==='favicon'} onChange={e=>handleFile('favicon', e)} className="mt-1 block w-full text-xs" />
+              </label>
+              <label className="text-xs font-medium text-gray-600">Upload App Icon
+                <input type="file" accept="image/*" disabled={!canEdit || uploading==='app_icon'} onChange={e=>handleFile('app_icon', e)} className="mt-1 block w-full text-xs" />
+              </label>
+            </div>
             <div className="flex flex-wrap gap-6 text-xs text-gray-500">
               {form.logo_light_url && <span>Light Logo ✓</span>}
               {form.logo_dark_url && <span>Dark Logo ✓</span>}
               {form.favicon_url && <span>Favicon ✓</span>}
               {form.app_icon_url && <span>App Icon ✓</span>}
             </div>
+            {uploading && <div className="text-xs text-blue-600">Uploading {uploading}…</div>}
+            {uploadError && <div className="text-xs text-red-600">{uploadError}</div>}
           </section>
           <div className="flex justify-end">
             <button disabled={!canEdit || saving} className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-500 disabled:opacity-50">

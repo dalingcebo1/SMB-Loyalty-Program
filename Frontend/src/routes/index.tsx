@@ -61,6 +61,7 @@ const TenantEdit = lazy(() => import('../pages/admin/TenantEdit'));
 const AdminOverview = lazy(() => import('../features/admin/pages/Overview'));
 const AdminUsers = lazy(() => import('../features/admin/pages/UsersAdmin'));
 const BrandingPage = lazy(() => import('../pages/admin/BrandingPage'));
+const InventoryPage = lazy(() => import('../pages/admin/InventoryPage'));
 const AdminTenantSettings = lazy(() => import('../features/admin/pages/TenantSettings'));
 const AdminAuditLogs = lazy(() => import('../features/admin/pages/AuditLogs'));
 const AdminJobsMonitor = lazy(() => import('../features/admin/pages/JobsMonitor'));
@@ -146,6 +147,7 @@ const AppRoutes: React.FC = () => {
             { path: 'overview', element: <AdminOverview /> },
             { path: 'users-admin', element: <AdminUsers /> },
             { path: 'branding', element: <BrandingPage /> },
+            { path: 'inventory', element: <InventoryPage /> },
             { path: 'tenant-settings', element: <AdminTenantSettings /> },
             { path: 'audit', element: <AdminAuditLogs /> },
             { path: 'jobs', element: <AdminJobsMonitor /> },

@@ -41,6 +41,7 @@ export const adminNavGroups: NavGroup[] = [
   { key: 'branding', label: 'Branding', path: '/admin/branding', cap: 'tenant.edit' },
       { key: 'tenant-settings', label: 'Tenant Settings', path: '/admin/tenant-settings', cap: 'tenant.edit' },
       { key: 'modules', label: 'Modules', path: '/admin/modules', cap: 'services.manage' },
+      { key: 'inventory', label: 'Inventory', path: '/admin/inventory', cap: 'services.manage' },
     ],
   },
   {

@@ -1,5 +1,6 @@
 // src/pages/Payment.tsx
 import React, { useEffect, useState } from "react";
+import { formatCents } from '../utils/format';
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { track } from '../utils/analytics';
 import StepIndicator from "../components/StepIndicator";
@@ -214,7 +215,8 @@ const Payment: React.FC = () => {
       if (res.data && res.data.discount) {
         setRewardDiscount(res.data.discount);
         setRewardApplied(true);
-        toast.success(`Reward applied! Discount: R${(res.data.discount / 100).toFixed(2)}`);
+  // discount is integer cents
+  toast.success(`Reward applied! Discount: ${formatCents(res.data.discount)}`);
       } else {
         toast.error("No valid reward found.");
       }

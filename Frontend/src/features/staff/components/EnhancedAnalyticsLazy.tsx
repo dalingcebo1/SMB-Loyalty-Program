@@ -7,19 +7,26 @@ const EnhancedAnalytics = lazy(() => import('./EnhancedAnalytics'));
 
 // Small skeleton fallback kept intentionally minimal to avoid pulling in heavy styles/logic
 const AnalyticsSkeleton: React.FC = () => (
-  <div className="enhanced-analytics" style={{ opacity: 0.6 }}>
-    <div className="analytics-header">
-      <div className="header-content">
-        <h2>Business Analytics</h2>
-        <p>Loading analytics module…</p>
+  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden opacity-60">
+    <div className="p-6 border-b border-gray-200">
+      <div className="flex items-center space-x-3">
+        <div className="p-2 bg-purple-50 rounded-lg">
+          <div className="w-5 h-5 bg-purple-200 rounded animate-pulse"></div>
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Business Analytics</h2>
+          <p className="text-sm text-gray-500">Loading analytics module…</p>
+        </div>
       </div>
     </div>
-    <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} style={{ height: 110, borderRadius: 12, background: 'linear-gradient(135deg,#e5e7eb,#f3f4f6)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.7) 50%,rgba(255,255,255,0) 100%)', animation: 'pulse 1.4s infinite' }} />
-        </div>
-      ))}
+    <div className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-28 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent animate-pulse" />
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 );

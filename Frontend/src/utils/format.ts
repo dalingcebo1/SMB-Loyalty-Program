@@ -14,6 +14,13 @@ export function formatCurrency(amount?: number | null): string {
   return currencyFormatter.format(amount);
 }
 
+// Convenience helper: accept integer cents and format as currency in rands.
+// Safe for undefined/null; treats invalid as 0.
+export function formatCents(amountCents?: number | null): string {
+  if (amountCents == null || isNaN(amountCents)) return formatCurrency(0);
+  return formatCurrency(amountCents / 100);
+}
+
 export function formatTimeHM(timestamp: string | number | Date): string {
   const d = new Date(timestamp);
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });

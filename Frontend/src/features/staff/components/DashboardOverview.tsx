@@ -1,13 +1,13 @@
 // src/features/staff/components/DashboardOverview.tsx
 import React, { useMemo } from 'react';
-import { StaffIcon } from './StaffIcon';
+import { FaCar, FaPlay, FaChartBar, FaClock, FaCheckCircle, FaCalendarWeek } from 'react-icons/fa';
 import { useActiveWashes } from '../../../api/queries';
 import { useDashboardAnalytics } from '../hooks/useDashboardAnalytics';
 import { useBusinessAnalytics } from '../hooks/useBusinessAnalytics';
 import { useWashHistory } from '../hooks'; // retained as fallback / for derived metrics if backend incomplete
 import { timeDerivation } from '../perf/counters';
 import { Wash } from '../../../types';
-import './DashboardOverview.css';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 
 interface MetricCardProps {
   title: string;
@@ -18,32 +18,46 @@ interface MetricCardProps {
     isPositive: boolean;
   };
   description: string;
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'pink';
 }
 
-const MetricCardComponent: React.FC<MetricCardProps> = ({ title, value, icon, trend, description }) => (
-  <div className="metric-card">
-    <div className="metric-header">
-      <div className="metric-icon">{icon}</div>
-      <div className="metric-info">
-        <h3 className="metric-title">{title}</h3>
-        <div className="metric-value">{value}</div>
-      </div>
-    </div>
-    <div className="metric-footer">
-      <p className="metric-description">{description}</p>
-      {trend && (
-        <div className={`metric-trend ${trend.isPositive ? 'positive' : 'negative'}`}>
-          <span className="trend-icon">
-            {trend.isPositive ? <StaffIcon name="performance" /> : <StaffIcon name="analytics" />}
-          </span>
-          <span className="trend-value">
-            {trend.isPositive ? '+' : ''}{trend.value}%
-          </span>
+const MetricCardComponent: React.FC<MetricCardProps> = ({ title, value, icon, trend, description, color }) => {
+  const colorClasses = {
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    green: 'bg-green-50 text-green-600 border-green-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    orange: 'bg-orange-50 text-orange-600 border-orange-200',
+    teal: 'bg-teal-50 text-teal-600 border-teal-200',
+    pink: 'bg-pink-50 text-pink-600 border-pink-200'
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center space-x-3">
+          <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
+            {icon}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-2xl font-semibold text-gray-900">{value}</p>
+          </div>
         </div>
-      )}
+        {trend && (
+          <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
+            trend.isPositive 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-red-100 text-red-700'
+          }`}>
+            <span>{trend.isPositive ? '↗' : '↘'}</span>
+            <span>{Math.abs(trend.value)}%</span>
+          </div>
+        )}
+      </div>
+      <p className="text-sm text-gray-500 mt-2">{description}</p>
     </div>
-  </div>
-);
+  );
+};
 
 // Prevent unnecessary rerenders when props unchanged
 const MetricCard = React.memo(MetricCardComponent);
@@ -121,90 +135,100 @@ const DashboardOverview: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="dashboard-overview loading">
-        <div className="loading-placeholder">
-          <div className="loading-spinner">⏳</div>
-            <div className="loading-spinner"><StaffIcon name="loading" /></div>
-          <p>Loading dashboard data...</p>
+      <div className="bg-white rounded-xl border border-gray-200 p-12">
+        <div className="flex items-center justify-center space-x-3">
+          <LoadingSpinner size="lg" />
+          <span className="text-gray-500">Loading dashboard data...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-overview">
-      <div className="overview-header">
-        <h2>Dashboard Overview</h2>
-        <p>Real-time car wash operation metrics</p>
-      </div>
-
-      <div className="metrics-grid">
-        <MetricCard
-          title="Today's Washes"
-          value={metrics.todayCount}
-          icon={<StaffIcon name="car" />}
-          trend={{
-            value: metrics.dailyTrend,
-            isPositive: metrics.dailyTrend >= 0
-          }}
-          description="Washes started today"
-        />
-
-        <MetricCard
-          title="Active Washes"
-          value={metrics.activeCount}
-          icon={<StaffIcon name="wash" />}
-          description="Currently in progress"
-        />
-
-        <MetricCard
-          title="7d Washes"
-          value={metrics.thisWeekCount}
-          icon={<StaffIcon name="analytics" />}
-          description={`Daily avg: ${metrics.weeklyAvg}`}
-        />
-
-        <MetricCard
-          title="Avg Duration"
-          value={`${metrics.avgDurationMin}m`}
-          icon={<StaffIcon name="duration" />}
-          description="Average completion time"
-        />
-
-        <MetricCard
-          title="Completion Rate"
-          value={`${metrics.completionRate}%`}
-          icon={<StaffIcon name="completed" />}
-          description="Successfully completed"
-        />
-
-        <MetricCard
-          title="Completed (7d)"
-          value={metrics.completedCount}
-          icon={<StaffIcon name="completed" />}
-          description="Completed in range"
-        />
-      </div>
-
-  {metrics.activeCount > 0 && (
-        <div className="quick-actions">
-          <h3>Quick Actions</h3>
-          <div className="action-buttons">
-            <button className="action-btn primary">
-              <span className="btn-icon">👀</span>
-      View Active ({metrics.activeCount})
-            </button>
-            <button className="action-btn secondary">
-              <span className="btn-icon">📊</span>
-      View Active ({metrics.activeCount})
-            </button>
-            <button className="action-btn secondary">
-               <span className="btn-icon"><StaffIcon name="car" /></span>
-              Manage Vehicles
-            </button>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <FaChartBar className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Dashboard Overview</h2>
+            <p className="text-sm text-gray-500">Real-time car wash operation metrics</p>
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <MetricCard
+            title="Today's Washes"
+            value={metrics.todayCount}
+            icon={<FaCar className="w-5 h-5" />}
+            trend={{
+              value: metrics.dailyTrend,
+              isPositive: metrics.dailyTrend >= 0
+            }}
+            description="Washes started today"
+            color="blue"
+          />
+
+          <MetricCard
+            title="Active Washes"
+            value={metrics.activeCount}
+            icon={<FaPlay className="w-5 h-5" />}
+            description="Currently in progress"
+            color="green"
+          />
+
+          <MetricCard
+            title="7d Washes"
+            value={metrics.thisWeekCount}
+            icon={<FaCalendarWeek className="w-5 h-5" />}
+            description={`Daily avg: ${metrics.weeklyAvg}`}
+            color="purple"
+          />
+
+          <MetricCard
+            title="Avg Duration"
+            value={`${metrics.avgDurationMin}m`}
+            icon={<FaClock className="w-5 h-5" />}
+            description="Average completion time"
+            color="orange"
+          />
+
+          <MetricCard
+            title="Completion Rate"
+            value={`${metrics.completionRate}%`}
+            icon={<FaCheckCircle className="w-5 h-5" />}
+            description="Successfully completed"
+            color="teal"
+          />
+
+          <MetricCard
+            title="Completed (7d)"
+            value={metrics.completedCount}
+            icon={<FaCheckCircle className="w-5 h-5" />}
+            description="Completed in range"
+            color="pink"
+          />
+        </div>
+
+        {metrics.activeCount > 0 && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Actions</h3>
+            <div className="flex flex-wrap gap-3">
+              <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                <FaPlay className="w-4 h-4 mr-2" />
+                View Active ({metrics.activeCount})
+              </button>
+              <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                <FaChartBar className="w-4 h-4 mr-2" />
+                View Analytics
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -228,7 +228,9 @@ def get_payment_qr(order_id: str, db: Session = Depends(get_db)):
         "reference": pay.reference or pay.transaction_id,
         "qr_code_base64": qr,
         "payment_pin": order.payment_pin,
-        "amount": pay.amount,
+    # New explicit cents field; keep legacy 'amount' (in rands) for backward compatibility
+    "amount_cents": pay.amount,
+    "amount": (pay.amount or 0) / 100,
         "category": category,
     }
 
@@ -363,7 +365,8 @@ def verify_payment(
             }
             for v in (db.query(Vehicle).filter_by(user_id=order.user_id).all() if order.user_id else [])
         ],
-        "amount": amount_val,
+    "amount_cents": amount_val,
+    "amount": (amount_val or 0)/100,
         "payment_method": method_val,
         "service_name": service_name,
         "extras": order.extras,
@@ -479,7 +482,7 @@ def recent_verifications(
             .first()
         )
         amount = pay.amount if pay and pay.amount is not None else o.amount
-        out.append({
+    out.append({
             "order_id": o.id,
             "timestamp": (o.order_redeemed_at or o.created_at).isoformat() if (o.order_redeemed_at or o.created_at) else None,
             "status": "success",
@@ -497,7 +500,8 @@ def recent_verifications(
             } if vehicle else None,
             "payment_method": (pay.method or pay.source) if pay else None,
             "payment_reference": (pay.reference or pay.transaction_id) if pay else None,
-            "amount": amount,
+            "amount_cents": amount,
+            "amount": (amount or 0)/100,
             "started": bool(o.started_at),
             "completed": bool(o.ended_at),
         })
@@ -864,11 +868,40 @@ def dashboard_analytics(
     ).one()
 
     # Revenue (keep separate – involves payments table & status filter)
-    revenue = db.query(func.sum(Payment.amount)).filter(
+    revenue_q = db.query(func.sum(Payment.amount)).filter(
         Payment.status == "success",
         cast(Payment.created_at, Date) >= start,
         cast(Payment.created_at, Date) <= end
+    )
+    revenue = revenue_q.scalar() or 0
+
+    # Today revenue (UTC day alignment) and Month-to-date revenue
+    today = datetime.utcnow().date()
+    mtd_start = today.replace(day=1)
+    # Constrain MTD end to the analytics range end for consistent “MTD” semantics relative to displayed period
+    mtd_end = end if end.month == mtd_start.month else today
+    today_rev = db.query(func.sum(Payment.amount)).filter(
+        Payment.status == "success",
+        cast(Payment.created_at, Date) == today
     ).scalar() or 0
+    mtd_rev = db.query(func.sum(Payment.amount)).filter(
+        Payment.status == "success",
+        cast(Payment.created_at, Date) >= mtd_start,
+        cast(Payment.created_at, Date) <= mtd_end
+    ).scalar() or 0
+
+    # Previous period revenue for delta (same length immediately preceding start)
+    prev_period_len = (end - start).days + 1
+    prev_start = start - timedelta(days=prev_period_len)
+    prev_end = start - timedelta(days=1)
+    prev_revenue = db.query(func.sum(Payment.amount)).filter(
+        Payment.status == "success",
+        cast(Payment.created_at, Date) >= prev_start,
+        cast(Payment.created_at, Date) <= prev_end
+    ).scalar() or 0
+    period_vs_prev_pct = 0.0
+    if prev_revenue:
+        period_vs_prev_pct = round(((revenue - prev_revenue) / prev_revenue) * 100, 1)
 
     # Duration stats for washes completed in period
     duration_rows = db.query(Order.started_at, Order.ended_at).filter(
@@ -907,7 +940,14 @@ def dashboard_analytics(
     payload = {
         "total_washes": int(stats_row.total_washes),
         "completed_washes": int(stats_row.completed_washes),
-        "revenue": revenue / 100,  # cents -> rands
+        "revenue": revenue / 100,  # legacy aggregate in rands (keep for backward compat)
+        "revenue_breakdown": {
+            "period_revenue_cents": int(revenue),
+            "previous_period_revenue_cents": int(prev_revenue),
+            "period_vs_prev_pct": period_vs_prev_pct,
+            "today_revenue_cents": int(today_rev),
+            "month_to_date_revenue_cents": int(mtd_rev),
+        },
         "customer_count": int(stats_row.customer_count),
         "chart_data": chart_data,
         "period": {

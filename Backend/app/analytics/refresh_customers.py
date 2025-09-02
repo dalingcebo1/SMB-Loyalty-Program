@@ -19,29 +19,59 @@ def refresh_customer_metrics(db: Session, days_30: int = 30, days_90: int = 90):
     start_90 = now - timedelta(days=days_90)
 
     # Base aggregates per user
-    base = db.query(
+    base = (
+        db.query(
         Order.user_id.label('user_id'),
         func.count(Order.id).label('lifetime_washes'),
         func.sum(Order.amount).label('lifetime_revenue'),
         func.min(Order.started_at).label('first_visit_at'),
         func.max(Order.started_at).label('last_visit_at'),
         func.sum(case((Order.type == 'loyalty', 1), else_=0)).label('loyalty_washes_total')
-    ).filter(Order.status.in_(['started','ended']), Order.user_id.isnot(None)).group_by(Order.user_id).all()
+        )
+        .join(User, User.id == Order.user_id)
+        .filter(
+            Order.status.in_(['started','ended']),
+            Order.user_id.isnot(None),
+            User.role == 'user'
+        )
+        .group_by(Order.user_id)
+        .all()
+    )
 
     # 30 / 90 day windows
-    window_30 = db.query(
+    window_30 = (
+        db.query(
         Order.user_id,
         func.count(Order.id).label('washes_30d'),
         func.sum(Order.amount).label('revenue_30d'),
         func.sum(case((Order.type == 'loyalty', 1), else_=0)).label('loyalty_washes_30d')
-    ).filter(Order.started_at >= start_30, Order.status.in_(['started','ended']), Order.user_id.isnot(None))\
-     .group_by(Order.user_id).all()
-    window_90 = db.query(
+        )
+        .join(User, User.id == Order.user_id)
+        .filter(
+            Order.started_at >= start_30,
+            Order.status.in_(['started','ended']),
+            Order.user_id.isnot(None),
+            User.role == 'user'
+        )
+        .group_by(Order.user_id)
+        .all()
+    )
+    window_90 = (
+        db.query(
         Order.user_id,
         func.count(Order.id).label('washes_90d'),
         func.sum(Order.amount).label('revenue_90d')
-    ).filter(Order.started_at >= start_90, Order.status.in_(['started','ended']), Order.user_id.isnot(None))\
-     .group_by(Order.user_id).all()
+        )
+        .join(User, User.id == Order.user_id)
+        .filter(
+            Order.started_at >= start_90,
+            Order.status.in_(['started','ended']),
+            Order.user_id.isnot(None),
+            User.role == 'user'
+        )
+        .group_by(Order.user_id)
+        .all()
+    )
 
     w30_map = {r.user_id: r for r in window_30}
     w90_map = {r.user_id: r for r in window_90}

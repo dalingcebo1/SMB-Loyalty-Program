@@ -6,9 +6,22 @@ export interface DashboardAnalyticsResponse {
   total_washes: number;
   completed_washes: number;
   revenue: number; // already in rands (backend divides by 100)
+  revenue_breakdown?: {
+    period_revenue_cents: number;
+    previous_period_revenue_cents: number;
+    period_vs_prev_pct: number;
+    today_revenue_cents: number;
+    month_to_date_revenue_cents: number;
+  };
   customer_count: number;
   chart_data: { date: string; washes: number }[];
   period: { start_date: string; end_date: string };
+  wash_duration_seconds?: {
+    average: number | null;
+    median: number | null;
+    p95: number | null;
+    sample_size: number;
+  };
 }
 
 export function useDashboardAnalytics(params: { startDate: string; endDate: string }) {

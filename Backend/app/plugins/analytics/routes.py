@@ -173,17 +173,24 @@ def get_top_customers(
         start, end = start_date, end_date
     # Base subquery: washes + revenue + loyalty counts per user
     from sqlalchemy import case
-    base_q = db.query(
+    base_q = (
+        db.query(
         Order.user_id.label('user_id'),
         func.count(Order.id).label('total_washes'),
         func.sum(Order.amount).label('revenue_cents'),
         func.sum(case((Order.type == 'loyalty', 1), else_=0)).label('loyalty_wash_count'),
         func.max(Order.started_at).label('last_visit')
-    ).filter(
-        cast(Order.started_at, Date) >= start,
-        cast(Order.started_at, Date) <= end,
-        Order.status.in_(['started','ended'])
-    ).group_by(Order.user_id).subquery()
+        )
+        .join(User, User.id == Order.user_id)
+        .filter(
+            cast(Order.started_at, Date) >= start,
+            cast(Order.started_at, Date) <= end,
+            Order.status.in_(['started','ended']),
+            User.role == 'user'
+        )
+        .group_by(Order.user_id)
+        .subquery()
+    )
     # Points redeemed & outstanding (simple aggregates)
     points_q = db.query(
         Redemption.user_id.label('user_id'),
@@ -248,15 +255,17 @@ def get_loyalty_overview(
     else:
         start, end = start_date, end_date
     # Basic aggregates
-    total_washes = db.query(func.count(Order.id)).filter(
+    total_washes = db.query(func.count(Order.id)).join(User, User.id == Order.user_id).filter(
         cast(Order.started_at, Date) >= start,
         cast(Order.started_at, Date) <= end,
-        Order.status.in_(['started','ended'])
+        Order.status.in_(['started','ended']),
+        User.role == 'user'
     ).scalar() or 0
-    loyalty_washes = db.query(func.count(Order.id)).filter(
+    loyalty_washes = db.query(func.count(Order.id)).join(User, User.id == Order.user_id).filter(
         cast(Order.started_at, Date) >= start,
         cast(Order.started_at, Date) <= end,
-        Order.type == 'loyalty'
+        Order.type == 'loyalty',
+        User.role == 'user'
     ).scalar() or 0
     loyalty_penetration = (loyalty_washes / total_washes) if total_washes else 0.0
     points_redeemed_total = db.query(func.sum(Reward.cost)).join(Redemption, Redemption.reward_id == Reward.id).filter(
@@ -277,15 +286,20 @@ def get_loyalty_overview(
     top_customers_resp = get_top_customers(start_date, end_date, limit=10, offset=0, sort='loyalty_share', db=db)
     # Churn candidates: users whose last_visit > 30 days and had >=2 washes in prior window
     inactive_threshold = today - timedelta(days=30)
-    candidates_q = db.query(
+    candidates_q = (
+        db.query(
         AggregatedCustomerMetrics.user_id,
         AggregatedCustomerMetrics.last_visit_at,
         AggregatedCustomerMetrics.washes_90d,
         AggregatedCustomerMetrics.lifetime_washes,
         AggregatedCustomerMetrics.lifetime_revenue
-    ).filter(
-        AggregatedCustomerMetrics.last_visit_at < inactive_threshold,
-        AggregatedCustomerMetrics.washes_90d >= 2
+        )
+        .join(User, User.id == AggregatedCustomerMetrics.user_id)
+        .filter(
+            AggregatedCustomerMetrics.last_visit_at < inactive_threshold,
+            AggregatedCustomerMetrics.washes_90d >= 2,
+            User.role == 'user'
+        )
     )
     rows = candidates_q.all()
     # Compute percentile by lifetime_revenue (simple rank)
@@ -309,7 +323,7 @@ def get_loyalty_overview(
         "churn_candidates": churn_candidates
     }
 
-@router.post("/customers/refresh", summary="Trigger refresh of aggregated customer metrics", dependencies=[Depends(require_admin)])
+@router.post("/customers/refresh", summary="Trigger refresh of aggregated customer metrics", dependencies=[Depends(require_staff)])
 def refresh_customers(db: Session = Depends(get_db)):
     count = refresh_customer_metrics(db)
     return {"refreshed": count}

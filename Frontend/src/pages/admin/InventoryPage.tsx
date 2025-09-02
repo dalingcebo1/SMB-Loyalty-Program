@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface ServiceItem {
   id: number;
@@ -34,6 +36,13 @@ const InventoryPage: React.FC = () => {
   const [serviceSort, setServiceSort] = useState<'name' | 'price' | 'category'>('category');
   const [extraSort, setExtraSort] = useState<'name'>('name');
   const [priceMapError, setPriceMapError] = useState<string | null>(null);
+  // Confirmation dialog states
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    type: 'service' | 'extra';
+    id: number;
+    name: string;
+  }>({ isOpen: false, type: 'service', id: 0, name: '' });
 
   async function fetchAll() {
     setLoading(true); setError(null);
@@ -73,13 +82,29 @@ const InventoryPage: React.FC = () => {
   }
 
   async function deleteService(id: number) {
-    if (!confirm('Delete service?')) return;
+    const service = services.find(s => s.id === id);
+    if (!service) return;
+    setDeleteConfirm({
+      isOpen: true,
+      type: 'service',
+      id,
+      name: service.name
+    });
+  }
+
+  async function confirmDeleteService() {
+    if (!deleteConfirm.isOpen || deleteConfirm.type !== 'service') return;
     setSubmitting(true);
     try {
-      await fetch(`/api/inventory/services/${id}`, { method: 'DELETE' });
-      setSuccess('Service deleted');
+      await fetch(`/api/inventory/services/${deleteConfirm.id}`, { method: 'DELETE' });
+      setSuccess('Service deleted successfully');
       fetchAll();
-    } finally { setSubmitting(false); }
+    } catch {
+      setError('Failed to delete service');
+    } finally { 
+      setSubmitting(false); 
+      setDeleteConfirm({ isOpen: false, type: 'service', id: 0, name: '' });
+    }
   }
 
   function startEditService(s: ServiceItem) {
@@ -125,13 +150,29 @@ const InventoryPage: React.FC = () => {
   }
 
   async function deleteExtra(id: number) {
-    if (!confirm('Delete extra?')) return;
+    const extra = extras.find(x => x.id === id);
+    if (!extra) return;
+    setDeleteConfirm({
+      isOpen: true,
+      type: 'extra',
+      id,
+      name: extra.name
+    });
+  }
+
+  async function confirmDeleteExtra() {
+    if (!deleteConfirm.isOpen || deleteConfirm.type !== 'extra') return;
     setSubmitting(true);
     try {
-      await fetch(`/api/inventory/extras/${id}`, { method: 'DELETE' });
-      setSuccess('Extra deleted');
+      await fetch(`/api/inventory/extras/${deleteConfirm.id}`, { method: 'DELETE' });
+      setSuccess('Extra deleted successfully');
       fetchAll();
-    } finally { setSubmitting(false); }
+    } catch {
+      setError('Failed to delete extra');
+    } finally { 
+      setSubmitting(false); 
+      setDeleteConfirm({ isOpen: false, type: 'service', id: 0, name: '' });
+    }
   }
 
   function startEditExtra(x: ExtraItem) {
@@ -196,21 +237,28 @@ const InventoryPage: React.FC = () => {
   }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-slate-50 to-gray-100'>
-      <div className='max-w-7xl mx-auto px-6 py-8 space-y-8'>
+    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8'>
         {/* Enhanced Header */}
-        <div className='relative overflow-hidden bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-800 text-white rounded-2xl p-8 shadow-xl'>
+        <div className='relative overflow-hidden bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-800 text-white rounded-2xl p-6 sm:p-8 shadow-xl'>
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+          <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/5 rounded-full"></div>
+          <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/5 rounded-full"></div>
           <div className="relative z-10">
-            <div className='flex items-center justify-between'>
+            <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
               <div>
-                <h1 className='text-4xl font-bold mb-3'>Inventory Management</h1>
-                <p className='text-teal-100 text-lg'>Manage your services and extras inventory</p>
+                <h1 className='text-3xl sm:text-4xl font-bold mb-2'>Inventory Management</h1>
+                <p className='text-teal-100 text-base sm:text-lg'>Manage your services and extras inventory</p>
               </div>
-              <div className="hidden md:flex items-center space-x-4">
-                {submitting && <span className='text-sm text-teal-200 animate-pulse'>Working…</span>}
-                <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <svg className="w-10 h-10 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center space-x-4">
+                {submitting && (
+                  <div className='flex items-center space-x-2 text-teal-200'>
+                    <LoadingSpinner size="sm" color="white" />
+                    <span className='text-sm'>Working…</span>
+                  </div>
+                )}
+                <div className="hidden sm:flex w-16 h-16 bg-white/10 rounded-full items-center justify-center backdrop-blur-sm">
+                  <svg className="w-8 h-8 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
@@ -220,9 +268,39 @@ const InventoryPage: React.FC = () => {
         </div>
 
         {/* Status Messages */}
-        {error && <div className='bg-red-50 border-l-4 border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-sm'>{error}</div>}
-        {success && <div className='bg-green-50 border-l-4 border-green-400 text-green-700 px-6 py-4 rounded-lg shadow-sm'>{success}</div>}
-        {loading && <div className='bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-6 py-4 rounded-lg shadow-sm'>Loading inventory data…</div>}
+        <div className="space-y-3">
+          {error && (
+            <div className='bg-red-50 border-l-4 border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-sm flex items-start space-x-3'>
+              <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="font-medium">Error</h3>
+                <p className="text-sm">{error}</p>
+              </div>
+            </div>
+          )}
+          {success && (
+            <div className='bg-green-50 border-l-4 border-green-400 text-green-700 px-6 py-4 rounded-lg shadow-sm flex items-start space-x-3'>
+              <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="font-medium">Success</h3>
+                <p className="text-sm">{success}</p>
+              </div>
+            </div>
+          )}
+          {loading && (
+            <div className='bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-6 py-4 rounded-lg shadow-sm flex items-start space-x-3'>
+              <LoadingSpinner size="sm" color="blue" />
+              <div>
+                <h3 className="font-medium">Loading</h3>
+                <p className="text-sm">Loading inventory data…</p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Services Section */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -263,58 +341,73 @@ const InventoryPage: React.FC = () => {
           </div>
 
           {/* Service Creation Form */}
-          <div className='p-6 bg-gray-50 border-b border-gray-100'>
-            <h3 className='font-semibold text-gray-800 mb-4'>Add New Service</h3>
-            <form onSubmit={createService} className='flex gap-3 flex-wrap items-end'>
-              <div className='flex-1 min-w-[120px]'>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Category</label>
-                <input 
-                  className='w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors' 
-                  placeholder='e.g., Wash Packages' 
-                  value={form.category} 
-                  onChange={e=>setForm(f=>({...f, category:e.target.value}))} 
-                  required 
-                />
+          <div className='p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-100'>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className='text-lg font-bold text-gray-800'>Add New Service</h3>
+              <div className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full border">
+                All fields required
               </div>
-              <div className='flex-1 min-w-[120px]'>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Service Name</label>
-                <input 
-                  className='w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors' 
-                  placeholder='e.g., Premium Wash' 
-                  value={form.name} 
-                  onChange={e=>setForm(f=>({...f, name:e.target.value}))} 
-                  required 
-                />
-              </div>
-              <div className='min-w-[100px]'>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Base Price</label>
-                <input 
-                  className='w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors' 
-                  min={0} 
-                  type='number' 
-                  placeholder='0.00' 
-                  value={form.base_price} 
-                  onChange={e=>setForm(f=>({...f, base_price:Number(e.target.value)}))} 
-                  required 
-                />
-              </div>
-              <div className='flex items-center pb-2'>
-                <label className='inline-flex items-center gap-2 text-sm font-medium text-gray-700'>
+            </div>
+            <form onSubmit={createService} className='space-y-4'>
+              <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+                <div className='space-y-1'>
+                  <label className='block text-sm font-semibold text-gray-700'>Category</label>
                   <input 
-                    type='checkbox' 
-                    className='rounded border-gray-300 text-blue-600 focus:ring-blue-500' 
-                    checked={form.loyalty_eligible} 
-                    onChange={e=>setForm(f=>({...f, loyalty_eligible:e.target.checked}))} 
-                  /> 
-                  Loyalty Eligible
-                </label>
+                    className='w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400' 
+                    placeholder='e.g., Wash Packages' 
+                    value={form.category} 
+                    onChange={e=>setForm(f=>({...f, category:e.target.value}))} 
+                    required 
+                  />
+                </div>
+                <div className='space-y-1'>
+                  <label className='block text-sm font-semibold text-gray-700'>Service Name</label>
+                  <input 
+                    className='w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400' 
+                    placeholder='e.g., Premium Wash' 
+                    value={form.name} 
+                    onChange={e=>setForm(f=>({...f, name:e.target.value}))} 
+                    required 
+                  />
+                </div>
+                <div className='space-y-1'>
+                  <label className='block text-sm font-semibold text-gray-700'>Base Price ($)</label>
+                  <input 
+                    className='w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400' 
+                    min={0}
+                    step="0.01"
+                    type='number' 
+                    placeholder='0.00' 
+                    value={form.base_price} 
+                    onChange={e=>setForm(f=>({...f, base_price:Number(e.target.value)}))} 
+                    required 
+                  />
+                </div>
+                <div className='space-y-1 flex flex-col justify-end'>
+                  <label className='flex items-center space-x-3 p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors'>
+                    <input 
+                      type='checkbox' 
+                      className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5' 
+                      checked={form.loyalty_eligible} 
+                      onChange={e=>setForm(f=>({...f, loyalty_eligible:e.target.checked}))} 
+                    /> 
+                    <span className="text-sm font-medium text-gray-700">Loyalty Eligible</span>
+                  </label>
+                </div>
               </div>
-              <button 
-                disabled={submitting} 
-                className='px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-sm'
-              >
-                Add Service
-              </button>
+              <div className="flex justify-end">
+                <button 
+                  disabled={submitting || !form.name || !form.category || form.base_price < 0} 
+                  className='px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl disabled:hover:shadow-lg transform hover:scale-105 disabled:hover:scale-100'
+                >
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Service
+                  </span>
+                </button>
+              </div>
             </form>
           </div>
 
@@ -622,6 +715,18 @@ const InventoryPage: React.FC = () => {
             )}
           </div>
         </section>
+
+        {/* Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={deleteConfirm.isOpen}
+          title={`Delete ${deleteConfirm.type === 'service' ? 'Service' : 'Extra'}`}
+          description={`Are you sure you want to delete "${deleteConfirm.name}"? This action cannot be undone.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          loading={submitting}
+          onConfirm={deleteConfirm.type === 'service' ? confirmDeleteService : confirmDeleteExtra}
+          onCancel={() => setDeleteConfirm({ isOpen: false, type: 'service', id: 0, name: '' })}
+        />
       </div>
     </div>
   );

@@ -9,6 +9,21 @@ import { useAuth } from '../../auth/AuthProvider';
 const AdminWelcome: React.FC = () => {
   const { user } = useAuth();
 
+  // Helper function for color classes to ensure Tailwind includes them
+  const getColorClasses = (color: string, type: 'bg' | 'text') => {
+    const colorMap = {
+      blue: type === 'bg' ? 'bg-gradient-to-br from-blue-100 to-blue-200 group-hover:from-blue-200 group-hover:to-blue-300' : 'text-blue-600',
+      green: type === 'bg' ? 'bg-gradient-to-br from-green-100 to-green-200 group-hover:from-green-200 group-hover:to-green-300' : 'text-green-600',
+      pink: type === 'bg' ? 'bg-gradient-to-br from-pink-100 to-pink-200 group-hover:from-pink-200 group-hover:to-pink-300' : 'text-pink-600',
+      purple: type === 'bg' ? 'bg-gradient-to-br from-purple-100 to-purple-200 group-hover:from-purple-200 group-hover:to-purple-300' : 'text-purple-600',
+      orange: type === 'bg' ? 'bg-gradient-to-br from-orange-100 to-orange-200 group-hover:from-orange-200 group-hover:to-orange-300' : 'text-orange-600',
+      teal: type === 'bg' ? 'bg-gradient-to-br from-teal-100 to-teal-200 group-hover:from-teal-200 group-hover:to-teal-300' : 'text-teal-600',
+      indigo: type === 'bg' ? 'bg-gradient-to-br from-indigo-100 to-indigo-200 group-hover:from-indigo-200 group-hover:to-indigo-300' : 'text-indigo-600',
+      red: type === 'bg' ? 'bg-gradient-to-br from-red-100 to-red-200 group-hover:from-red-200 group-hover:to-red-300' : 'text-red-600',
+    };
+    return colorMap[color as keyof typeof colorMap] || (type === 'bg' ? 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-gray-200 group-hover:to-gray-300' : 'text-gray-600');
+  };
+
   const quickActions = [
     {
       category: 'People Management',
@@ -76,28 +91,8 @@ const AdminWelcome: React.FC = () => {
                   className="group relative bg-white rounded-xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-gray-200 hover:-translate-y-1"
                 >
                   <div className="flex items-start space-x-4">
-                    <div className={`p-4 rounded-xl bg-gradient-to-br transition-all duration-300 group-hover:scale-110 shadow-sm ${
-                      color === 'blue' ? 'from-blue-100 to-blue-200 group-hover:from-blue-200 group-hover:to-blue-300' :
-                      color === 'green' ? 'from-green-100 to-green-200 group-hover:from-green-200 group-hover:to-green-300' :
-                      color === 'pink' ? 'from-pink-100 to-pink-200 group-hover:from-pink-200 group-hover:to-pink-300' :
-                      color === 'purple' ? 'from-purple-100 to-purple-200 group-hover:from-purple-200 group-hover:to-purple-300' :
-                      color === 'orange' ? 'from-orange-100 to-orange-200 group-hover:from-orange-200 group-hover:to-orange-300' :
-                      color === 'teal' ? 'from-teal-100 to-teal-200 group-hover:from-teal-200 group-hover:to-teal-300' :
-                      color === 'indigo' ? 'from-indigo-100 to-indigo-200 group-hover:from-indigo-200 group-hover:to-indigo-300' :
-                      color === 'red' ? 'from-red-100 to-red-200 group-hover:from-red-200 group-hover:to-red-300' :
-                      'from-gray-100 to-gray-200 group-hover:from-gray-200 group-hover:to-gray-300'
-                    }`}>
-                      <Icon className={`w-7 h-7 ${
-                        color === 'blue' ? 'text-blue-600' :
-                        color === 'green' ? 'text-green-600' :
-                        color === 'pink' ? 'text-pink-600' :
-                        color === 'purple' ? 'text-purple-600' :
-                        color === 'orange' ? 'text-orange-600' :
-                        color === 'teal' ? 'text-teal-600' :
-                        color === 'indigo' ? 'text-indigo-600' :
-                        color === 'red' ? 'text-red-600' :
-                        'text-gray-600'
-                      }`} />
+                    <div className={`p-4 rounded-xl transition-all duration-300 group-hover:scale-110 shadow-sm ${getColorClasses(color, 'bg')}`}>
+                      <Icon className={`w-7 h-7 ${getColorClasses(color, 'text')}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-900 group-hover:text-gray-800 mb-1 text-lg">{title}</h3>

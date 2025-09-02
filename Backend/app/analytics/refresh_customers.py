@@ -26,7 +26,7 @@ def refresh_customer_metrics(db: Session, days_30: int = 30, days_90: int = 90):
         func.min(Order.started_at).label('first_visit_at'),
         func.max(Order.started_at).label('last_visit_at'),
         func.sum(case((Order.type == 'loyalty', 1), else_=0)).label('loyalty_washes_total')
-    ).filter(Order.status.in_(['started','ended'])).group_by(Order.user_id).all()
+    ).filter(Order.status.in_(['started','ended']), Order.user_id.isnot(None)).group_by(Order.user_id).all()
 
     # 30 / 90 day windows
     window_30 = db.query(
@@ -34,13 +34,13 @@ def refresh_customer_metrics(db: Session, days_30: int = 30, days_90: int = 90):
         func.count(Order.id).label('washes_30d'),
         func.sum(Order.amount).label('revenue_30d'),
         func.sum(case((Order.type == 'loyalty', 1), else_=0)).label('loyalty_washes_30d')
-    ).filter(Order.started_at >= start_30, Order.status.in_(['started','ended']))\
+    ).filter(Order.started_at >= start_30, Order.status.in_(['started','ended']), Order.user_id.isnot(None))\
      .group_by(Order.user_id).all()
     window_90 = db.query(
         Order.user_id,
         func.count(Order.id).label('washes_90d'),
         func.sum(Order.amount).label('revenue_90d')
-    ).filter(Order.started_at >= start_90, Order.status.in_(['started','ended']))\
+    ).filter(Order.started_at >= start_90, Order.status.in_(['started','ended']), Order.user_id.isnot(None))\
      .group_by(Order.user_id).all()
 
     w30_map = {r.user_id: r for r in window_30}

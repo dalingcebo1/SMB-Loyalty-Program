@@ -9,10 +9,10 @@ sys.path.insert(0, ROOT)
 
 from app.core.database import Base, engine
 from sqlalchemy.orm import Session
-from models import Tenant
+from app.models import Tenant
 
 # Make sure ALL of your table-definitions get loaded into Base.metadata:
-import models       # <-- this is your Backend/models.py
+# Removed legacy `models` import; canonical models are in app.models
 # (if you have any tables defined elsewhere, import those too,
 # e.g. `import routes.orders` so that Order is registered)
 

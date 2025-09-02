@@ -4,7 +4,7 @@ import csv
 import requests
 from dotenv import load_dotenv
 from app.core.database import SessionLocal
-from models import Service, Extra
+from app.models import Service, Extra  # use canonical models module
 
 def get_price_csv_url() -> str:
     load_dotenv()

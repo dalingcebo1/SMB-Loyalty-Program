@@ -24,6 +24,9 @@ def test_public_meta_rate_limit_exceeded():
             allowed += 1
         if r.status_code == 429:
             # first 429 indicates limit hit; break
+            data = r.json()
+            assert data.get('error') == 'rate_limit'
+            assert 'retry_after' in data
             break
     assert allowed <= 60
     assert last_status == 429

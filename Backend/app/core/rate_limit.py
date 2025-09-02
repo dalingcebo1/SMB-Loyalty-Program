@@ -18,6 +18,7 @@ run with multiple workers a distributed backend should replace it.
 """
 from __future__ import annotations
 import time
+from app.core import clock
 from typing import Dict, Tuple, Optional, Callable, List
 
 # buckets[(scope, key)] = (tokens, last_refill_ts, capacity, refill_rate)
@@ -32,9 +33,17 @@ _PENALTIES: Dict[str, Tuple[int, float]] = {}
 _PENALTY_DECAY_SECONDS = 120  # after which strike decays
 _PENALTY_MAX_STRIKES = 5
 _PENALTY_TRIGGER_SCOPE = "ip_public_meta"
+_BANS: Dict[str, float] = {}
+_BAN_SECONDS = 300  # 5 min temporary ban when max strikes reached
 
 def set_limit(scope: str, capacity: int, per_seconds: float):
     _CONFIG[scope] = (capacity, per_seconds)
+
+def delete_limit(scope: str) -> bool:
+    return _CONFIG.pop(scope, None) is not None
+
+def list_overrides():
+    return {k: {"capacity": v[0], "per": v[1]} for k, v in _CONFIG.items()}
 
 def get_limit(scope: str, default_capacity: int, default_per: float) -> Tuple[int, float]:
     """Resolve limit with hierarchical fallbacks.
@@ -56,7 +65,7 @@ def get_limit(scope: str, default_capacity: int, default_per: float) -> Tuple[in
 
 def penalty_state():
     out = []
-    now = time.time()
+    now = clock.now()
     for k, (strikes, ts) in list(_PENALTIES.items()):
         if now - ts > _PENALTY_DECAY_SECONDS:
             del _PENALTIES[k]
@@ -65,7 +74,7 @@ def penalty_state():
     return out
 
 def _refill(tokens: float, last: float, capacity: int, rate: float) -> float:
-    now = time.time()
+    now = clock.now()
     if rate <= 0:
         return tokens
     tokens = min(capacity, tokens + (now - last) * rate)
@@ -75,7 +84,7 @@ def _apply_penalty_if_applicable(scope: str, key: str, capacity: int) -> int:
     if scope != _PENALTY_TRIGGER_SCOPE:
         return capacity
     # Adjust capacity based on strikes
-    now = time.time()
+    now = clock.now()
     strikes, ts = _PENALTIES.get(key, (0, now))
     if now - ts > _PENALTY_DECAY_SECONDS:
         strikes = 0
@@ -88,12 +97,14 @@ def _apply_penalty_if_applicable(scope: str, key: str, capacity: int) -> int:
 def record_penalty_hit(scope: str, key: str):
     if scope != _PENALTY_TRIGGER_SCOPE:
         return
-    now = time.time()
+    now = clock.now()
     strikes, ts = _PENALTIES.get(key, (0, now))
     if now - ts > _PENALTY_DECAY_SECONDS:
         strikes = 0
     strikes = min(_PENALTY_MAX_STRIKES, strikes + 1)
     _PENALTIES[key] = (strikes, now)
+    if strikes >= _PENALTY_MAX_STRIKES:
+        _BANS[key] = now + _BAN_SECONDS
 
 def clear_penalty(scope: str, key: str):
     if scope != _PENALTY_TRIGGER_SCOPE:
@@ -110,15 +121,32 @@ def check_rate(scope: str, key: str, capacity: int, per_seconds: float, *, dynam
         capacity, per_seconds = get_limit(scope, capacity, per_seconds)
     # Apply penalty adjustments (read-only)
     capacity = _apply_penalty_if_applicable(scope, key, capacity)
+    # Ban check (only for configured scope)
+    if scope == _PENALTY_TRIGGER_SCOPE:
+        now = clock.now()
+        until = _BANS.get(key)
+        if until and until > now:
+            return False
+        if until and until <= now:
+            del _BANS[key]
     if capacity <= 0:
         return False
     rate = capacity / per_seconds if per_seconds > 0 else 0
-    now = time.time()
+    now = clock.now()
     bucket_key = (scope, key)
-    tokens, last, cap, r = _BUCKETS.get(bucket_key, (float(capacity), now, capacity, rate))
+    # On first creation we want exactly capacity-1 tokens remaining AFTER this call.
+    # Previous logic started with full capacity, allowing one extra request (off-by-one).
+    created = False
+    if bucket_key in _BUCKETS:
+        tokens, last, cap, r = _BUCKETS[bucket_key]
+    else:
+        tokens, last, cap, r = float(capacity), now, capacity, rate
+        created = True
     # Refill
     tokens = _refill(tokens, last, cap, r)
     if tokens >= 1:
+        # If brand new, consume and store remaining; this yields (capacity-1) so the
+        # total number of successful calls in a fresh window equals 'capacity'.
         tokens -= 1
         # Success clears penalty strikes for IP on public meta to allow recovery
         clear_penalty(scope, key)
@@ -141,7 +169,7 @@ def compute_retry_after(scope: str, key: str, capacity: int, per_seconds: float)
     if capacity <= 0 or per_seconds <= 0:
         return per_seconds or 0
     rate = capacity / per_seconds
-    now = time.time()
+    now = clock.now()
     bucket_key = (scope, key)
     tokens, last, cap, r = _BUCKETS.get(bucket_key, (float(capacity), now, capacity, rate))
     # Refill view (do not mutate)
@@ -150,6 +178,14 @@ def compute_retry_after(scope: str, key: str, capacity: int, per_seconds: float)
         return 0.0
     needed = 1 - tokens
     return max(0.0, needed / r if r > 0 else 0.0)
+
+def build_429_payload(scope: str, retry_after: float, detail: str = "Rate limit exceeded") -> dict:
+    return {
+        "error": "rate_limit",
+        "detail": detail,
+        "scope": scope,
+        "retry_after": int(retry_after) if retry_after > 0 else 0,
+    }
 
 def bucket_snapshot(limit: int = 1000, include_penalties: bool = True):
     """Return a lightweight snapshot of recent buckets (trimmed)."""
@@ -166,6 +202,15 @@ def bucket_snapshot(limit: int = 1000, include_penalties: bool = True):
     snap = {"buckets": out}
     if include_penalties:
         snap["penalties"] = penalty_state()
+        # active bans
+        now = clock.now()
+        bans = []
+        for k, until in list(_BANS.items()):
+            if until <= now:
+                del _BANS[k]
+                continue
+            bans.append({"ip": k, "remaining": int(until - now)})
+        snap["bans"] = bans
     snap["overrides"] = {k: {"capacity": v[0], "per": v[1]} for k, v in _CONFIG.items()}
     return snap
 
@@ -180,12 +225,19 @@ def rate_limited(scope: str, capacity: int, per_seconds: float, key_func: Callab
     FastAPI can't resolve the injected parameter chain.
     """
     from fastapi import Request, HTTPException, status
+    from .rate_limit import compute_retry_after, build_429_payload
     def _dep(request: Request):
         if rate_limit_exempt():
             return True
         key = key_func(request)
         allowed = check_rate(scope, key, capacity, per_seconds)
         if not allowed:
-            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Rate limit exceeded")
+            ra = compute_retry_after(scope, key, capacity, per_seconds)
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=build_429_payload(scope, ra))
         return True
     return _dep
+
+# --- Public helpers for dev/admin tooling ---------------------------------
+def clear_ban(ip: str) -> bool:
+    """Clear a ban for an IP; returns True if one existed."""
+    return _BANS.pop(ip, None) is not None

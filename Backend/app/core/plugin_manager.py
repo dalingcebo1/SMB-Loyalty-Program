@@ -6,6 +6,7 @@ from typing import Protocol, runtime_checkable
 from app.core.database import Base
 
 from .database import engine
+from app.plugins.admin.routes import router as admin_router
 
 PLUGIN_FOLDER = os.path.join(os.path.dirname(__file__), "..", "plugins")
 PLUGIN_PACKAGE = "app.plugins"
@@ -47,6 +48,8 @@ class PluginManager:
         self.metadata.create_all(bind=engine)
 
     def register_routes(self):
-        """Call register_routes on each plugin to include routers."""
+        """Call register_routes on each plugin to include routers and include standalone routers."""
         for plugin in self.discover_plugins():
             plugin.register_routes(self.app)
+        # direct include for simple admin router (non plugin class yet)
+        self.app.include_router(admin_router, prefix="/api")

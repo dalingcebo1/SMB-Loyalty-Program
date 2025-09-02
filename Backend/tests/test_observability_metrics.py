@@ -28,6 +28,7 @@ def test_metrics_endpoint_text():
     assert r.status_code == 200
     body = r.text
     assert 'job_queue_queued' in body
+    assert 'dead_letter_jobs' in body
 
 
 def test_retry_after_header_public_meta():
@@ -42,3 +43,13 @@ def test_retry_after_header_public_meta():
     if r2.status_code == 429:
         assert 'Retry-After' in r2.headers
         assert r2.json().get('scope') == 'ip_public_meta'
+
+
+def test_audit_viewer_disabled(monkeypatch):
+    from config import settings
+    # Temporarily disable and hit endpoint (developer-only but dependency lenient in tests)
+    monkeypatch.setattr(settings, 'enable_dev_audit_view', False)
+    r = client.get('/api/dev/audit')
+    assert r.status_code == 403
+    body = r.json()
+    assert body.get('error') == 'disabled'

@@ -15,6 +15,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Callable, Any, Dict, Deque, Optional, List, Tuple
 from collections import deque
 import time, uuid, threading, traceback
+from app.core import clock
 
 @dataclass
 class JobRecord:
@@ -42,6 +43,8 @@ _lock = threading.Lock()
 _MAX_HISTORY = 200  # simple cap; stale jobs pruned FIFO
 _history: Deque[str] = deque(maxlen=_MAX_HISTORY)
 _scheduled: Dict[str, JobRecord] = {}
+_worker_thread: Optional[threading.Thread] = None
+_worker_stop = threading.Event()
 
 class JobAlreadyRegistered(Exception):
     pass
@@ -80,7 +83,7 @@ def enqueue(name: str, payload: Optional[dict] = None, *, max_retries: int = 0, 
             _overflow_rejections += 1
             raise RuntimeError("queue_overflow")
         jid = uuid.uuid4().hex[:12]
-    rec = JobRecord(id=jid, name=name, status="queued", enqueued_at=time.time(), payload=payload, max_retries=max_retries, interval_seconds=interval)
+    rec = JobRecord(id=jid, name=name, status="queued", enqueued_at=clock.now(), payload=payload, max_retries=max_retries, interval_seconds=interval)
     _jobs[jid] = rec
     _queue.append(jid)
     return rec
@@ -88,7 +91,7 @@ def enqueue(name: str, payload: Optional[dict] = None, *, max_retries: int = 0, 
 def _execute(rec: JobRecord):
     func = _registry[rec.name]
     rec.status = "running"
-    rec.started_at = time.time()
+    rec.started_at = clock.now()
     rec.attempts += 1
     try:
         rec.result = func(rec.payload)
@@ -98,18 +101,18 @@ def _execute(rec: JobRecord):
         rec.error = f"{e.__class__.__name__}: {e}; {tb.splitlines()[-1]}"
         rec.status = "error"
     finally:
-        rec.finished_at = time.time()
+        rec.finished_at = clock.now()
         _history.append(rec.id)
     # Retry logic
     if rec.status == "error" and rec.attempts <= rec.max_retries:
         # exponential backoff: base 0.1s * 2^(attempts-1)
         delay = 0.1 * (2 ** (rec.attempts - 1))
-        rec.next_run = time.time() + delay
+        rec.next_run = clock.now() + delay
         with _lock:
             _scheduled[rec.id] = rec
     # Interval re-scheduling
     elif rec.status == "success" and rec.interval_seconds:
-        rec.next_run = time.time() + rec.interval_seconds
+        rec.next_run = clock.now() + rec.interval_seconds
         with _lock:
             _scheduled[rec.id] = rec
     # Exhausted retries -> dead letter
@@ -208,13 +211,13 @@ def registered_jobs() -> List[str]:
 def tick():
     """Trigger execution of any due scheduled jobs (retry or interval)."""
     due: List[JobRecord] = []
-    now = time.time()
+    now = clock.now()
     with _lock:
         for jid, rec in list(_scheduled.items()):
             if rec.next_run and rec.next_run <= now:
                 due.append(rec)
                 rec.status = "queued"
-                rec.enqueued_at = time.time()
+                rec.enqueued_at = clock.now()
                 _queue.append(rec.id)
                 del _scheduled[jid]
     # Execute as normal via run_next loop semantics
@@ -222,3 +225,44 @@ def tick():
         executed = run_next()
         if not executed:
             break
+
+def start_worker(interval: float = 0.5):  # pragma: no cover (timing loop)
+    """Start a lightweight thread that periodically ticks scheduled jobs."""
+    global _worker_thread
+    if _worker_thread and _worker_thread.is_alive():
+        return
+    _worker_stop.clear()
+    def _loop():
+        while not _worker_stop.is_set():
+            try:
+                tick()
+            except Exception:
+                pass
+            time.sleep(interval)
+    t = threading.Thread(target=_loop, name="jobs-auto-tick", daemon=True)
+    _worker_thread = t
+    t.start()
+
+def stop_worker():  # pragma: no cover
+    _worker_stop.set()
+
+# --- Public helper APIs for dev/admin tooling ---------------------------------
+def requeue_dead_letter(job_id: str):
+    """Requeue a job from dead-letter by cloning its definition.
+
+    Returns new JobRecord or None if not found.
+    """
+    with _lock:
+        if job_id not in list(_DEAD_LETTER):
+            return None
+    rec = _jobs.get(job_id)
+    if not rec:
+        return None
+    # Use same job name/payload/retry config
+    return enqueue(rec.name, rec.payload, max_retries=rec.max_retries, interval=rec.interval_seconds)
+
+def purge_dead_letter() -> int:
+    with _lock:
+        count = len(_DEAD_LETTER)
+        _DEAD_LETTER.clear()
+    return count

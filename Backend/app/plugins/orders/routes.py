@@ -35,6 +35,9 @@ def _build_order_response(order, next_action_url: str = None):
         # ID
         "id": str(order.id),
         "orderId": str(order.id),
+    # Tenant (added for multi-tenant analytics / frontend context)
+    "tenant_id": getattr(order, "tenant_id", None),
+    "tenantId": getattr(order, "tenant_id", None),
         # Service
         "service_id": order.service_id,
         "serviceId": order.service_id,
@@ -118,6 +121,7 @@ def create_order(
             extras=extras_list,
             payment_pin=pin,
             user_id=user.id,
+            tenant_id=getattr(user, 'tenant_id', None),
         )
         db.add(new_order)
         try:
@@ -180,6 +184,8 @@ def list_orders(
             "redeemed": getattr(o, "redeemed", False),
             "startedAt": getattr(o, "started_at", None),
             "endedAt": getattr(o, "ended_at", None),
+            "tenant_id": getattr(o, "tenant_id", None),
+            "tenantId": getattr(o, "tenant_id", None),
         })
     return serialized
 
@@ -195,7 +201,7 @@ def create_order_legacy(payload: dict, db: Session = Depends(get_db), user=Depen
     if not svc:
         raise HTTPException(status_code=404, detail=f"Service {svc_id} not found")
     # Let DB autogenerate integer PK; still return as string in response model
-    order = Order(service_id=svc_id, quantity=qty, extras=extras, user_id=user.id)
+    order = Order(service_id=svc_id, quantity=qty, extras=extras, user_id=user.id, tenant_id=getattr(user, 'tenant_id', None))
     db.add(order)
     db.commit()
     db.refresh(order)

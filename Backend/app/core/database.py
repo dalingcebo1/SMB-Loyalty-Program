@@ -1,6 +1,6 @@
 from config import settings
 
-from sqlalchemy import create_engine, event, text, inspect
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
@@ -45,43 +45,15 @@ else:
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 
-# --- Optional schema self-heal for missing multi-vertical columns (dev safety) ---
-def _ensure_multivertical_columns():  # pragma: no cover (environment-specific)
-    try:
-        if not engine.url.get_backend_name().startswith("postgres"):
-            return
-        insp = inspect(engine)
-        cols = {c['name'] for c in insp.get_columns('tenants')}
-        needed = []
-        if 'vertical_type' not in cols:
-            needed.append("ADD COLUMN vertical_type VARCHAR NOT NULL DEFAULT 'carwash'")
-        if 'primary_domain' not in cols:
-            needed.append("ADD COLUMN primary_domain VARCHAR NULL")
-        if 'config' not in cols:
-            needed.append("ADD COLUMN config JSON NOT NULL DEFAULT '{}'::json")
-        if needed:
-            with engine.begin() as conn:
-                for stmt in needed:
-                    conn.execute(text(f"ALTER TABLE tenants {stmt}"))
-                # Drop defaults to mirror migration after backfill
-                if 'vertical_type' not in cols:
-                    conn.execute(text("ALTER TABLE tenants ALTER COLUMN vertical_type DROP DEFAULT"))
-                if 'config' not in cols:
-                    conn.execute(text("ALTER TABLE tenants ALTER COLUMN config DROP DEFAULT"))
-                # Create composite index if absent
-                idx = {i['name'] for i in insp.get_indexes('tenants')}
-                if 'ix_tenants_vertical_domain' not in idx:
-                    conn.execute(text("CREATE INDEX ix_tenants_vertical_domain ON tenants(vertical_type, primary_domain)"))
-    except Exception:
-        # silent: do not break app startup
-        pass
-
-_ensure_multivertical_columns()
+# --- Removed legacy self-heal logic ---
+# All schema evolution is now managed exclusively via Alembic migrations.
+# If a developer database is missing columns, run: `alembic upgrade head`.
 
 # 3) Configure a Session factory
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
+    expire_on_commit=False,  # keep objects usable outside session scope (tests access attributes later)
     bind=engine,
     future=True,
 )

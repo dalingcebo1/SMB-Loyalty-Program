@@ -128,8 +128,13 @@ async def get_tenant_context(
             request.state.tenant_id = tenant.id
             return TenantContext(tenant)
 
-    # 4) Optional fallback default tenant (configurable) for public pages / bootstrap
-    if settings.default_tenant:
+    # 4) Development convenience fallback for localhost access.
+    #    When hitting the API directly via http://127.0.0.1/ (no Host-based tenant mapping),
+    #    returning a 400 is inconvenient for manual local testing of public endpoints.
+    #    To avoid impacting automated tests (which rely on a 400 for unknown hosts and
+    #    use "testserver" as host) we restrict the fallback strictly to development env
+    #    AND host in {localhost, 127.0.0.1}. This preserves existing test expectations.
+    if settings.environment == 'development' and hostname in ('localhost', '127.0.0.1') and settings.default_tenant:
         fallback = db.query(Tenant).filter(Tenant.id == settings.default_tenant).first()
         if fallback:
             set_current_tenant_id(fallback.id)

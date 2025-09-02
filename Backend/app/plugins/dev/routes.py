@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status, Query, Header
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import Tenant
-from app.core.authz import developer_only
-from app.core.rate_limit import check_rate, set_limit, bucket_snapshot, delete_limit, list_overrides, build_429_payload, compute_retry_after
+from app.core.authz import developer_only, require_roles, UserRole
+from app.core.rate_limit import check_rate, set_limit, bucket_snapshot, delete_limit, list_overrides, build_429_payload, compute_retry_after, clear_ban as rl_clear_ban
 from config import settings
 from app.core import jobs
 from pydantic import BaseModel
 
+from app.core.audit_safe import safe_audit
+
+# NOTE: These remain under dev; separate production admin API can import same handlers with different guards.
 router = APIRouter(prefix="", tags=["dev"], dependencies=[Depends(developer_only)])
 
 @router.get("/", response_model=dict)
@@ -17,14 +20,24 @@ def dev_status(db: Session = Depends(get_db)):
     tenants = db.query(Tenant).all()
     return {"status": "ok", "tenants": [{"id": t.id, "name": t.name} for t in tenants]}
 
-@router.post("/reset-db")
-def reset_db(db: Session = Depends(get_db)):
-    """Dangerous: drop and recreate all tables"""
-    # Use centralized database definitions
+@router.post("/reset-db", dependencies=[Depends(require_roles(UserRole.superadmin, UserRole.developer))])
+def reset_db(
+    confirm: bool = Query(False, description="Must be true to allow reset"),
+    confirm_header: str | None = Header(None, alias="X-Dev-Confirm"),
+    db: Session = Depends(get_db)
+):
+    """Dangerous: drop and recreate all tables (requires ?confirm=true and header X-Dev-Confirm: RESET).
+
+    Disabled automatically when settings.environment == 'production' or enable_dev_dangerous is False.
+    """
+    if not settings.dangerous_allowed():
+        raise HTTPException(status_code=403, detail={"error": "forbidden", "detail": "Dangerous ops disabled"})
+    if not (confirm and confirm_header == "RESET"):
+        raise HTTPException(status_code=400, detail={"error": "confirmation_required", "detail": "Pass ?confirm=true and header X-Dev-Confirm: RESET"})
     from app.core.database import Base, engine
-    # Drop and recreate all tables
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    safe_audit("dev.reset_db", None, None, {"action": "drop_and_recreate"})
     return {"message": "Database reset complete."}
 
 
@@ -84,6 +97,33 @@ def jobs_tick():
     jobs.tick()
     return {"tick": True}
 
+@router.post("/jobs/dead-letter/{job_id}/requeue")
+def requeue_dead_letter(job_id: str):
+    # use public API if exposed; fallback to controlled internal access
+    try:
+        from app.core.jobs import requeue_dead_letter as requeue_fn  # type: ignore
+        new_rec = requeue_fn(job_id)
+    except Exception:
+        from app.core.jobs import _jobs, enqueue  # type: ignore
+        rec = _jobs.get(job_id)
+        if not rec:
+            raise HTTPException(status_code=404, detail={"error": "not_found"})
+        new_rec = enqueue(rec.name, rec.payload, max_retries=rec.max_retries, interval=rec.interval_seconds)
+    safe_audit("jobs.requeue_dead_letter", None, None, {"job_id": job_id, "new_id": getattr(new_rec, 'id', None)})
+    return {"requeued": job_id, "new_id": new_rec.id}
+
+@router.delete("/jobs/dead-letter/purge")
+def purge_dead_letter():
+    try:
+        from app.core.jobs import purge_dead_letter as purge_fn  # type: ignore
+        count = purge_fn()
+    except Exception:
+        from app.core.jobs import _DEAD_LETTER  # type: ignore
+        count = len(_DEAD_LETTER)
+        _DEAD_LETTER.clear()
+    safe_audit("jobs.purge_dead_letter", None, None, {"count": count})
+    return {"purged": count}
+
 @router.get("/rate-limits/config")
 def current_rate_limits():
     snap = bucket_snapshot()
@@ -103,3 +143,23 @@ def delete_override(scope: str):
         raise HTTPException(status_code=403, detail={"error": "disabled", "detail": "Overrides disabled in this environment"})
     existed = delete_limit(scope)
     return {"deleted": scope, "existed": existed}
+
+@router.get("/rate-limits/bans")
+def list_bans():
+    snap = bucket_snapshot()
+    return {"bans": snap.get("bans", [])}
+
+@router.delete("/rate-limits/bans/{ip}")
+def clear_ban(ip: str):
+    existed = rl_clear_ban(ip)
+    if existed:
+        safe_audit("rate_limit.clear_ban", None, None, {"ip": ip})
+    return {"ip": ip, "cleared": existed}
+
+"""NOTE: Historical /admin* dev endpoints removed.
+
+Production-ready administrative APIs now live under the dedicated router in
+`app.plugins.admin.routes` mounted at `/api/admin/*`. This dev module intentionally
+excludes those duplicates to prevent confusion and accidental reliance on the
+previous experimental paths.
+"""

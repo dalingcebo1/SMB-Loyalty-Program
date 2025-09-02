@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 from app.core.database import get_db
 from app.models import TenantBranding, Tenant as _Tenant
+import os
 
 app = FastAPI(
     title="SMB Loyalty Program",
@@ -162,6 +163,38 @@ def public_tenant_theme(request: Request, ctx: TenantContext = Depends(get_tenan
         'favicon_url': branding.favicon_url if branding else None,
     }
     return data
+
+@app.get('/api/public/tenant-manifest')
+def public_tenant_manifest(request: Request, ctx: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
+    branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
+    icons = []
+    base = f"/static/branding/{ctx.id}"
+    # Collect common sizes if present
+    for size in [64,128,256,512]:
+        for field in ['logo_light','app_icon']:
+            hashed_prefix = f"{field}-"  # matches generation pattern
+            # naive file system scan
+            dir_path = os.path.join(settings.static_dir or 'static','branding', ctx.id)
+            if os.path.isdir(dir_path):
+                for fname in os.listdir(dir_path):
+                    if fname.startswith(f"{field}-") and f"-{size}" in fname:
+                        icons.append({
+                            'src': f"{base}/{fname}",
+                            'sizes': f"{size}x{size}",
+                            'type': 'image/png'
+                        })
+                        break
+    manifest = {
+        'name': (branding.public_name if branding else ctx.id) or ctx.id,
+        'short_name': (branding.short_name if branding else ctx.id) or ctx.id,
+        'theme_color': (branding.primary_color if branding else None) or '#3366ff',
+        'background_color': '#ffffff',
+        'display': 'standalone',
+        'icons': icons,
+        'id': ctx.id,
+        'start_url': '/',
+    }
+    return manifest
 
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")

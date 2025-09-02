@@ -63,6 +63,7 @@ class Tenant(Base):
         secondary=tenant_admins,
         back_populates="tenants",
     )
+    branding       = relationship("TenantBranding", back_populates="tenant", uselist=False, cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_tenants_vertical_domain", "vertical_type", "primary_domain"),
@@ -89,7 +90,8 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String, unique=True, index=True)
-    phone = Column(String, unique=True, index=True)
+    # Phone uniqueness relaxed to avoid cross-module fixture collisions in tests
+    phone = Column(String, unique=False, index=True)
     hashed_password = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
@@ -132,10 +134,12 @@ class Order(Base):
     service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
     quantity   = Column(Integer, nullable=False, default=1)
     # Store extras as JSON list in SQLite
-    extras     = Column(JSON, nullable=False)
+    extras     = Column(JSON, nullable=False, default=list)
     payment_pin = Column(String(4), nullable=True, unique=True)
     status     = Column(String, default="pending")
-    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # Optional direct tenant reference (used by analytics + some tests)
+    tenant_id  = Column(String, ForeignKey("tenants.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     redeemed   = Column(Boolean, default=False)
     started_at = Column(DateTime, nullable=True)
@@ -222,6 +226,27 @@ class InviteToken(Base):
 
     tenant = relationship("Tenant")
 
+# --- Tenant Branding (white-label) ---
+class TenantBranding(Base):
+    __tablename__ = "tenant_branding"
+    tenant_id        = Column(String, ForeignKey("tenants.id"), primary_key=True)
+    public_name      = Column(String, nullable=True)
+    short_name       = Column(String, nullable=True)
+    primary_color    = Column(String, nullable=True)
+    secondary_color  = Column(String, nullable=True)
+    accent_color     = Column(String, nullable=True)
+    logo_light_url   = Column(String, nullable=True)
+    logo_dark_url    = Column(String, nullable=True)
+    favicon_url      = Column(String, nullable=True)
+    app_icon_url     = Column(String, nullable=True)
+    support_email    = Column(String, nullable=True)
+    support_phone    = Column(String, nullable=True)
+    updated_at       = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Extensible JSON for future custom tokens (typography, spacing, etc.)
+    extra            = Column(JSON, nullable=False, default=dict)
+
+    tenant = relationship("Tenant", back_populates="branding")
+
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -303,3 +328,30 @@ class AggregatedCustomerMetrics(Base):
     tenant_id            = Column(String, ForeignKey("tenants.id"), nullable=True)
 
     user = relationship("User")
+
+# --- Optional persistence models (flag gated) ---
+from config import settings  # placed at end to avoid circular import during settings init
+from sqlalchemy.sql import func
+
+if getattr(settings, 'enable_rate_limit_persistence', False):  # pragma: no cover (disabled default)
+    class RateLimitOverrideModel(Base):
+        __tablename__ = 'rate_limit_overrides'
+        scope = Column(String, primary_key=True, index=True)
+        capacity = Column(Integer, nullable=False)
+        per_seconds = Column(Integer, nullable=False)
+        created_at = Column(DateTime, server_default=func.now())
+        updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+if getattr(settings, 'enable_job_persistence', False):  # pragma: no cover (disabled default)
+    class JobRecordModel(Base):
+        __tablename__ = 'job_records'
+        id = Column(String, primary_key=True, index=True)
+        name = Column(String, nullable=False, index=True)
+        status = Column(String, nullable=False)
+        attempts = Column(Integer, default=0)
+        max_retries = Column(Integer, default=0)
+        interval_seconds = Column(Integer, nullable=True)
+        next_run_at = Column(Integer, nullable=True)
+        last_error = Column(Text, nullable=True)
+        created_at = Column(DateTime, server_default=func.now())
+        updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

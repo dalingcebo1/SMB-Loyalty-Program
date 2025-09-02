@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -54,6 +54,7 @@ class UserOut(BaseModel):
     onboarded: Optional[bool]
     tenant_id: str
     role: str
+    capabilities: List[str] = []
 
 # --- RESPONSE SCHEMAS ---
 class LoginResponse(BaseModel):
@@ -141,8 +142,18 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
 
 
+def _role_capabilities(role: str) -> List[str]:
+    base = {
+        'user': ['loyalty.view','orders.create','orders.view_own'],
+        'staff': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update'],
+        'admin': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced','audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view'],
+        'developer': ['dev.tools','jobs.view','jobs.retry','audit.view','rate_limit.edit'],
+        'superadmin': ['*']
+    }
+    return base.get(role, [])
+
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != "admin":
+    if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",
@@ -151,12 +162,20 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 
 def require_staff(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in ("staff", "admin"):
+    if current_user.role not in ("staff", "admin", "superadmin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Staff privileges required",
         )
     return current_user
+
+def require_capability(cap: str):
+    def dep(current_user: User = Depends(get_current_user)) -> User:
+        caps = _role_capabilities(current_user.role)
+        if '*' in caps or cap in caps:
+            return current_user
+        raise HTTPException(status_code=403, detail=f"Capability '{cap}' required")
+    return dep
 
 # ─── ENDPOINTS ─────────────────────────────────────────────────────────────
 @router.post("/signup", status_code=201)
@@ -253,6 +272,7 @@ def social_login(req: SocialLoginRequest, db: Session = Depends(get_db)):
             onboarded=user.onboarded,
             tenant_id=user.tenant_id,
             role=user.role,
+            capabilities=_role_capabilities(user.role),
         ),
     )
 
@@ -295,6 +315,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
             onboarded=user.onboarded,
             tenant_id=user.tenant_id,
             role=user.role,
+            capabilities=_role_capabilities(user.role),
         ),
     )
 
@@ -349,11 +370,18 @@ async def confirm_otp(req: ConfirmOtpRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserOut)
 def me(current: User = Depends(get_current_user)):
-    if not current.onboarded and current.role not in ("staff", "admin", "developer"):
+    if not current.onboarded and current.role not in ("staff", "admin", "developer", "superadmin"):
         raise HTTPException(status_code=403, detail="User not onboarded")
     return UserOut(
-        id=current.id, email=current.email, first_name=current.first_name, last_name=current.last_name,
-        phone=current.phone, onboarded=current.onboarded, tenant_id=current.tenant_id, role=current.role
+        id=current.id,
+        email=current.email,
+        first_name=current.first_name,
+        last_name=current.last_name,
+        phone=current.phone,
+        onboarded=current.onboarded,
+        tenant_id=current.tenant_id,
+        role=current.role,
+        capabilities=_role_capabilities(current.role),
     )
 
 @router.put("/me", response_model=UserOut)
@@ -362,7 +390,7 @@ def update_me(req: UserUpdateRequest, current: User = Depends(get_current_user),
     if req.last_name is not None: current.last_name = req.last_name
     if req.phone is not None: current.phone = req.phone
     db.commit()
-    return UserOut(id=current.id, email=current.email, first_name=current.first_name, last_name=current.last_name, phone=current.phone, onboarded=current.onboarded, tenant_id=current.tenant_id, role=current.role)
+    return UserOut(id=current.id, email=current.email, first_name=current.first_name, last_name=current.last_name, phone=current.phone, onboarded=current.onboarded, tenant_id=current.tenant_id, role=current.role, capabilities=_role_capabilities(current.role))
 
 @router.post("/reset-password", status_code=200)
 def reset_password(req: PasswordResetRequest, db: Session = Depends(get_db)):

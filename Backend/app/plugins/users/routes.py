@@ -7,6 +7,9 @@ from app.models import User, Vehicle, Order, OrderVehicle
 from app.plugins.auth.routes import require_staff
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from datetime import datetime
+from app.plugins.auth.routes import require_admin, get_password_hash
+from fastapi import Depends
 
 # Schema for full user info
 class UserOut(BaseModel):
@@ -175,6 +178,39 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr]
     phone: Optional[str]
     role: Optional[str]
+
+class ManualUserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    phone: Optional[str]
+    tenant_id: Optional[str]
+    role: Optional[str] = "user"
+
+@router.post("/manual", response_model=UserOut, status_code=201, dependencies=[Depends(require_admin)])
+def manual_create_user(payload: ManualUserCreate, db: Session = Depends(get_db), current=Depends(require_admin)):
+    if db.query(User).filter_by(email=payload.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    role = payload.role or 'user'
+    if role not in ("user","staff","admin","developer"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+    tenant_id = payload.tenant_id or current.tenant_id or 'default'
+    u = User(
+        email=payload.email,
+        hashed_password=get_password_hash(payload.password),
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        phone=payload.phone,
+        onboarded=True,
+        created_at=datetime.utcnow(),
+        tenant_id=tenant_id,
+        role=role,
+    )
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+    return u
 
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db)):

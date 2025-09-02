@@ -9,8 +9,8 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from sqlalchemy.orm import sessionmaker
-from models import Service, Extra
-from database import engine
+from app.models import Service, Extra  # use canonical models to avoid duplicate metadata
+from app.core.database import engine
 
 # Create a session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

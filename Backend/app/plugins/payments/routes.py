@@ -401,6 +401,13 @@ def verify_loyalty(
             # create loyalty order and payment if a loyalty-eligible service exists
             service = db.query(Service).filter_by(loyalty_eligible=True).first()
             if service:
+                # Assign tenant_id from redemption.user (loyalty redemption is tenant scoped)
+                tenant_id = None
+                try:
+                    if redemption and redemption.user:
+                        tenant_id = redemption.user.tenant_id
+                except Exception:
+                    tenant_id = None
                 order = Order(
                     service_id=service.id,
                     quantity=1,
@@ -409,7 +416,8 @@ def verify_loyalty(
                     user_id=redemption.user_id,
                     status="paid",
                     type="loyalty",
-                    amount=0
+                    amount=0,
+                    tenant_id=tenant_id,
                 )
                 db.add(order)
                 db.commit()
@@ -475,6 +483,7 @@ def recent_verifications(
             "order_id": o.id,
             "timestamp": (o.order_redeemed_at or o.created_at).isoformat() if (o.order_redeemed_at or o.created_at) else None,
             "status": "success",
+            "tenant_id": getattr(o, 'tenant_id', None),
             "user": {
                 "first_name": o.user.first_name if o.user else None,
                 "last_name": o.user.last_name if o.user else None,
@@ -526,6 +535,7 @@ def start_manual_wash(data: dict = Body(...), db: Session = Depends(get_db)):
         status="started",
         started_at=datetime.utcnow(),
         redeemed=False,
+        tenant_id=getattr(user, 'tenant_id', None),
     )
     db.add(order)
     db.commit()
@@ -576,6 +586,7 @@ def active_washes(db: Session = Depends(get_db)):
             "started_at": order.started_at,
             "ended_at": order.ended_at,
             "status": "ended" if order.ended_at else "started",
+            "tenant_id": getattr(order, 'tenant_id', None),
             "duration_seconds": int((order.ended_at - order.started_at).total_seconds()) if order.started_at and order.ended_at else None,
         })
     return result
@@ -747,6 +758,7 @@ def history(
             "status": "ended" if order.ended_at else "started",
             "service_name": service_name,
             "amount": amount_val,
+            "tenant_id": getattr(order, 'tenant_id', None),
             "duration_seconds": int((order.ended_at - order.started_at).total_seconds()) if order.started_at and order.ended_at else None,
         })
     return {"total": total, "items": result, "page": page, "limit": limit}
@@ -891,6 +903,7 @@ def dashboard_analytics(
 
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
     _ANALYTICS_METRICS["latencies_ms"].append(elapsed_ms)
+    from app.core.tenant_context import current_tenant_id
     payload = {
         "total_washes": int(stats_row.total_washes),
         "completed_washes": int(stats_row.completed_washes),
@@ -907,6 +920,7 @@ def dashboard_analytics(
             "p95": p95_duration,
             "sample_size": len(durations),
         },
+        "tenant_id": current_tenant_id.get(None),
         "meta": {
             "cached": False,
             "elapsed_ms": elapsed_ms,
@@ -1139,6 +1153,7 @@ def business_analytics(
         "upsell_rate_pct": pct_delta(upsell_rate, upsell_rate_prev),
     }
 
+    from app.core.tenant_context import current_tenant_id
     payload = {
         "range_days": range_days,
         "recent_days": recent_days,
@@ -1160,6 +1175,7 @@ def business_analytics(
         "churn_risk_count": churn_risk_count,
         "upsell_rate": round(upsell_rate, 4),
         "deltas": deltas,
+        "tenant_id": current_tenant_id.get(None),
         "meta": {"generated_at": now.isoformat()}
     }
 

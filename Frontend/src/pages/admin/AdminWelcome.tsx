@@ -35,8 +35,7 @@ const AdminWelcome: React.FC = () => {
     {
       category: 'Business Configuration',
       items: [
-  { to: '/admin/branding', icon: HiOfficeBuilding, title: 'Branding', description: 'Logos, colors & identity', color: 'pink' },
-        { to: '/admin/tenant-settings', icon: HiOfficeBuilding, title: 'Tenant Settings', description: 'Brand & primary settings', color: 'purple' },
+  { to: '/admin/branding', icon: HiOfficeBuilding, title: 'Branding', description: 'Logos, colors & brand identity', color: 'purple' },
         { to: '/admin/modules', icon: HiCog, title: 'Modules', description: 'Feature toggles & settings', color: 'orange' },
         { to: '/admin/inventory', icon: HiClipboardList, title: 'Inventory', description: 'Manage services & extras', color: 'teal' },
       ]

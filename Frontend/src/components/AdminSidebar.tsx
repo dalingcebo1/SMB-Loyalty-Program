@@ -127,7 +127,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                         to={item.path}
                         onClick={() => onClose?.()}
                         className={({ isActive }) => {
-                          const active = isActive || pathname.startsWith(item.path);
+                          // A route is active if:
+                          //  - Exact match OR
+                          //  - It is a parent of current path (boundary match) except for the root '/admin' item which should only be exact.
+                          const boundaryMatch = pathname === item.path || pathname.startsWith(item.path + '/');
+                          const active = item.path === '/admin' ? pathname === '/admin' : (isActive || boundaryMatch);
                           return `group flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                             active
                               ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25 transform scale-[1.02]'

@@ -12,9 +12,11 @@ const RateLimitEditor: React.FC = () => {
   const [form, setForm] = useState({ scope: '', capacity: '60', per: '60' });
 
   const load = async () => {
+    setLoading(true);
+    setError(null);
     try {
-  const res = await api.get('/admin/rate-limits');
-  const bans = res.data.bans || [];
+      const res = await api.get('/admin/rate-limits');
+      const bans = res.data.bans || [];
       setState({ overrides: res.data.overrides || {}, bans });
     } catch (e) {
       interface ErrLike { response?: { data?: { detail?: string } } }

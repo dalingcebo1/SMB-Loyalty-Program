@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useCapabilities } from '../hooks/useCapabilities';
 import api from '../../../api/api';
 
@@ -12,14 +12,18 @@ const JobsMonitor: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const canRetry = has('jobs.retry');
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!has('jobs.view')) return;
+    setLoading(true);
+    setError(null);
     let mounted = true;
-  api.get('/admin/jobs')
+    api.get('/admin/jobs')
       .then(res => { if (mounted) { setData(res.data); setLoading(false); } })
       .catch(err => { if (mounted) { setError(err?.response?.data?.detail || 'Failed to load jobs'); setLoading(false); } });
     return () => { mounted = false; };
   }, [has]);
+
+  useEffect(() => { load(); }, [load]);
 
   const retry = async (id: string) => {
   try { await api.post(`/admin/jobs/${id}/retry`); const refreshed = await api.get('/admin/jobs'); setData(refreshed.data); }
@@ -29,8 +33,17 @@ const JobsMonitor: React.FC = () => {
   if (!has('jobs.view')) return <div className="text-sm text-red-500">Missing capability: jobs.view</div>;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Jobs Monitor</h1>
-      <p className="text-sm text-gray-500">Track background job queue health and retry failures.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Jobs Monitor</h1>
+          <p className="text-sm text-gray-500">Track background job queue health and retry failures.</p>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="px-3 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50"
+        >{loading ? 'Loading…' : 'Refresh'}</button>
+      </div>
       {error && <div className="text-xs text-red-600 bg-red-50 border border-red-200 p-2 rounded">{error}</div>}
       {loading && <div className="text-sm text-gray-500">Loading jobs…</div>}
       {data && (

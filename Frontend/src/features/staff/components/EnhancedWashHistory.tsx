@@ -198,7 +198,7 @@ const EnhancedWashHistory: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-gray-900">{analytics.totalWashes}</div>
-              <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Washes</div>
+              <div className="text-sm font-medium text-gray-500">Total washes</div>
             </div>
           </div>
           
@@ -208,7 +208,7 @@ const EnhancedWashHistory: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-gray-900">{analytics.completedCount}</div>
-              <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">Completed</div>
+              <div className="text-sm font-medium text-gray-500">Completed</div>
             </div>
           </div>
           
@@ -218,7 +218,7 @@ const EnhancedWashHistory: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-gray-900">{analytics.activeCount}</div>
-              <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">In Progress</div>
+              <div className="text-sm font-medium text-gray-500">In progress</div>
             </div>
           </div>
           
@@ -228,7 +228,7 @@ const EnhancedWashHistory: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-gray-900">{formatDuration(analytics.avgDuration)}</div>
-              <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">Avg Duration</div>
+              <div className="text-sm font-medium text-gray-500">Avg duration</div>
             </div>
           </div>
           
@@ -238,7 +238,7 @@ const EnhancedWashHistory: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-gray-900">{analytics.completionRate}%</div>
-              <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">Completion Rate</div>
+              <div className="text-sm font-medium text-gray-500">Completion rate</div>
             </div>
           </div>
         </div>

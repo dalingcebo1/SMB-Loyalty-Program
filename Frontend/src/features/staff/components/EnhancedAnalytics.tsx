@@ -1,5 +1,17 @@
 // src/features/staff/components/EnhancedAnalytics.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend
+} from 'recharts';
 import { formatCents } from '../../../utils/format';
 import { useSharedPeriod } from '../hooks/useSharedPeriod';
 import { useWashHistory, useDashboardAnalytics, useActiveWashes, useBusinessAnalytics } from '../hooks';
@@ -259,147 +271,94 @@ const EnhancedAnalytics: React.FC = () => {
   // ---------------- Tailwind Modernized UI ----------------
   const loadingAny = isLoading || backendLoading || businessLoading;
 
-  interface LineSeries { label: string; values: number[]; color: string; area?: boolean; currency?: boolean; rightAxis?: boolean; }
-  const AnalyticsLineChart: React.FC<{ labels: string[]; series: LineSeries[]; options: { cumulative: boolean; log: boolean; dualAxis: boolean } }> = ({ labels, series, options }) => {
-    // Fine‑grained paddings to avoid overlaps with controls & labels
-    const W = 440; const H = 170; const PT = 16; const PB = 30; const PL = 46; const PR = options.dualAxis ? 50 : 24;
-    const [hover, setHover] = useState<number|null>(null);
-    if (!series.length || !series[0].values.length) {
-      return <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data</div>;
-    }
-    // Transform values (cumulative)
-    const transformed = series.map(s => {
+  interface TimeSeries { label: string; values: number[]; color: string; area?: boolean; currency?: boolean; rightAxis?: boolean; }
+  const TimeSeriesChart: React.FC<{ labels: string[]; series: TimeSeries[]; options: { cumulative: boolean; log: boolean; dualAxis: boolean } }> = ({ labels, series, options }) => {
+    if (!series.length) return <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data</div>;
+    // Transform series (cumulative + log adjustments)
+    const processed = series.map(s => {
       let vals = [...s.values];
       if (options.cumulative) {
         let run = 0; vals = vals.map(v => (run += v));
       }
-      return { ...s, tvals: vals };
-    });
-    // Separate axes
-    const leftSeries = transformed.filter(s => !s.rightAxis);
-    const rightSeries = transformed.filter(s => s.rightAxis);
-    function scaleSet(set: typeof transformed) {
-      const all = set.flatMap(s => s.tvals);
-      let min = Math.min(...all);
-      let max = Math.max(...all);
       if (options.log) {
-        // shift if zeros
-        const shift = 1 - Math.min(...all, 0) + 0.0001;
-        const lvals = all.map(v => Math.log10(v + shift));
-        min = Math.min(...lvals); max = Math.max(...lvals);
-        return { min, max, shift, log:true };
+        vals = vals.map(v => v <= 0 ? 0.0001 : v); // avoid log(0)
       }
-      if (min === max) { max = min + 1; }
-      return { min, max, shift:0, log:false };
-    }
-    const L = scaleSet(leftSeries);
-    const R = options.dualAxis && rightSeries.length ? scaleSet(rightSeries) : null;
-    const chartHeight = H - PT - PB;
-    const chartWidth = W - PL - PR;
-    const xFor = (i:number) => PL + (i/(labels.length-1))*chartWidth;
-    const yFor = (v:number, axis:'L'|'R') => {
-      const S = axis==='L'?L:R!;
-      if (S.log) {
-        const lv = Math.log10(v + S.shift);
-        return H - PB - ((lv - S.min)/(S.max-S.min))*chartHeight;
-      }
-      return H - PB - ((v - S.min)/(S.max-S.min))*chartHeight;
-    };
-  function buildPath(vals:number[], axis:'L'|'R') {
-      return vals.map((v,i)=>{
-        const x = xFor(i); const y = yFor(v, axis); return {x,y,v};
-      });
-    }
-  const paths = transformed.map(s => ({ s, pts: buildPath(s.tvals, s.rightAxis?'R':'L') }));
-    const onMove: React.MouseEventHandler<SVGSVGElement> = (e) => {
-      const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
-      const rel = (e.clientX - rect.left - PL)/chartWidth; if (rel < 0 || rel >1) { setHover(null); return; }
-      const idx = Math.round(rel*(labels.length-1)); setHover(idx);
-    };
-    const onLeave = () => setHover(null);
-    // ticks left
-    const leftTicks = 4;
-    // Create 'nice' ticks (left axis) for readability
-    function niceStep(range:number) {
-      const rough = range / (leftTicks - 1);
-      const mag = Math.pow(10, Math.floor(Math.log10(rough)));
-      const norm = rough / mag;
-      let step = mag;
-      if (norm >= 5) step = 5*mag; else if (norm >= 2) step = 2*mag; else step = mag;
-      return step;
-    }
-    const leftRange = L.max - L.min;
-    const step = niceStep(leftRange || 1);
-    const tickStart = Math.floor(L.min / step) * step;
-    const leftTickVals: number[] = [];
-    for (let v = tickStart; v <= L.max + 0.0001 && leftTickVals.length < 6; v += step) leftTickVals.push(v);
-    const rightTickVals = R ? leftTickVals.map(()=>0).map((_,i)=> R.min + (i/(leftTicks-1))*(R.max-R.min)) : [];
+      return { ...s, vals };
+    });
+    // Build unified data points for Recharts
+    interface Row { date: string; [k: string]: number | string }
+    const data: Row[] = labels.map((lbl, idx) => {
+      const row: Row = { date: lbl };
+      processed.forEach(s => { row[s.label] = s.vals[idx] ?? 0; });
+      return row;
+    });
+    const rightKeys = processed.filter(s=>s.rightAxis).map(s=>s.label);
+    const ChartBase = processed.some(s=>s.area) ? AreaChart : LineChart;
+    const currencyLeft = processed.some(s=> s.currency && !s.rightAxis);
     return (
-      <div className="absolute inset-0">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full overflow-visible" onMouseMove={onMove} onMouseLeave={onLeave}>
-          <defs>
-            {paths.map(p=> p.s.area && <linearGradient key={p.s.label+"grad"} id={`grad-${p.s.label}`} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={p.s.color} stopOpacity="0.35" />
-              <stop offset="100%" stopColor={p.s.color} stopOpacity="0.05" />
-            </linearGradient>)}
-          </defs>
-          {/* Grid */}
-          {leftTickVals.map(tv=> {
-            const y = yFor(options.log? (Math.pow(10, tv)-L.shift): tv, 'L');
-            return <line key={'g'+tv} x1={PL} x2={W-PR} y1={y} y2={y} stroke="#eef2f7" strokeDasharray="3 4" />;
-          })}
-          {/* Axes */}
-          <line x1={PL} x2={PL} y1={PT} y2={H-PB} stroke="#d1d5db" />
-          <line x1={W-PR} x2={W-PR} y1={PT} y2={H-PB} stroke={R?"#d1d5db":"transparent"} />
-          <line x1={PL} x2={W-PR} y1={H-PB} y2={H-PB} stroke="#d1d5db" />
-          {/* X labels sparse */}
-          {labels.length>0 && [0, Math.floor(labels.length/2), labels.length-1].map(i=> <text key={'xl'+i} x={xFor(i)} y={H- PB + 18} textAnchor="middle" fontSize="10" fill="#6b7280">{labels[i]}</text>)}
-          {/* Y labels */}
-          {leftTickVals.map(tv=> {
-            const y = yFor(options.log? (Math.pow(10, tv)-L.shift): tv, 'L');
-            const showCurrency = series.some(s=> s.currency && !s.rightAxis);
-            const label = showCurrency ? formatCents(Math.round(tv*100)) : Math.round(tv).toString();
-            return <text key={'yl'+tv} x={PL-8} y={y+4} fontSize="10" textAnchor="end" fill="#64748b">{label}</text>;
-          })}
-          {R && rightTickVals.map((tv,i)=> {
-            const y = yFor(options.log? (Math.pow(10, tv)-R.shift): tv, 'R');
-            return <text key={'yr'+i} x={W-PR+6} y={y+4} fontSize="10" textAnchor="start" fill="#64748b">{Math.round(tv)}</text>;
-          })}
-          {/* Series */}
-          {paths.map(p=>{
-            const d = p.pts.reduce((a,pt,i,arr)=>{
-              if(i===0) return `M ${pt.x} ${pt.y}`;
-              const prev = arr[i-1]; const dx=(pt.x-prev.x)/2; const c1x=prev.x+dx; const c1y=prev.y; const c2x=pt.x-dx; const c2y=pt.y; return a+` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${pt.x} ${pt.y}`;
-            },'');
-            const fillD = `${d} L ${p.pts[p.pts.length-1].x} ${H-PB} L ${p.pts[0].x} ${H-PB} Z`;
-            return <g key={p.s.label}>
-              {p.s.area && <path d={fillD} fill={`url(#grad-${p.s.label})`} />}
-              <path d={d} fill="none" stroke={p.s.color} strokeWidth={2} />
-              {p.pts.map((pt,i)=> <circle key={i} cx={pt.x} cy={pt.y} r={ (hover===i)?4:2.5 } fill={p.s.color} />)}
-            </g>;
-          })}
-          {/* Hover crosshair */}
-          {hover!=null && (
-            <g>
-              <line x1={xFor(hover)} x2={xFor(hover)} y1={PT} y2={H-PB} stroke="#94a3b8" strokeDasharray="4 4" />
-            </g>
+      <ResponsiveContainer width="100%" height={190}>
+        <ChartBase data={data} margin={{ top: 10, right: options.dualAxis? 40: 20, left: 8, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" />
+          <XAxis dataKey="date" tick={{ fontSize: 10 }} tickMargin={8} />
+          <YAxis
+            yAxisId="left"
+            tick={{ fontSize: 10 }}
+            stroke="#64748b"
+            scale={options.log ? 'log' : 'auto'}
+            allowDataOverflow={options.log}
+            tickFormatter={(v:number)=> currencyLeft ? formatCents(Math.round(v*100)) : Math.round(v).toString() }
+          />
+          {options.dualAxis && rightKeys.length>0 && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 10 }}
+              stroke="#64748b"
+              scale={options.log ? 'log' : 'auto'}
+              allowDataOverflow={options.log}
+              tickFormatter={(v:number)=> Math.round(v).toString() }
+            />
           )}
-        </svg>
-        {hover!=null && (
-          <div className="pointer-events-none absolute text-[11px] bg-white/95 backdrop-blur border border-gray-200 shadow-sm rounded-md px-2 py-1 flex flex-col gap-0.5" style={{
-            left:`${Math.min(95, Math.max(5,(hover/(labels.length-1))*100))}%`,
-            top:2,
-            transform:'translateX(-50%)'
-          }}>
-            <div className="font-medium text-gray-700">{labels[hover]}</div>
-            {paths.map(p=> <div key={p.s.label} className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full" style={{background:p.s.color}}></span>
-              <span className="text-gray-600">{p.s.label}:</span>
-              <span className="font-mono text-gray-800">{p.s.currency ? formatCents(Math.round(p.pts[hover].v*100)) : Math.round(p.pts[hover].v)}</span>
-            </div>)}
-          </div>
-        )}
-      </div>
+          <Tooltip
+            formatter={(value: unknown, name: unknown) => {
+              const labelName = String(name);
+              const num = Number(value);
+              const s = processed.find(p=>p.label===labelName);
+              if (s?.currency) return [formatCents(Math.round(num*100)), labelName];
+              return [Math.round(num), labelName];
+            }}
+            labelClassName="font-medium"
+          />
+          <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
+          {processed.map(s => (
+            s.area ? (
+              <Area
+                key={s.label}
+                yAxisId={s.rightAxis? 'right':'left'}
+                type="monotone"
+                dataKey={s.label}
+                stroke={s.color}
+                fill={s.color}
+                strokeWidth={2}
+                fillOpacity={0.15}
+                dot={false}
+                isAnimationActive={false}
+              />
+            ) : (
+              <Line
+                key={s.label}
+                yAxisId={s.rightAxis? 'right':'left'}
+                type="monotone"
+                dataKey={s.label}
+                stroke={s.color}
+                strokeWidth={2}
+                dot={false}
+                isAnimationActive={false}
+              />
+            )
+          ))}
+        </ChartBase>
+      </ResponsiveContainer>
     );
   };
 
@@ -498,20 +457,22 @@ const EnhancedAnalytics: React.FC = () => {
         {/* Charts */}
         <div className={`grid gap-8 ${showOverlay ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'}`}>
           <div className={`bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm relative ${showOverlay ? 'lg:col-span-2' : ''}`}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Revenue trend</h3>
-                <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Revenue trend</h3>
+                <div className="flex flex-wrap gap-2 text-[11px]">
                   <button onClick={()=>setChartCumulative(v=>!v)} className={`px-2 py-0.5 rounded border ${chartCumulative?'bg-indigo-600 text-white border-indigo-600':'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{chartCumulative?'Cumulative':'Linear'}</button>
                   <button onClick={()=>setChartLogScale(v=>!v)} className={`px-2 py-0.5 rounded border ${chartLogScale?'bg-indigo-600 text-white border-indigo-600':'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{chartLogScale?'Log':'Linear y'}</button>
                   <button onClick={()=>setShowOverlay(v=>!v)} className={`px-2 py-0.5 rounded border ${showOverlay?'bg-indigo-600 text-white border-indigo-600':'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{showOverlay?'Overlay on':'Overlay off'}</button>
                 </div>
               </div>
-              <span className="text-xs text-gray-500 mt-1">{selectedPeriod}</span>
+              <div className="text-right">
+                <span className="text-xs text-gray-500">{selectedPeriod}</span>
+              </div>
             </div>
-            <div className="h-40">
+            <div className="h-48">
               {revenueChartData && (
-                <AnalyticsLineChart
+                <TimeSeriesChart
                   labels={revenueChartData.labels}
                   series={[
                     { label: 'Revenue', values: revenueChartData.datasets[0].data, color: '#4f46e5', area: true, currency: true },
@@ -525,19 +486,21 @@ const EnhancedAnalytics: React.FC = () => {
           </div>
           {!showOverlay && (
             <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm relative">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Wash volume</h3>
-                  <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Wash volume</h3>
+                  <div className="flex flex-wrap gap-2 text-[11px]">
                     <button onClick={()=>setChartCumulative(v=>!v)} className={`px-2 py-0.5 rounded border ${chartCumulative?'bg-emerald-600 text-white border-emerald-600':'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{chartCumulative?'Cumulative':'Daily'}</button>
                     <button onClick={()=>setChartLogScale(v=>!v)} className={`px-2 py-0.5 rounded border ${chartLogScale?'bg-emerald-600 text-white border-emerald-600':'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{chartLogScale?'Log':'Linear y'}</button>
                   </div>
                 </div>
-                <span className="text-xs text-gray-500 mt-1">{analyticsData.washes.total} washes</span>
+                <div className="text-right">
+                  <span className="text-xs text-gray-500">{analyticsData.washes.total} washes</span>
+                </div>
               </div>
-              <div className="h-40">
+              <div className="h-48">
                 {washVolumeData && (
-                  <AnalyticsLineChart
+                  <TimeSeriesChart
                     labels={washVolumeData.labels}
                     series={[{ label: 'Washes', values: washVolumeData.datasets[0].data, color: '#059669', area: true }]}
                     options={{ cumulative: chartCumulative, log: chartLogScale, dualAxis: false }}
@@ -553,7 +516,7 @@ const EnhancedAnalytics: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Loyalty vs other</h3>
                 <span className="text-xs text-gray-500">{(businessAnalytics.loyalty_share*100).toFixed(1)}% loyalty</span>
               </div>
-              <div className="h-40 flex items-end gap-6">
+              <div className="h-48 flex items-end gap-6">
                 {(() => {
                   const loyalty = businessAnalytics.loyalty_share||0; const other=1-loyalty; const max=Math.max(loyalty,other)||1;
                   return [
@@ -573,7 +536,7 @@ const EnhancedAnalytics: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Top services</h3>
                 <span className="text-xs text-gray-500">Top {businessAnalytics.top_services?.length||0}</span>
               </div>
-              <div className="h-40 flex items-end gap-4">
+              <div className="h-48 flex items-end gap-4">
                 {businessAnalytics.top_services?.map(s=>{
                   const max = Math.max(...businessAnalytics.top_services.map(x=>x.count),1);
                   return <div key={s.service} className="flex-1 text-center">

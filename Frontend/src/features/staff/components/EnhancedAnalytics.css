@@ -80,6 +80,84 @@
   text-align: center;
 }
 
+/* Chart container improvements */
+.chart-card {
+  min-height: 300px;
+}
+
+.chart-header {
+  margin-bottom: 1.5rem !important;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.chart-controls button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Chart container with proper spacing */
+.chart-container {
+  position: relative;
+  height: 192px; /* h-48 */
+  overflow: visible;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Tooltip positioning */
+.chart-tooltip {
+  z-index: 50;
+  max-width: 200px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .chart-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .chart-controls button {
+    font-size: 10px;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .chart-container {
+    height: 160px; /* Reduced height for mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-container {
+    height: 140px; /* Further reduced for small screens */
+  }
+  
+  .chart-header h3 {
+    font-size: 1rem;
+  }
+}
+
 .loading-spinner {
   width: 40px;
   height: 40px;

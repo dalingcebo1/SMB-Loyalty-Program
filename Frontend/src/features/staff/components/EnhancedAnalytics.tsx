@@ -369,10 +369,10 @@ const EnhancedAnalytics: React.FC = () => {
 
   const Card: React.FC<{ title: React.ReactNode; value?: React.ReactNode; subtitle?: React.ReactNode; right?: React.ReactNode; loading?: boolean; children?: React.ReactNode; className?: string; }>
     = ({ title, value, subtitle, right, loading, children, className }) => (
-    <div className={`bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-5 flex flex-col gap-2 shadow-sm hover:shadow-md transition ${className||''}`}>
+  <div className={`bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-5 flex flex-col gap-2 shadow-sm hover:shadow-md transition ${className||''}`}>
       <div className="flex items-start justify-between">
         <div className="flex flex-col">
-          <div className="text-sm font-medium text-gray-600 tracking-wide">{title}</div>
+      <div className="text-sm font-medium text-gray-700">{title}</div>
           {subtitle && <div className="text-xs text-gray-400 mt-0.5">{subtitle}</div>}
         </div>
         {right && <div className="text-xs font-medium">{right}</div>}
@@ -553,7 +553,7 @@ const EnhancedAnalytics: React.FC = () => {
         {/* Goals */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4 tracking-wide">Daily revenue target</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Daily revenue target</h3>
             <div className="space-y-3">
               <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{width:`${Math.min(100, ( (analyticsData.revenue.today_cents/100) / 2000)*100)}%`}} />
@@ -562,7 +562,7 @@ const EnhancedAnalytics: React.FC = () => {
             </div>
           </div>
           <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4 tracking-wide">Efficiency target</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Efficiency target</h3>
             <div className="space-y-3">
               <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500" style={{width:`${Math.min(100, analyticsData.performance.efficiency)}%`}} />
@@ -571,7 +571,7 @@ const EnhancedAnalytics: React.FC = () => {
             </div>
           </div>
           <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4 tracking-wide">Queue wait (est)</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Queue wait (est)</h3>
             <div className="space-y-3">
               <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500" style={{width:`${Math.min(100,(analyticsData.performance.avgWaitTime/30)*100)}%`}} />

@@ -53,23 +53,23 @@ const AdminWelcome: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         {/* Enhanced Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white rounded-2xl p-8 shadow-xl">
+  <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white rounded-2xl p-6 shadow-lg">
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-4xl font-bold mb-3">Welcome back, {user?.firstName || 'Admin'}</h1>
-                <p className="text-blue-100 text-lg">Manage your platform from this centralized dashboard</p>
+                <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.firstName || 'Admin'}</h1>
+                <p className="text-blue-100 text-sm md:text-base">Quick overview and shortcuts to manage your platform</p>
               </div>
               <div className="hidden md:block">
-                <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <HiOfficeBuilding className="w-12 h-12 text-white/80" />
+                <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <HiOfficeBuilding className="w-8 h-8 text-white/80" />
                 </div>
               </div>
             </div>
           </div>
-          <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full"></div>
-          <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-white/5 rounded-full"></div>
+          <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/5 rounded-full"></div>
+          <div className="absolute -bottom-3 -left-3 w-14 h-14 bg-white/5 rounded-full"></div>
         </div>
 
         {/* Quick Actions by Category */}

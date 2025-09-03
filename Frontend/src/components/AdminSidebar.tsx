@@ -70,18 +70,24 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
           const groupItems = group.items.filter(i => !i.cap || has(i.cap));
           if (!groupItems.length) return null;
           const isCollapsed = collapsed[group.key] ?? group.defaultCollapsed ?? false;
+          const groupActive = groupItems.some(i => pathname.startsWith(i.path));
+          const groupButtonBase = 'w-full flex justify-between items-center text-left text-xs tracking-wider font-bold uppercase py-3 px-3 rounded-lg transition-all duration-200 group';
+          const groupButtonClasses = groupActive
+            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50';
           return (
             <div key={group.key} className="mb-4">
               <button
                 type="button"
                 onClick={() => toggle(group.key)}
-                className="w-full flex justify-between items-center text-left text-xs tracking-wider font-bold uppercase text-gray-500 hover:text-gray-700 py-3 px-3 rounded-lg hover:bg-gray-50 transition-all duration-200 group"
+                aria-current={groupActive ? 'true' : undefined}
+                className={`${groupButtonBase} ${groupButtonClasses}`}
               >
                 <span className="flex items-center">
-                  <span className="w-2 h-2 bg-gray-300 rounded-full mr-3 group-hover:bg-gray-400 transition-colors"></span>
+                  <span className={`w-2 h-2 rounded-full mr-3 transition-colors ${groupActive ? 'bg-indigo-500 shadow-inner shadow-indigo-300' : 'bg-gray-300 group-hover:bg-gray-400'}`}></span>
                   {group.title}
                 </span>
-                <span className={`text-xs transition-transform duration-200 ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}>
+                <span className={`text-xs transition-transform duration-200 ${isCollapsed ? 'rotate-0' : 'rotate-90'} ${groupActive ? 'text-indigo-600' : ''}`}>
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                   </svg>

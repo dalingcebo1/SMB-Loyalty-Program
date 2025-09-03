@@ -81,106 +81,133 @@ const AuditLogs: React.FC = () => {
   };
 
   if (!has('audit.view')) {
-    return <div className="text-sm text-red-500">Missing capability: audit.view</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <div className="text-red-600 font-medium">Access Denied</div>
+            <div className="text-sm text-red-500 mt-1">Missing capability: audit.view</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-semibold">Audit Logs</h1>
-          <p className="text-sm text-gray-500">Administrative actions and security events</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* Header */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-700 to-rose-700 rounded-2xl p-6 text-white shadow-lg">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
+              <p className="mt-1 text-red-100">Administrative actions and security events</p>
+            </div>
+            <button
+              onClick={() => fetchAuditLogs(true)}
+              disabled={loading}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg font-medium transition-colors backdrop-blur-sm"
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
+          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
         </div>
-        <button
-          onClick={() => fetchAuditLogs(true)}
-          disabled={loading}
-          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
-      </div>
 
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="text-red-600 font-medium text-sm">{error}</div>
+          </div>
+        )}
 
-      <div className="bg-white border rounded shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-900">ID</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-900">Action</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-900">User ID</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-900">Tenant</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-900">Time</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-900">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {events.length === 0 && !loading ? (
+        <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50/80 border-b border-gray-200">
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    No audit events found
-                  </td>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">ID</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Action</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">User ID</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Tenant</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Time</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700">Details</th>
                 </tr>
-              ) : (
-                events.map((event) => (
-                  <tr key={event.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs">{event.id}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                        {event.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {event.user_id || '-'}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {event.tenant_id || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">
-                      {formatDateTime(event.created_at)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {formatDetails(event.details) && (
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
-                            View details
-                          </summary>
-                          <pre className="mt-1 p-2 bg-gray-100 rounded text-xs overflow-x-auto">
-                            {formatDetails(event.details)}
-                          </pre>
-                        </details>
-                      )}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {events.length === 0 && !loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-700">No audit events found</div>
+                          <div className="text-sm text-gray-500 mt-1">Events will appear here as they occur</div>
+                        </div>
+                      </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  events.map((event) => (
+                    <tr key={event.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 font-mono text-xs text-gray-600">{event.id}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {event.action}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-xs text-gray-600">
+                        {event.user_id || '—'}
+                      </td>
+                      <td className="px-6 py-4 font-mono text-xs text-gray-600">
+                        {event.tenant_id || '—'}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-600">
+                        {formatDateTime(event.created_at)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {formatDetails(event.details) && (
+                          <details className="text-xs">
+                            <summary className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium">
+                              View details
+                            </summary>
+                            <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-xs overflow-x-auto border">
+                              {formatDetails(event.details)}
+                            </pre>
+                          </details>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {hasMore && (
+            <div className="px-6 py-4 border-t bg-gray-50/50">
+              <button
+                onClick={() => fetchAuditLogs(false)}
+                disabled={loading}
+                className="w-full px-4 py-3 text-sm bg-white hover:bg-gray-50 disabled:opacity-50 rounded-lg border border-gray-200 font-medium transition-colors"
+              >
+                {loading ? 'Loading...' : 'Load More Events'}
+              </button>
+            </div>
+          )}
         </div>
 
-        {hasMore && (
-          <div className="px-4 py-3 border-t bg-gray-50">
-            <button
-              onClick={() => fetchAuditLogs(false)}
-              disabled={loading}
-              className="w-full px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded"
-            >
-              {loading ? 'Loading...' : 'Load More'}
-            </button>
+        {events.length > 0 && (
+          <div className="text-center">
+            <div className="inline-flex items-center px-4 py-2 bg-white/80 rounded-full text-xs text-gray-600 border border-gray-200">
+              Showing {events.length} events{hasMore ? ' (more available)' : ''}
+            </div>
           </div>
         )}
       </div>
-
-      {events.length > 0 && (
-        <div className="text-xs text-gray-500 text-center">
-          Showing {events.length} events{hasMore ? ' (more available)' : ''}
-        </div>
-      )}
     </div>
   );
 };

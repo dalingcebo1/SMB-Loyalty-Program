@@ -372,7 +372,7 @@ const EnhancedAnalytics: React.FC = () => {
     <div className={`bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-5 flex flex-col gap-2 shadow-sm hover:shadow-md transition ${className||''}`}>
       <div className="flex items-start justify-between">
         <div className="flex flex-col">
-          <div className="text-sm font-medium text-gray-500 tracking-wide uppercase">{title}</div>
+          <div className="text-sm font-medium text-gray-600 tracking-wide">{title}</div>
           {subtitle && <div className="text-xs text-gray-400 mt-0.5">{subtitle}</div>}
         </div>
         {right && <div className="text-xs font-medium">{right}</div>}

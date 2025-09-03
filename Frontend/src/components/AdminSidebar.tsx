@@ -33,6 +33,32 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
 
   const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
+  // Determine a single active group using longest matching item path (most specific wins)
+  const activeGroupKey = useMemo(() => {
+    let best: { key: string; length: number } | null = null;
+    for (const group of adminNavGroups) {
+      for (const item of group.items) {
+        if (pathname === item.path || pathname.startsWith(item.path + '/') ) {
+          if (!best || item.path.length > best.length) {
+            best = { key: group.key, length: item.path.length };
+          }
+        }
+        // Also allow exact match for root path e.g. '/admin'
+        else if (pathname.startsWith(item.path) && item.path === '/admin') {
+          if (!best || item.path.length > best.length) best = { key: group.key, length: item.path.length };
+        }
+      }
+    }
+    return best?.key;
+  }, [pathname]);
+
+  // Auto expand the active group to avoid user confusion
+  useEffect(() => {
+    if (activeGroupKey && collapsed[activeGroupKey]) {
+      setCollapsed(prev => ({ ...prev, [activeGroupKey]: false }));
+    }
+  }, [activeGroupKey, collapsed]);
+
   return (
     <aside className="w-72 bg-white shadow-xl border-r border-gray-200 sticky top-0 h-screen overflow-y-auto flex flex-col">
       {/* Mobile close button */}
@@ -70,7 +96,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
           const groupItems = group.items.filter(i => !i.cap || has(i.cap));
           if (!groupItems.length) return null;
           const isCollapsed = collapsed[group.key] ?? group.defaultCollapsed ?? false;
-          const groupActive = groupItems.some(i => pathname.startsWith(i.path));
+          const groupActive = group.key === activeGroupKey; // single source of truth
           const groupButtonBase = 'w-full flex justify-between items-center text-left text-xs tracking-wider font-bold uppercase py-3 px-3 rounded-lg transition-all duration-200 group';
           const groupButtonClasses = groupActive
             ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm'

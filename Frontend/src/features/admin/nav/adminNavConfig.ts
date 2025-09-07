@@ -19,6 +19,9 @@ export interface NavGroup {
   defaultCollapsed?: boolean;
 }
 
+import { moduleFlags } from '../../../config/modules';
+
+// Build groups dynamically so we can hide items when feature flags disable them
 export const adminNavGroups: NavGroup[] = [
   {
     key: 'dashboard',
@@ -35,12 +38,13 @@ export const adminNavGroups: NavGroup[] = [
     ],
   },
   {
-  key: 'tenant-config',
-  title: 'My Business',
+    key: 'tenant-config',
+    title: 'My Business',
     items: [
-  { key: 'branding', label: 'Branding', path: '/admin/branding', cap: 'tenant.edit' },
+      { key: 'branding', label: 'Branding', path: '/admin/branding', cap: 'tenant.edit' },
       { key: 'modules', label: 'Modules', path: '/admin/modules', cap: 'services.manage' },
       { key: 'inventory', label: 'Inventory', path: '/admin/inventory', cap: 'services.manage' },
+      ...(moduleFlags.enableSubscription ? [ { key: 'subscription', label: 'Subscription', path: '/admin/subscription', cap: 'tenant.edit' } ] : []),
     ],
   },
   {

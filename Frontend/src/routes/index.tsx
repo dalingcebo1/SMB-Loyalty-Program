@@ -65,6 +65,8 @@ const InventoryPage = lazy(() => import('../pages/admin/InventoryPage'));
 const AdminAuditLogs = lazy(() => import('../features/admin/pages/AuditLogs'));
 const AdminJobsMonitor = lazy(() => import('../features/admin/pages/JobsMonitor'));
 const AdminRateLimitEditor = lazy(() => import('../features/admin/pages/RateLimitEditor'));
+// New subscription management stub (replaces removed usage page)
+const SubscriptionManagePage = lazy(() => import('../pages/admin/SubscriptionManagePageNew'));
 
 // Route guards
 function RequireAuth() {
@@ -156,6 +158,7 @@ const AppRoutes: React.FC = () => {
             { path: 'modules', element: <ModuleSettings /> },
             { path: 'tenants', element: <TenantsList /> },
             { path: 'tenants/:tenantId/edit', element: <TenantEdit /> },
+            { path: 'subscription', element: moduleFlags.enableSubscription ? <SubscriptionManagePage /> : <Navigate to='/admin' replace /> },
             // Embed staff feature pages under /admin/staff/* so admins can access unified UI superset
             { path: 'staff/dashboard', element: <ModernStaffDashboard /> },
             { path: 'staff/vehicle-manager', element: <VehicleManager /> },

@@ -19,6 +19,7 @@ from app.plugins.loyalty.routes import router as loyalty_router
 from app.plugins.orders.routes  import router as orders_router
 from app.plugins.payments.routes import router as payments_router
 from app.plugins.tenants.routes import router as tenants_router
+from app.plugins.subscriptions import router as subscriptions_router
 from app.plugins.dev            import router as dev_router
 from app.plugins.analytics.routes import router as analytics_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
@@ -86,6 +87,8 @@ for prefix, router in [
     ("/api/orders",    orders_router),
     ("/api/payments",  payments_router),
     ("/api/tenants",   tenants_router),
+    ("/api/subscriptions", subscriptions_router),
+    ("/api/billing",   subscriptions_router),  # billing endpoints live in same router
     # NOTE: analytics_router already declares prefix="/analytics" in its APIRouter.
     # To avoid double prefix (/api/analytics/analytics/...), mount at just /api.
     ("/api",           analytics_router),

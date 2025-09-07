@@ -1,15 +1,14 @@
-
 // Extend Window interface to store RecaptchaVerifier instance
 declare global {
   interface Window {
-  recaptchaVerifier?: import("firebase/auth").RecaptchaVerifier | null | undefined;
+    recaptchaVerifier?: import("firebase/auth").RecaptchaVerifier | null | undefined;
   }
 }
 
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, RecaptchaVerifier, setPersistence, browserLocalPersistence } from "firebase/auth";
 
-// Your Firebase config from VITE_… env vars
+// Read Firebase config from VITE_* env vars (may be missing in local/dev)
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -17,18 +16,31 @@ const firebaseConfig = {
   storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-};
+} as const;
 
-// Initialize or reuse the Firebase app
-const app = getApps().length === 0
-  ? initializeApp(firebaseConfig)
-  : getApps()[0];
+// Minimal sanity check: require these to initialize Firebase; otherwise skip to avoid crashing the app
+const hasFirebaseConfig = Boolean(
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId
+);
 
-// Export the Auth instance
-export const auth = getAuth(app);
+let app: import("firebase/app").FirebaseApp | undefined;
+if (hasFirebaseConfig) {
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+} else {
+  // Don’t throw on missing config in dev—allow the app shell to render and show UI
+  console.warn(
+    "Firebase config missing (VITE_FIREBASE_*). Social login and phone verification will be disabled."
+  );
+}
+
+// Export the Auth instance (may be undefined when config is missing)
+export const auth = app ? getAuth(app) : (undefined as unknown as ReturnType<typeof getAuth>);
 
 // Configure persistence to localStorage for redirect compatibility
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && app) {
   setPersistence(auth, browserLocalPersistence).catch((error: unknown) => {
     console.warn('Failed to set Firebase persistence:', error);
   });
@@ -51,6 +63,9 @@ let globalRecaptchaPromise: Promise<RecaptchaVerifier> | null = null;
 export function getGlobalRecaptcha(): Promise<RecaptchaVerifier> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('recaptcha only available in browser'));
+  }
+  if (!app) {
+    return Promise.reject(new Error('Firebase not configured. Set VITE_FIREBASE_* env vars.'));
   }
   if (window.recaptchaVerifier) {
     return Promise.resolve(window.recaptchaVerifier as RecaptchaVerifier);

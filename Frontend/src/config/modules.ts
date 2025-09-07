@@ -22,6 +22,8 @@ export interface ModuleFlags {
   // Users submodules
   usersAccount: boolean;
   usersAdmin: boolean;
+  // Subscription admin area
+  enableSubscription: boolean;
   // Car Wash module
   enableCarWash: boolean;
   carWashVerify: boolean;
@@ -44,6 +46,8 @@ const ENV_FLAGS: ModuleFlags = {
   enableUsers: import.meta.env.VITE_ENABLE_USERS !== 'false',
   usersAccount: false,
   usersAdmin: false,
+  // Subscription flag (defaults true unless explicitly disabled)
+  enableSubscription: import.meta.env.VITE_ENABLE_SUBSCRIPTION !== 'false',
   // Car Wash flags
   enableCarWash: import.meta.env.VITE_ENABLE_CAR_WASH !== 'false',
   carWashVerify: false,

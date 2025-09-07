@@ -57,6 +57,40 @@ def _get_tenant(db: Session, tenant_id: str) -> Tenant:
     return t
 
 
+# Module registry and vertical-aware extras
+MODULE_REGISTRY: Dict[str, Dict[str, Any]] = {
+    # Core Operations
+    "core": {"name": "Core", "category": "Core Operations", "description": "Tenant, auth, settings"},
+    "team": {"name": "Team & Roles", "category": "Core Operations"},
+    "orders": {"name": "Orders / POS", "category": "Core Operations"},
+    "inventory": {"name": "Inventory", "category": "Core Operations", "description": "Catalog & stock", "vertical_hint": ["flowershop", "dispensary"]},
+    "bookings": {"name": "Bookings", "category": "Core Operations", "description": "Scheduling / courts", "vertical_hint": ["padel", "beauty"]},
+    # Customer Growth
+    "loyalty": {"name": "Loyalty", "category": "Customer Growth"},
+    "messaging": {"name": "Messaging", "category": "Customer Growth", "description": "Email/SMS/WhatsApp"},
+    "referrals": {"name": "Referrals", "category": "Customer Growth"},
+    "automation": {"name": "Automations", "category": "Customer Growth"},
+    "campaigns": {"name": "Campaigns", "category": "Customer Growth"},
+    # Intelligence & Compliance
+    "analytics": {"name": "Analytics", "category": "Intelligence"},
+    "data_export": {"name": "Data Export", "category": "Intelligence"},
+    "audits": {"name": "Audit Logs", "category": "Intelligence"},
+    # Platform
+    "integrations": {"name": "Integrations", "category": "Platform"},
+    "api": {"name": "Public API & Webhooks", "category": "Platform"},
+    "branding_plus": {"name": "Branding+", "category": "Platform"},
+    "priority_support": {"name": "Priority Support", "category": "Platform"},
+    "billing": {"name": "Billing", "category": "Platform"},
+}
+
+VERTICAL_EXTRA_MODULES: Dict[str, List[str]] = {
+    "padel": ["bookings"],
+    "beauty": ["bookings"],
+    "flowershop": ["inventory"],
+    "dispensary": ["inventory"],
+    "carwash": [],
+}
+
 # Seed in-memory plan catalog (could be stored in DB later)
 DEFAULT_PLANS: Dict[int, Dict[str, Any]] = {
     1: {
@@ -64,7 +98,7 @@ DEFAULT_PLANS: Dict[int, Dict[str, Any]] = {
         "name": "Starter",
     "price_cents": 150000,  # R1500 / month
         "billing_period": "monthly",
-        "modules": ["core", "loyalty"],
+    "modules": ["core", "team", "orders", "loyalty", "analytics", "integrations"],
         # Reasonable starter caps; adjust to your pricing later
         "limits": {"core": 200, "loyalty": 100, "analytics": 200, "inventory": 0, "billing": 200},
     },
@@ -73,7 +107,7 @@ DEFAULT_PLANS: Dict[int, Dict[str, Any]] = {
         "name": "Advanced",
     "price_cents": 250000,  # R2500 / month
         "billing_period": "monthly",
-        "modules": ["core", "loyalty", "inventory", "analytics"],
+    "modules": ["core", "team", "orders", "loyalty", "analytics", "integrations", "messaging", "referrals", "automation", "campaigns"],
         "limits": {"core": 2000, "loyalty": 500, "analytics": 5000, "inventory": 1000, "billing": 2000},
     },
     3: {
@@ -81,7 +115,7 @@ DEFAULT_PLANS: Dict[int, Dict[str, Any]] = {
         "name": "Premium",
     "price_cents": 500000,  # R5000 / month
         "billing_period": "monthly",
-        "modules": ["core", "loyalty", "inventory", "analytics", "priority_support"],
+    "modules": ["core", "team", "orders", "loyalty", "analytics", "integrations", "messaging", "referrals", "automation", "campaigns", "api", "data_export", "branding_plus", "priority_support"],
         "limits": {"core": None, "loyalty": None, "analytics": None, "inventory": None, "billing": None},
     },
 }
@@ -118,9 +152,9 @@ def _seed_default_plans_if_empty(db: Session):
         return
     # Seed three basic plans aligned with defaults above
     seed = [
-        SubscriptionPlan(name="Starter", price_cents=150000, billing_period="monthly", modules=["core","loyalty"], active=True),
-        SubscriptionPlan(name="Advanced", price_cents=250000, billing_period="monthly", modules=["core","loyalty","inventory","analytics"], active=True),
-        SubscriptionPlan(name="Premium", price_cents=500000, billing_period="monthly", modules=["core","loyalty","inventory","analytics","priority_support"], active=True),
+        SubscriptionPlan(name="Starter", price_cents=150000, billing_period="monthly", modules=["core","team","orders","loyalty","analytics","integrations"], active=True),
+        SubscriptionPlan(name="Advanced", price_cents=250000, billing_period="monthly", modules=["core","team","orders","loyalty","analytics","integrations","messaging","referrals","automation","campaigns"], active=True),
+        SubscriptionPlan(name="Premium", price_cents=500000, billing_period="monthly", modules=["core","team","orders","loyalty","analytics","integrations","messaging","referrals","automation","campaigns","api","data_export","branding_plus","priority_support"], active=True),
     ]
     db.add_all(seed)
     db.commit()
@@ -212,7 +246,13 @@ def get_tenant_subscription(tenant_id: str, db: Session = Depends(get_db)):
         "billing_period": plan_row.billing_period,
         "modules": plan_row.modules,
     }
-    active_modules = list({*(plan.get("modules", [])), *[k for k, v in sub.get("overrides", {}).items() if v]})
+    # Active modules come from plan + vertical-aware extras + enabled overrides
+    vertical_extras = VERTICAL_EXTRA_MODULES.get((t.vertical_type or "") if hasattr(t, "vertical_type") else "", [])
+    active_modules = list({
+        * (plan.get("modules", []) or []),
+        * (vertical_extras or []),
+        * [k for k, v in (sub.get("overrides", {}) or {}).items() if v],
+    })
     return {
         "plan": {
             "id": plan["id"],
@@ -249,13 +289,21 @@ def assign_plan(tenant_id: str, payload: TenantAssignPlan, db: Session = Depends
 
 @router.get("/modules")
 def list_modules():
-    # Union of all modules for simplicity
-    mods = set()
-    for p in DEFAULT_PLANS.values():
-        mods.update(p.get("modules", []))
-    # Add a few common optional modules
-    mods.update(["billing", "reports", "exports"])
-    return [{"key": m, "name": m.replace('_',' ').title()} for m in sorted(mods)]
+    # Serve the module registry with metadata so the UI can group and describe
+    def to_out(k: str, meta: Dict[str, Any]):
+        return {
+            "key": k,
+            "name": meta.get("name") or k.replace('_', ' ').title(),
+            "category": meta.get("category"),
+            "description": meta.get("description"),
+            # Treat certain items as add-ons without affecting plan inclusion
+            "is_addon": k in {"branding_plus", "priority_support"},
+        }
+
+    # Keep a stable, grouped order: by category then name
+    items = [to_out(k, v) for k, v in MODULE_REGISTRY.items()]
+    items.sort(key=lambda i: ((i.get("category") or "zzz"), i.get("name") or i["key"]))
+    return items
 
 
 @router.get("/tenants/{tenant_id}/overrides")

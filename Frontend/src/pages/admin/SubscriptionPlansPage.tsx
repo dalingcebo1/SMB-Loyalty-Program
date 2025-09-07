@@ -16,7 +16,7 @@ export const SubscriptionPlansPage: React.FC = () => {
   const [editing, setEditing] = useState<Plan | null>(null);
   const [form, setForm] = useState<{name:string; price_cents:number; billing_period:'monthly'|'annual'; description:string; module_keys:string[]; active?:boolean}>({name:'', price_cents:0, billing_period:'monthly', description:'', module_keys:[], active:true});
   const [tenantId] = usePersistedState<string>('admin.selectedTenant','default');
-  const { data: allModules=[] } = useQuery({ queryKey:['allModules'], queryFn: async()=>{ const {data} = await api.get('/subscriptions/modules'); return data as {key:string; name:string; category:string}[]; }});
+  const { data: allModules=[] } = useQuery({ queryKey:['allModules'], queryFn: async()=>{ const {data} = await api.get('/subscriptions/modules'); return data as {key:string; name:string; category?:string; description?: string; is_addon?: boolean}[]; }});
   const [annual, setAnnual] = useState(false);
   interface TenantSubDetail { plan: { id:number; name:string; price_cents:number; billing_period:string } | null; active_modules: string[] }
   // tenantId already defined above
@@ -253,14 +253,28 @@ export const SubscriptionPlansPage: React.FC = () => {
             </div>
             <div>
               <span className="block text-sm font-medium mb-2">Modules</span>
-              <div className="grid md:grid-cols-3 gap-2">
-                {allModules.map(m=> (
-                  <label key={m.key} className="flex items-center gap-2 text-xs border rounded px-2 py-1 cursor-pointer hover:bg-gray-50">
-                    <input type="checkbox" checked={form.module_keys.includes(m.key)} onChange={()=>toggleModule(m.key)} />
-                    <span className="truncate" title={m.name}>{m.name}</span>
-                  </label>
-                ))}
-              </div>
+              {(() => {
+                const order = ['Core Operations','Customer Growth','Intelligence','Platform','Other'];
+                const groups: Record<string, {key:string; name:string; category?:string; description?: string; is_addon?: boolean}[]> = {};
+                for(const m of allModules){ const k = m.category || 'Other'; (groups[k] ||= []).push(m); }
+                const cats = Object.keys(groups).sort((a,b)=> order.indexOf(a) - order.indexOf(b));
+                return cats.map(cat => (
+                  <div key={cat} className="mb-2">
+                    <div className="text-[11px] font-semibold text-gray-700 mb-1">{cat}</div>
+                    <div className="grid md:grid-cols-3 gap-2">
+                      {groups[cat].sort((a,b)=> (a.name||'').localeCompare(b.name||'')).map(m=> (
+                        <label key={m.key} className="flex items-center gap-2 text-xs border rounded px-2 py-1 cursor-pointer hover:bg-gray-50">
+                          <input type="checkbox" checked={form.module_keys.includes(m.key)} onChange={()=>toggleModule(m.key)} />
+                          <span className="truncate" title={m.description || m.name}>
+                            {m.name}
+                            {m.is_addon && <span className="ml-2 text-[9px] px-1 py-0.5 rounded bg-yellow-100 text-yellow-800 align-middle">Add‑on</span>}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
             <div className="flex justify-end gap-3 pt-2">
               {editing && (form.active ?? true) && (

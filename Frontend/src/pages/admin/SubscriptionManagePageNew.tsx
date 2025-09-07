@@ -12,7 +12,7 @@ interface TenantSubDetail { plan: { id:number; name:string; price_cents:number; 
 interface BillingProfile { company?: string; email?: string; phone?: string; vat_number?: string; address_line1?: string; address_line2?: string; city?: string; country?: string; postal_code?: string }
 interface PaymentMethod { brand: string; last4: string; exp_month: number; exp_year: number }
 interface Invoice { id:string; date:string; amount_cents:number; currency:string; status:'paid'|'open'|'void'|'uncollectible'; hosted_invoice_url?: string }
-interface ModuleDef { key:string; name:string; category?:string }
+interface ModuleDef { key:string; name:string; category?:string; description?: string; is_addon?: boolean }
 interface OverridesMap { [key:string]: boolean }
 interface UsagePoint { module:string; count:number; limit?: number }
 interface ChangeEvent { ts:string; action:string; actor?:string; details?:string }
@@ -358,17 +358,36 @@ const SubscriptionManagePage: React.FC = () => {
             <span className="text-xs text-gray-500">Per-tenant feature toggles</span>
           </div>
           {overrides === null && <NotConfiguredNote>Override APIs not available in this environment.</NotConfiguredNote>}
-          <div className="grid md:grid-cols-3 gap-2 mt-2 max-h-64 overflow-y-auto pr-1">
-            {allModules.map(m => {
-              const on = overrides ? Boolean(overrides[m.key]) : false;
-              return (
-                <label key={m.key} className="flex items-center justify-between gap-2 border rounded px-3 py-2 text-sm">
-                  <span className="truncate max-w-[12rem]" title={m.name}>{m.name}</span>
-                  <input type="checkbox" checked={on} onChange={(e)=> toggleOverride(m.key, e.target.checked)} />
-                </label>
-              );
-            })}
-            {allModules.length===0 && <p className="text-sm text-gray-600">No modules to configure.</p>}
+          <div className="mt-2 max-h-64 overflow-y-auto pr-1">
+            {(() => {
+              // Group by category with a stable order
+              const order = ['Core Operations','Customer Growth','Intelligence','Platform','Other'];
+              const groups: Record<string, ModuleDef[]> = {};
+              for (const m of allModules) {
+                const k = m.category || 'Other';
+                (groups[k] ||= []).push(m);
+              }
+              const keys = Object.keys(groups).sort((a,b)=> order.indexOf(a) - order.indexOf(b));
+              return keys.length ? keys.map(cat => (
+                <div key={cat} className="mb-3">
+                  <div className="text-[11px] font-semibold text-gray-700 mb-1">{cat}</div>
+                  <div className="grid md:grid-cols-3 gap-2">
+                    {groups[cat].sort((a,b)=> (a.name||'').localeCompare(b.name||'')).map(m => {
+                      const on = overrides ? Boolean(overrides[m.key]) : false;
+                      return (
+                        <label key={m.key} className="flex items-center justify-between gap-2 border rounded px-3 py-2 text-sm">
+                          <span className="truncate max-w-[12rem]" title={m.description || m.name}>
+                            {m.name}
+                            {m.is_addon && <span className="ml-2 text-[10px] px-1 py-0.5 rounded bg-yellow-100 text-yellow-800 align-middle">Add‑on</span>}
+                          </span>
+                          <input type="checkbox" checked={on} onChange={(e)=> toggleOverride(m.key, e.target.checked)} />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )) : <p className="text-sm text-gray-600">No modules to configure.</p>;
+            })()}
           </div>
         </div>
         <div className="border rounded-lg p-5">

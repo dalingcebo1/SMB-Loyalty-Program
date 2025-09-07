@@ -89,6 +89,18 @@ const PlanSelector: React.FC<{ tenantId: string; currentPlanName?: string }>=({ 
             <td className="p-3 text-center">{priceCell(matrix.advanced)}</td>
             <td className="p-3 text-center">{priceCell(matrix.premium)}</td>
           </tr>
+          <tr className="border-b">
+            <td className="p-3 font-medium">Includes</td>
+            <td className="p-3 text-center text-xs text-gray-700">
+              {(matrix.starter?.modules||[]).map(m=> <span key={m} className="inline-block m-0.5 px-2 py-0.5 rounded bg-gray-100">{m}</span>)}
+            </td>
+            <td className="p-3 text-center text-xs text-gray-700">
+              {(matrix.advanced?.modules||[]).map(m=> <span key={m} className="inline-block m-0.5 px-2 py-0.5 rounded bg-gray-100">{m}</span>)}
+            </td>
+            <td className="p-3 text-center text-xs text-gray-700">
+              {(matrix.premium?.modules||[]).map(m=> <span key={m} className="inline-block m-0.5 px-2 py-0.5 rounded bg-gray-100">{m}</span>)}
+            </td>
+          </tr>
           <tr>
             <td className="p-3 font-medium">Action</td>
             <td className="p-3 text-center">{actionFor(matrix.starter)}</td>

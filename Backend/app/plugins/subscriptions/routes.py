@@ -232,6 +232,8 @@ def assign_plan(tenant_id: str, payload: TenantAssignPlan, db: Session = Depends
     plan_row = db.query(SubscriptionPlan).get(payload.plan_id)
     if not plan_row:
         raise HTTPException(status_code=404, detail="Plan not found")
+    if not plan_row.active:
+        raise HTTPException(status_code=400, detail="Cannot assign an archived plan")
     old = sub.get("plan_id")
     sub["plan_id"] = payload.plan_id
     # Persist module limits from selected plan for quick lookup

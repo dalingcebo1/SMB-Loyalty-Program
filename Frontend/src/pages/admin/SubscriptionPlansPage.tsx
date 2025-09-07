@@ -224,6 +224,12 @@ export const SubscriptionPlansPage: React.FC = () => {
             <button onClick={()=> setShowEditor(false)} className="p-2 rounded hover:bg-gray-100">✕</button>
           </div>
           <form onSubmit={e=> { e.preventDefault(); planCreateMutation.mutate(); }} className="p-5 space-y-6">
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <span className="text-gray-500">Quick templates:</span>
+              <button type="button" onClick={()=> setForm({name:'Starter', price_cents:150000, billing_period:'monthly', description:'Entry plan', module_keys:['core','loyalty'], active:true})} className="px-2 py-1 rounded border bg-white hover:bg-gray-50">Starter (R1500)</button>
+              <button type="button" onClick={()=> setForm({name:'Advanced', price_cents:250000, billing_period:'monthly', description:'Mid plan', module_keys:['core','loyalty','inventory','analytics'], active:true})} className="px-2 py-1 rounded border bg-white hover:bg-gray-50">Advanced (R2500)</button>
+              <button type="button" onClick={()=> setForm({name:'Premium', price_cents:500000, billing_period:'monthly', description:'Top plan', module_keys:['core','loyalty','inventory','analytics','priority_support'], active:true})} className="px-2 py-1 rounded border bg-white hover:bg-gray-50">Premium (R5000)</button>
+            </div>
             <div className="grid md:grid-cols-2 gap-4">
               <label className="flex flex-col gap-1 text-sm">Name
                 <input required value={form.name} onChange={e=> setForm(f=>({...f,name:e.target.value}))} className="border rounded px-3 py-2 text-sm" />

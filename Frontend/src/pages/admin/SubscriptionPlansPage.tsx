@@ -131,7 +131,8 @@ export const SubscriptionPlansPage: React.FC = () => {
       else if(rank[nameLower] < currentRank) intent = 'downgrade';
       else intent = 'choose';
     }
-    const text = intent === 'choose' ? `Choose ${plan.name}` : `${intent === 'upgrade' ? 'Upgrade to' : 'Downgrade to'} ${plan.name}`;
+  const price = plan.price_cents>0 ? (annual? formatCurrency(Math.round(plan.price_cents*10),'ZAR') + ' / year' : formatCurrency(plan.price_cents,'ZAR') + ' / month') : 'Free';
+  const text = intent === 'choose' ? `Choose ${plan.name} • ${price}` : `${intent === 'upgrade' ? 'Upgrade to' : 'Downgrade to'} ${plan.name} • ${price}`;
     const colors = intent === 'downgrade' ? 'bg-amber-600 hover:bg-amber-700' : intent === 'upgrade' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700';
     const onClick = () => {
       if(intent === 'downgrade' && !window.confirm(`Downgrade to ${plan.name}? Some advanced features will be disabled.`)) return;

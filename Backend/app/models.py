@@ -15,6 +15,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
 from app.core.database import Base
 from enum import Enum
+from sqlalchemy.dialects.sqlite import JSON as SQLITE_JSON
 
 
 class VerticalType(str, Enum):
@@ -246,6 +247,21 @@ class TenantBranding(Base):
     extra            = Column(JSON, nullable=False, default=dict)
 
     tenant = relationship("Tenant", back_populates="branding")
+
+
+# --- Subscription Plans ---
+class SubscriptionPlan(Base):
+    __tablename__ = "subscription_plans"
+    id             = Column(Integer, primary_key=True, autoincrement=True)
+    name           = Column(String, nullable=False, unique=True, index=True)
+    price_cents    = Column(Integer, nullable=False, default=0)
+    billing_period = Column(String, nullable=False, default="monthly")  # "monthly" | "annual"
+    # Use JSON column for modules list; SQLite JSON type aliased for portability
+    modules        = Column(JSON, nullable=False, default=list)
+    description    = Column(Text, nullable=True)
+    active         = Column(Boolean, nullable=False, default=True, index=True)
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class OrderItem(Base):

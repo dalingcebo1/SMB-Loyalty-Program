@@ -5,6 +5,7 @@ itsdangerous
 passlib[bcrypt]
 pydantic
 pydantic-settings
+psutil
 python-dotenv
 python-jose
 python-multipart

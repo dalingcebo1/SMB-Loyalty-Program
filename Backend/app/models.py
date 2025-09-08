@@ -319,6 +319,56 @@ class AuditLog(Base):
     details    = Column(JSON, nullable=True)
 
 
+# --- Notifications ---
+class Notification(Base):
+    __tablename__ = "notifications"
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id  = Column(String, ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title      = Column(String, nullable=False)
+    message    = Column(Text, nullable=False)
+    type       = Column(String, nullable=False, index=True)  # "reward", "system", "marketing", "order"
+    action_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    read_at    = Column(DateTime, nullable=True)
+    
+    tenant = relationship("Tenant")
+    user = relationship("User")
+
+
+# --- Business Analytics ---
+class BusinessMetrics(Base):
+    __tablename__ = "business_metrics"
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id        = Column(String, ForeignKey("tenants.id"), nullable=False, index=True)
+    date             = Column(DateTime, nullable=False, index=True)
+    revenue_cents    = Column(Integer, default=0)
+    order_count      = Column(Integer, default=0)
+    customer_count   = Column(Integer, default=0)
+    new_customers    = Column(Integer, default=0)
+    redemption_count = Column(Integer, default=0)
+    points_issued    = Column(Integer, default=0)
+    points_redeemed  = Column(Integer, default=0)
+    created_at       = Column(DateTime, default=datetime.utcnow)
+    
+    tenant = relationship("Tenant")
+
+
+# --- Staff Permissions ---
+class StaffPermission(Base):
+    __tablename__ = "staff_permissions"
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    user_id       = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    tenant_id     = Column(String, ForeignKey("tenants.id"), nullable=False, index=True)
+    permission    = Column(String, nullable=False, index=True)  # "view_customers", "manage_orders", etc.
+    granted_by    = Column(Integer, ForeignKey("users.id"), nullable=True)
+    granted_at    = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", foreign_keys=[user_id])
+    granter = relationship("User", foreign_keys=[granted_by])
+    tenant = relationship("Tenant")
+
+
 # Precomputed customer analytics metrics (refreshable snapshot)
 class AggregatedCustomerMetrics(Base):
     __tablename__ = "aggregated_customer_metrics"

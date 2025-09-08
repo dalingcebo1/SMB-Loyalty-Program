@@ -65,8 +65,15 @@ const InventoryPage = lazy(() => import('../pages/admin/InventoryPage'));
 const AdminAuditLogs = lazy(() => import('../features/admin/pages/AuditLogs'));
 const AdminJobsMonitor = lazy(() => import('../features/admin/pages/JobsMonitor'));
 const AdminRateLimitEditor = lazy(() => import('../features/admin/pages/RateLimitEditor'));
+// New admin pages for MVP
+const CustomersAdmin = lazy(() => import('../features/admin/pages/CustomersAdmin'));
+const CustomerDetailPage = lazy(() => import('../features/admin/pages/CustomerDetailPage'));
+const ReportsAdmin = lazy(() => import('../features/admin/pages/ReportsAdmin'));
+const NotificationsAdmin = lazy(() => import('../features/admin/pages/NotificationsAdmin'));
 // New subscription management stub (replaces removed usage page)
 const SubscriptionManagePage = lazy(() => import('../pages/admin/SubscriptionManagePageNew'));
+// Enhanced user profile
+const EnhancedProfile = lazy(() => import('../pages/EnhancedProfile'));
 
 // Route guards
 function RequireAuth() {
@@ -116,6 +123,7 @@ const AppRoutes: React.FC = () => {
             enablePayments && { path: '/order/payment', element: <Payment /> },
             enableOrders && { path: '/order/confirmation/:orderId?', element: <OrderConfirmation /> },
             enableUsers && { path: '/account', element: <Account /> },
+            enableUsers && { path: '/profile', element: <EnhancedProfile /> },
             enableOrders && { path: '/past-orders', element: <PastOrders /> },
           ].filter(Boolean),
         },
@@ -156,6 +164,10 @@ const AppRoutes: React.FC = () => {
             { path: 'register-staff', element: <Navigate to='users-admin?registerStaff=1' replace /> },
             { path: 'users/:userId/edit', element: <AdminUserEdit /> },
             { path: 'modules', element: <ModuleSettings /> },
+            { path: 'customers', element: <CustomersAdmin /> },
+            { path: 'customers/:id', element: <CustomerDetailPage /> },
+            { path: 'reports', element: <ReportsAdmin /> },
+            { path: 'notifications', element: <NotificationsAdmin /> },
             { path: 'tenants', element: <TenantsList /> },
             { path: 'tenants/:tenantId/edit', element: <TenantEdit /> },
             { path: 'subscription', element: moduleFlags.enableSubscription ? <SubscriptionManagePage /> : <Navigate to='/admin' replace /> },

@@ -1,13 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from sqlalchemy import func
+import hmac
+import hashlib
 
 from app.core.database import get_db
 from app.models import Tenant, Order, Redemption, Payment, SubscriptionPlan
 from app.plugins.auth.routes import require_admin
+from app.services.subscription_billing import billing_service
+from config import settings
+from sqlalchemy.orm.attributes import flag_modified
 
 router = APIRouter(prefix="", tags=["subscriptions"], dependencies=[Depends(require_admin)])
 
@@ -46,6 +51,11 @@ class BillingProfile(BaseModel):
     city: Optional[str] = None
     country: Optional[str] = None
     postal_code: Optional[str] = None
+
+class SubscriptionSetup(BaseModel):
+    plan_id: int
+    billing_profile: BillingProfile
+    payment_method_token: Optional[str] = None
 
 
 def _get_tenant(db: Session, tenant_id: str) -> Tenant:
@@ -283,6 +293,8 @@ def assign_plan(tenant_id: str, payload: TenantAssignPlan, db: Session = Depends
     legacy = next((v for v in DEFAULT_PLANS.values() if v.get("name") == name_key), None)
     sub["module_limits"] = (legacy.get("limits") if legacy else {k: None for k in (plan_row.modules or [])})
     _record_history(sub, "plan.change", details=f"{old or 'none'} -> {payload.plan_id}")
+    # Ensure SQLAlchemy detects JSON mutation
+    flag_modified(t, "config")
     db.add(t); db.commit()
     return {"ok": True}
 
@@ -319,6 +331,8 @@ def set_override(tenant_id: str, payload: OverridePayload, db: Session = Depends
     sub = _ensure_subscription_struct(t)
     sub.setdefault("overrides", {})[payload.module_key] = payload.enabled
     _record_history(sub, "module.override", details=f"{payload.module_key} -> {payload.enabled}")
+    # Ensure SQLAlchemy detects JSON mutation
+    flag_modified(t, "config")
     db.add(t); db.commit()
     return {"ok": True, "overrides": sub["overrides"]}
 
@@ -471,3 +485,156 @@ def resume_subscription(tenant_id: Optional[str] = Header(default=None, alias="X
     _record_history(sub, "subscription.resume")
     db.add(t); db.commit()
     return {"ok": True}
+
+
+# ─── Real Subscription Billing Integration ─────────────────────────────────
+
+@router.post("/setup-subscription")
+def setup_subscription(
+    payload: SubscriptionSetup,
+    tenant_id: Optional[str] = Header(default=None, alias="X-Tenant-ID"),
+    db: Session = Depends(get_db)
+):
+    """Set up a real subscription with Yoco for recurring billing."""
+    tenant = _get_tenant(db, tenant_id or "default")
+    plan = db.query(SubscriptionPlan).get(payload.plan_id)
+    
+    if not plan or not plan.active:
+        raise HTTPException(status_code=404, detail="Plan not found or inactive")
+    
+    try:
+        # Create customer in Yoco
+        customer_data = billing_service.create_customer(
+            tenant=tenant,
+            email=payload.billing_profile.email,
+            phone=payload.billing_profile.phone
+        )
+        
+        # Create subscription in Yoco
+        subscription_data = billing_service.create_subscription(
+            customer_id=customer_data["id"],
+            plan=plan,
+            payment_method_id=payload.payment_method_token
+        )
+        
+        # Update tenant configuration
+        subscription_config = _ensure_subscription_struct(tenant)
+        subscription_config.update({
+            "plan_id": plan.id,
+            "status": "active",
+            "yoco_customer_id": customer_data["id"],
+            "yoco_subscription_id": subscription_data["id"],
+            "billing_profile": payload.billing_profile.dict(exclude_unset=True),
+            "next_billing_date": billing_service._calculate_next_billing_date(plan.billing_period).isoformat()
+        })
+        
+        # Set module limits based on plan
+        name_key = (plan.name or "").strip()
+        legacy = next((v for v in DEFAULT_PLANS.values() if v.get("name") == name_key), None)
+        subscription_config["module_limits"] = (legacy.get("limits") if legacy else {k: None for k in (plan.modules or [])})
+        
+        _record_history(subscription_config, "subscription.setup", details=f"Plan: {plan.name}, Customer: {customer_data['id']}")
+        
+        db.add(tenant)
+        db.commit()
+        
+        return {
+            "success": True,
+            "subscription_id": subscription_data["id"],
+            "customer_id": customer_data["id"],
+            "next_billing_date": subscription_config["next_billing_date"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to set up subscription: {str(e)}")
+
+
+@router.post("/cancel-subscription")
+def cancel_subscription(
+    tenant_id: Optional[str] = Header(default=None, alias="X-Tenant-ID"),
+    db: Session = Depends(get_db)
+):
+    """Cancel the tenant's active subscription."""
+    tenant = _get_tenant(db, tenant_id or "default")
+    subscription_config = tenant.config.get("subscription", {})
+    
+    yoco_subscription_id = subscription_config.get("yoco_subscription_id")
+    if not yoco_subscription_id:
+        raise HTTPException(status_code=404, detail="No active subscription found")
+    
+    try:
+        # Cancel in Yoco
+        billing_service.cancel_subscription(yoco_subscription_id)
+        
+        # Update local status
+        subscription_config["status"] = "cancelled"
+        subscription_config["cancelled_at"] = datetime.utcnow().isoformat()
+        
+        _record_history(subscription_config, "subscription.cancel", details=f"Subscription ID: {yoco_subscription_id}")
+        
+        db.add(tenant)
+        db.commit()
+        
+        return {"success": True, "message": "Subscription cancelled successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to cancel subscription: {str(e)}")
+
+
+@router.post("/webhook/yoco-subscription")
+async def yoco_subscription_webhook(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Handle Yoco subscription webhooks."""
+    # Verify webhook signature
+    raw_body = await request.body()
+    signature = request.headers.get("Yoco-Signature", "")
+    
+    computed = hmac.new(
+        settings.yoco_webhook_secret.encode(),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+    
+    if not hmac.compare_digest(computed, signature):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    
+    # Process webhook
+    payload = await request.json()
+    result = billing_service.process_subscription_webhook(payload, db)
+    
+    return result
+
+
+@router.get("/subscription-status")
+def get_subscription_status(
+    tenant_id: Optional[str] = Header(default=None, alias="X-Tenant-ID"),
+    db: Session = Depends(get_db)
+):
+    """Get detailed subscription status including billing info."""
+    tenant = _get_tenant(db, tenant_id or "default")
+    subscription_config = tenant.config.get("subscription", {})
+    
+    # Get plan details if assigned
+    plan_id = subscription_config.get("plan_id")
+    plan = None
+    if plan_id:
+        plan = db.query(SubscriptionPlan).get(plan_id)
+    
+    return {
+        "tenant_id": tenant.id,
+        "status": subscription_config.get("status", "inactive"),
+        "plan": {
+            "id": plan.id if plan else None,
+            "name": plan.name if plan else None,
+            "price_cents": plan.price_cents if plan else 0,
+            "billing_period": plan.billing_period if plan else "monthly"
+        },
+        "yoco_customer_id": subscription_config.get("yoco_customer_id"),
+        "yoco_subscription_id": subscription_config.get("yoco_subscription_id"),
+        "next_billing_date": subscription_config.get("next_billing_date"),
+        "last_payment_at": subscription_config.get("last_payment_at"),
+        "failed_payment_count": subscription_config.get("failed_payment_count", 0),
+        "billing_profile": subscription_config.get("billing_profile", {})
+    }

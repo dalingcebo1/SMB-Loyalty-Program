@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { HiUsers, HiUserAdd, HiCog, HiOfficeBuilding, HiChartBar, HiShieldCheck, HiClipboardList } from 'react-icons/hi';
+import { HiUsers, HiUserAdd, HiCog, HiOfficeBuilding, HiChartBar, HiShieldCheck, HiClipboardList, HiBell, HiClock, HiLockClosed } from 'react-icons/hi';
 import { useAuth } from '../../auth/AuthProvider';
 
 /**
@@ -17,6 +17,7 @@ const AdminWelcome: React.FC = () => {
       pink: type === 'bg' ? 'bg-gradient-to-br from-pink-100 to-pink-200 group-hover:from-pink-200 group-hover:to-pink-300' : 'text-pink-600',
       purple: type === 'bg' ? 'bg-gradient-to-br from-purple-100 to-purple-200 group-hover:from-purple-200 group-hover:to-purple-300' : 'text-purple-600',
       orange: type === 'bg' ? 'bg-gradient-to-br from-orange-100 to-orange-200 group-hover:from-orange-200 group-hover:to-orange-300' : 'text-orange-600',
+      yellow: type === 'bg' ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 group-hover:from-yellow-200 group-hover:to-yellow-300' : 'text-yellow-600',
       teal: type === 'bg' ? 'bg-gradient-to-br from-teal-100 to-teal-200 group-hover:from-teal-200 group-hover:to-teal-300' : 'text-teal-600',
       indigo: type === 'bg' ? 'bg-gradient-to-br from-indigo-100 to-indigo-200 group-hover:from-indigo-200 group-hover:to-indigo-300' : 'text-indigo-600',
       red: type === 'bg' ? 'bg-gradient-to-br from-red-100 to-red-200 group-hover:from-red-200 group-hover:to-red-300' : 'text-red-600',
@@ -25,6 +26,14 @@ const AdminWelcome: React.FC = () => {
   };
 
   const quickActions = [
+    {
+      category: 'Business Operations',
+      items: [
+        { to: '/admin/customers', icon: HiUsers, title: 'Customer Management', description: 'View & manage customer data', color: 'blue' },
+        { to: '/admin/reports', icon: HiChartBar, title: 'Business Reports', description: 'Analytics & insights', color: 'indigo' },
+        { to: '/admin/notifications', icon: HiBell, title: 'Notifications', description: 'Send & manage notifications', color: 'yellow' },
+      ]
+    },
     {
       category: 'People Management',
       items: [
@@ -45,6 +54,8 @@ const AdminWelcome: React.FC = () => {
       items: [
         { to: '/admin/staff/analytics', icon: HiChartBar, title: 'Analytics', description: 'Business insights & reports', color: 'indigo' },
         { to: '/admin/audit', icon: HiShieldCheck, title: 'Audit Logs', description: 'System activity & security', color: 'red' },
+        { to: '/admin/jobs', icon: HiClock, title: 'Jobs Monitor', description: 'Background job queue status', color: 'orange' },
+        { to: '/admin/rate-limits', icon: HiLockClosed, title: 'Rate Limits', description: 'API throttling & IP bans', color: 'purple' },
       ]
     }
   ];

@@ -22,6 +22,13 @@ from app.plugins.tenants.routes import router as tenants_router
 from app.plugins.subscriptions import router as subscriptions_router
 from app.plugins.dev            import router as dev_router
 from app.plugins.analytics.routes import router as analytics_router
+from app.plugins.admin.routes import router as admin_router
+from app.routes.onboarding import router as onboarding_router
+from app.routes.health import router as health_router
+from app.routes.customers import router as customers_router
+from app.routes.reports import router as reports_router
+from app.routes.notifications import router as notifications_router
+from app.routes.profile import router as profile_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 from app.core.rate_limit import check_rate, compute_retry_after, build_429_payload
 from app.core.rate_limit import bucket_snapshot  # used elsewhere optionally
@@ -92,7 +99,14 @@ for prefix, router in [
     # NOTE: analytics_router already declares prefix="/analytics" in its APIRouter.
     # To avoid double prefix (/api/analytics/analytics/...), mount at just /api.
     ("/api",           analytics_router),
+    ("/api",           admin_router),
     ("/api/dev",       dev_router),
+    ("/api",           onboarding_router),
+    ("",               health_router),  # Health checks at root level
+    ("/api/customers", customers_router),
+    ("/api/reports",   reports_router),
+    ("/api/notifications", notifications_router),
+    ("/api/profile",   profile_router),
 ]:
     app.include_router(router, prefix=prefix)
 

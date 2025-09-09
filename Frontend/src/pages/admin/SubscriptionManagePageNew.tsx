@@ -95,10 +95,10 @@ const PlanSelector: React.FC<{ tenantId: string; currentPlanName?: string }>=({ 
             )}
 
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{plan.name}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3 truncate">{plan.name}</h3>
               
-              <div className="mb-4">
-                <span className="text-3xl font-bold text-gray-900">
+              <div className="mb-6">
+                <span className="text-2xl font-bold text-gray-900">
                   {plan.price_cents > 0 ? formatCurrency(plan.price_cents, 'ZAR') : 'Free'}
                 </span>
                 {plan.price_cents > 0 && (
@@ -108,18 +108,18 @@ const PlanSelector: React.FC<{ tenantId: string; currentPlanName?: string }>=({ 
                 )}
               </div>
 
-              <div className="space-y-2 mb-6 text-left">
-                <p className="text-xs font-medium text-gray-700 uppercase tracking-wide">Includes:</p>
+              <div className="space-y-3 mb-8 text-left">
+                <p className="text-xs font-medium text-gray-700 uppercase tracking-wide mb-3">Includes:</p>
                 {plan.modules.slice(0, 4).map(module => (
                   <div key={module} className="flex items-center text-sm text-gray-600">
-                    <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    {module}
+                    <span className="truncate">{module}</span>
                   </div>
                 ))}
                 {plan.modules.length > 4 && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 pl-7">
                     +{plan.modules.length - 4} more features
                   </div>
                 )}
@@ -273,11 +273,11 @@ const SubscriptionManagePage: React.FC = () => {
         {/* Enhanced header with better status display */}
         <header className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Subscription Management</h1>
-              <p className="text-gray-600">Manage your plan, billing, and feature access.</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2 truncate">Subscription Management</h1>
+              <p className="text-sm lg:text-base text-gray-600">Manage your plan, billing, and feature access.</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0">
               <div className={`px-4 py-2 rounded-full text-sm font-medium ${
                 status === 'active' ? 'bg-green-100 text-green-800' :
                 status === 'trialing' ? 'bg-blue-100 text-blue-800' :
@@ -297,7 +297,7 @@ const SubscriptionManagePage: React.FC = () => {
                    status.charAt(0).toUpperCase() + status.slice(1)}
                 </div>
               </div>
-              <div className="px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+              <div className="px-3 py-2 bg-purple-100 text-purple-800 rounded-full text-sm font-medium truncate max-w-xs">
                 {planName}
               </div>
             </div>
@@ -325,13 +325,13 @@ const SubscriptionManagePage: React.FC = () => {
               </div>
             ) : tenantSub?.plan ? (
               <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{tenantSub.plan.name}</h3>
-                    <p className="text-gray-600">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-medium text-gray-900 truncate">{tenantSub.plan.name}</h3>
+                    <p className="text-sm text-gray-600 truncate">
                       {tenantSub.plan.billing_period === 'annual' ? 'Billed annually' : 'Billed monthly'}
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900 mt-2">
                       {tenantSub.plan.price_cents > 0 ? formatCurrency(tenantSub.plan.price_cents, 'ZAR') : 'Free'}
                       <span className="text-sm font-normal text-gray-500 ml-1">
                         /{tenantSub.plan.billing_period === 'annual' ? 'year' : 'month'}
@@ -342,13 +342,13 @@ const SubscriptionManagePage: React.FC = () => {
                 
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Active Features</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {(tenantSub?.active_modules || []).map(module => (
-                      <div key={module} className="flex items-center p-2 bg-gray-50 rounded-lg">
+                      <div key={module} className="flex items-center p-2 bg-gray-50 rounded-lg min-w-0">
                         <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
-                        <span className="text-sm text-gray-700">{module}</span>
+                        <span className="text-sm text-gray-700 truncate">{module}</span>
                       </div>
                     ))}
                   </div>
@@ -384,18 +384,18 @@ const SubscriptionManagePage: React.FC = () => {
 
           {/* Enhanced Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
             <div className="space-y-3">
               <button 
                 onClick={openPortal} 
-                className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
-                Open Billing Portal
+                <span className="truncate">Open Billing Portal</span>
               </button>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-600 leading-relaxed">
                 Update payment methods, download invoices, and manage your subscription.
               </p>
             </div>
@@ -405,42 +405,42 @@ const SubscriptionManagePage: React.FC = () => {
         {/* Enhanced control sections */}
         <section className="grid lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Trial</h2>
-            <p className="text-sm text-gray-600 mb-4">Start a trial for evaluation or cancel an ongoing trial.</p>
-            <div className="flex gap-2">
-              <button onClick={()=> startTrial(14)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors">Start 14‑day Trial</button>
-              <button onClick={()=> setConfirmState({ type: 'cancelTrial', loading: false })} className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg font-medium transition-colors">Cancel Trial</button>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Trial</h2>
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">Start a trial for evaluation or cancel an ongoing trial.</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button onClick={()=> startTrial(14)} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors text-sm truncate">Start 14‑day Trial</button>
+              <button onClick={()=> setConfirmState({ type: 'cancelTrial', loading: false })} className="px-3 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg font-medium transition-colors text-sm truncate">Cancel Trial</button>
             </div>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Pause Subscription</h2>
-            <p className="text-sm text-gray-600 mb-4">Temporarily pause billing and access. Can be resumed anytime.</p>
-            <div className="flex gap-2">
-              <button onClick={()=> setConfirmState({ type: 'pause', loading: false })} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors">Pause</button>
-              <button onClick={resumeSub} className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg font-medium transition-colors">Resume</button>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pause Subscription</h2>
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">Temporarily pause billing and access. Can be resumed anytime.</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button onClick={()=> setConfirmState({ type: 'pause', loading: false })} className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors text-sm truncate">Pause</button>
+              <button onClick={resumeSub} className="px-3 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg font-medium transition-colors text-sm truncate">Resume</button>
             </div>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Proration Preview</h2>
-            <p className="text-sm text-gray-600 mb-4">Open the plan selector and pick a plan to see pricing; final proration shown in portal.</p>
-            <button onClick={()=> setShowPlanSelector(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">Change Plan</button>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Proration Preview</h2>
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">Open the plan selector and pick a plan to see pricing; final proration shown in portal.</p>
+            <button onClick={()=> setShowPlanSelector(true)} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm truncate">Change Plan</button>
           </div>
         </section>
 
         {/* Enhanced Change history */}
         <section className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Change History</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Change History</h2>
           {history?.length ? (
             <ol className="space-y-4">
               {history.map((e, idx)=> (
                 <li key={idx} className="flex items-start gap-3">
                   <div className="mt-1.5 h-2 w-2 rounded-full bg-purple-600 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="text-gray-900 font-medium">{formatAction(e.action)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-gray-900 font-medium text-sm truncate">{formatAction(e.action)}</div>
                     {e.details && (
-                      <div className="text-gray-600 text-sm mt-1">{formatHistoryDetails(e)}</div>
+                      <div className="text-gray-600 text-sm mt-1 break-words">{formatHistoryDetails(e)}</div>
                     )}
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-gray-500 mt-1 truncate">
                       {new Date(e.ts).toLocaleString()} {e.actor && `· ${e.actor}`}
                     </div>
                   </div>

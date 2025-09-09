@@ -26,6 +26,9 @@ const hasFirebaseConfig = Boolean(
   firebaseConfig.appId
 );
 
+// Export a simple flag for consumers to feature-flag Firebase-dependent flows
+export const isFirebaseEnabled: boolean = hasFirebaseConfig;
+
 let app: import("firebase/app").FirebaseApp | undefined;
 if (hasFirebaseConfig) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];

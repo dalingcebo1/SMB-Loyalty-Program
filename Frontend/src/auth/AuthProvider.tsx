@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import api from "../api/api";
 import SplashScreen from "../components/SplashScreen";
-import { auth as firebaseAuth } from "../firebase";
+import { auth as firebaseAuth, isFirebaseEnabled } from "../firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useNavigate } from 'react-router-dom';
 
@@ -215,6 +215,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const socialLogin = async (): Promise<void> => {
     console.log("🚀 Starting Google OAuth popup flow...");
     try {
+      if (!isFirebaseEnabled || !firebaseAuth) {
+        // Provide clear error for UI to show and avoid undefined access
+        const msg = "Social login is disabled: missing Firebase configuration.";
+        console.warn(msg);
+        throw new Error(msg);
+      }
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       provider.addScope('email');

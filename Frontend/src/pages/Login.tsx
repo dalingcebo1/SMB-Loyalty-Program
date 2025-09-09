@@ -5,6 +5,7 @@ import { AxiosError } from "axios";
 import { useForm, FormProvider } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import { isFirebaseEnabled } from "../firebase";
 import { TextFieldControlled } from "../components/form/TextFieldControlled";
 import Button from "../components/ui/Button";
 import PageLayout from "../components/PageLayout";
@@ -117,9 +118,20 @@ const Login: React.FC = () => {
         </p>
         <div className="mt-6 text-center">
           <p className="text-gray-500 mb-2">Or continue with</p>
-          <Button variant="outline" onClick={handleSocial} className="w-full">
+          <Button
+            variant="outline"
+            onClick={handleSocial}
+            className="w-full"
+            disabled={!isFirebaseEnabled}
+            title={isFirebaseEnabled ? "" : "Google sign-in disabled: missing Firebase config"}
+          >
             Continue with Google
           </Button>
+          {!isFirebaseEnabled && (
+            <p className="text-xs text-amber-600 mt-2">
+              Google sign-in is disabled in this environment. Set VITE_FIREBASE_* to enable.
+            </p>
+          )}
         </div>
       </div>
     </PageLayout>

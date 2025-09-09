@@ -12,3 +12,4 @@ Provide project context and coding guidelines that AI should follow when generat
 - Do not run the servers via npm run build and npm run dev without asking for my approval.
 - Check first if we already have running backend and frontend servers and use those to test.
 - Check the problems section for compilation issues instead of running build.
+- Never delete any .env files without my permission. 

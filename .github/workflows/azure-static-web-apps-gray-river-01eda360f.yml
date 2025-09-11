@@ -31,11 +31,17 @@ jobs:
           app_location: "./Frontend" # App source code path
           output_location: "dist" # Vite build output
           app_build_command: |
+            rm -f yarn.lock || true
             npm ci
             npm run build
           ###### End of Repository/Build Configurations ######
         env:
           VITE_API_BASE_URL: https://api.chaosx.co.za
+          USE_NPM: "true"           # Hint Oryx to use npm
+          NODE_VERSION: "20"
+          WEBSITE_NODE_DEFAULT_VERSION: "~20"
+          SWA_NODE_VERSION: "20"
+          VITE_APP_VERSION: ${{ github.sha }}
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'

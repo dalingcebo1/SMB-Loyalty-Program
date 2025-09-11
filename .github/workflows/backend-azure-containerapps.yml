@@ -6,10 +6,11 @@ on:
     paths:
       - 'Backend/**'
       - '.github/workflows/backend-azure-containerapps.yml'
+  workflow_dispatch:
+  workflow_dispatch:
 
 env:
   AZURE_RESOURCE_GROUP: SMB-Loyalty-Group
-  CONTAINERAPPS_ENV: smbloyalty-ca-env
   CONTAINERAPP_NAME: apismbloyaltyapp
   ACR_NAME: smblpcontainerregistry
   IMAGE_NAME: smb-api
@@ -27,19 +28,40 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
+          with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Install Azure Container Apps extension
-        run: |
-          az extension add --name containerapp --upgrade
+          run: |
+            set -euo pipefail
+            echo "Building $ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }} from Backend/Dockerfile"
+            az acr build \
+              -r "$ACR_NAME" \
+              -t "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}" \
+              -f Backend/Dockerfile Backend
+
+        - name: Deploy image to Container App
+          uses: azure/container-apps-deploy-action@v2
+          with:
+            resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+            containerAppName: ${{ env.CONTAINERAPP_NAME }}
+            imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+        - name: Output app URL
+          run: |
+            fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
+            echo "API URL: https://$fqdn"
 
       - name: Build and push image to ACR (remote)
         run: |
           az acr build \
-            -r "$ACR_NAME" \
-            -t "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}" \
+            -r $ACR_NAME \
+            -t $ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }} \
             -f Backend/Dockerfile Backend
 
       - name: Deploy image to Container App

@@ -3,9 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "NODE_OPTIONS=\"--max-old-space-size=2048\" tsc -b && NODE_OPTIONS=\"--max-old-space-size=2048\" vite build",
+  "build": "SKIP_CYPRESS_INSTALL=1 NODE_OPTIONS=\"--max-old-space-size=2048\" tsc -b && NODE_OPTIONS=\"--max-old-space-size=2048\" vite build",
     "build:safe": "NODE_OPTIONS=\"--max-old-space-size=1536\" tsc -b && NODE_OPTIONS=\"--max-old-space-size=1536\" vite build --mode production",
     "build:minimal": "NODE_OPTIONS=\"--max-old-space-size=1024\" tsc -b && NODE_OPTIONS=\"--max-old-space-size=1024\" vite build --mode production",
     "lint": "eslint .",

@@ -1,0 +1,26 @@
+name: Post-deploy smoke tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: Base API URL (e.g. https://api.chaosx.co.za)
+        required: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public health
+        run: |
+          set -euo pipefail
+          curl -fsSL "${{ inputs.api_url }}/health/" | jq . > health.json || (echo "Health endpoint failed" && exit 1)
+          cat health.json
+      - name: Check tenant meta rate-limit headers
+        run: |
+          set -euo pipefail
+          curl -i -sS "${{ inputs.api_url }}/api/public/tenant-meta" | tee headers.txt | grep -E "(x-rate-limit|retry-after|content-type)" -i || true
+      - name: Show version
+        run: |
+          set -euo pipefail
+          curl -fsSL "${{ inputs.api_url }}/api/public/version" || true

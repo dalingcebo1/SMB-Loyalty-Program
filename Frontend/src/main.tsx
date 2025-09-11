@@ -11,6 +11,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import "./firebase";
 import "./index.css";
+import './api/fetchShim';
 
 // Bootstraps React app with prefetched analytics summary for instant rendering
 import { queryClient } from './api/queryClient';

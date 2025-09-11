@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
         
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -45,22 +45,52 @@ jobs:
       - name: Install frontend dependencies
         run: cd Frontend && npm ci
         
-      - name: Install Cypress dependencies
+      - name: Install Cypress dependencies (Ubuntu 24.04)
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth
+          # Noble (24.04) uses t64 packages and different names; avoid deprecated libs
+          sudo apt-get install -y \
+            xvfb \
+            libgtk2.0-0 \
+            libgtk-3-0 \
+            libgbm1 \
+            libnotify-dev \
+            libnss3 \
+            libxss1 \
+            libasound2t64 \
+            libxtst6 \
+            xauth
       
-      - name: Start backend server
+      - name: Start backend server (FastAPI)
         run: |
           cd Backend
-          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db \
-          JWT_SECRET=test_secret PORT=3001 npm run start:test &
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db
+          export JWT_SECRET=test_secret
+          nohup python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/health/ > /dev/null; then echo "Backend up"; exit 0; fi
+            sleep 2
+          done
+          echo "Backend did not start in time"; exit 1
 
       - name: Build frontend
-        run: cd Frontend && npm run build
+        run: |
+          cd Frontend
+          VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build
       
-      - name: Start frontend server
-        run: cd Frontend && npm run preview &
+      - name: Start frontend server (port 3000)
+        run: cd Frontend && npm run preview -- --port 3000 &
+
+      - name: Wait for frontend to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000 > /dev/null; then echo "Frontend up"; exit 0; fi
+            sleep 2
+          done
+          echo "Frontend did not start in time"; exit 1
         
       - name: Run Cypress tests
         run: |

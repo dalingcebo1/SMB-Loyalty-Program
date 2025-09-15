@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 from app.models import AuditLog, User
+import json, logging, time
 
 def log_audit(
     db: Session,
@@ -74,3 +75,33 @@ def recent(limit: int = 100) -> List[dict]:
         d['created_at'] = d['created_at'].isoformat() + 'Z'
         out.append(d)
     return out
+
+# ---------------------------------------------------------------------------
+# Structured JSON audit logger (non-persistent) for SIEM / streaming usage.
+# Does not persist to DB; complementary to persistent log above.
+# ---------------------------------------------------------------------------
+_audit_logger = logging.getLogger("audit")
+_RESERVED = {"ts", "event", "actor", "ip", "meta"}
+
+def log_audit_event(event: str, *, user_id: int | str | None = None, tenant_id: str | None = None,
+                    ip: str | None = None, meta: Dict[str, Any] | None = None, **extra: Any) -> None:
+    rec: Dict[str, Any] = {"ts": round(time.time(), 6), "event": event}
+    actor: Dict[str, Any] = {}
+    if user_id is not None:
+        actor["user_id"] = user_id
+    if tenant_id is not None:
+        actor["tenant_id"] = tenant_id
+    if actor:
+        rec["actor"] = actor
+    if ip:
+        rec["ip"] = ip
+    if meta:
+        rec["meta"] = meta
+    for k, v in extra.items():
+        if k in _RESERVED:
+            continue
+        rec.setdefault("meta", {})[k] = v
+    try:
+        _audit_logger.info(json.dumps(rec, sort_keys=True))
+    except Exception:  # pragma: no cover
+        _audit_logger.warning(f"audit_event_failed event={event}")

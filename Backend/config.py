@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     rate_limit_public_meta_window_seconds: int = Field(60, env="RATE_LIMIT_PUBLIC_META_WINDOW")
     rate_limit_user_tenant_capacity: int = Field(30, env="RATE_LIMIT_USER_TENANT_CAPACITY")
     rate_limit_user_tenant_window_seconds: int = Field(60, env="RATE_LIMIT_USER_TENANT_WINDOW")
+    rate_limit_global_capacity: int = Field(120, env="RATE_LIMIT_GLOBAL_CAPACITY")
+    rate_limit_global_window_seconds: int = Field(60, env="RATE_LIMIT_GLOBAL_WINDOW")
     enable_rate_limit_overrides: bool = Field(True, env="ENABLE_RATE_LIMIT_OVERRIDES")  # disable in prod to lock config
     enable_rate_limit_penalties: bool = Field(True, env="ENABLE_RATE_LIMIT_PENALTIES")
     enable_job_queue: bool = Field(False, env="ENABLE_JOB_QUEUE")  # in-process queue generally off in prod
@@ -41,6 +43,11 @@ class Settings(BaseSettings):
     enable_dev_jobs: bool = Field(True, env="ENABLE_DEV_JOBS")
     enable_dev_rate_limits: bool = Field(True, env="ENABLE_DEV_RATE_LIMITS")
     enable_dev_audit_view: bool = Field(True, env="ENABLE_DEV_AUDIT_VIEW")
+
+    # Observability external services
+    sentry_dsn: Optional[str] = Field(None, env="SENTRY_DSN")
+    # Optional Content Security Policy (string). Example minimal default provided for guidance.
+    csp_policy: Optional[str] = Field(None, env="CSP_POLICY")
 
     def dangerous_allowed(self) -> bool:
         """Return True if destructive dev endpoints are permitted in this environment."""

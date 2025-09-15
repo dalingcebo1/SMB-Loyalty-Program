@@ -20,9 +20,31 @@ from __future__ import annotations
 import time
 from app.core import clock
 from typing import Dict, Tuple, Optional, Callable, List
+import os
+import json
+try:  # optional redis import
+    import redis  # type: ignore
+except Exception:  # pragma: no cover
+    redis = None  # type: ignore
 
 # buckets[(scope, key)] = (tokens, last_refill_ts, capacity, refill_rate)
 _BUCKETS: Dict[Tuple[str, str], Tuple[float, float, int, float]] = {}
+_REDIS_CLIENT: Optional["redis.Redis"] = None
+_REDIS_PREFIX = "rl"  # namespace
+
+def _init_redis():
+    global _REDIS_CLIENT
+    url = os.getenv('RATE_LIMIT_REDIS_URL')
+    if not url or redis is None:
+        return
+    try:
+        _REDIS_CLIENT = redis.from_url(url, decode_responses=False)  # bytes for atomic ops
+        # simple ping
+        _REDIS_CLIENT.ping()
+    except Exception:
+        _REDIS_CLIENT = None
+
+_init_redis()
 _MAX_BUCKETS = 10_000  # safety cap
 
 # Dynamic config overrides: scope -> (capacity, per_seconds)
@@ -112,6 +134,9 @@ def clear_penalty(scope: str, key: str):
     if key in _PENALTIES:
         del _PENALTIES[key]
 
+def _redis_bucket_key(scope: str, key: str) -> str:
+    return f"{_REDIS_PREFIX}:{scope}:{key}"
+
 def check_rate(scope: str, key: str, capacity: int, per_seconds: float, *, dynamic: bool = True) -> bool:
     """Consume 1 token from bucket; return True if allowed else False.
 
@@ -133,30 +158,50 @@ def check_rate(scope: str, key: str, capacity: int, per_seconds: float, *, dynam
         return False
     rate = capacity / per_seconds if per_seconds > 0 else 0
     now = clock.now()
-    bucket_key = (scope, key)
-    # On first creation we want exactly capacity-1 tokens remaining AFTER this call.
-    # Previous logic started with full capacity, allowing one extra request (off-by-one).
-    created = False
-    if bucket_key in _BUCKETS:
-        tokens, last, cap, r = _BUCKETS[bucket_key]
-    else:
-        tokens, last, cap, r = float(capacity), now, capacity, rate
-        created = True
-    # Refill
-    tokens = _refill(tokens, last, cap, r)
-    if tokens >= 1:
-        # If brand new, consume and store remaining; this yields (capacity-1) so the
-        # total number of successful calls in a fresh window equals 'capacity'.
-        tokens -= 1
-        # Success clears penalty strikes for IP on public meta to allow recovery
-        clear_penalty(scope, key)
+    if _REDIS_CLIENT is None:
+        bucket_key = (scope, key)
+        if bucket_key in _BUCKETS:
+            tokens, last, cap, r = _BUCKETS[bucket_key]
+        else:
+            tokens, last, cap, r = float(capacity), now, capacity, rate
+        tokens = _refill(tokens, last, cap, r)
+        if tokens >= 1:
+            tokens -= 1
+            clear_penalty(scope, key)
+            _BUCKETS[bucket_key] = (tokens, now, cap, r)
+            return True
         _BUCKETS[bucket_key] = (tokens, now, cap, r)
-        return True
-    else:
-        _BUCKETS[bucket_key] = (tokens, now, cap, r)  # update last even if denied
-        # Register penalty strike (only for configured scope)
         record_penalty_hit(scope, key)
         return False
+    else:
+        # Redis path: store JSON payload per bucket key {tokens,last,cap,rate}
+        rk = _redis_bucket_key(scope, key)
+        pipe = _REDIS_CLIENT.pipeline()
+        # fetch current
+        raw = _REDIS_CLIENT.get(rk)
+        if raw:
+            try:
+                data = json.loads(raw.decode() if isinstance(raw, bytes) else raw)
+            except Exception:
+                data = None
+        else:
+            data = None
+        if not data:
+            data = {"tokens": float(capacity), "last": now, "cap": capacity, "rate": rate}
+        # Refill
+        tokens = _refill(data["tokens"], data["last"], data["cap"], data["rate"])
+        allowed = tokens >= 1
+        if allowed:
+            tokens -= 1
+            clear_penalty(scope, key)
+        else:
+            record_penalty_hit(scope, key)
+        data.update({"tokens": tokens, "last": now})
+        # TTL heuristic: keep bucket alive for at most window size*2
+        ttl = int(per_seconds * 2) if per_seconds > 0 else 60
+        pipe.set(rk, json.dumps(data), ex=max(ttl, 60))
+        pipe.execute()
+        return allowed
 
 def compute_retry_after(scope: str, key: str, capacity: int, per_seconds: float) -> float:
     """Estimate seconds until at least 1 token will be available.

@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/Backend"
+    schedule:
+      interval: "weekly"
+    labels: ["deps", "backend"]
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "psycopg2-binary"
+        versions: [">=3.0.0"]
+  - package-ecosystem: "npm"
+    directory: "/Frontend"
+    schedule:
+      interval: "weekly"
+    labels: ["deps", "frontend"]
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels: ["deps", "ci"]

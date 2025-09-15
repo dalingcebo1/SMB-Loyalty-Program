@@ -1,0 +1,54 @@
+name: Backend Image Scan
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/backend-trivy-scan.yml'
+  workflow_dispatch:
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image (local)
+        working-directory: Backend
+        run: |
+          docker build -t backend-app:scan .
+
+      - name: Run Trivy vulnerability scan (table)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'backend-app:scan'
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Run Trivy SARIF (advisory)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'backend-app:scan'
+          format: 'sarif'
+          output: 'trivy-image.sarif'
+          vuln-type: 'os,library'
+          ignore-unfixed: true
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif

@@ -279,7 +279,17 @@ def social_login(req: SocialLoginRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=LoginResponse)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter_by(email=form.username).first()
+    from app.core.audit import log_audit_event
+    client_ip = 'unknown'
+    # Client IP extraction may vary (use X-Forwarded-For in production via middleware if needed)
     if not user or not user.hashed_password or not verify_password(form.password, user.hashed_password):
+        log_audit_event(
+            "auth.login.failure",
+            user_id=getattr(user, 'id', None),
+            tenant_id=getattr(user, 'tenant_id', None),
+            ip=client_ip,
+            meta={"email": form.username}
+        )
         raise HTTPException(status_code=401, detail="Invalid credentials")
     # Determine onboarding steps - consistent logic for all login types
     onboarding_required = False
@@ -302,6 +312,13 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
             onboarding_required = True
             next_step = "PHONE_VERIFICATION"
     token = create_access_token(user.email)
+    log_audit_event(
+        "auth.login.success",
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        ip=client_ip,
+        meta={"email": user.email, "role": user.role}
+    )
     return LoginResponse(
         access_token=token,
         onboarding_required=onboarding_required,

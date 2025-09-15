@@ -9,5 +9,10 @@
     // Ensure integrated terminal opens in project root
     "terminal.integrated.cwd": "${workspaceFolder}"
     // Allow VSCode to resolve Python imports in the Backend folder
-    ,"python.analysis.extraPaths": ["${workspaceFolder}/Backend"]
+    ,
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/Backend"
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": []
 }

@@ -1,0 +1,25 @@
+# Top-level (unpinned) dependencies for the backend.
+# Run pip-compile (if adopted) or manual freeze to update requirements.txt.
+alembic
+fastapi
+itsdangerous
+passlib[bcrypt]
+pydantic
+pydantic-settings
+email-validator>=2
+psutil
+python-dotenv
+python-jose
+python-multipart
+psycopg2-binary
+qrcode[pil]
+requests
+slowapi
+sendgrid
+sqlalchemy
+uvicorn[standard]
+PyJWT
+firebase-admin
+Pillow
+sentry-sdk
+redis

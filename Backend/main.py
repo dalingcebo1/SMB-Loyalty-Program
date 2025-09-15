@@ -3,6 +3,9 @@
 from config import settings
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -33,6 +36,9 @@ from app.core.tenant_context import get_tenant_context, tenant_meta_dict, Tenant
 from app.core.rate_limit import check_rate, compute_retry_after, build_429_payload
 from app.core.rate_limit import bucket_snapshot  # used elsewhere optionally
 from app.core.rate_limit import set_limit  # future use
+from app.core.logging_config import configure_logging
+from app.core.client_ip import get_client_ip
+import logging
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 from app.core.database import get_db
@@ -44,6 +50,85 @@ app = FastAPI(
     version="0.1",
     openapi_url="/api/openapi.json",
 )  # allow automatic redirects on trailing slash
+
+# Configure logging (JSON in production, human readable elsewhere)
+configure_logging()
+logger = logging.getLogger("api")
+
+# Optional Sentry initialization
+if settings.sentry_dsn:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        sentry_logging = LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            release=f"smb-loyalty@{settings.version}" if getattr(settings, 'version', None) else None,
+            enable_tracing=True,
+            traces_sample_rate=0.1,
+            integrations=[FastApiIntegration(), sentry_logging],
+        )
+        logger.info("Sentry initialized")
+    except Exception as _e:  # pragma: no cover
+        logger.warning(f"Sentry init failed: {_e}")
+
+# ─── Environment Validation ────────────────────────────────────────────────
+def _validate_environment():
+    """Perform basic production environment sanity checks.
+
+    Fails fast on clearly unsafe misconfigurations rather than allowing the app
+    to start in a degraded / insecure state.
+    """
+    from config import settings as _s  # local import to avoid circulars during tests
+    errors = []
+    if _s.environment == 'production':
+        # Require explicit allowed_origins (no wildcard) for production unless explicitly documented.
+        if not _s.allowed_origins or _s.allowed_origins.strip() == '*' or '*,*' in _s.allowed_origins:
+            errors.append("ALLOWED_ORIGINS must be a non-wildcard, comma-separated list in production")
+        # Secret key strength (length + simple entropy heuristic)
+        secret = getattr(_s, 'secret_key', None)
+        if not secret or len(secret) < 24:
+            errors.append("SECRET_KEY must be set and >=24 chars in production")
+        # Database URL required
+        if not getattr(_s, 'database_url', None):
+            errors.append("DATABASE_URL must be configured in production")
+    if errors:
+        for e in errors:
+            logger.error(f"ENV_VALIDATION: {e}")
+        # Raise single aggregated error for visibility
+        raise RuntimeError("Environment validation failed: " + "; ".join(errors))
+    else:
+        logger.info("Environment validation passed")
+
+# ─── Core Security & Performance Middleware (added) ──────────────────────────
+# GZip responses for text/JSON to reduce bandwidth; level defaults good for API
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Trusted hosts (comma separated) only if configured to avoid blocking local dev
+if settings.allowed_origins:
+    # Derive hosts from allowed_origins (strip scheme/port) conservatively
+    trusted_hosts = []
+    for origin in settings.allowed_origins.split(','):
+        o = origin.strip()
+        if not o:
+            continue
+        # remove scheme
+        o = o.replace('https://', '').replace('http://', '')
+        # drop path
+        o = o.split('/')[0]
+        trusted_hosts.append(o)
+    # Always allow localhost & 127.0.0.1 for dev shells if not in production
+    if settings.environment != 'production':
+        trusted_hosts.extend(['localhost', '127.0.0.1'])
+    # starlette requires at least one host; wildcard if list empty
+    if trusted_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(dict.fromkeys(trusted_hosts)))
+
+# Enforce HTTPS in production (behind load balancer -> rely on X-Forwarded-Proto)
+if settings.environment == 'production':
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 # Mount static directory (branding assets & SPA build output) early
 class BrandingStaticFiles(StaticFiles):
@@ -85,8 +170,114 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ─── Security Headers Middleware ────────────────────────────────────────────
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # Basic hardening; CSP kept relaxed for now (frontend served separately)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+        # Only add HSTS when production and using HTTPS redirect to avoid dev issues
+        if settings.environment == 'production':
+            response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+            # Optional CSP if configured (explicit allowlist approach recommended for production)
+            if settings.csp_policy:
+                response.headers.setdefault("Content-Security-Policy", settings.csp_policy)
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# ─── Request ID Injection (if not already from proxy) ───────────────────────
+import uuid
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        rid = request.headers.get('X-Request-ID') or uuid.uuid4().hex[:12]
+        request.state.request_id = rid
+        response = await call_next(request)
+        response.headers.setdefault('X-Request-ID', rid)
+        return response
+
+app.add_middleware(RequestIDMiddleware)
+
+# Access log middleware (structured) - placed after RequestID so ID is available
+class AccessLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.perf_counter()
+        try:
+            response = await call_next(request)
+            return response
+        finally:
+            duration_ms = (time.perf_counter() - start) * 1000
+            rid = getattr(request.state, 'request_id', '-')
+            tenant_id = getattr(request.state, 'tenant_id', '-')
+            logging.getLogger('access').info(
+                f"{request.method} {request.url.path} {getattr(response,'status_code',0)} {duration_ms:.1f}ms",
+                extra={"request_id": rid, "tenant_id": tenant_id}
+            )
+
+app.add_middleware(AccessLogMiddleware)
+
+# ─── Client IP Normalization (X-Forwarded-For) ─────────────────────────────
+class ClientIPMiddleware(BaseHTTPMiddleware):
+    """Derive the canonical client IP (best-effort) honoring X-Forwarded-For.
+
+    This should run before rate limiting so buckets key on the real client IP
+    when the service is behind one or more trusted reverse proxies / load balancers.
+    """
+    def __init__(self, app, max_forwarded=5):
+        super().__init__(app)
+        self.max_forwarded = max_forwarded
+
+    async def dispatch(self, request: Request, call_next):
+        xff = request.headers.get('x-forwarded-for') or request.headers.get('X-Forwarded-For')
+        real_ip = None
+        if xff:
+            # Take first IP (client) after trimming list size to prevent abuse
+            parts = [p.strip() for p in xff.split(',') if p.strip()][: self.max_forwarded]
+            if parts:
+                real_ip = parts[0]
+        if not real_ip and request.client:
+            real_ip = request.client.host
+        request.state.client_ip = real_ip or 'unknown'
+        return await call_next(request)
+
+app.add_middleware(ClientIPMiddleware)
+
+# Global per-IP rate limiting (coarse) ---------------------------------------
+class GlobalAPIRateLimitMiddleware(BaseHTTPMiddleware):
+    EXCLUDED_PREFIXES = ("/health", "/health/", "/static/", "/api/public/tenant-meta")
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if any(path == p or path.startswith(p) for p in self.EXCLUDED_PREFIXES):
+            return await call_next(request)
+        # Only enforce if configured (>0 capacity) and rate limits enabled
+        cap = settings.rate_limit_global_capacity
+        win = settings.rate_limit_global_window_seconds
+        if cap <= 0:
+            return await call_next(request)
+        # Normalized IP via helper
+        key = get_client_ip(request)
+        scope = 'global_ip'
+        if not check_rate(scope=scope, key=key, capacity=cap, per_seconds=win):
+            retry_after = compute_retry_after(scope, key, cap, win)
+            payload = build_429_payload(scope, retry_after, detail="Global rate limit exceeded")
+            resp = JSONResponse(status_code=429, content=payload)
+            if retry_after:
+                resp.headers['Retry-After'] = f"{int(retry_after)}"
+            return resp
+        return await call_next(request)
+
+app.add_middleware(GlobalAPIRateLimitMiddleware)
+
+# ─── Global Generic Rate Limiter (simple per-IP) ───────────────────────────
+
 # Mount plugin routers under /api
-for prefix, router in [
+router_mounts = [
     ("/api/auth",      auth_router),
     ("/api/users",     users_router),
     ("/api/catalog",   catalog_router),
@@ -96,32 +287,30 @@ for prefix, router in [
     ("/api/tenants",   tenants_router),
     ("/api/subscriptions", subscriptions_router),
     ("/api/billing",   subscriptions_router),  # billing endpoints live in same router
-    # NOTE: analytics_router already declares prefix="/analytics" in its APIRouter.
-    # To avoid double prefix (/api/analytics/analytics/...), mount at just /api.
-    ("/api",           analytics_router),
+    ("/api",           analytics_router),  # analytics_router already has internal prefix
     ("/api",           admin_router),
-    ("/api/dev",       dev_router),
     ("/api",           onboarding_router),
     ("",               health_router),  # Health checks at root level
     ("/api/customers", customers_router),
     ("/api/reports",   reports_router),
     ("/api/notifications", notifications_router),
     ("/api/profile",   profile_router),
-]:
+]
+# Conditionally include dev router outside production
+if settings.environment != 'production':
+    router_mounts.append(("/api/dev", dev_router))
+
+for prefix, router in router_mounts:
     app.include_router(router, prefix=prefix)
 
-# ─── Public Tenant Metadata Endpoint (moved here from legacy app/main.py) ───
-# NOTE: The project contains two FastAPI entrypoints (app/main.py and main.py).
-# Running `uvicorn main:app` (as done in development) loads THIS file, so routes
-# must be defined here. The /api/public/tenant-meta route previously lived only
-# in app/main.py causing 404s. We replicate its logic here to restore parity.
+# ─── Public Tenant Metadata Endpoint ───
 
 def _etag_for(data: dict) -> str:
     dumped = json.dumps(data, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(dumped).hexdigest()[:16]
 
 def _ip_key(request: Request) -> str:
-    return (request.client.host if request.client else 'unknown')
+    return get_client_ip(request)
 
 @app.get("/api/public/tenant-meta")
 def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant_context)):
@@ -216,15 +405,28 @@ def public_tenant_manifest(request: Request, ctx: TenantContext = Depends(get_te
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")
 def on_startup():
-    # Create tables using shared Base and engine from the app core
+    # Early environment safety checks (will raise and prevent startup on fatal issues)
+    try:
+        _validate_environment()
+    except Exception:
+        # Re-raise after logging so container/platform surfaces failure clearly
+        logger.exception("Environment validation failed during startup")
+        raise
     from app.core.database import Base, engine
-    Base.metadata.create_all(bind=engine)
-    # Ensure default tenant exists so public meta endpoint works in dev without manual seeding
-    from sqlalchemy.orm import Session as _Session
-    from sqlalchemy import select as _select
-    from app.models import Tenant
     from config import settings as _settings
-    if _settings.default_tenant:
+    if _settings.environment == 'production' and not _settings.csp_policy:
+        logger.warning("Production environment without CSP policy configured; consider setting CSP_POLICY for stronger protection.")
+    # In non-production environments allow automatic metadata create for convenience.
+    if _settings.environment != 'production':
+        Base.metadata.create_all(bind=engine)
+    else:  # pragma: no cover - production path
+        logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
+
+    # Dev-only default tenant seeding (skip in production)
+    if _settings.environment != 'production' and _settings.default_tenant:
+        from sqlalchemy.orm import Session as _Session
+        from sqlalchemy import select as _select
+        from app.models import Tenant
         with _Session(bind=engine) as _db:
             exists = _db.execute(_select(Tenant).where(Tenant.id == _settings.default_tenant)).scalar_one_or_none()
             if not exists:

@@ -125,6 +125,63 @@ make test               # run backend tests
 make backend-quality    # lint + type + coverage
 ```
 
+## Deployment & Release
+
+### Image Publishing
+Version tags (`vX.Y.Z`) now trigger two GitHub Actions workflows:
+- `release-backend.yml` builds & pushes `ghcr.io/<owner>/smb-loyalty-backend:<tag>` and `:latest`.
+- `release-frontend.yml` builds & pushes `ghcr.io/<owner>/smb-loyalty-frontend:<tag>` and `:latest`.
+
+Tag creation example:
+```
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### Local Database Options
+1. **SQLite (default)** – remove `DATABASE_URL` or set `sqlite:///./dev.db`.
+2. **Local Postgres** – start the helper compose file:
+```
+docker compose -f docker-compose.local-db.yml up -d
+export DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/loyalty_local
+```
+Run migrations:
+```
+make migrate
+```
+
+### Production Compose (Example)
+`docker-compose.prod.yml` expects images already published to GHCR. Provide a sanitized `Backend/.env` with real secrets (never commit) and then:
+```
+PUBLIC_API_BASE_URL=https://api.example.com \
+POSTGRES_USER=postgres POSTGRES_PASSWORD=secret POSTGRES_DB=loyalty_prod \
+BACKEND_TAG=v1.0.0 FRONTEND_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d
+```
+
+### Release Checklist
+1. Ensure working tree clean, CI green.
+2. `make strict` (format check, lint, type, audit, drift, coverage).
+3. `make openapi-diff` – snapshot updated if intentional changes.
+4. Bump version in changelog / docs (if maintained) and create tag.
+5. Wait for `release-backend` & `release-frontend` workflow success.
+6. Deploy using compose / platform referencing the immutable tag (digest preferred).
+7. Post-deploy smoke test: health, auth, one core API path, payment sandbox call.
+8. Monitor logs & Sentry for new error classes for ~15 minutes.
+
+### Helper Scripts
+`scripts/build_push_backend.sh <tag>` and `scripts/build_push_frontend.sh <tag>` allow local image build & push (requires `docker login ghcr.io`). These mirror the CI process for ad‑hoc hotfix validation.
+
+### Sanitized Environment Templates
+`Backend/.env.example` and `Frontend/.env.example` enumerate required variables. Copy to `.env` / `.env.local` and fill secrets locally. Add production secrets via your hosting platform (Azure, etc.).
+
+### Rollback
+Redeploy previous known-good tag (no rebuild). Database downgrades are avoided unless absolutely necessary; prefer forward fixes.
+
+### Future Improvements
+- Add SBOM + provenance attestation.
+- Add automated OpenAPI diff comment on PRs.
+- Progressive tightening of mypy overrides.
+
 ### New Endpoint Gate
 Adding endpoints without updating the snapshot now fails the test unless you set `ALLOW_NEW_ENDPOINTS=1` (temporary override for PR). Standard flow:
 ```

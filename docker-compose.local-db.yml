@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: loyalty_local_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: loyalty_local
+    ports:
+      - "5433:5432"  # Expose on different host port to avoid collisions
+    volumes:
+      - pg_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    depends_on:
+      - db
+    ports:
+      - "8081:8080"
+
+volumes:
+  pg_local_data:

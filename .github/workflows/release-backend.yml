@@ -1,0 +1,45 @@
+name: Release Backend Image
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: vars
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Build image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/smb-loyalty-backend:${{ steps.vars.outputs.VERSION }} -f Backend/Dockerfile Backend
+          docker tag ghcr.io/${{ github.repository_owner }}/smb-loyalty-backend:${{ steps.vars.outputs.VERSION }} ghcr.io/${{ github.repository_owner }}/smb-loyalty-backend:latest
+
+      - name: Push images
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/smb-loyalty-backend:${{ steps.vars.outputs.VERSION }}
+          docker push ghcr.io/${{ github.repository_owner }}/smb-loyalty-backend:latest
+
+      - name: Summarize
+        run: echo "Published backend image version ${{ steps.vars.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY

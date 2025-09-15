@@ -1,12 +1,17 @@
-name: Deploy Application
+name: (Deprecated) Legacy AWS Deploy Application
 
 on:
+  workflow_dispatch:
+    inputs:
+      enable_warning:
+        description: "Acknowledged this legacy workflow (prefer Azure / GHCR image release)"
+        required: false
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - '!.github/workflows/deploy.yml'
+    paths:
+      - 'Frontend/**'
+      - 'Backend/**'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
@@ -16,10 +21,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Set up Node.js
+      - name: Display deprecation notice
+        run: |
+          echo "This workflow is deprecated. Prefer image based deploy via release-backend.yml + release-frontend.yml and Azure Container Apps (backend-azure-containerapps.yml) or static hosting."
+          echo "It remains for transitional AWS EB/S3 usage. Consider deleting once cut over."
+
+      - name: Set up Node.js (frontend build)
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
       
       - name: Build frontend
         run: |
@@ -27,11 +37,32 @@ jobs:
           npm ci
           npm run build
       
-      - name: Build backend
+      - name: Set up Python (backend package)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        working-directory: Backend
         run: |
-          cd Backend
-          npm ci
-          npm run build
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --target build_layer
+          # Remove tests & caches to shrink zip
+          rm -rf build_layer/*.dist-info/__pycache__ || true
+          find build_layer -name "__pycache__" -type d -exec rm -rf {} + || true
+
+      - name: Prepare backend artifact
+        working-directory: Backend
+        run: |
+          mkdir -p deploy
+          cp -R *.py app alembic scripts requirements.txt deploy/
+          cp alembic.ini deploy/
+          # Optionally include static assets (small) – skip large node builds
+          if [ -d static ]; then cp -R static deploy/static; fi
+          # Layer style site-packages under deploy/site-packages
+          mv build_layer deploy/site-packages
+          cd deploy
+          zip -r ../backend.zip .
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -44,14 +75,16 @@ jobs:
         run: |
           aws s3 sync Frontend/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
       
-      - name: Deploy backend to Elastic Beanstalk
+      - name: Upload backend artifact to S3
         run: |
-          cd Backend
-          zip -r ../backend.zip .
+          aws s3 cp backend.zip s3://${{ secrets.EB_S3_BUCKET }}/backend-${{ github.sha }}.zip
+
+      - name: Create / update Elastic Beanstalk version
+        run: |
           aws elasticbeanstalk create-application-version \
             --application-name "SMB-Loyalty-Program" \
             --version-label "ver-${{ github.sha }}" \
-            --source-bundle S3Bucket="${{ secrets.EB_S3_BUCKET }}",S3Key="backend.zip"
+            --source-bundle S3Bucket="${{ secrets.EB_S3_BUCKET }}",S3Key="backend-${{ github.sha }}.zip"
           aws elasticbeanstalk update-environment \
             --environment-name "SMB-Loyalty-Program-env" \
             --version-label "ver-${{ github.sha }}"

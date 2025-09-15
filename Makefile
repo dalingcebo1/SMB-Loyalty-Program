@@ -4,7 +4,7 @@ PYTHON ?= python
 FRONTEND_DIR := Frontend
 FRONTEND_NPM := npm --prefix $(FRONTEND_DIR)
 
-.PHONY: help snapshot-openapi refresh-openapi openapi-diff test coverage lint format backend-quality freeze-deps drift-check strict \
+.PHONY: help snapshot-openapi refresh-openapi openapi-diff test coverage lint format backend-quality freeze-deps drift-check strict migrate \
 	frontend-install frontend-build frontend-build-safe frontend-build-minimal frontend-dev frontend-preview \
 	frontend-lint frontend-typecheck frontend-test frontend-test-watch frontend-test-coverage frontend-serve \
 	frontend-cypress-open frontend-cypress-run
@@ -20,6 +20,7 @@ help:
 	@echo "  format                 Apply Ruff formatter in-place"
 	@echo "  backend-quality        Run lint, type check, tests with coverage"
 	@echo "  strict                 Run full strict gate (lint, format check, type check, audit, drift)"
+	@echo "  migrate                Apply latest DB migrations (alembic upgrade head)"
 	@echo "  freeze-deps            Re-freeze backend requirements.txt from requirements.in"
 	@echo "  drift-check            Run migration drift check locally"
 	@echo ""
@@ -84,6 +85,18 @@ freeze-deps:
 
 drift-check:
 	cd Backend && $(PYTHON) scripts/check_migration_drift.py
+
+migrate:
+	@echo "[migrate] Using DATABASE_URL=$${DATABASE_URL:-<not set>}"
+	@# Prefer project venv if present
+	@if [ -f Backend/.venv/bin/activate ]; then \
+		echo "[migrate] Activating Backend/.venv"; \
+		. Backend/.venv/bin/activate; \
+		cd Backend && alembic -c alembic.ini upgrade head; \
+	else \
+		echo "[migrate] No venv found, using system $(PYTHON)"; \
+		cd Backend && alembic -c alembic.ini upgrade head; \
+	fi
 
 # ----------------------- Frontend Targets -----------------------
 

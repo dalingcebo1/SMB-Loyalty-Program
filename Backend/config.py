@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     default_tenant: str = "default"
     price_csv_url: Optional[str] = None
     google_application_credentials: Optional[str] = None
+    # Optional: Inline JSON for Firebase service account (alternative to mounting a file)
+    firebase_credentials_json: Optional[str] = Field(None, env="FIREBASE_CREDENTIALS_JSON")
     # Directory for serving static assets (branding uploads, compiled frontend)
     static_dir: str = Field("static", env="STATIC_DIR")
 

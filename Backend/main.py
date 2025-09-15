@@ -44,6 +44,7 @@ from fastapi.responses import JSONResponse
 from app.core.database import get_db
 from app.models import TenantBranding, Tenant as _Tenant
 import os
+import tempfile
 
 app = FastAPI(
     title="SMB Loyalty Program",
@@ -442,3 +443,25 @@ def on_startup():
                     _db.commit()
                 except Exception:
                     _db.rollback()
+
+    # Firebase credentials materialization logic ---------------------------------
+    try:
+        if not os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+            # If user supplied a direct path in settings, prefer that (legacy behavior)
+            if settings.google_application_credentials:
+                os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = settings.google_application_credentials
+            # Else if inline JSON secret provided, write to a secure temp file
+            elif getattr(settings, 'firebase_credentials_json', None):
+                # Write once per process start
+                fd, tmp_path = tempfile.mkstemp(prefix='firebase-', suffix='.json')
+                with os.fdopen(fd, 'w') as fh:
+                    fh.write(settings.firebase_credentials_json)  # raw JSON string
+                # Tighten permissions (best-effort on *nix)
+                try:
+                    os.chmod(tmp_path, 0o600)
+                except Exception:  # pragma: no cover
+                    pass
+                os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = tmp_path
+                logger.info('Materialized Firebase credentials JSON to temp file')
+    except Exception as e:  # pragma: no cover
+        logger.warning(f"Failed to set Firebase credentials: {e}")

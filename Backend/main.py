@@ -89,7 +89,8 @@ def _validate_environment():
         if not _s.allowed_origins or _s.allowed_origins.strip() == '*' or '*,*' in _s.allowed_origins:
             errors.append("ALLOWED_ORIGINS must be a non-wildcard, comma-separated list in production")
         # Secret key strength (length + simple entropy heuristic)
-        secret = getattr(_s, 'secret_key', None)
+        # Correct field name is loyalty_secret (mapped from SECRET_KEY env)
+        secret = getattr(_s, 'loyalty_secret', None)
         if not secret or len(secret) < 24:
             errors.append("SECRET_KEY must be set and >=24 chars in production")
         # Database URL required
@@ -127,9 +128,19 @@ if settings.allowed_origins:
     if trusted_hosts:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(dict.fromkeys(trusted_hosts)))
 
-# Enforce HTTPS in production (behind load balancer -> rely on X-Forwarded-Proto)
+# Enforce HTTPS in production (behind load balancer) but EXEMPT /health/* so platform probes
+# using plain HTTP (common in container platforms) are not redirected with 307.
 if settings.environment == 'production':
-    app.add_middleware(HTTPSRedirectMiddleware)
+    class ConditionalHTTPSRedirectMiddleware(HTTPSRedirectMiddleware):
+        async def __call__(self, scope, receive, send):  # type: ignore[override]
+            if scope.get("type") == "http":
+                path = scope.get("path", "")
+                # Exempt health & metrics (if enabled) endpoints from redirect to avoid probe failures
+                if path.startswith('/health/'):
+                    return await self.app(scope, receive, send)
+            return await super().__call__(scope, receive, send)
+
+    app.add_middleware(ConditionalHTTPSRedirectMiddleware)
 
 # Mount static directory (branding assets & SPA build output) early
 class BrandingStaticFiles(StaticFiles):

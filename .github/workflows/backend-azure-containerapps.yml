@@ -7,6 +7,15 @@ on:
       - 'Backend/**'
       - '.github/workflows/backend-azure-containerapps.yml'
   workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: "Run Alembic upgrade head after deploy (true/false)"
+        required: false
+        default: 'false'
+      health_retry_seconds:
+        description: "Max seconds to wait for /health/ready=200"
+        required: false
+        default: '90'
 
 env:
   AZURE_RESOURCE_GROUP: SMB-Loyalty-Group
@@ -43,14 +52,57 @@ jobs:
             -t "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}" \
             -f Backend/Dockerfile Backend
 
-      - name: Deploy image to Container App
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
-          containerAppName: ${{ env.CONTAINERAPP_NAME }}
-          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      - name: Deploy image & set env vars (direct update)
+        run: |
+          set -euo pipefail
+          echo "Deploying image via az containerapp update (secret refs + env)"
+          az containerapp update \
+            -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+            --image "${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --set-env-vars \
+              SECRET_KEY=secretref:secretkey \
+              JWT_SECRET=secretref:jwtsecretkey \
+              RESET_SECRET=secretref:resetsecretkey \
+              DATABASE_URL='${{ secrets.CA_DATABASE_URL }}' \
+              ALLOWED_ORIGINS='${{ secrets.CA_ALLOWED_ORIGINS }}' \
+              FRONTEND_URL='${{ secrets.CA_FRONTEND_URL }}' \
+              ENVIRONMENT=production \
+              SENTRY_DSN='${{ secrets.CA_SENTRY_DSN }}' \
+              YOCO_SECRET_KEY='${{ secrets.CA_YOCO_SECRET_KEY }}' \
+              YOCO_WEBHOOK_SECRET='${{ secrets.CA_YOCO_WEBHOOK_SECRET }}' \
+              FIREBASE_CREDENTIALS_JSON='${{ secrets.CA_FIREBASE_CREDENTIALS_JSON }}'
+          echo "Container App update submitted"
 
       - name: Output app URL
         run: |
           fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
           echo "API URL: https://$fqdn"
+          echo "FQDN=$fqdn" >> $GITHUB_ENV
+
+      - name: Run Alembic migrations (optional)
+        if: ${{ inputs.run_migrations == 'true' }}
+        run: |
+          echo "Running Alembic migrations inside container app..."
+          az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --command "alembic -c alembic.ini upgrade head"
+          echo "Migrations complete"
+
+      - name: Health check (ready-lite + diagnostics)
+        run: |
+          set -euo pipefail
+          fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Waiting for /health/ready-lite ..."
+          end=$((SECONDS + ${INPUT_HEALTH_RETRY_SECONDS:-${{ inputs.health_retry_seconds }}} ))
+          ok=false
+          while [ $SECONDS -lt $end ]; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/ready-lite" || echo 000)
+            echo "ready-lite: $code"
+            if [ "$code" = "200" ]; then ok=true; break; fi
+            sleep 5
+          done
+          if [ "$ok" = false ]; then
+            echo "ready-lite check failed" >&2; exit 1; fi
+          echo "ready-lite OK"
+          deep=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/ready" || echo 000)
+            echo "deep readiness: $deep"
+          startup=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/startup" || echo 000)
+            echo "startup: $startup"

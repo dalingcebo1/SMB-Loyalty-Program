@@ -85,9 +85,24 @@ def _validate_environment():
     from config import settings as _s  # local import to avoid circulars during tests
     errors = []
     if _s.environment == 'production':
-        # Require explicit allowed_origins (no wildcard) for production unless explicitly documented.
-        if not _s.allowed_origins or _s.allowed_origins.strip() == '*' or '*,*' in _s.allowed_origins:
-            errors.append("ALLOWED_ORIGINS must be a non-wildcard, comma-separated list in production")
+        # Derive allowed_origins from frontend_url if missing or clearly unsafe
+        derived_allowed = None
+        invalid_allowed = (not _s.allowed_origins or _s.allowed_origins.strip() == '*' or '*,*' in _s.allowed_origins)
+        if invalid_allowed and getattr(_s, 'frontend_url', None):
+            # Use the scheme+host of frontend_url as a safe fallback
+            import urllib.parse as _up
+            try:
+                parts = _up.urlparse(_s.frontend_url)
+                if parts.scheme and parts.netloc:
+                    derived_allowed = f"{parts.scheme}://{parts.netloc}"
+            except Exception:  # pragma: no cover
+                pass
+            if derived_allowed:
+                _s.allowed_origins = derived_allowed
+                logger.warning("ENV_VALIDATION: ALLOWED_ORIGINS was invalid/missing; derived fallback from FRONTEND_URL=%s", derived_allowed)
+                invalid_allowed = False
+        if invalid_allowed:
+            errors.append("ALLOWED_ORIGINS must be a non-wildcard, comma-separated list in production (no safe fallback possible)")
         # Secret key strength (length + simple entropy heuristic)
         # Correct field name is loyalty_secret (mapped from SECRET_KEY env)
         secret = getattr(_s, 'loyalty_secret', None)

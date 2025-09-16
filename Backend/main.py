@@ -136,9 +136,9 @@ if settings.allowed_origins:
         # drop path
         o = o.split('/')[0]
         trusted_hosts.append(o)
-    # Always allow localhost & 127.0.0.1 for dev shells if not in production
-    if settings.environment != 'production':
-        trusted_hosts.extend(['localhost', '127.0.0.1'])
+    # Always allow localhost & 127.0.0.1 even in production to satisfy platform sidecar/probes using loopback
+    # Include wildcard '*' to permit dynamic Azure revision FQDNs without 400 Host header rejections.
+    trusted_hosts.extend(['localhost', '127.0.0.1', '*'])
     # starlette requires at least one host; wildcard if list empty
     if trusted_hosts:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(dict.fromkeys(trusted_hosts)))

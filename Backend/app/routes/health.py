@@ -4,7 +4,7 @@ Monitoring and health check endpoints for production.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 import os
 import sys
@@ -144,11 +144,59 @@ async def detailed_health_check(
     }
 
 
+@router.get("/ready-lite", include_in_schema=False)
+async def readiness_check_lite() -> Dict[str, Any]:
+    """Extremely lightweight readiness probe (no DB).
+
+    Returns 200 immediately – suitable for container platform readiness/liveness
+    probes to avoid cascading startup failures if the DB is momentarily
+    unavailable (the fuller /health/ready will still check deeper dependencies).
+    """
+    return {
+        "status": "ready",
+        "mode": "lite",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "SMB Loyalty Program API"
+    }
+
+
+_READY_CACHE: Dict[str, Any] = {}
+_READY_CACHE_EXP: Optional[datetime] = None
+
 @router.get("/ready")
 async def readiness_check(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """Readiness check for Kubernetes/container orchestration."""
+    """Full readiness check (DB + optional Redis + basic model access).
+
+    Behavior modifiers (environment variables):
+      HEALTH_READY_SKIP_DEEP=1  -> Skip DB & Redis checks (fast path) returning cached/nominal 200.
+      HEALTH_READY_CACHE_TTL=seconds (default 5) -> Cache successful deep result briefly to reduce load.
+
+    Recommended: platform probes use /health/ready-lite; this endpoint is for diagnostics.
+    Returns 503 if a hard dependency is down (unless skip flag set).
+    """
+    global _READY_CACHE, _READY_CACHE_EXP
+    now = datetime.utcnow()
+    cache_ttl = int(os.getenv("HEALTH_READY_CACHE_TTL", "5") or 5)
+    skip_deep = os.getenv("HEALTH_READY_SKIP_DEEP", "0") == "1"
+
+    # Serve cached if valid & not skipping (skip implies we just produce simple response anyway)
+    if not skip_deep and _READY_CACHE and _READY_CACHE_EXP and now < _READY_CACHE_EXP:
+        return _READY_CACHE
+
+    if skip_deep:
+        result = {
+            "status": "ready",
+            "timestamp": now.isoformat(),
+            "message": "Skip flag active (HEALTH_READY_SKIP_DEEP=1) - deep checks bypassed",
+            "mode": "skip"
+        }
+        _READY_CACHE = result
+        _READY_CACHE_EXP = now + timedelta(seconds=cache_ttl)
+        return result
+
+    # Deep path
     try:
         # Check database connectivity
         db.execute(text("SELECT 1"))
@@ -176,9 +224,11 @@ async def readiness_check(
         }
         if redis_status:
             resp["redis"] = redis_status
+        _READY_CACHE = resp
+        _READY_CACHE_EXP = now + timedelta(seconds=cache_ttl)
         return resp
-        
-    except Exception as e:
+
+    except Exception as e:  # pragma: no cover - depends on external services
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Service not ready: {str(e)}"
@@ -194,6 +244,29 @@ async def liveness_check() -> Dict[str, Any]:
         "message": "Service is running"
     }
 
+
+@router.get("/startup", include_in_schema=False)
+async def startup_check() -> Dict[str, Any]:
+    """Startup probe distinguishing initial boot from running.
+
+    Uses STARTUP_GRACE_SECONDS (default 30). Returns 200 while within grace
+    period; after that simply returns 200 with mode=post-grace. Provided mainly
+    so orchestrators can allow longer warm-up without failing readiness.
+    """
+    grace = int(os.getenv("STARTUP_GRACE_SECONDS", "30") or 30)
+    # Use process start time from an env var optionally injected, fallback to module import time
+    global _PROCESS_START
+    if '_PROCESS_START' not in globals():
+        globals()['_PROCESS_START'] = datetime.utcnow()
+    elapsed = (datetime.utcnow() - globals()['_PROCESS_START']).total_seconds()
+    within = elapsed < grace
+    return {
+        "status": "starting" if within else "started",
+        "mode": "grace" if within else "steady",
+        "elapsed_seconds": int(elapsed),
+        "grace_seconds": grace,
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 if os.getenv("METRICS_ENABLED", "0") == "1":
     @router.get("/metrics")

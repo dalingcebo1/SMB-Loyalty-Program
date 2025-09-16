@@ -63,14 +63,14 @@ jobs:
               SECRET_KEY=secretref:secretkey \
               JWT_SECRET=secretref:jwtsecretkey \
               RESET_SECRET=secretref:resetsecretkey \
-              DATABASE_URL='${{ secrets.CA_DATABASE_URL }}' \
-              ALLOWED_ORIGINS='${{ secrets.CA_ALLOWED_ORIGINS }}' \
-              FRONTEND_URL='${{ secrets.CA_FRONTEND_URL }}' \
+              DATABASE_URL=${{ secrets.CA_DATABASE_URL }} \
+              ALLOWED_ORIGINS=${{ secrets.CA_ALLOWED_ORIGINS }} \
+              FRONTEND_URL=${{ secrets.CA_FRONTEND_URL }} \
               ENVIRONMENT=production \
-              SENTRY_DSN='${{ secrets.CA_SENTRY_DSN }}' \
-              YOCO_SECRET_KEY='${{ secrets.CA_YOCO_SECRET_KEY }}' \
-              YOCO_WEBHOOK_SECRET='${{ secrets.CA_YOCO_WEBHOOK_SECRET }}' \
-              FIREBASE_CREDENTIALS_JSON='${{ secrets.CA_FIREBASE_CREDENTIALS_JSON }}'
+              SENTRY_DSN=${{ secrets.CA_SENTRY_DSN }} \
+              YOCO_SECRET_KEY=${{ secrets.CA_YOCO_SECRET_KEY }} \
+              YOCO_WEBHOOK_SECRET=${{ secrets.CA_YOCO_WEBHOOK_SECRET }} \
+              FIREBASE_CREDENTIALS_JSON=${{ secrets.CA_FIREBASE_CREDENTIALS_JSON }}
           echo "Container App update submitted"
 
       - name: Output app URL

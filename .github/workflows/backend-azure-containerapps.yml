@@ -73,6 +73,30 @@ jobs:
               FIREBASE_CREDENTIALS_JSON=${{ secrets.CA_FIREBASE_CREDENTIALS_JSON }}
           echo "Container App update submitted"
 
+      - name: Wait for new revision (provisioning + replica)
+        run: |
+          set -euo pipefail
+          echo "Waiting for new revision to reach Succeeded with >=1 replica"
+          start=$SECONDS
+          timeout=180
+          rev=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)
+          echo "Latest revision: $rev"
+          while true; do
+            state=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$rev" --query properties.provisioningState -o tsv 2>/dev/null || echo unknown)
+            replicas=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$rev" --query "length(properties.instances)" -o tsv 2>/dev/null || echo 0)
+            echo "Revision $rev state=$state replicas=$replicas"
+            if [ "$state" = "Succeeded" ] && [ "$replicas" -ge 1 ]; then
+              echo "Revision $rev is running"
+              echo "LATEST_REVISION=$rev" >> $GITHUB_ENV
+              break
+            fi
+            if [ $(( SECONDS - start )) -gt $timeout ]; then
+              echo "Timed out waiting for revision $rev" >&2
+              exit 1
+            fi
+            sleep 6
+          done
+
       - name: Output app URL
         run: |
           fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
@@ -97,10 +121,26 @@ jobs:
           if ! echo "$retry_seconds" | grep -Eq '^[0-9]+$'; then retry_seconds=90; fi
           end=$(( SECONDS + retry_seconds ))
           ok=false
+          attempt=0
           while [ $SECONDS -lt $end ]; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/ready-lite" || echo 000)
+            attempt=$((attempt+1))
+            tmp_headers=$(mktemp)
+            tmp_body=$(mktemp)
+            # Capture headers + body separately (curl doesn't have a simple split; use -D for headers)
+            code=$(curl -s -D "$tmp_headers" -o "$tmp_body" -w '%{http_code}' "https://$fqdn/health/ready-lite" 2>/dev/null || echo 000)
             echo "ready-lite: $code"
-            if [ "$code" = "200" ]; then ok=true; break; fi
+            if [ "$code" = "200" ]; then
+              ok=true
+              rm -f "$tmp_headers" "$tmp_body"
+              break
+            fi
+            if [ $attempt -eq 1 ]; then
+              echo "--- First attempt headers ---"; cat "$tmp_headers" || true; echo "--- body ---"; cat "$tmp_body" || true; echo "--- end ---"
+            fi
+            if [ "$code" = "401" ]; then
+              echo "Hint: 401 indicates request passed through auth/tenant logic. Verify middleware exemption for /health/* present in deployed image and traffic directed to new revision."
+            fi
+            rm -f "$tmp_headers" "$tmp_body"
             sleep 5
           done
           if [ "$ok" = false ]; then

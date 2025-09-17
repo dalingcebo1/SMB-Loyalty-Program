@@ -28,7 +28,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://pgadmin:StrongP%40ss123@localhost:5432/loyalty_db
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Set up Python
         uses: actions/setup-python@v4
         with:

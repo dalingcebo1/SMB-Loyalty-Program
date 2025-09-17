@@ -4,7 +4,7 @@ alembic  # Migration tool
 fastapi==0.116.1  # Pin FastAPI to align with tested version
 itsdangerous
 passlib[bcrypt]
-pydantic==2.11.7  # Match requirements.txt pinned
+pydantic==2.11.9  # Match requirements.txt pinned
 pydantic-settings==2.10.1
 email-validator>=2
 psutil

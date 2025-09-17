@@ -1,5 +1,5 @@
 // src/features/staff/components/EnhancedVehicleManager.tsx
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../../api/api';
 import { toast } from 'react-toastify';
 import './EnhancedVehicleManager.css';
@@ -78,7 +78,7 @@ const EnhancedVehicleManager: React.FC = () => {
       controller.abort();
       if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
     };
-  }, [searchQuery, axiosAuth]);
+  }, [searchQuery]);
 
   // Search users for adding vehicles
   useEffect(() => {
@@ -107,7 +107,7 @@ const EnhancedVehicleManager: React.FC = () => {
       controller.abort();
       if (userDebounceTimeout.current) clearTimeout(userDebounceTimeout.current);
     };
-  }, [userSearch, axiosAuth]);
+  }, [userSearch]);
 
   const normalizeReg = (reg: string) => {
     return reg.replace(/\s+/g, '').toUpperCase();
@@ -165,9 +165,9 @@ const EnhancedVehicleManager: React.FC = () => {
     }
 
     try {
-  const target = selectedVehicle || searchResults.find(v => v.id === vehicleId) || null;
-  if (!target) return;
-  await axiosAuth.delete(`/users/${target.user.id}/vehicles/${vehicleId}`);
+      const target = selectedVehicle || searchResults.find(v => v.id === vehicleId) || null;
+      if (!target) return;
+      await api.delete(`/api/users/${target.user.id}/vehicles/${vehicleId}`);
       toast.success('Vehicle deleted successfully');
       
       // Remove from search results

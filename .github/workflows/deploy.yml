@@ -27,7 +27,7 @@ jobs:
           echo "It remains for transitional AWS EB/S3 usage. Consider deleting once cut over."
 
       - name: Set up Node.js (frontend build)
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
       

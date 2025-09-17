@@ -25,3 +25,5 @@ Troubleshooting
 - Confirm the browser devtools show requests going to `https://api.<domain>/api/...`.
 - For local dev, set `.env`:
   - VITE_API_BASE_URL=http://localhost:8000
+
+Note: Redeploy trigger touch 2025-09-17 05:35 UTC.

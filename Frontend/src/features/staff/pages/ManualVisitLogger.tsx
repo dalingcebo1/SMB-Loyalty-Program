@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../../../api/api";
 import { toast } from 'react-toastify';
 
 // Types for backend response and log history
@@ -48,12 +48,7 @@ const ManualVisitLogger: React.FC = () => {
   const [history, setHistory] = useState<VisitLog[]>([]);
   // use react-toastify for notifications
 
-  const token = localStorage.getItem("token");
-  const axiosAuth = axios.create({
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  // Shared API client attaches Authorization token and honors VITE_API_BASE_URL
 
   const isValidCell = /^0\d{9}$/.test(cell);
 
@@ -75,7 +70,7 @@ const ManualVisitLogger: React.FC = () => {
     setStatus(null);
     setLoading(true);
     try {
-      const res = await axiosAuth.post("/auth/visits/manual", { cellphone: cell });
+  const res = await api.post("/api/auth/visits/manual", { cellphone: cell });
       // Expecting backend to return: { message, phone, name, count }
       const data: VisitResponse = res.data;
       setStatus(`Visit logged for ${data.name} (${normalizePhone(data.phone)})`);
@@ -111,7 +106,7 @@ const ManualVisitLogger: React.FC = () => {
     setLoading(true);
     setStatus(null);
     try {
-      await axiosAuth.post("/api/payments/start-manual-wash", { phone: normalizePhone(lastVisit?.phone || "") });
+  await api.post("/api/payments/start-manual-wash", { phone: normalizePhone(lastVisit?.phone || "") });
   toast.success("Wash started for POS client!");
       setStatus(null);
     } catch {

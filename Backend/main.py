@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -123,6 +124,10 @@ def _validate_environment():
 # GZip responses for text/JSON to reduce bandwidth; level defaults good for API
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+# Honor X-Forwarded-Proto / Forwarded headers from Azure front-end to prevent
+# spurious self 307 redirects (redirect loop) when request already arrived via HTTPS.
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # Trusted hosts (comma separated) only if configured to avoid blocking local dev
 if settings.allowed_origins:
     # Derive hosts from allowed_origins (strip scheme/port) conservatively
@@ -150,8 +155,14 @@ if settings.environment == 'production':
         async def __call__(self, scope, receive, send):  # type: ignore[override]
             if scope.get("type") == "http":
                 path = scope.get("path", "")
-                # Exempt health & metrics (if enabled) endpoints from redirect to avoid probe failures
+                # Exempt health & metrics endpoints from redirect to avoid probe failures
                 if path.startswith('/health/'):
+                    return await self.app(scope, receive, send)
+                # If proxy headers already indicate https, skip redirect to avoid 307 loop
+                headers = {k.decode(): v.decode() for k, v in scope.get('headers', [])}
+                proto = headers.get('x-forwarded-proto') or headers.get('forwarded', '')
+                # Quick parse: if 'https' present in forwarded header, treat as secure
+                if proto and 'https' in proto:
                     return await self.app(scope, receive, send)
             return await super().__call__(scope, receive, send)
 
@@ -234,17 +245,30 @@ app.add_middleware(RequestIDMiddleware)
 class AccessLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
+        response: Response | None = None
         try:
             response = await call_next(request)
             return response
-        finally:
+        except Exception:
+            # Ensure we still emit an access log line even on exceptions
+            # Response not yet available; synthesize status 500 for logging
             duration_ms = (time.perf_counter() - start) * 1000
             rid = getattr(request.state, 'request_id', '-')
             tenant_id = getattr(request.state, 'tenant_id', '-')
             logging.getLogger('access').info(
-                f"{request.method} {request.url.path} {getattr(response,'status_code',0)} {duration_ms:.1f}ms",
+                f"{request.method} {request.url.path} 500 {duration_ms:.1f}ms",
                 extra={"request_id": rid, "tenant_id": tenant_id}
             )
+            raise
+        finally:
+            if response is not None:
+                duration_ms = (time.perf_counter() - start) * 1000
+                rid = getattr(request.state, 'request_id', '-')
+                tenant_id = getattr(request.state, 'tenant_id', '-')
+                logging.getLogger('access').info(
+                    f"{request.method} {request.url.path} {getattr(response,'status_code',0)} {duration_ms:.1f}ms",
+                    extra={"request_id": rid, "tenant_id": tenant_id}
+                )
 
 app.add_middleware(AccessLogMiddleware)
 
@@ -329,6 +353,31 @@ if settings.environment != 'production':
 
 for prefix, router in router_mounts:
     app.include_router(router, prefix=prefix)
+
+# ─── Root Landing Page (simple HTML) ────────────────────────────────────────
+# Provides a human-friendly page instead of a generic 400/404 when visiting
+# the base domain. Keeps it lightweight (no template engine).
+LANDING_HTML = """<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\" />
+<title>SMB Loyalty API</title><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:2rem;line-height:1.45;color:#222;}h1{margin-top:0;font-size:1.8rem;}code{background:#f4f4f6;padding:2px 4px;border-radius:4px;font-size:.9em;}a{color:#3366ff;text-decoration:none;}a:hover{text-decoration:underline;}footer{margin-top:3rem;font-size:.75rem;color:#666;} .grid{display:grid;gap:1rem;max-width:720px;} .card{padding:1rem;border:1px solid #e1e4e8;border-radius:8px;background:#fff;} .ok{color:#2e7d32;font-weight:600;} pre{background:#f7f7f9;padding:.75rem;border-radius:6px;overflow:auto;} </style>
+</head><body>
+<h1>SMB Loyalty Program API</h1>
+<p>This service powers the SMB Loyalty / ChaosX platform.</p>
+<div class=\"grid\">
+    <div class=\"card\"><strong>Status:</strong> <span class=\"ok\">Healthy</span> (see <a href=\"/health/ready-lite\">/health/ready-lite</a>)</div>
+    <div class=\"card\"><strong>OpenAPI:</strong> <a href=\"/api/openapi.json\">/api/openapi.json</a> &middot; <a href=\"/docs\">Swagger UI</a></div>
+    <div class=\"card\"><strong>Public Tenant Meta:</strong> <a href=\"/api/public/tenant-meta\">/api/public/tenant-meta</a></div>
+    <div class=\"card\"><strong>Version:</strong> v0.1</div>
+</div>
+<h2>Quick Checks</h2>
+<pre>curl -sf $HOST/health/ready-lite
+curl -s $HOST/api/openapi.json | jq '.info.version'</pre>
+<footer>Generated at runtime – minimal static landing (no auth). &copy; SMB Loyalty</footer>
+</body></html>"""
+
+@app.get("/", include_in_schema=False)
+async def root_landing():
+        return Response(content=LANDING_HTML, media_type="text/html")
 
 # ─── Public Tenant Metadata Endpoint ───
 

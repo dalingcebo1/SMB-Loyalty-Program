@@ -1,6 +1,6 @@
 // src/features/staff/components/EnhancedVehicleManager.tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import axios from 'axios';
+import api from '../../../api/api';
 import { toast } from 'react-toastify';
 import './EnhancedVehicleManager.css';
 
@@ -44,12 +44,7 @@ const EnhancedVehicleManager: React.FC = () => {
     model: ''
   });
 
-  const token = localStorage.getItem('token');
-  // Memoize axios instance so effects don't re-run each render (preventing input "loop")
-  const axiosAuth = useMemo(() => axios.create({
-    baseURL: '/api',
-    headers: { Authorization: `Bearer ${token}` }
-  }), [token]);
+  // Use shared API client (injects Authorization from localStorage and honors VITE_API_BASE_URL)
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const userDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -65,7 +60,7 @@ const EnhancedVehicleManager: React.FC = () => {
     debounceTimeout.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await axiosAuth.get(`/users/vehicles/search?q=${encodeURIComponent(searchQuery)}`, { signal: controller.signal });
+  const response = await api.get(`/api/users/vehicles/search?q=${encodeURIComponent(searchQuery)}`, { signal: controller.signal });
         type BackendVehicle = { id: number; plate: string; make: string; model: string; user: User; total_washes?: number; last_wash?: string };
         const mapped: VehicleSearchResult[] = (response.data as BackendVehicle[]).map(v => ({ ...v, reg: v.plate }));
         setSearchResults(mapped);
@@ -96,7 +91,7 @@ const EnhancedVehicleManager: React.FC = () => {
     userDebounceTimeout.current = setTimeout(async () => {
       setUserLoading(true);
       try {
-        const response = await axiosAuth.get(`/users/search?query=${encodeURIComponent(userSearch)}`, { signal: controller.signal });
+  const response = await api.get(`/api/users/search?query=${encodeURIComponent(userSearch)}`, { signal: controller.signal });
         setUserResults(response.data);
       } catch (error: unknown) {
         const errObj = error as { name?: string; code?: string } | undefined;
@@ -126,7 +121,7 @@ const EnhancedVehicleManager: React.FC = () => {
 
     try {
       setLoading(true);
-  await axiosAuth.post(`/users/${selectedUser.id}/vehicles`, {
+      await api.post(`/api/users/${selectedUser.id}/vehicles`, {
         plate: normalizeReg(newVehicle.reg),
         make: newVehicle.make.trim(),
         model: newVehicle.model.trim()

@@ -150,3 +150,12 @@ jobs:
             echo "deep readiness: $deep"
           startup=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/startup" || echo 000)
             echo "startup: $startup"
+
+      - name: Post-deploy smoke tests
+        run: |
+          set -euo pipefail
+          chmod +x scripts/post_deploy_smoke.sh || true
+          fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
+          export API_BASE="https://$fqdn"
+          ./scripts/post_deploy_smoke.sh
+          echo "Smoke tests passed"

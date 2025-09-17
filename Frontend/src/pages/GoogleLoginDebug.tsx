@@ -74,7 +74,7 @@ const GoogleLoginDebug: React.FC = () => {
       
       // Test the backend call
       addDebug('🔄 Testing backend social-login endpoint...');
-      const response = await fetch('http://localhost:8000/api/auth/social-login', {
+      const response = await fetch('/api/auth/social-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

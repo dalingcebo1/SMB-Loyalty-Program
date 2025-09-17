@@ -1,27 +1,27 @@
-import os
-# Set test DATABASE_URL before any app import
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-import sys
-# ensure Backend/app is on PYTHONPATH for imports
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, ROOT)
-import pytest
-from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
+"""Backend test fixtures.
 
+Strips prior debug/diagnostic path prints now that import stability is solved.
+Provides DB setup, rate limit reset, and a configured TestClient with auth
+dependency overrides where appropriate.
+"""
+import os
+import pytest
+from fastapi.testclient import TestClient
 from app.core.database import Base, get_db, engine, SessionLocal as TestingSessionLocal
 import main
+
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
 app = main.app
-# Eagerly create tables so module-level setup_module functions can access them
-try:
+try:  # best-effort initial metadata creation
     Base.metadata.create_all(bind=engine)
-except Exception:
+except Exception:  # pragma: no cover
     pass
 
 @pytest.fixture(scope="function", autouse=True)
 def initialize_db():
     # Import all models to register with Base.metadata
-    import app.models  # ensure core models are registered before creating tables
+    import app.models  # ensure core models registered
     # Recreate tables fresh for isolation
     try:
         Base.metadata.drop_all(bind=engine)
@@ -73,9 +73,9 @@ def create_all_once():
 def reset_rate_limits():
     # Clear in-memory rate limiter state between tests to prevent cascading 429s
     from app.core import rate_limit as rl
-    rl._BUCKETS.clear()  # type: ignore
-    rl._PENALTIES.clear()  # type: ignore
-    rl._CONFIG.clear()  # type: ignore  # clear dynamic overrides
+    rl._BUCKETS.clear()      # type: ignore[attr-defined]
+    rl._PENALTIES.clear()    # type: ignore[attr-defined]
+    rl._CONFIG.clear()       # type: ignore[attr-defined]
     yield
 
 @pytest.fixture(scope="function")
@@ -95,10 +95,9 @@ def client(db_session, monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
     # Override auth dependencies for tests
     from app.plugins.auth.routes import require_staff, get_current_user
-    from app.core.authz import developer_only
     from app.models import User
     from config import settings
-    from datetime import datetime
+    from datetime import datetime, UTC
     from fastapi import Request
     from jose import jwt, JWTError
 
@@ -128,9 +127,8 @@ def client(db_session, monkeypatch):
                         pass
         except Exception:
             pass
-        return db_session.query(User).first()
+    return db_session.query(User).first()
 
     app.dependency_overrides[get_current_user] = override_get_current_user
     # Do NOT override developer_only so authz role tests validate actual logic
-    # Keep default public meta rate limit (tests assert 60 capacity)
     return TestClient(app)

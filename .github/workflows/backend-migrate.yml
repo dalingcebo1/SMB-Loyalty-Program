@@ -1,0 +1,75 @@
+name: Backend Migrate (Alembic)
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Azure Resource Group
+        required: true
+        default: SMB-Loyalty-Group
+      containerapp_name:
+        description: Container App name
+        required: true
+        default: apismbloyaltyapp
+      timeout_seconds:
+        description: Max seconds to wait for successful health after migration
+        required: false
+        default: '60'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Container Apps extension
+        run: az extension add --name containerapp --upgrade
+
+      - name: Run Alembic upgrade head
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ inputs.containerapp_name }}
+        run: |
+          set -euo pipefail
+          echo "Executing alembic upgrade head inside container app: $APP"
+          az containerapp exec -g "$RG" -n "$APP" --command "alembic -c alembic.ini upgrade head" || {
+            echo 'Alembic upgrade failed'; exit 1; }
+
+      - name: Show current heads
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ inputs.containerapp_name }}
+        run: |
+          set -euo pipefail
+          az containerapp exec -g "$RG" -n "$APP" --command "alembic -c alembic.ini heads" || true
+
+      - name: Post-migration health check
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ inputs.containerapp_name }}
+          TIMEOUT: ${{ inputs.timeout_seconds }}
+        run: |
+          set -euo pipefail
+          fqdn=$(az containerapp show -g "$RG" -n "$APP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "FQDN: $fqdn"
+          end=$((SECONDS + TIMEOUT))
+          ok=false
+          while [ $SECONDS -lt $end ]; do
+            code=$(curl -k -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/ready") || code=000
+            echo "Health status code: $code"
+            if [ "$code" = "200" ]; then ok=true; break; fi
+            sleep 5
+          done
+          if [ "$ok" = false ]; then
+            echo "Health check failed after migration" >&2
+            exit 1
+          fi
+          echo "Migration complete and health OK"

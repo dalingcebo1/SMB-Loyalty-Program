@@ -68,5 +68,29 @@ az containerapp show -g $RG -n $APP --query "properties.template.containers[0].e
 curl -ks -w "\n%{http_code}\n" https://$FQDN/health/ready-lite
 ```
 
+## 8. Automated Smoke Tests (New)
+
+After a revision turns Healthy, run `scripts/post_deploy_smoke.sh` to quickly assert end-to-end surface availability.
+
+What it covers:
+1. `/health/ready-lite` – container/process is live.
+2. `/api/openapi.json` – application routing + docs generation.
+3. `/` landing page – root route & middleware chain.
+4. `/api/public/tenant-meta` – DB + tenant resolution path (core metadata).
+
+Distinct exit codes (10–13) make CI failure triage immediate. Integrate directly after `scripts/wait_revision_healthy.sh` in the deployment workflow.
+
+Example snippet:
+```bash
+chmod +x scripts/wait_revision_healthy.sh scripts/post_deploy_smoke.sh
+./scripts/wait_revision_healthy.sh --api-base "$API_BASE" --timeout 600
+API_BASE="$API_BASE" ./scripts/post_deploy_smoke.sh
+```
+
+If smoke fails, abort before announcing deployment success. Avoid auto-rollback unless failure types are consistently safe to interpret (manual review recommended initially).
+
+### Redirect Loop Mitigation
+Added `ProxyHeadersMiddleware` plus enhanced conditional HTTPS redirect logic to suppress self-redirect (307) loops on `/` and `/api/openapi.json` when Azure already terminates TLS and sets `X-Forwarded-Proto=https`. Health endpoints remain exempt.
+
 ---
 These changes aim to reduce fatigue from repeated secret/env deploy issues and provide graceful degradation where safe. Update this document when additional protections are added.

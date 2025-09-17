@@ -1,11 +1,11 @@
 # Top-level (unpinned) dependencies for the backend.
 # Run pip-compile (if adopted) or manual freeze to update requirements.txt.
-alembic
-fastapi
+alembic  # Migration tool
+fastapi==0.116.1  # Pin FastAPI to align with tested version
 itsdangerous
 passlib[bcrypt]
-pydantic
-pydantic-settings
+pydantic==2.11.7  # Match requirements.txt pinned
+pydantic-settings==2.10.1
 email-validator>=2
 psutil
 python-dotenv
@@ -16,8 +16,8 @@ qrcode[pil]
 requests
 slowapi
 sendgrid
-sqlalchemy
-uvicorn[standard]
+sqlalchemy==2.0.43
+uvicorn[standard]==0.35.0  # Ensure matching server version to avoid upstream auto-upgrades
 PyJWT
 firebase-admin
 Pillow

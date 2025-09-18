@@ -23,3 +23,6 @@ firebase-admin
 Pillow
 sentry-sdk
 redis
+
+# Security: Ensure non-vulnerable setuptools (used during installs/builds)
+setuptools>=78.1.1

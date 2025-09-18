@@ -58,18 +58,19 @@ jobs:
           TIMEOUT: ${{ inputs.timeout_seconds }}
         run: |
           set -euo pipefail
-          fqdn=$(az containerapp show -g "$RG" -n "$APP" --query properties.configuration.ingress.fqdn -o tsv)
-          echo "FQDN: $fqdn"
+          echo "Checking health from inside container (ringfence-safe) ..."
           end=$((SECONDS + TIMEOUT))
           ok=false
           while [ $SECONDS -lt $end ]; do
-            code=$(curl -k -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/ready") || code=000
-            echo "Health status code: $code"
-            if [ "$code" = "200" ]; then ok=true; break; fi
+            if az containerapp exec -g "$RG" -n "$APP" \
+              --command "sh -lc 'code=\$(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/health/ready || echo 000); echo health:\ $code; [ \"$code\" = 200 ]'"; then
+              ok=true
+              break
+            fi
             sleep 5
           done
           if [ "$ok" = false ]; then
-            echo "Health check failed after migration" >&2
+            echo "Health check (internal) failed after migration" >&2
             exit 1
           fi
-          echo "Migration complete and health OK"
+          echo "Migration complete and health OK (internal)"

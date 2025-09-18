@@ -20,6 +20,10 @@ This repository deploys on Azure. We removed legacy AWS pipelines and kept a foc
   - `backend-azure-containerapps.yml`: Builds via ACR Build and deploys the backend to Azure Container Apps. Optional Alembic run and health checks.
   - `backend-migrate.yml`: Manually run Alembic migrations inside the running Container App.
   - `containerapp-configure-env.yml`: Manually set and update environment variables on the Container App.
+  
+  Ringfenced health strategy:
+  - Health checks run from inside the Container App using `az containerapp exec` to curl `http://localhost:8000/health/ready-lite`. This avoids hitting the public ingress when the backend is ringfenced.
+  - External smoke tests run only when `CA_PUBLIC_API_URL` secret is configured. If not provided, smoke tests are skipped.
 - Static Web Apps (Frontend)
   - `azure-static-web-apps-*.yml`: Builds the frontend using npm and deploys to Azure Static Web Apps.
 
@@ -35,6 +39,10 @@ This repository deploys on Azure. We removed legacy AWS pipelines and kept a foc
 - Release (tags): `release-backend.yml`, `release-frontend.yml`
 - Deploy (push to main): `backend-azure-containerapps.yml`, `azure-static-web-apps-*.yml`
 - Manual: `backend-migrate.yml`, `containerapp-configure-env.yml`, `post-deploy-smoke.yml`, `deploy.yml` (disabled)
+
+Notes:
+- SWA build uses `VITE_API_BASE_URL` from `CA_PUBLIC_API_URL` secret. Set this to an approved public domain. If unset, frontend may not be able to call the API.
+- E2E workflow applies Alembic migrations and sets `ENVIRONMENT=production` before starting the backend to avoid automatic table creation and enforce the real schema.
 
 ## Contributor tips
 

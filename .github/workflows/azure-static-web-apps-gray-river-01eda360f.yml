@@ -39,7 +39,7 @@ jobs:
             npm run build
           ###### End of Repository/Build Configurations ######
         env:
-          VITE_API_BASE_URL: https://api.chaosx.co.za
+          VITE_API_BASE_URL: ${{ secrets.CA_PUBLIC_API_URL }}
           USE_NPM: "true"           # Hint Oryx to use npm
           NODE_VERSION: "20"
           WEBSITE_NODE_DEFAULT_VERSION: "~20"

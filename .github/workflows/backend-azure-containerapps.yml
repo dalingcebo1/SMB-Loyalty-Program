@@ -121,9 +121,7 @@ jobs:
       - name: Health check (ready-lite + diagnostics)
         run: |
           set -euo pipefail
-          fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
-          echo "Waiting for /health/ready-lite ..."
-          # Determine timeout seconds: prefer explicit workflow dispatch input, else default 90
+          echo "Waiting for internal /health/ready-lite via az containerapp exec (ringfence-safe) ..."
           retry_seconds='${{ inputs.health_retry_seconds }}'
           if [ -z "$retry_seconds" ]; then retry_seconds=90; fi
           if ! echo "$retry_seconds" | grep -Eq '^[0-9]+$'; then retry_seconds=90; fi
@@ -132,38 +130,36 @@ jobs:
           attempt=0
           while [ $SECONDS -lt $end ]; do
             attempt=$((attempt+1))
-            tmp_headers=$(mktemp)
-            tmp_body=$(mktemp)
-            # Capture headers + body separately (curl doesn't have a simple split; use -D for headers)
-            code=$(curl -s -D "$tmp_headers" -o "$tmp_body" -w '%{http_code}' "https://$fqdn/health/ready-lite" 2>/dev/null || echo 000)
-            echo "ready-lite: $code"
-            if [ "$code" = "200" ]; then
+            # Run curl inside the running container to avoid public ingress/ringfence
+            if az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+              --command "sh -lc 'code=\$(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/health/ready-lite || echo 000); echo ready-lite:\ $code; [ \"$code\" = 200 ]'"; then
               ok=true
-              rm -f "$tmp_headers" "$tmp_body"
               break
             fi
             if [ $attempt -eq 1 ]; then
-              echo "--- First attempt headers ---"; cat "$tmp_headers" || true; echo "--- body ---"; cat "$tmp_body" || true; echo "--- end ---"
+              echo "First attempt failed; container may still be starting. Retrying..."
             fi
-            if [ "$code" = "401" ]; then
-              echo "Hint: 401 indicates request passed through auth/tenant logic. Verify middleware exemption for /health/* present in deployed image and traffic directed to new revision."
-            fi
-            rm -f "$tmp_headers" "$tmp_body"
             sleep 5
           done
           if [ "$ok" = false ]; then
-            echo "ready-lite check failed" >&2; exit 1; fi
-          echo "ready-lite OK"
-          deep=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/ready" || echo 000)
-            echo "deep readiness: $deep"
-          startup=$(curl -s -o /dev/null -w '%{http_code}' "https://$fqdn/health/startup" || echo 000)
-            echo "startup: $startup"
+            echo "ready-lite check (internal) failed" >&2; exit 1; fi
+          echo "ready-lite OK (internal)"
+          # Optional: surface deep readiness and startup via internal checks (non-fatal)
+          az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+            --command "sh -lc 'curl -s -o /dev/null -w \"deep=%{http_code}\n\" http://localhost:8000/health/ready || true'" || true
+          az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+            --command "sh -lc 'curl -s -o /dev/null -w \"startup=%{http_code}\n\" http://localhost:8000/health/startup || true'" || true
 
       - name: Post-deploy smoke tests
         run: |
           set -euo pipefail
           chmod +x scripts/post_deploy_smoke.sh || true
-          fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
-          export API_BASE="https://$fqdn"
-          ./scripts/post_deploy_smoke.sh
-          echo "Smoke tests passed"
+          PUBLIC_API_URL='${{ secrets.CA_PUBLIC_API_URL }}'
+          if [ -n "$PUBLIC_API_URL" ]; then
+            echo "Running external smoke tests against CA_PUBLIC_API_URL=$PUBLIC_API_URL"
+            export API_BASE="$PUBLIC_API_URL"
+            ./scripts/post_deploy_smoke.sh
+            echo "Smoke tests passed"
+          else
+            echo "No CA_PUBLIC_API_URL provided; skipping external smoke tests due to backend ringfencing."
+          fi

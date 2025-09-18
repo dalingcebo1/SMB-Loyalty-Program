@@ -47,7 +47,12 @@ jobs:
           python-version: '3.10'
 
       - name: Install backend dependencies
-        run: cd Backend && pip install -r requirements.txt
+        run: |
+          cd Backend
+          pip install -r requirements.txt
+          # Apply latest migrations before starting the app to ensure schema matches models
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db
+          alembic -c alembic.ini upgrade head
 
       - name: Install frontend dependencies
         run: cd Frontend && npm ci
@@ -72,6 +77,8 @@ jobs:
         run: |
           cd Backend
           export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db
+          # Skip Base.metadata.create_all by running in production mode during CI
+          export ENVIRONMENT=production
           export JWT_SECRET=test_secret
           nohup python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
 

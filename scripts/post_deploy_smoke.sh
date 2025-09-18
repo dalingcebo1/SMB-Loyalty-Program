@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Post-deployment smoke tests for the SMB Loyalty API
-# Usage: API_BASE="https://api.chaosx.co.za" ./scripts/post_deploy_smoke.sh
+# Usage: API_BASE="https://your-approved-api-domain" ./scripts/post_deploy_smoke.sh
 # Exit codes:
 # 0 success
 # 10 health not ready
@@ -9,7 +9,10 @@ set -euo pipefail
 # 12 landing page failed
 # 13 tenant-meta failed
 
-API_BASE="${API_BASE:-https://api.chaosx.co.za}"
+if [ -z "${API_BASE:-}" ]; then
+  echo "[SMOKE] ERROR: API_BASE is not set. Provide an approved public API URL. Skipping to respect backend ringfencing." >&2
+  exit 0
+fi
 CURL_OPTS=(--fail --silent --show-error --max-time 10)
 
 log() { echo "[SMOKE] $*" >&2; }

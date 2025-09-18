@@ -111,6 +111,26 @@ def recent_errors(limit: int = Query(10, ge=1, le=50)):
 def rate_limits():
     return bucket_snapshot()
 
+@router.get("/rate-limits/summary", include_in_schema=False)
+def rate_limits_summary():
+    """Provide a compact summary of active buckets per scope and top keys.
+
+    Hidden from OpenAPI to keep public surface small; tenant-admin only via router deps.
+    """
+    snap = bucket_snapshot()
+    buckets = snap.get('buckets', [])
+    by_scope: dict[str, dict] = {}
+    for b in buckets:
+        scope = b.get('scope', 'unknown')
+        by = by_scope.setdefault(scope, {'count': 0, 'top': []})
+        by['count'] += 1
+    # Return only high-level counts to avoid leaking IPs/keys
+    return {
+        'scopes': {s: {'buckets': info['count']} for s, info in by_scope.items()},
+        'penalties': len(snap.get('penalties', [])),
+        'overrides': list(snap.get('overrides', {}).keys()),
+    }
+
 @router.get("/jobs", include_in_schema=False)
 def jobs_state():
     # Debug: log snapshot details to help diagnose test expectations

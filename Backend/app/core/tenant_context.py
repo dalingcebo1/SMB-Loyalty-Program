@@ -107,6 +107,33 @@ async def get_tenant_context(
 
     # Build candidate hostnames to try in order
     candidates: list[str] = []
+    # 1. X-Forwarded-Host (first host if present)
+    xfwd_host = request.headers.get("x-forwarded-host") or request.headers.get("X-Forwarded-Host")
+    if xfwd_host:
+        # X-Forwarded-Host may be a comma-separated list; use the first
+        xfwd_host = xfwd_host.split(",")[0].strip()
+        xfwd_norm = _normalize_host(xfwd_host)
+        if xfwd_norm:
+            candidates.append(xfwd_norm)
+            api_stripped = _strip_api_prefix(xfwd_norm)
+            if api_stripped and api_stripped != xfwd_norm:
+                candidates.append(api_stripped)
+
+    # 2. Forwarded header (host=...)
+    fwd = request.headers.get("forwarded") or request.headers.get("Forwarded")
+    if fwd:
+        # Forwarded: for=1.2.3.4;host=foo.example.com;proto=https
+        for part in fwd.split(";"):
+            if part.strip().startswith("host="):
+                fwd_host = part.strip()[5:].strip()
+                fwd_norm = _normalize_host(fwd_host)
+                if fwd_norm:
+                    candidates.append(fwd_norm)
+                    api_stripped = _strip_api_prefix(fwd_norm)
+                    if api_stripped and api_stripped != fwd_norm:
+                        candidates.append(api_stripped)
+
+    # 3. Host header
     host_hdr = request.headers.get("host", "")
     host_norm = _normalize_host(host_hdr)
     if host_norm:
@@ -115,6 +142,7 @@ async def get_tenant_context(
         if api_stripped and api_stripped != host_norm:
             candidates.append(api_stripped)
 
+    # 4. Origin header
     origin_hdr = request.headers.get("origin") or request.headers.get("Origin")
     if origin_hdr:
         try:

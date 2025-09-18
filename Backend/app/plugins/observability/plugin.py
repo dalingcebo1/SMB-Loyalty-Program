@@ -10,7 +10,7 @@ from app.models import AuditLog, User
 from app.core.authz import tenant_admin_only
 from app.core.tenant_context import tenant_cache_state
 from app.core.rate_limit import bucket_snapshot
-from app.core.jobs import job_snapshot, registered_jobs, queue_metrics, dead_letter_snapshot
+from app.core import jobs as _jobs
 from config import settings
 from app.plugins.auth.routes import get_current_user
 
@@ -32,7 +32,7 @@ def _record_error(path: str, exc: Exception):
         'ts': datetime.utcnow().isoformat()
     })
 
-@router.get("/tenant-cache")
+@router.get("/tenant-cache", include_in_schema=False)
 def get_tenant_cache_state():
     return tenant_cache_state()
 
@@ -43,7 +43,7 @@ def _audit_base_query(db: Session, current: User):
         q = q.filter(AuditLog.tenant_id == current.tenant_id)
     return q
 
-@router.get("/audit", response_model=list[dict])
+@router.get("/audit", response_model=list[dict], include_in_schema=False)
 def list_audit_logs(
     db: Session = Depends(get_db),
     current: User = Depends(get_current_user),
@@ -98,28 +98,40 @@ class Plugin:
             return response
         app.include_router(router)
 
-@router.get("/request-metrics")
+@router.get("/request-metrics", include_in_schema=False)
 def request_metrics():
     avg = (_REQ_METRICS["total_ms"] / _REQ_METRICS["count"]) if _REQ_METRICS["count"] else 0.0
     return {**_REQ_METRICS, 'avg_ms': round(avg, 2)}
 
-@router.get("/errors")
+@router.get("/errors", include_in_schema=False)
 def recent_errors(limit: int = Query(10, ge=1, le=50)):
     return list(_ERRORS)[-limit:]
 
-@router.get("/rate-limits")
+@router.get("/rate-limits", include_in_schema=False)
 def rate_limits():
     return bucket_snapshot()
 
-@router.get("/jobs")
+@router.get("/jobs", include_in_schema=False)
 def jobs_state():
-    return {"registered": registered_jobs(), "recent": job_snapshot()}
+    # Debug: log snapshot details to help diagnose test expectations
+    import logging as _logging
+    recent = _jobs.job_snapshot()
+    try:
+        sample = [{"id": j.get("id"), "status": j.get("status")} for j in recent[-3:]]
+        q = _jobs.queue_metrics()
+        _logging.getLogger("access").info(
+            "OBS_PLUGIN jobs_state recent=%s queue_queued=%s hist_len=%s sample=%s",
+            len(recent), q.get("queued"), q.get("history"), sample,
+        )
+    except Exception:
+        pass
+    return {"registered": _jobs.registered_jobs(), "recent": recent}
 
 if settings.enable_metrics_endpoint:
-    @router.get("/metrics")
+    @router.get("/metrics", include_in_schema=False)
     def metrics_text():  # pragma: no cover (format convenience)
         snap = bucket_snapshot()
-        jm = queue_metrics()
+        jm = _jobs.queue_metrics()
         lines = []
         for b in snap.get('buckets', []):
             lines.append(f"rate_limit_tokens{{scope=\"{b['scope']}\",key=\"{b['key']}\"}} {b['tokens']}")
@@ -129,10 +141,10 @@ if settings.enable_metrics_endpoint:
             lines.append(f"rate_limit_override_capacity{{scope=\"{s}\"}} {cfg['capacity']}")
         for k, v in jm.items():
             lines.append(f"job_queue_{k} {v}")
-        lines.append(f"dead_letter_jobs {len(dead_letter_snapshot())}")
+        lines.append(f"dead_letter_jobs {len(_jobs.dead_letter_snapshot())}")
         return "\n".join(lines) + "\n"
 
-@router.get("/force-error")
+@router.get("/force-error", include_in_schema=False)
 def force_error():  # pragma: no cover (covered indirectly by error test)
     # We want to record a RuntimeError in the ring buffer (mimicking a real
     # unhandled exception) without letting it propagate and fail the test

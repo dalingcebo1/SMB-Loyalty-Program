@@ -109,8 +109,14 @@ def developer_only(
             raise credentials_exception
         user = db.query(User).filter_by(email=email).first()
         if not user:
+            # In development, allow anonymous access to dev console even if user record is missing
+            if settings.environment == 'development':
+                return None
             raise credentials_exception
     except JWTError:
+        # In development, treat invalid/expired tokens as anonymous for dev tools
+        if settings.environment == 'development':
+            return None
         raise credentials_exception
 
     try:

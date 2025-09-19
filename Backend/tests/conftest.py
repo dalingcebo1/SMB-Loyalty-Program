@@ -22,22 +22,33 @@ except Exception:  # pragma: no cover
 def initialize_db():
     # Import all models to register with Base.metadata
     import app.models  # ensure core models registered
-    # Recreate tables fresh for isolation
-    try:
-        Base.metadata.drop_all(bind=engine)
-    except Exception:
-        pass
+    # Ensure tables exist (do not drop to preserve module-level seed data)
     Base.metadata.create_all(bind=engine)
     # Seed default tenant and a default user for tests
     from app.models import Tenant, User
+    # Also import loyalty-related tables to ensure a clean slate per test
+    from app.models import VisitCount, Reward, Redemption, Vehicle, OrderVehicle
     from config import settings
     from datetime import datetime
     session = TestingSessionLocal()
+    # Clean loyalty-related tables to avoid cross-test contamination
+    try:
+        session.query(VisitCount).delete()
+        session.query(Redemption).delete()
+        session.query(Reward).delete()
+        # Clean vehicle-related tables to avoid cross-test contamination
+        # Delete child rows first to satisfy FK constraints
+        session.query(OrderVehicle).delete()
+        session.query(Vehicle).delete()
+    except Exception:
+        # Best effort; if tables don't exist yet they will be created below
+        session.rollback()
     if not session.query(Tenant).filter_by(id=settings.default_tenant).first():
         session.add(Tenant(
             id=settings.default_tenant,
             name="Default Tenant",
             loyalty_type="standard",
+            primary_domain=settings.default_tenant,
             created_at=datetime.utcnow()
         ))
     if not session.query(User).filter_by(email="testuser@example.com").first():
@@ -127,7 +138,8 @@ def client(db_session, monkeypatch):
                         pass
         except Exception:
             pass
-    return db_session.query(User).first()
+        # Fallback: first user in DB
+        return db_session.query(User).first()
 
     app.dependency_overrides[get_current_user] = override_get_current_user
     # Do NOT override developer_only so authz role tests validate actual logic

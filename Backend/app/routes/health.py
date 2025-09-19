@@ -182,6 +182,10 @@ async def readiness_check(
     skip_deep = os.getenv("HEALTH_READY_SKIP_DEEP", "0") == "1"
 
     # Serve cached if valid & not skipping (skip implies we just produce simple response anyway)
+    # If the cached entry was produced under a different mode (skip vs deep), invalidate it
+    if _READY_CACHE and (skip_deep != (_READY_CACHE.get("mode") == "skip")):
+        _READY_CACHE = {}
+        _READY_CACHE_EXP = None
     if not skip_deep and _READY_CACHE and _READY_CACHE_EXP and now < _READY_CACHE_EXP:
         return _READY_CACHE
 
@@ -224,6 +228,8 @@ async def readiness_check(
         }
         if redis_status:
             resp["redis"] = redis_status
+        # Mark mode for cache validation on next call
+        resp["mode"] = "deep"
         _READY_CACHE = resp
         _READY_CACHE_EXP = now + timedelta(seconds=cache_ttl)
         return resp
@@ -268,36 +274,45 @@ async def startup_check() -> Dict[str, Any]:
         "timestamp": datetime.utcnow().isoformat()
     }
 
-if os.getenv("METRICS_ENABLED", "0") == "1":
-    @router.get("/metrics")
-    async def get_metrics(
-        db: Session = Depends(get_db)
-    ) -> Dict[str, Any]:
-        """Basic application metrics (toggle via METRICS_ENABLED=1)."""
-        try:
-            from app.models import Tenant, User, Service, Payment, LoyaltyProgram
-            tenant_count = db.query(Tenant).count()
-            user_count = db.query(User).count()
-            service_count = db.query(Service).count()
-            payment_count = db.query(Payment).count()
-            program_count = db.query(LoyaltyProgram).count()
-            python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-            return {
-                "timestamp": datetime.utcnow().isoformat(),
-                "application": {
-                    "tenant_count": tenant_count,
-                    "user_count": user_count,
-                    "service_count": service_count,
-                    "payment_count": payment_count,
-                    "loyalty_program_count": program_count
-                },
-                "system": {
-                    "python_version": python_version,
-                    "environment": os.getenv("ENVIRONMENT", "development")
-                }
+@router.get("/metrics")
+async def get_metrics(
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Basic application metrics.
+
+    Always present in OpenAPI for contract stability. If METRICS_ENABLED is not
+    set (default), returns a minimal payload indicating disabled state. When
+    enabled, returns aggregate counts and environment info.
+    """
+    if os.getenv("METRICS_ENABLED", "0") != "1":
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": "disabled",
+        }
+    try:
+        from app.models import Tenant, User, Service, Payment, LoyaltyProgram
+        tenant_count = db.query(Tenant).count()
+        user_count = db.query(User).count()
+        service_count = db.query(Service).count()
+        payment_count = db.query(Payment).count()
+        program_count = db.query(LoyaltyProgram).count()
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "application": {
+                "tenant_count": tenant_count,
+                "user_count": user_count,
+                "service_count": service_count,
+                "payment_count": payment_count,
+                "loyalty_program_count": program_count
+            },
+            "system": {
+                "python_version": python_version,
+                "environment": os.getenv("ENVIRONMENT", "development")
             }
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to get metrics: {str(e)}"
-            )
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get metrics: {str(e)}"
+        )

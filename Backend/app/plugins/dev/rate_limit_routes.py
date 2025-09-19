@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from app.core.authz import developer_only
 from app.core.rate_limit import (
@@ -36,14 +37,14 @@ def current_rate_limits():
 def override_rate_limit(body: RateLimitOverride):
     if not settings.enable_rate_limit_overrides:
         # Provide flat error body (tests expect top-level 'error')
-        raise HTTPException(status_code=403, detail=err("disabled", "Overrides disabled in this environment"))
+        return JSONResponse(status_code=403, content=err("disabled", "Overrides disabled in this environment"))
     set_limit(body.scope, body.capacity, body.per_seconds)
     return {"updated": body.scope, "config": bucket_snapshot(include_penalties=False)["overrides"].get(body.scope)}
 
 @rate_router.delete("/rate-limits/config/{scope}")
 def delete_override(scope: str):
     if not settings.enable_rate_limit_overrides:
-        raise HTTPException(status_code=403, detail=err("disabled", "Overrides disabled in this environment"))
+        return JSONResponse(status_code=403, content=err("disabled", "Overrides disabled in this environment"))
     existed = delete_limit(scope)
     return {"deleted": scope, "existed": existed}
 

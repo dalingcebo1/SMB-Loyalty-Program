@@ -1,90 +1,20 @@
-name: (Deprecated) Legacy AWS Deploy Application
+name: DISABLED - Legacy AWS Deploy (manual only)
 
 on:
+  # Keep only manual dispatch to avoid any automatic triggers
   workflow_dispatch:
     inputs:
-      enable_warning:
-        description: "Acknowledged this legacy workflow (prefer Azure / GHCR image release)"
+      note:
+        description: "This AWS workflow is disabled. Use Azure workflows instead (Container Apps, SWA)."
         required: false
-  push:
-    branches: [main]
-    paths:
-      - 'Frontend/**'
-      - 'Backend/**'
-      - '.github/workflows/deploy.yml'
 
 jobs:
-  deploy:
+  disabled:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Display deprecation notice
+      - name: Notice
         run: |
-          echo "This workflow is deprecated. Prefer image based deploy via release-backend.yml + release-frontend.yml and Azure Container Apps (backend-azure-containerapps.yml) or static hosting."
-          echo "It remains for transitional AWS EB/S3 usage. Consider deleting once cut over."
-
-      - name: Set up Node.js (frontend build)
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-      
-      - name: Build frontend
-        run: |
-          cd Frontend
-          npm ci
-          npm run build
-      
-      - name: Set up Python (backend package)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install backend dependencies
-        working-directory: Backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt --target build_layer
-          # Remove tests & caches to shrink zip
-          rm -rf build_layer/*.dist-info/__pycache__ || true
-          find build_layer -name "__pycache__" -type d -exec rm -rf {} + || true
-
-      - name: Prepare backend artifact
-        working-directory: Backend
-        run: |
-          mkdir -p deploy
-          cp -R *.py app alembic scripts requirements.txt deploy/
-          cp alembic.ini deploy/
-          # Optionally include static assets (small) – skip large node builds
-          if [ -d static ]; then cp -R static deploy/static; fi
-          # Layer style site-packages under deploy/site-packages
-          mv build_layer deploy/site-packages
-          cd deploy
-          zip -r ../backend.zip .
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      
-      - name: Deploy frontend to S3
-        run: |
-          aws s3 sync Frontend/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
-      
-      - name: Upload backend artifact to S3
-        run: |
-          aws s3 cp backend.zip s3://${{ secrets.EB_S3_BUCKET }}/backend-${{ github.sha }}.zip
-
-      - name: Create / update Elastic Beanstalk version
-        run: |
-          aws elasticbeanstalk create-application-version \
-            --application-name "SMB-Loyalty-Program" \
-            --version-label "ver-${{ github.sha }}" \
-            --source-bundle S3Bucket="${{ secrets.EB_S3_BUCKET }}",S3Key="backend-${{ github.sha }}.zip"
-          aws elasticbeanstalk update-environment \
-            --environment-name "SMB-Loyalty-Program-env" \
-            --version-label "ver-${{ github.sha }}"
+          echo "This legacy AWS deployment workflow has been disabled."
+          echo "Please use:"
+          echo "- backend-azure-containerapps.yml for backend deployments"
+          echo "- frontend-azure-swa.yml or azure-static-web-apps-*.yml for frontend"

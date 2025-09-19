@@ -7816,11 +7816,6 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
         "summary": "Reset Db",
         "tags": [
           "dev"
@@ -8626,6 +8621,30 @@
         "summary": "Get Onboarding Status",
         "tags": [
           "onboarding"
+        ]
+      }
+    },
+    "/api/ops/status": {
+      "get": {
+        "operationId": "ops_status_api_ops_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Ops Status",
+        "tags": [
+          "ops"
         ]
       }
     },
@@ -11056,6 +11075,75 @@
           }
         ],
         "summary": "Get Top Services"
+      }
+    },
+    "/api/secure/ping": {
+      "get": {
+        "description": "Authenticated health probe used by tests and rate-limit validation.\n\nEnforces a per user+tenant rate limit using the configurable\nRATE_LIMIT_USER_TENANT_* settings (overridable at runtime via dev tools).",
+        "operationId": "secure_ping_api_secure_ping_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Secure Ping",
+        "tags": [
+          "secure"
+        ]
       }
     },
     "/api/subscriptions/cancel-subscription": {
@@ -13562,7 +13650,7 @@
     },
     "/health/metrics": {
       "get": {
-        "description": "Basic application metrics.",
+        "description": "Basic application metrics.\n\nAlways present in OpenAPI for contract stability. If METRICS_ENABLED is not\nset (default), returns a minimal payload indicating disabled state. When\nenabled, returns aggregate counts and environment info.",
         "operationId": "get_metrics_health_metrics_get",
         "responses": {
           "200": {
@@ -13586,7 +13674,7 @@
     },
     "/health/ready": {
       "get": {
-        "description": "Readiness check for Kubernetes/container orchestration.",
+        "description": "Full readiness check (DB + optional Redis + basic model access).\n\nBehavior modifiers (environment variables):\n  HEALTH_READY_SKIP_DEEP=1  -> Skip DB & Redis checks (fast path) returning cached/nominal 200.\n  HEALTH_READY_CACHE_TTL=seconds (default 5) -> Cache successful deep result briefly to reduce load.\n\nRecommended: platform probes use /health/ready-lite; this endpoint is for diagnostics.\nReturns 503 if a hard dependency is down (unless skip flag set).",
         "operationId": "readiness_check_health_ready_get",
         "responses": {
           "200": {

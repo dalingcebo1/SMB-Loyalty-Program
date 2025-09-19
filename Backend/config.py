@@ -17,7 +17,9 @@ class Settings(BaseSettings):
 
     # Additional configuration
     database_url: str = Field("sqlite:///./dev.db", env="DATABASE_URL")
-    allowed_origins: Optional[str] = None  # comma-separated list
+    allowed_origins: Optional[str] = None  # comma-separated list (e.g., https://a.com,https://b.com)
+    # Optional regex alternative to static list. When provided, CORS may be configured via allow_origin_regex.
+    allowed_origin_regex: Optional[str] = Field(None, env="ALLOWED_ORIGIN_REGEX")
     yoco_secret_key: str = Field("dev_yoco_secret", env="YOCO_SECRET_KEY")
     yoco_webhook_secret: str = Field("dev_yoco_webhook_secret", env="YOCO_WEBHOOK_SECRET")
     # NOTE: Workaround: env="SECRET_KEY" not being picked up in current pydantic_settings version for this specific name.
@@ -42,6 +44,8 @@ class Settings(BaseSettings):
     enable_rate_limit_penalties: bool = Field(True, env="ENABLE_RATE_LIMIT_PENALTIES")
     enable_job_queue: bool = Field(False, env="ENABLE_JOB_QUEUE")  # in-process queue generally off in prod
     enable_metrics_endpoint: bool = Field(True, env="ENABLE_METRICS")
+    # Enable loading CORS allowed origins from DB table when env variables are absent
+    enable_db_cors_allowlist: bool = Field(False, env="ENABLE_DB_CORS_ALLOWLIST")
 
     # --- Dev / safety feature flags ---
     environment: str = Field("development", env="ENVIRONMENT")  # e.g. development|staging|production
@@ -79,6 +83,8 @@ class Settings(BaseSettings):
         if self.allowed_origins:
             cleaned = [self._strip_wrapping_quotes(p).strip() for p in self.allowed_origins.split(',') if p.strip()]
             self.allowed_origins = ",".join(dict.fromkeys(cleaned)) if cleaned else None
+        if self.allowed_origin_regex:
+            self.allowed_origin_regex = self._strip_wrapping_quotes(self.allowed_origin_regex)
         # loyalty_secret exposed via alias; normalize
         if hasattr(self, 'loyalty_secret') and isinstance(self.loyalty_secret, str):
             self.loyalty_secret = self._strip_wrapping_quotes(self.loyalty_secret)

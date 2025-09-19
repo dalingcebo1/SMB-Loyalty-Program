@@ -102,6 +102,15 @@ def _execute(rec: JobRecord):
         rec.status = "error"
     finally:
         rec.finished_at = clock.now()
+        # Debug: trace execution to help diagnose test visibility issues
+        try:
+            import logging as _logging
+            _logging.getLogger("access").info(
+                "JOBS _execute id=%s name=%s status=%s attempts=%s",
+                rec.id, rec.name, rec.status, rec.attempts,
+            )
+        except Exception:
+            pass
         _history.append(rec.id)
     # Retry logic
     if rec.status == "error" and rec.attempts <= rec.max_retries:

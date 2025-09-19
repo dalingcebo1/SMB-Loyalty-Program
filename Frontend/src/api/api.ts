@@ -1,32 +1,19 @@
 // src/api/api.ts
 import axios from "axios";
 
-// Normalize base URL to ensure it includes the '/api' path segment.
-// This avoids calling backend endpoints without the required '/api' prefix in production.
-function resolveApiBaseURL(): string {
-  const raw = (import.meta.env as any).VITE_API_BASE_URL as string | undefined;
-  // Default to relative '/api' for local dev / SWA rewrites
-  if (!raw) return "/api";
-  try {
-    // Support absolute URLs and tolerate missing scheme by providing window origin as base
-    const u = new URL(raw, window.location.origin);
-    // Strip trailing slashes
-    const cleanPath = u.pathname.replace(/\/+$/, "");
-    // Append '/api' if not already present at the end
-    if (!cleanPath.endsWith("/api")) {
-      u.pathname = `${cleanPath}/api`;
-    }
-    // Drop any trailing slash for consistency
-    return u.toString().replace(/\/+$/, "");
-  } catch {
-    // Fallback for malformed values; treat as path and ensure '/api' suffix
-    const p = raw.replace(/\/+$/, "");
-    return p.endsWith("/api") ? p : `${p}/api`;
-  }
+// Ensure all requests hit the backend's /api prefix.
+// If VITE_API_BASE_URL is absolute (e.g. https://api.chaosx.co.za), append /api (avoiding double).
+// If unset, fall back to relative '/api' (useful for local dev or reverse proxy setups).
+function computeBaseURL() {
+  const raw = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
+  const trimmed = (raw || "").replace(/\/+$/g, ""); // drop trailing slashes
+  if (!trimmed) return "/api";
+  if (trimmed.endsWith("/api")) return trimmed; // already includes /api
+  return `${trimmed}/api`;
 }
 
 const api = axios.create({
-  baseURL: resolveApiBaseURL(),
+  baseURL: computeBaseURL(),
 });
 
 // --- AUTH HEADER INTERCEPTOR ---

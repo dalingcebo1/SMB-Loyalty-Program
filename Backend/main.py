@@ -33,6 +33,8 @@ from app.routes.customers import router as customers_router
 from app.routes.reports import router as reports_router
 from app.routes.notifications import router as notifications_router
 from app.routes.profile import router as profile_router
+from app.routes.secure import router as secure_router
+from app.routes.ops import router as ops_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 from app.core.rate_limit import check_rate, compute_retry_after, build_429_payload
 from app.core.rate_limit import bucket_snapshot  # used elsewhere optionally
@@ -56,6 +58,36 @@ app = FastAPI(
 # Configure logging (JSON in production, human readable elsewhere)
 configure_logging()
 logger = logging.getLogger("api")
+
+# Register vertical hooks early (no routes) so meta decoration is available in tests/runtime
+try:
+    from app.plugins.verticals.plugin import Plugin as _VerticalsPlugin
+    _vp = _VerticalsPlugin()
+    # This plugin only registers hooks (no routes), so it's safe to call directly
+    _vp.register_routes(app)
+    del _vp
+except Exception:
+    # Non-fatal: vertical hooks missing would only affect optional decorations
+    pass
+
+# Register observability plugin (routes + lightweight middleware)
+try:
+    from app.plugins.observability.plugin import Plugin as _ObsPlugin
+    _op = _ObsPlugin()
+    _op.register_routes(app)
+    del _op
+except Exception:
+    # Optional – not critical for core API
+    pass
+
+# Register analytics jobs early without re-including routers to satisfy tests using jobs.enqueue
+try:
+    from app.plugins.analytics.plugin import _job_analytics_refresh
+    from app.core import jobs as _jobs
+    # Best-effort idempotent registration
+    _jobs.register_job("analytics_refresh", _job_analytics_refresh)
+except Exception:
+    pass
 
 # Optional Sentry initialization
 if settings.sentry_dsn:
@@ -102,6 +134,9 @@ def _validate_environment():
                 _s.allowed_origins = derived_allowed
                 logger.warning("ENV_VALIDATION: ALLOWED_ORIGINS was invalid/missing; derived fallback from FRONTEND_URL=%s", derived_allowed)
                 invalid_allowed = False
+        # If a regex is provided, we can accept that as configuration too
+        if invalid_allowed and getattr(_s, 'allowed_origin_regex', None):
+            invalid_allowed = False
         if invalid_allowed:
             errors.append("ALLOWED_ORIGINS must be a non-wildcard, comma-separated list in production (no safe fallback possible)")
         # Secret key strength (length + simple entropy heuristic)
@@ -158,11 +193,8 @@ if settings.environment == 'production':
                 # Exempt health & metrics endpoints from redirect to avoid probe failures
                 if path.startswith('/health/'):
                     return await self.app(scope, receive, send)
-                # If proxy headers already indicate https, skip redirect to avoid 307 loop
-                headers = {k.decode(): v.decode() for k, v in scope.get('headers', [])}
-                proto = headers.get('x-forwarded-proto') or headers.get('forwarded', '')
-                # Quick parse: if 'https' present in forwarded header, treat as secure
-                if proto and 'https' in proto:
+                # Use effective scheme (set by ProxyHeadersMiddleware) to avoid redirect loops
+                if scope.get('scheme') == 'https':
                     return await self.app(scope, receive, send)
             return await super().__call__(scope, receive, send)
 
@@ -199,17 +231,68 @@ async def validation_exception_handler(request, exc: RequestValidationError):
     )
 
    # ─── CORS ─────────────────────────────────────────────────────────────────────
-allowed = [o.strip() for o in settings.allowed_origins.split(",")] if settings.allowed_origins else ["*"]
+def _load_db_cors_patterns_if_enabled():
+    """Optional dynamic CORS allowlist (disabled by default).
+
+    If ENABLE_DB_CORS_ALLOWLIST=true and neither ALLOWED_ORIGINS nor ALLOWED_ORIGIN_REGEX
+    are set, attempt to load patterns from DB. Keeps scope minimal and safe.
+    """
+    try:
+        if not getattr(settings, 'enable_db_cors_allowlist', False):
+            return None, None
+        if settings.allowed_origins or getattr(settings, 'allowed_origin_regex', None):
+            return None, None
+        # Lazy import to avoid circular deps
+        from app.core.database import get_db
+        from sqlalchemy import text
+        # We read within a short-lived session
+        db = next(get_db())
+        rows = db.execute(text("""
+            SELECT pattern, is_regex
+            FROM allowed_origins
+            WHERE enabled = TRUE
+            ORDER BY created_at ASC
+        """)).fetchall()
+        if not rows:
+            return None, None
+        # Separate regex and static patterns
+        regexes = [r[0] for r in rows if r[1]]
+        statics = [r[0] for r in rows if not r[1]]
+        # Combine regexes into a single alternation if any
+        regex = "|".join(regexes) if regexes else None
+        return (statics or None), regex
+    except Exception:
+        # Fail closed to env-configured behavior if anything goes wrong
+        return None, None
+
+allowed = [o.strip() for o in settings.allowed_origins.split(",")] if settings.allowed_origins else []
+origin_regex = getattr(settings, 'allowed_origin_regex', None)
+# Optional DB-driven fallback if env is not set
+if not allowed and not origin_regex:
+    statics, regex = _load_db_cors_patterns_if_enabled()
+    if statics:
+        allowed = statics
+    if regex:
+        origin_regex = regex
+if not allowed and settings.frontend_url:
+    # Derive from FRONTEND_URL if not explicitly set
+    import urllib.parse as _up
+    try:
+        parts = _up.urlparse(settings.frontend_url)
+        if parts.scheme and parts.netloc:
+            allowed = [f"{parts.scheme}://{parts.netloc}"]
+    except Exception:
+        pass
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed or ["*"],
+    allow_origins=allowed if allowed else [],
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ─── Security Headers Middleware ────────────────────────────────────────────
-from starlette.middleware.base import BaseHTTPMiddleware
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -259,7 +342,8 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 f"{request.method} {request.url.path} 500 {duration_ms:.1f}ms",
                 extra={"request_id": rid, "tenant_id": tenant_id}
             )
-            raise
+            # Return a generic 500 so callers (including TestClient) receive a response
+            return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
         finally:
             if response is not None:
                 duration_ms = (time.perf_counter() - start) * 1000
@@ -300,9 +384,15 @@ app.add_middleware(ClientIPMiddleware)
 
 # Global per-IP rate limiting (coarse) ---------------------------------------
 class GlobalAPIRateLimitMiddleware(BaseHTTPMiddleware):
-    EXCLUDED_PREFIXES = ("/health", "/health/", "/static/", "/api/public/tenant-meta")
+    EXCLUDED_PREFIXES = (
+        "/health", "/health/", "/static/", "/api/public/tenant-meta",
+        "/", "/docs", "/api/openapi.json", "/favicon.ico", "/robots.txt"
+    )
 
     async def dispatch(self, request: Request, call_next):
+        # Exclude OPTIONS and HEAD (preflight, health, etc.)
+        if request.method in ("OPTIONS", "HEAD"):
+            return await call_next(request)
         path = request.url.path
         if any(path == p or path.startswith(p) for p in self.EXCLUDED_PREFIXES):
             return await call_next(request)
@@ -346,6 +436,8 @@ router_mounts = [
     ("/api/reports",   reports_router),
     ("/api/notifications", notifications_router),
     ("/api/profile",   profile_router),
+    ("/api",           secure_router),
+    ("/api",           ops_router),
 ]
 # Conditionally include dev router outside production
 if settings.environment != 'production':

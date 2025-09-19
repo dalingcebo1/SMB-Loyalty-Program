@@ -70,3 +70,58 @@ Check logs for: `Materialized Firebase credentials JSON to temp file`.
 
 ---
 This file should evolve if additional Firebase features (messaging, multi-project) are added.
+
+---
+
+# Frontend (Web SDK) Configuration
+
+For Google sign-in and optional phone verification on the frontend, Vite expects Firebase Web SDK values at build time via `VITE_FIREBASE_*` env vars. These values are public client configuration and can be safely exposed in the built site.
+
+## Required Web Config Keys
+
+Map your Firebase web app settings to the following variables:
+
+- VITE_FIREBASE_API_KEY → apiKey
+- VITE_FIREBASE_AUTH_DOMAIN → authDomain (e.g. your-project.firebaseapp.com)
+- VITE_FIREBASE_PROJECT_ID → projectId
+- VITE_FIREBASE_STORAGE_BUCKET → storageBucket
+- VITE_FIREBASE_MESSAGING_SENDER_ID → messagingSenderId
+- VITE_FIREBASE_APP_ID → appId
+
+Add them in one of these ways:
+- Local dev: copy `Frontend/.env.example` to `.env.local` and fill values.
+- Production (Azure Static Web Apps): set repository Variables (preferred) or Secrets with the same names; the SWA workflow passes them to the Vite build.
+
+## Azure Static Web Apps Workflow
+
+The workflow `azure-static-web-apps-*.yml` now includes:
+
+```
+env:
+   VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY }}
+   VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+   VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID }}
+   VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET || secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+   VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID || secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+   VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID || secrets.VITE_FIREBASE_APP_ID }}
+```
+
+Set those Variables/Secrets under GitHub → Settings → Secrets and variables → Actions.
+
+## Authorized Domains
+
+In Firebase Console → Authentication → Settings → Authorized domains, add your production domain(s):
+- your SWA default domain (e.g. gray-river-01eda360f.z01.web.core.windows.net)
+- your custom domain (e.g. chaosx.co.za)
+- localhost for dev as needed
+
+## Verifying in Production
+
+After deploy, visit:
+- `/debug/firebase` to see whether `VITE_FIREBASE_*` were compiled in.
+- Login page should show Google button enabled (no red warning).
+- Attempt Google login; if you see `auth/unauthorized-domain`, update Authorized domains above.
+
+### Helper: Configure Frontend Variables via Actions
+
+Use the workflow "Configure Frontend Variables" in the Actions tab to set `VITE_*` repository variables without leaving GitHub. Provide the values (API base URL, Firebase, Yoco public key) as inputs and run the workflow; subsequent frontend builds will pick them up automatically.

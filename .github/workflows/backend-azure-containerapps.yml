@@ -148,8 +148,8 @@ jobs:
             az containerapp revision set-mode -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --mode multiple
           fi
 
-          echo "Setting warm-up traffic: 95% -> $current, 5% -> $latest"
-          az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${current}=95" "${latest}=5"
+          echo "Setting warm-up traffic: 90% -> $current, 10% -> $latest"
+          az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${current}=90" "${latest}=10"
           echo "LATEST_REVISION=$latest" >> $GITHUB_ENV
 
           # Try to discover the direct FQDN for the latest revision (works in Multiple mode)
@@ -170,12 +170,13 @@ jobs:
           app_fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
           target=${rev_fqdn:-$app_fqdn}
           echo "Warming revision $rev via target host: $target"
-          # Send a burst of warm-up requests to trigger scale-up; ignore failures but print last status
-          warm_ok=false
-          for i in $(seq 1 60); do
+          # Send parallel warm-up requests to trigger scale-up faster; ignore individual failures
+          echo "Sending parallel warm-up requests to $target"
+          seq 1 40 | xargs -I{} -n1 -P10 sh -c 'curl -sk -o /dev/null -w "warm[%] %{http_code}\n" "https://'$target'/health/ready-lite" || true' || true
+          # Follow-up serial pings to observe stabilized status codes
+          for i in $(seq 1 20); do
             code=$(curl -sk -o /dev/null -w "%{http_code}" "https://$target/health/ready-lite" || echo 000)
-            echo "warm[$i]: $code"
-            # If hitting app FQDN (not revision), send more requests to increase odds of 1% routing
+            echo "warm-follow[$i]: $code"
             sleep 2
           done
           echo "Warm-up requests sent to $target"

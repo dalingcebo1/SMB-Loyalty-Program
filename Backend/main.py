@@ -1,7 +1,7 @@
 # backend/main.py
 
 from config import settings
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -369,6 +369,17 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             return response
+        except HTTPException as http_exc:
+            # Preserve HTTPException status codes instead of masking as 500
+            duration_ms = (time.perf_counter() - start) * 1000
+            rid = getattr(request.state, 'request_id', '-')
+            tenant_id = getattr(request.state, 'tenant_id', '-')
+            logging.getLogger('access').info(
+                f"{request.method} {request.url.path} {http_exc.status_code} {duration_ms:.1f}ms",
+                extra={"request_id": rid, "tenant_id": tenant_id}
+            )
+            # Re-raise so FastAPI's default handlers produce the correct response body
+            raise
         except Exception:
             # Ensure we still emit an access log line even on exceptions
             # Response not yet available; synthesize status 500 for logging
@@ -422,7 +433,7 @@ app.add_middleware(ClientIPMiddleware)
 # Global per-IP rate limiting (coarse) ---------------------------------------
 class GlobalAPIRateLimitMiddleware(BaseHTTPMiddleware):
     EXCLUDED_PREFIXES = (
-        "/health", "/health/", "/static/", "/api/public/tenant-meta",
+        "/health", "/health/", "/static/", "/api/public/tenant-meta", "/api/public/tenant-theme",
         "/", "/docs", "/api/openapi.json", "/favicon.ico", "/robots.txt"
     )
 

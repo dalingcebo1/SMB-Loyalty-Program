@@ -170,16 +170,11 @@ jobs:
           app_fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
           target=${rev_fqdn:-$app_fqdn}
           echo "Warming revision $rev via target host: $target"
-          # Send parallel warm-up requests to trigger scale-up faster; ignore individual failures
-          echo "Sending parallel warm-up requests to $target"
-          seq 1 40 | xargs -I{} -n1 -P10 sh -c 'curl -sk -o /dev/null -w "warm[%] %{http_code}\n" "https://'$target'/health/ready-lite" || true' || true
-          # Follow-up serial pings to observe stabilized status codes
-          for i in $(seq 1 20); do
-            code=$(curl -sk -o /dev/null -w "%{http_code}" "https://$target/health/ready-lite" || echo 000)
-            echo "warm-follow[$i]: $code"
-            sleep 2
-          done
-          echo "Warm-up requests sent to $target"
+          # Send a burst of warm-up requests to trigger scale-up; ignore failures but print last status
+          warm_ok=false
+          echo "Sending 100 parallel warm-up requests to $target"
+          seq 1 100 | xargs -n1 -P20 -I{} sh -c 'curl -sk -o /dev/null -w "warm[{}]:%{http_code}\n" "https://$0/health/ready-lite"' $target
+          echo "Parallel warm-up requests sent to $target"
 
       - name: Wait for warmed latest revision (provisioning + >=1 replica)
         run: |

@@ -8,18 +8,94 @@ on:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      vite_api_base_url:
+        description: "Optional: Set VITE_API_BASE_URL (e.g., https://api.chaosx.co.za). If provided, we will upsert it as a repository Variable before build."
+        required: false
+        type: string
+      firebase_api_key:
+        description: "Optional: Set VITE_FIREBASE_API_KEY."
+        required: false
+        type: string
+      firebase_auth_domain:
+        description: "Optional: Set VITE_FIREBASE_AUTH_DOMAIN."
+        required: false
+        type: string
+      firebase_project_id:
+        description: "Optional: Set VITE_FIREBASE_PROJECT_ID."
+        required: false
+        type: string
+      firebase_storage_bucket:
+        description: "Optional: Set VITE_FIREBASE_STORAGE_BUCKET."
+        required: false
+        type: string
+      firebase_messaging_sender_id:
+        description: "Optional: Set VITE_FIREBASE_MESSAGING_SENDER_ID."
+        required: false
+        type: string
+      firebase_app_id:
+        description: "Optional: Set VITE_FIREBASE_APP_ID."
+        required: false
+        type: string
+      yoco_public_key:
+        description: "Optional: Set VITE_YOCO_PUBLIC_KEY."
+        required: false
+        type: string
 
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+    permissions:
+      actions: write   # to upsert repository Variables when manually dispatched with inputs
+      contents: read
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
           lfs: false
+      - name: Upsert repository Variables from manual inputs (no-op if empty)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        env:
+          VITE_API_BASE_URL_IN: ${{ github.event.inputs.vite_api_base_url }}
+          VITE_FIREBASE_API_KEY_IN: ${{ github.event.inputs.firebase_api_key }}
+          VITE_FIREBASE_AUTH_DOMAIN_IN: ${{ github.event.inputs.firebase_auth_domain }}
+          VITE_FIREBASE_PROJECT_ID_IN: ${{ github.event.inputs.firebase_project_id }}
+          VITE_FIREBASE_STORAGE_BUCKET_IN: ${{ github.event.inputs.firebase_storage_bucket }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID_IN: ${{ github.event.inputs.firebase_messaging_sender_id }}
+          VITE_FIREBASE_APP_ID_IN: ${{ github.event.inputs.firebase_app_id }}
+          VITE_YOCO_PUBLIC_KEY_IN: ${{ github.event.inputs.yoco_public_key }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const entries = {
+              VITE_API_BASE_URL: process.env.VITE_API_BASE_URL_IN,
+              VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY_IN,
+              VITE_FIREBASE_AUTH_DOMAIN: process.env.VITE_FIREBASE_AUTH_DOMAIN_IN,
+              VITE_FIREBASE_PROJECT_ID: process.env.VITE_FIREBASE_PROJECT_ID_IN,
+              VITE_FIREBASE_STORAGE_BUCKET: process.env.VITE_FIREBASE_STORAGE_BUCKET_IN,
+              VITE_FIREBASE_MESSAGING_SENDER_ID: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID_IN,
+              VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID_IN,
+              VITE_YOCO_PUBLIC_KEY: process.env.VITE_YOCO_PUBLIC_KEY_IN,
+            };
+            let count = 0;
+            for (const [name, value] of Object.entries(entries)) {
+              if (value && String(value).trim().length > 0) {
+                core.info(`Setting variable ${name}`);
+                await github.request('PUT /repos/{owner}/{repo}/actions/variables/{name}', {
+                  owner,
+                  repo,
+                  name,
+                  value: String(value),
+                });
+                count++;
+              }
+            }
+            core.info(count ? `Variables set: ${count}` : 'No variables provided via inputs; skipping.');
       - name: Sanity check build env (VITE_* presence)
         run: |
           echo "VITE_API_BASE_URL=${VITE_API_BASE_URL:+Set}" 
@@ -37,6 +113,28 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID || secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID || secrets.VITE_FIREBASE_APP_ID }}
           VITE_YOCO_PUBLIC_KEY: ${{ vars.VITE_YOCO_PUBLIC_KEY || secrets.VITE_YOCO_PUBLIC_KEY }}
+      - name: Validate required Firebase env (fail on main push if missing)
+        shell: bash
+        run: |
+          missing=0
+          required=(VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_APP_ID)
+          for k in "${required[@]}"; do
+            if [ -z "${!k}" ]; then
+              echo "::error title=Missing ${k}::Set repository Variable ${k} or provide it as a workflow input when dispatching."
+              missing=1
+            fi
+          done
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_name }}" = "main" ] && [ $missing -ne 0 ]; then
+            echo "Required Firebase variables are missing on push to main. Failing to prevent a broken production deploy."
+            exit 1
+          else
+            echo "Proceeding (either PR build or all required vars present)."
+          fi
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID || secrets.VITE_FIREBASE_APP_ID }}
       - name: Prefer npm – remove yarn.lock to avoid Yarn engine checks
         run: |
           rm -f Frontend/yarn.lock || true

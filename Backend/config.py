@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     google_application_credentials: Optional[str] = None
     # Optional: Inline JSON for Firebase service account (alternative to mounting a file)
     firebase_credentials_json: Optional[str] = Field(None, env="FIREBASE_CREDENTIALS_JSON")
+    # Optional: Explicit Firebase project ID hint for Admin SDK when using ADC
+    # This helps in environments where GOOGLE_CLOUD_PROJECT isn't auto-populated.
+    firebase_project_id: Optional[str] = Field(None, env="FIREBASE_PROJECT_ID")
+    # Optional: Google OAuth Web Client ID for verifying Google OAuth ID tokens
+    # If provided, social-login will accept Google OAuth ID tokens in addition to Firebase ID tokens.
+    google_oauth_client_id: Optional[str] = Field(None, env="GOOGLE_OAUTH_CLIENT_ID")
     # Directory for serving static assets (branding uploads, compiled frontend)
     static_dir: str = Field("static", env="STATIC_DIR")
 

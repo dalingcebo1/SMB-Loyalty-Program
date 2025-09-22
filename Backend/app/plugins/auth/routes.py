@@ -199,10 +199,44 @@ class SocialLoginRequest(BaseModel):
 
 @router.post("/social-login", response_model=LoginResponse)
 def social_login(req: SocialLoginRequest, db: Session = Depends(get_db)):
+    decoded = None
+    # First try with Firebase Admin SDK (preferred)
     try:
         decoded = admin_auth.verify_id_token(req.id_token)
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    except Exception as e:
+        # Log safe diagnostics to investigate production failures without leaking tokens
+        import logging
+        logger = logging.getLogger("api")
+        logger.warning("Firebase verify_id_token failed (admin sdk): %s", getattr(e, "message", str(e)))
+        # Fallback: verify using public certs via google-auth (does not require ADC/service account)
+        try:
+            from google.oauth2 import id_token as google_id_token  # type: ignore
+            from google.auth.transport import requests as google_requests  # type: ignore
+            request = google_requests.Request()
+            audience = getattr(settings, 'firebase_project_id', None)
+            # When audience is provided, validator ensures aud matches project
+            decoded = google_id_token.verify_firebase_token(req.id_token, request, audience=audience)
+            if not decoded:
+                raise RuntimeError("Token verification returned empty payload")
+            logger.info("Firebase token verified via google-auth fallback for email=%s", decoded.get('email'))
+        except Exception as e2:
+            logger.warning("Firebase verify fallback failed: %s", getattr(e2, 'message', str(e2)))
+            # Secondary fallback: accept Google OAuth ID tokens if configured
+            client_id = getattr(settings, 'google_oauth_client_id', None)
+            if client_id:
+                try:
+                    from google.oauth2 import id_token as google_id_token  # type: ignore
+                    from google.auth.transport import requests as google_requests  # type: ignore
+                    request = google_requests.Request()
+                    decoded = google_id_token.verify_oauth2_token(req.id_token, request, audience=client_id)
+                    if not decoded:
+                        raise RuntimeError("OAuth2 token verification returned empty payload")
+                    logger.info("Google OAuth2 ID token verified for email=%s", decoded.get('email'))
+                except Exception as e3:
+                    logger.warning("Google OAuth2 verify failed: %s", getattr(e3, 'message', str(e3)))
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+            else:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
     email = decoded.get("email")
     if not email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email not found in token")

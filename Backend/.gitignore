@@ -2,3 +2,4 @@ __pycache__/
 venv/
 *.env
 smb-loyalty-program-firebase-adminsdk-fbsvc-0fa92a294f.json
+.env

@@ -63,22 +63,66 @@ jobs:
       - name: Deploy image & set env vars (direct update)
         run: |
           set -euo pipefail
+          echo "Resolving backend environment values from secrets/variables (with fallbacks)"
+
+          # Resolve values with priority order: CA_* secret -> non-CA secret -> repo variable (where sensible)
+          res() { var="$1"; shift; for name in "$@"; do v="${!name:-}"; [ -n "$v" ] && { echo "$v"; return; }; done; echo ""; }
+
+          # Export GitHub Actions secrets/vars into the shell (only the ones we may use)
+          # Note: GHA already exposes them to expressions; here we mirror into shell vars safely.
+          export S_CA_DATABASE_URL='${{ secrets.CA_DATABASE_URL }}'
+          export S_DATABASE_URL='${{ secrets.DATABASE_URL }}'
+          export S_CA_ALLOWED_ORIGINS='${{ secrets.CA_ALLOWED_ORIGINS }}'
+          export S_ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}'
+          export S_CA_FRONTEND_URL='${{ secrets.CA_FRONTEND_URL }}'
+          export S_FRONTEND_URL='${{ secrets.FRONTEND_URL }}'
+          export S_CA_SENTRY_DSN='${{ secrets.CA_SENTRY_DSN }}'
+          export S_SENTRY_DSN='${{ secrets.SENTRY_DSN }}'
+          export S_CA_YOCO_SECRET_KEY='${{ secrets.CA_YOCO_SECRET_KEY }}'
+          export S_YOCO_SECRET_KEY='${{ secrets.YOCO_SECRET_KEY }}'
+          export S_CA_YOCO_WEBHOOK_SECRET='${{ secrets.CA_YOCO_WEBHOOK_SECRET }}'
+          export S_YOCO_WEBHOOK_SECRET='${{ secrets.YOCO_WEBHOOK_SECRET }}'
+          export S_CA_FIREBASE_CREDENTIALS_JSON='${{ secrets.CA_FIREBASE_CREDENTIALS_JSON }}'
+          export S_FIREBASE_CREDENTIALS_JSON='${{ secrets.FIREBASE_CREDENTIALS_JSON }}'
+          export S_CA_FIREBASE_PROJECT_ID='${{ secrets.CA_FIREBASE_PROJECT_ID }}'
+          export V_VITE_FIREBASE_PROJECT_ID='${{ vars.VITE_FIREBASE_PROJECT_ID }}'
+          export S_VITE_FIREBASE_PROJECT_ID='${{ secrets.VITE_FIREBASE_PROJECT_ID }}'
+
+          RESOLVED_DATABASE_URL=$(res db S_CA_DATABASE_URL S_DATABASE_URL)
+          RESOLVED_ALLOWED_ORIGINS=$(res ao S_CA_ALLOWED_ORIGINS S_ALLOWED_ORIGINS)
+          RESOLVED_FRONTEND_URL=$(res fe S_CA_FRONTEND_URL S_FRONTEND_URL)
+          RESOLVED_SENTRY_DSN=$(res sd S_CA_SENTRY_DSN S_SENTRY_DSN)
+          RESOLVED_YOCO_SECRET_KEY=$(res ys S_CA_YOCO_SECRET_KEY S_YOCO_SECRET_KEY)
+          RESOLVED_YOCO_WEBHOOK_SECRET=$(res yw S_CA_YOCO_WEBHOOK_SECRET S_YOCO_WEBHOOK_SECRET)
+          RESOLVED_FIREBASE_CREDENTIALS_JSON=$(res fj S_CA_FIREBASE_CREDENTIALS_JSON S_FIREBASE_CREDENTIALS_JSON)
+          RESOLVED_FIREBASE_PROJECT_ID=$(res fp S_CA_FIREBASE_PROJECT_ID V_VITE_FIREBASE_PROJECT_ID S_VITE_FIREBASE_PROJECT_ID)
+
+          echo "Diagnostics (Set/Missing only; values masked):"
+          for k in RESOLVED_DATABASE_URL RESOLVED_ALLOWED_ORIGINS RESOLVED_FRONTEND_URL RESOLVED_SENTRY_DSN RESOLVED_YOCO_SECRET_KEY RESOLVED_YOCO_WEBHOOK_SECRET RESOLVED_FIREBASE_CREDENTIALS_JSON RESOLVED_FIREBASE_PROJECT_ID; do
+            if [ -n "${!k}" ]; then echo " - $k: set"; else echo " - $k: MISSING"; fi
+          done
+
           echo "Deploying image via az containerapp update (secret refs + env)"
+          # Build dynamic env var list including only non-empty values to avoid clobbering with blanks
+          env_args=(
+            "SECRET_KEY=secretref:secretkey"
+            "JWT_SECRET=secretref:jwtsecretkey"
+            "RESET_SECRET=secretref:resetsecretkey"
+            "ENVIRONMENT=production"
+          )
+          [ -n "$RESOLVED_DATABASE_URL" ] && env_args+=( "DATABASE_URL=$RESOLVED_DATABASE_URL" )
+          [ -n "$RESOLVED_ALLOWED_ORIGINS" ] && env_args+=( "ALLOWED_ORIGINS=$RESOLVED_ALLOWED_ORIGINS" )
+          [ -n "$RESOLVED_FRONTEND_URL" ] && env_args+=( "FRONTEND_URL=$RESOLVED_FRONTEND_URL" )
+          [ -n "$RESOLVED_SENTRY_DSN" ] && env_args+=( "SENTRY_DSN=$RESOLVED_SENTRY_DSN" )
+          [ -n "$RESOLVED_YOCO_SECRET_KEY" ] && env_args+=( "YOCO_SECRET_KEY=$RESOLVED_YOCO_SECRET_KEY" )
+          [ -n "$RESOLVED_YOCO_WEBHOOK_SECRET" ] && env_args+=( "YOCO_WEBHOOK_SECRET=$RESOLVED_YOCO_WEBHOOK_SECRET" )
+          [ -n "$RESOLVED_FIREBASE_CREDENTIALS_JSON" ] && env_args+=( "FIREBASE_CREDENTIALS_JSON=$RESOLVED_FIREBASE_CREDENTIALS_JSON" )
+          [ -n "$RESOLVED_FIREBASE_PROJECT_ID" ] && env_args+=( "FIREBASE_PROJECT_ID=$RESOLVED_FIREBASE_PROJECT_ID" )
+
           az containerapp update \
             -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
             --image "${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
-            --set-env-vars \
-              SECRET_KEY=secretref:secretkey \
-              JWT_SECRET=secretref:jwtsecretkey \
-              RESET_SECRET=secretref:resetsecretkey \
-              DATABASE_URL=${{ secrets.CA_DATABASE_URL }} \
-              ALLOWED_ORIGINS=${{ secrets.CA_ALLOWED_ORIGINS }} \
-              FRONTEND_URL=${{ secrets.CA_FRONTEND_URL }} \
-              ENVIRONMENT=production \
-              SENTRY_DSN=${{ secrets.CA_SENTRY_DSN }} \
-              YOCO_SECRET_KEY=${{ secrets.CA_YOCO_SECRET_KEY }} \
-              YOCO_WEBHOOK_SECRET=${{ secrets.CA_YOCO_WEBHOOK_SECRET }} \
-              FIREBASE_CREDENTIALS_JSON=${{ secrets.CA_FIREBASE_CREDENTIALS_JSON }}
+            --set-env-vars "${env_args[@]}"
           echo "Container App update submitted"
 
       - name: Wait for new revision (provisioning + replica)

@@ -193,10 +193,47 @@ if settings.environment == 'production':
                 # Exempt health & metrics endpoints from redirect to avoid probe failures
                 if path.startswith('/health/'):
                     return await self.app(scope, receive, send)
-                # Use effective scheme (set by ProxyHeadersMiddleware) to avoid redirect loops
+
+                # Extract host from ASGI headers
+                host = None
+                try:
+                    headers = scope.get("headers") or []
+                    for k, v in headers:
+                        if k == b"host":
+                            host = v.decode("latin-1").lower()
+                            break
+                except Exception:
+                    host = None
+
+                # Bypass HTTPS redirect for Azure Container Apps FQDN to avoid self-redirect loops
+                # Some front-ends may terminate TLS and forward as HTTP without X-Forwarded-Proto,
+                # causing a 307 back to the same URL repeatedly. The platform ingress already
+                # enforces HTTPS (allowInsecure=false), so skipping here is safe.
+                if host and host.endswith('.azurecontainerapps.io'):
+                    return await self.app(scope, receive, send)
+
+                # Use effective scheme (set by ProxyHeadersMiddleware) to avoid redirect loops.
+                # Additionally, only force redirect when we are certain the original request
+                # was over plain HTTP (X-Forwarded-Proto=http). If the header is missing,
+                # assume the platform has already enforced HTTPS and do not redirect.
                 if scope.get('scheme') == 'https':
                     return await self.app(scope, receive, send)
-            return await super().__call__(scope, receive, send)
+
+                # Check X-Forwarded-Proto header
+                xf_proto = None
+                try:
+                    headers = scope.get("headers") or []
+                    for k, v in headers:
+                        if k == b"x-forwarded-proto":
+                            xf_proto = v.decode("latin-1").lower()
+                            break
+                except Exception:
+                    xf_proto = None
+
+                # Regardless of header value, avoid server-side redirect to prevent loops.
+                # TLS is enforced by the ingress (allowInsecure=false) and HSTS is set by app.
+                return await self.app(scope, receive, send)
+
 
     app.add_middleware(ConditionalHTTPSRedirectMiddleware)
 

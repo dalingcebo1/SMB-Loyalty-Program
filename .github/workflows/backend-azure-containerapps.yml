@@ -128,9 +128,15 @@ jobs:
       - name: Switch traffic to latest revision (ensure startup)
         run: |
           set -euo pipefail
+          mode=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.activeRevisionsMode -o tsv)
           rev=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)
-          echo "Setting traffic to latest revision: $rev"
-          az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${rev}=100"
+          echo "Active revisions mode: $mode"
+          if [ "$mode" = "Multiple" ]; then
+            echo "Setting traffic to latest revision: $rev"
+            az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${rev}=100"
+          else
+            echo "Single-revision mode detected; traffic already routes to latest. Skipping explicit switch."
+          fi
 
       - name: Wait for new revision (provisioning + replica)
         run: |

@@ -369,16 +369,16 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             return response
-        except HTTPException as http_exc:
-            # Preserve HTTPException status codes instead of masking as 500
+        except HTTPException as exc:
+            # Preserve HTTPException status codes; don't mask as 500
             duration_ms = (time.perf_counter() - start) * 1000
             rid = getattr(request.state, 'request_id', '-')
             tenant_id = getattr(request.state, 'tenant_id', '-')
             logging.getLogger('access').info(
-                f"{request.method} {request.url.path} {http_exc.status_code} {duration_ms:.1f}ms",
+                f"{request.method} {request.url.path} {exc.status_code} {duration_ms:.1f}ms",
                 extra={"request_id": rid, "tenant_id": tenant_id}
             )
-            # Re-raise so FastAPI's default handlers produce the correct response body
+            # Re-raise to let FastAPI produce the proper response body
             raise
         except Exception:
             # Ensure we still emit an access log line even on exceptions
@@ -390,8 +390,8 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 f"{request.method} {request.url.path} 500 {duration_ms:.1f}ms",
                 extra={"request_id": rid, "tenant_id": tenant_id}
             )
-            # Return a generic 500 so callers (including TestClient) receive a response
-            return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+            # Let FastAPI handle generating a 500 response
+            raise
         finally:
             if response is not None:
                 duration_ms = (time.perf_counter() - start) * 1000
@@ -433,8 +433,9 @@ app.add_middleware(ClientIPMiddleware)
 # Global per-IP rate limiting (coarse) ---------------------------------------
 class GlobalAPIRateLimitMiddleware(BaseHTTPMiddleware):
     EXCLUDED_PREFIXES = (
-        "/health", "/health/", "/static/", "/api/public/tenant-meta", "/api/public/tenant-theme",
-        "/", "/docs", "/api/openapi.json", "/favicon.ico", "/robots.txt"
+        "/health", "/health/", "/static/",
+        "/api/public/tenant-meta", "/api/public/tenant-theme", "/api/public/tenant-manifest",
+        "/docs", "/api/openapi.json", "/favicon.ico", "/robots.txt"
     )
 
     async def dispatch(self, request: Request, call_next):
@@ -528,8 +529,110 @@ def _etag_for(data: dict) -> str:
 def _ip_key(request: Request) -> str:
     return get_client_ip(request)
 
+def _normalize_host(h: str | None) -> str:
+    if not h:
+        return ""
+    h = h.split(":")[0].strip().lower()
+    if h.startswith("www."):
+        h = h[4:]
+    return h
+
+def _strip_api_prefix(h: str) -> str:
+    return h[4:] if h.startswith("api.") and len(h) > 4 else h
+
+def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
+    """Public-safe tenant resolver with production default fallback.
+
+    Attempts:
+      1) X-Tenant-ID explicit header
+      2) X-Forwarded-Host / Forwarded host= / Host / Origin host
+         - tries exact primary_domain, then subdomain (first label) match
+      3) In production, if still unresolved and default_tenant is set, use it
+    """
+    # 1) Explicit header
+    x_tid = request.headers.get("x-tenant-id") or request.headers.get("X-Tenant-ID")
+    if x_tid:
+        t = db.query(_Tenant).filter_by(id=x_tid).first()
+        if not t:
+            raise HTTPException(status_code=404, detail="Tenant not found (header)")
+        request.state.tenant_id = t.id
+        return TenantContext(t)
+
+    # Build candidate hosts
+    candidates: list[str] = []
+    xfwd = request.headers.get("x-forwarded-host") or request.headers.get("X-Forwarded-Host")
+    if xfwd:
+        xfwd = xfwd.split(",")[0].strip()
+        h = _normalize_host(xfwd)
+        if h:
+            candidates.append(h)
+            s = _strip_api_prefix(h)
+            if s and s != h:
+                candidates.append(s)
+    fwd = request.headers.get("forwarded") or request.headers.get("Forwarded")
+    if fwd:
+        for part in fwd.split(";"):
+            p = part.strip()
+            if p.startswith("host="):
+                h = _normalize_host(p[5:].strip())
+                if h:
+                    candidates.append(h)
+                    s = _strip_api_prefix(h)
+                    if s and s != h:
+                        candidates.append(s)
+    host_hdr = request.headers.get("host", "")
+    host_norm = _normalize_host(host_hdr)
+    if host_norm:
+        candidates.append(host_norm)
+        s = _strip_api_prefix(host_norm)
+        if s and s != host_norm:
+            candidates.append(s)
+    origin_hdr = request.headers.get("origin") or request.headers.get("Origin")
+    if origin_hdr:
+        try:
+            from urllib.parse import urlparse
+            oh = _normalize_host(urlparse(origin_hdr).netloc)
+            if oh:
+                candidates.append(oh)
+                s = _strip_api_prefix(oh)
+                if s and s != oh:
+                    candidates.append(s)
+        except Exception:
+            pass
+
+    # Deduplicate
+    seen = set()
+    ordered = []
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            ordered.append(c)
+
+    # Try primary_domain then subdomain
+    for h in ordered:
+        t = db.query(_Tenant).filter_by(primary_domain=h).first()
+        if t:
+            request.state.tenant_id = t.id
+            return TenantContext(t)
+        parts = h.split(".") if h else []
+        if len(parts) > 2:
+            sub = parts[0]
+            t = db.query(_Tenant).filter_by(subdomain=sub).first()
+            if t:
+                request.state.tenant_id = t.id
+                return TenantContext(t)
+
+    # Production fallback to default tenant
+    if settings.environment == 'production' and settings.default_tenant:
+        t = db.query(_Tenant).filter_by(id=settings.default_tenant).first()
+        if t:
+            request.state.tenant_id = t.id
+            return TenantContext(t)
+
+    raise HTTPException(status_code=400, detail="Unable to resolve tenant context")
+
 @app.get("/api/public/tenant-meta")
-def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant_context)):
+def public_tenant_meta(request: Request, db: Session = Depends(get_db)):
     """Public discovery endpoint for frontend.
 
     Returns lightweight tenant metadata (vertical, features, branding) resolved
@@ -537,6 +640,8 @@ def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant
     simple IP-based rate limit (capacity/window via settings).
     """
     from config import settings as _settings  # local import to avoid circulars
+    # Resolve tenant context with production fallback to avoid 500s
+    ctx = _resolve_public_tenant(request, db)
     ip_key = _ip_key(request)
     scope_name = "ip_public_meta"
     cap = _settings.rate_limit_public_meta_capacity
@@ -565,12 +670,14 @@ def public_tenant_meta(request: Request, ctx: TenantContext = Depends(get_tenant
     return resp
 
 @app.get('/api/public/tenant-theme')
-def public_tenant_theme(request: Request, ctx: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
+def public_tenant_theme(request: Request, db: Session = Depends(get_db)):
     """Lightweight branding/theme info for white-label bootstrap.
 
     Returns minimal fields required to paint initial shell (colors + logos).
     Cached similarly to /api/public/tenant-meta.
     """
+    # Resolve tenant context with production fallback to avoid 500s
+    ctx = _resolve_public_tenant(request, db)
     branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
     tenant = db.query(_Tenant).filter_by(id=ctx.id).first()
     data = {
@@ -587,7 +694,9 @@ def public_tenant_theme(request: Request, ctx: TenantContext = Depends(get_tenan
     return data
 
 @app.get('/api/public/tenant-manifest')
-def public_tenant_manifest(request: Request, ctx: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
+def public_tenant_manifest(request: Request, db: Session = Depends(get_db)):
+    # Resolve tenant context with production fallback to avoid 500s
+    ctx = _resolve_public_tenant(request, db)
     branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
     icons = []
     base = f"/static/branding/{ctx.id}"

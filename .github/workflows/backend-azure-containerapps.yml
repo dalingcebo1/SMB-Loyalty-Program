@@ -148,8 +148,8 @@ jobs:
             az containerapp revision set-mode -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --mode multiple
           fi
 
-          echo "Setting warm-up traffic: 99% -> $current, 1% -> $latest"
-          az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${current}=99" "${latest}=1"
+          echo "Setting warm-up traffic: 95% -> $current, 5% -> $latest"
+          az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${current}=95" "${latest}=5"
           echo "LATEST_REVISION=$latest" >> $GITHUB_ENV
 
           # Try to discover the direct FQDN for the latest revision (works in Multiple mode)
@@ -172,7 +172,7 @@ jobs:
           echo "Warming revision $rev via target host: $target"
           # Send a burst of warm-up requests to trigger scale-up; ignore failures but print last status
           warm_ok=false
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             code=$(curl -sk -o /dev/null -w "%{http_code}" "https://$target/health/ready-lite" || echo 000)
             echo "warm[$i]: $code"
             # If hitting app FQDN (not revision), send more requests to increase odds of 1% routing

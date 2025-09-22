@@ -6,10 +6,10 @@ import {
   RecaptchaVerifier,
 } from "firebase/auth";
 import { auth, getGlobalRecaptcha } from "../../../firebase";
-import PageLayout from "../../../components/PageLayout";
 import Loading from "../../../components/Loading";
 import api from "../../../api/api";
 import { confirmationRef } from "../../../utils/confirmationRef";
+import "./UnifiedOnboarding.css";
 
 interface OnboardingLocationState {
   email?: string;
@@ -245,145 +245,192 @@ const UnifiedOnboarding: React.FC = () => {
   if (loading) return <Loading text="Processing…" />;
 
   return (
-    <PageLayout loading={sending} error={error} onRetry={() => setError("")}>  
-      <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">
-          {currentStep === 'profile' ? 'Complete Your Profile' : 'Verify Your Phone'}
-        </h2>
+    <div className="onboarding-container">
+      {(sending || loading) && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+        </div>
+      )}
+      
+      <div className="onboarding-card">
+        <div className="onboarding-header">
+          <h1 className="onboarding-title">
+            {currentStep === 'profile' ? 'Complete Your Profile' : 'Verify Your Phone'}
+          </h1>
+          <p className="onboarding-subtitle">
+            {currentStep === 'profile' 
+              ? 'Help us personalize your experience' 
+              : 'We\'ll send you a verification code'
+            }
+          </p>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="step-indicator">
+          <div className={`step-dot ${currentStep === 'profile' ? 'active' : 'completed'}`}></div>
+          <div className={`step-dot ${currentStep === 'phone' ? 'active' : ''}`}></div>
+        </div>
         
-        {error && <p className="text-red-600 mb-4">{error}</p>}
+        {error && <div className="error-message">{error}</div>}
 
         {currentStep === 'profile' ? (
           // Profile completion form
-          <form onSubmit={handleProfileSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium">Email Address</label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="mt-1 block w-full border rounded p-2 bg-gray-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">First Name</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                className="mt-1 block w-full border rounded p-2"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Last Name</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                className="mt-1 block w-full border rounded p-2"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? "Updating…" : "Continue to Phone Verification"}
-            </button>
-          </form>
+          <div className="progress-section">
+            <h2 className="progress-title">Tell us about yourself</h2>
+            <p className="progress-description">
+              This information helps us provide you with a personalized experience.
+            </p>
+          </div>
         ) : (
-          // Phone verification form
-          <form onSubmit={handlePhoneSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium">Email Address</label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="mt-1 block w-full border rounded p-2 bg-gray-100"
-              />
+          // Phone verification intro
+          <div className="progress-section">
+            <h2 className="progress-title">Phone verification</h2>
+            <p className="progress-description">
+              We'll send a verification code to your phone number to complete setup.
+            </p>
+            
+            <div className="info-card">
+              <div className="info-card-title">Why do we need your phone?</div>
+              <div className="info-card-text">
+                Your phone number helps us send important updates about your orders and loyalty rewards. 
+                It also adds an extra layer of security to your account.
+              </div>
             </div>
+          </div>
+        )}
 
-            <div>
-              <label className="block text-sm font-medium">First Name</label>
-              <input
-                type="text"
-                value={firstName}
-                disabled
-                className="mt-1 block w-full border rounded p-2 bg-gray-100"
-              />
-            </div>
+        <form onSubmit={currentStep === 'profile' ? handleProfileSubmit : handlePhoneSubmit} className="onboarding-form">
+          {currentStep === 'profile' ? (
+            // Profile completion form
+            <>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  disabled
+                  className="form-input"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium">Last Name</label>
-              <input
-                type="text"
-                value={lastName}
-                disabled
-                className="mt-1 block w-full border rounded p-2 bg-gray-100"
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label">First Name *</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  className="form-input"
+                  placeholder="Enter your first name"
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium">Phone Number</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="+27821234567"
-                className="mt-1 block w-full border rounded p-2"
-                required
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label">Last Name *</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  className="form-input"
+                  placeholder="Enter your last name"
+                  required
+                />
+              </div>
 
-            <div className="flex items-center">
-              <input
-                id="subscribe"
-                type="checkbox"
-                checked={subscribe}
-                onChange={e => setSubscribe(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-              />
-              <label htmlFor="subscribe" className="ml-2 block text-sm">
-                Subscribe to newsletter
-              </label>
-            </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="onboarding-button"
+              >
+                {loading ? "Updating…" : "Continue to Phone Verification"}
+              </button>
+            </>
+          ) : (
+            // Phone verification form
+            <>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  disabled
+                  className="form-input"
+                />
+              </div>
 
-            {/* Global reCAPTCHA used; container mounted outside React */}
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input
+                  type="text"
+                  value={`${firstName} ${lastName}`}
+                  disabled
+                  className="form-input"
+                />
+              </div>
 
-            <div className="flex flex-col space-y-2">
+              <div className="form-group">
+                <label className="form-label">Phone Number *</label>
+                <div className="phone-input-group">
+                  <span className="phone-flag">🇿🇦</span>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="+27821234567"
+                    className="form-input phone-input"
+                    required
+                  />
+                </div>
+                <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                  Include country code (e.g., +27 for South Africa)
+                </small>
+              </div>
+
+              <div className="checkbox-group">
+                <input
+                  id="subscribe"
+                  type="checkbox"
+                  checked={subscribe}
+                  onChange={e => setSubscribe(e.target.checked)}
+                  className="checkbox-input"
+                />
+                <label htmlFor="subscribe" className="checkbox-label">
+                  Subscribe to newsletter and promotional updates
+                </label>
+              </div>
+
+              {/* Global reCAPTCHA used; container mounted outside React */}
+
               <button
                 type="submit"
                 disabled={sending || !recaptchaReady}
-                className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="onboarding-button"
               >
-                {sending ? "Sending…" : !recaptchaReady ? 'Preparing reCAPTCHA…' : "Send OTP"}
+                {sending ? "Sending…" : !recaptchaReady ? 'Preparing Security Check…' : "Send Verification Code"}
               </button>
+              
               {!recaptchaReady && currentStep === 'phone' && (
-                <p className="text-xs text-gray-500 text-center">Loading security checks…</p>
+                <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#6b7280' }}>
+                  Loading security verification...
+                </p>
               )}
-            </div>
-          </form>
-        )}
+            </>
+          )}
+        </form>
       </div>
+      
       {import.meta.env.DEV && (
-        <div className="max-w-md mx-auto mt-4 p-3 text-xs bg-gray-100 rounded border border-gray-300 font-mono space-y-1">
-          <div className="font-semibold">[OTP Debug]</div>
-          <div>recaptchaReady: {String(recaptchaReady)}</div>
-          <div>hasVerifier: {String(!!verifier)}</div>
-          <div>currentUser: {auth.currentUser ? auth.currentUser.uid : 'none'}</div>
-          <div>currentUserProviders: {auth.currentUser?.providerData.map(p=>p.providerId).join(',') || 'n/a'}</div>
-          <div>phoneLinked: {auth.currentUser?.phoneNumber || 'no'}</div>
-          <div>lastPhoneError: {lastPhoneError || 'none'}</div>
-          {/* widgetId removed (unused) */}
+        <div className="debug-panel">
+          <div className="debug-title">[Development Debug Info]</div>
+          <div className="debug-item">recaptchaReady: {String(recaptchaReady)}</div>
+          <div className="debug-item">hasVerifier: {String(!!verifier)}</div>
+          <div className="debug-item">currentUser: {auth.currentUser ? auth.currentUser.uid : 'none'}</div>
+          <div className="debug-item">currentUserProviders: {auth.currentUser?.providerData.map(p=>p.providerId).join(',') || 'n/a'}</div>
+          <div className="debug-item">phoneLinked: {auth.currentUser?.phoneNumber || 'no'}</div>
+          <div className="debug-item">lastPhoneError: {lastPhoneError || 'none'}</div>
         </div>
       )}
-    </PageLayout>
+    </div>
   );
 };
 

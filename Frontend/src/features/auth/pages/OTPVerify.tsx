@@ -8,9 +8,7 @@ import { signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 import { confirmationRef } from "../../../utils/confirmationRef";
 import { useAuth } from '../../../auth/AuthProvider';
 import { toast } from "react-toastify";
-import PageLayout from '../../../components/PageLayout';
-import Button from '../../../components/ui/Button';
-import Container from '../../../components/ui/Container';
+import "./OTPVerify.css";
 
 // Extend the Window interface to include recaptchaVerifier
 declare global {
@@ -232,37 +230,93 @@ const OTPVerify: React.FC = () => {
   };
 
   return (
-    <PageLayout loading={loading} error={error || undefined}>
-      <Container>
-        <div className="max-w-sm mx-auto p-6">
-          <h1 className="text-xl font-semibold mb-4">Enter Verification Code</h1>
-          <div className="flex space-x-2 mb-6">
-            {otp.map((d, i) => (
-              <input
-                key={i}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={d}
-                onChange={e => handleChange(i, e.target.value)}
-                onKeyDown={e => handleKeyDown(e, i)}
-                ref={el => { if (el) inputsRef.current[i] = el; }}
-                className="w-10 h-12 text-center border rounded"
-                disabled={loading}
-              />
-            ))}
+    <div className="otp-container">
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+        </div>
+      )}
+      
+      <div className="otp-card">
+        <div className="otp-header">
+          <div className="progress-indicator">
+            <div className="progress-dot"></div>
+            <div className="progress-dot current"></div>
           </div>
-          <div className="flex items-center justify-between">
-            <Button variant="secondary" onClick={resend} disabled={timer > 0 || loading} className="underline">
-              {timer > 0 ? `Resend in 0:${timer.toString().padStart(2, "0")}` : "Resend Code"}
-            </Button>
-            <Button variant="primary" onClick={submitOTP} disabled={loading}>
-              {loading ? "Verifying..." : "Verify"}
-            </Button>
+          
+          <h1 className="otp-title">Enter Verification Code</h1>
+          <p className="otp-subtitle">
+            We've sent a 6-digit code to your phone number
+          </p>
+          <div className="phone-display">
+            📱 {onboardingData?.phone}
           </div>
         </div>
-      </Container>
-    </PageLayout>
+        
+        {error && <div className="error-message">{error}</div>}
+
+        <div className="otp-inputs">
+          {otp.map((digit, i) => (
+            <input
+              key={i}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={e => handleChange(i, e.target.value)}
+              onKeyDown={e => handleKeyDown(e, i)}
+              ref={el => { if (el) inputsRef.current[i] = el; }}
+              className={`otp-input ${digit ? 'filled' : ''}`}
+              disabled={loading}
+            />
+          ))}
+        </div>
+
+        <div className="otp-actions">
+          <button
+            onClick={submitOTP}
+            disabled={loading || otp.join("").length < 6}
+            className="verify-button"
+          >
+            {loading ? "Verifying..." : "Verify & Complete Setup"}
+          </button>
+
+          <div className="resend-section">
+            {timer > 0 ? (
+              <div className="resend-timer">
+                Didn't receive the code? Resend in 0:{timer.toString().padStart(2, "0")}
+              </div>
+            ) : (
+              <button
+                onClick={resend}
+                disabled={loading}
+                className="resend-button"
+              >
+                Resend Verification Code
+              </button>
+            )}
+          </div>
+
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/onboarding", { 
+                state: { 
+                  email: onboardingData?.email, 
+                  password: onboardingData?.password,
+                  firstName: onboardingData?.firstName,
+                  lastName: onboardingData?.lastName 
+                } 
+              });
+            }}
+            className="back-link"
+          >
+            ← Change phone number
+          </a>
+        </div>
+      </div>
+    </div>
   );
 };
 

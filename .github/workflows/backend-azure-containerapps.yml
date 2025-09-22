@@ -125,6 +125,13 @@ jobs:
             --set-env-vars "${env_args[@]}"
           echo "Container App update submitted"
 
+      - name: Switch traffic to latest revision (ensure startup)
+        run: |
+          set -euo pipefail
+          rev=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)
+          echo "Setting traffic to latest revision: $rev"
+          az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${rev}=100"
+
       - name: Wait for new revision (provisioning + replica)
         run: |
           set -euo pipefail

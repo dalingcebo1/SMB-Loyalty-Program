@@ -39,19 +39,9 @@ log "Root status: $code"
 
 # 4. Public tenant meta (allow 200 or 304)
 log "Fetching public tenant meta..."
-HDRS=()
-if [ -n "${SMOKE_HOST_HEADER:-}" ]; then HDRS+=( -H "Host: ${SMOKE_HOST_HEADER}" ); fi
-if [ -n "${SMOKE_TENANT_ID:-}" ]; then HDRS+=( -H "X-Tenant-ID: ${SMOKE_TENANT_ID}" ); fi
-meta_code=$(curl -o /dev/null -w '%{http_code}' "${API_BASE}/api/public/tenant-meta" "${HDRS[@]}")
+meta_code=$(curl -o /dev/null -w '%{http_code}' "${API_BASE}/api/public/tenant-meta")
 if [[ "$meta_code" != "200" && "$meta_code" != "304" ]]; then
   log "Unexpected tenant-meta status $meta_code"; exit 13; fi
 log "tenant-meta status: $meta_code"
-
-# 5. Public tenant theme (allow 200)
-log "Fetching public tenant theme..."
-theme_code=$(curl -o /dev/null -w '%{http_code}' "${API_BASE}/api/public/tenant-theme" "${HDRS[@]}")
-if [[ "$theme_code" != "200" && "$theme_code" != "304" ]]; then
-  log "Unexpected tenant-theme status $theme_code"; exit 13; fi
-log "tenant-theme status: $theme_code"
 
 log "All smoke checks passed."

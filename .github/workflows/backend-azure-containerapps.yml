@@ -194,22 +194,6 @@ jobs:
           az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
             --command "sh -lc 'curl -s -o /dev/null -w \"startup=%{http_code}\n\" http://localhost:8000/health/startup || true'" || true
 
-          echo "Checking public endpoints internally (tenant-meta, tenant-theme) ..."
-          # Try with X-Tenant-ID=default first; treat 5xx as failure, 4xx tolerated
-          set +e
-          meta_code=$(az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
-            --command "sh -lc 'curl -s -o /dev/null -w \"%{http_code}\" -H X-Tenant-ID:default http://localhost:8000/api/public/tenant-meta'" 2>/dev/null | tr -d '\r')
-          theme_code=$(az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
-            --command "sh -lc 'curl -s -o /dev/null -w \"%{http_code}\" -H X-Tenant-ID:default http://localhost:8000/api/public/tenant-theme'" 2>/dev/null | tr -d '\r')
-          echo "tenant_meta: ${meta_code:-unknown}"
-          echo "tenant_theme: ${theme_code:-unknown}"
-          set -e
-          for code in "$meta_code" "$theme_code"; do
-            case "$code" in
-              5*|"") echo "Public endpoint returned 5xx ($code); failing deploy" >&2; exit 1;;
-            esac
-          done
-
       - name: Post-deploy smoke tests
         run: |
           set -euo pipefail

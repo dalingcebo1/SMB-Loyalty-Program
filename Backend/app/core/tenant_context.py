@@ -219,19 +219,6 @@ async def get_tenant_context(
             request.state.tenant_id = fallback.id
             return TenantContext(fallback)
 
-    # Production-only safe fallback for public discovery endpoints
-    # If host resolution fails in production for public endpoints, fallback to default tenant.
-    try:
-        path = request.url.path or ""
-    except Exception:
-        path = ""
-    if settings.environment == 'production' and path.startswith('/api/public/') and settings.default_tenant:
-        fallback = db.query(Tenant).filter(Tenant.id == settings.default_tenant).first()
-        if fallback:
-            set_current_tenant_id(fallback.id)
-            request.state.tenant_id = fallback.id
-            return TenantContext(fallback)
-
     raise HTTPException(status_code=400, detail="Unable to resolve tenant context")
 
     # Not reached

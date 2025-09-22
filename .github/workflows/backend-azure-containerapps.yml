@@ -152,12 +152,40 @@ jobs:
           az containerapp ingress traffic set -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision-weight "${current}=99" "${latest}=1"
           echo "LATEST_REVISION=$latest" >> $GITHUB_ENV
 
+          # Try to discover the direct FQDN for the latest revision (works in Multiple mode)
+          rev_fqdn=$(az containerapp revision list -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query "[?name=='$latest']|[0].fqdn" -o tsv 2>/dev/null || true)
+          if [ -n "$rev_fqdn" ]; then
+            echo "Discovered revision FQDN: $rev_fqdn"
+            echo "REV_FQDN=$rev_fqdn" >> $GITHUB_ENV
+          else
+            echo "Revision FQDN not available (may be Single mode or not yet propagated)."
+          fi
+
+      - name: HTTP warm-up latest revision (direct FQDN if available)
+        run: |
+          set -euo pipefail
+          rev=${LATEST_REVISION}
+          rev_fqdn=${REV_FQDN:-}
+          # Fallback to app FQDN if revision-specific FQDN isn't available
+          app_fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
+          target=${rev_fqdn:-$app_fqdn}
+          echo "Warming revision $rev via target host: $target"
+          # Send a burst of warm-up requests to trigger scale-up; ignore failures but print last status
+          warm_ok=false
+          for i in $(seq 1 30); do
+            code=$(curl -sk -o /dev/null -w "%{http_code}" "https://$target/health/ready-lite" || echo 000)
+            echo "warm[$i]: $code"
+            # If hitting app FQDN (not revision), send more requests to increase odds of 1% routing
+            sleep 2
+          done
+          echo "Warm-up requests sent to $target"
+
       - name: Wait for warmed latest revision (provisioning + >=1 replica)
         run: |
           set -euo pipefail
           echo "Waiting for warmed latest revision to reach Succeeded with >=1 replica"
           start=$SECONDS
-          timeout=240
+          timeout=600
           rev=${LATEST_REVISION}
           if [ -z "$rev" ]; then
             rev=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)

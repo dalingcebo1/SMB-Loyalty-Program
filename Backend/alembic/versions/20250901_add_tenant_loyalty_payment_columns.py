@@ -1,7 +1,7 @@
 """add tenant/loyalty/payment new columns
 
-Revision ID: 20250901_add_tenant_loyalty_payment_cols
-Revises: 20250831_add_audit_logs, 20250831_add_multivertical_fields
+Revision ID: 20250901_add_tenant_loyalty_payment_columns
+Revises: add_inventory_items
 Create Date: 2025-09-01
 
 This migration formalizes columns that were previously introduced via a
@@ -20,7 +20,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '20250901_add_tenant_loyalty_payment_cols'
+revision = '20250901_add_tenant_loyalty_payment_columns'
 # Depends on placeholder merge revision that unifies previous heads
 down_revision = 'add_inventory_items'
 branch_labels = None

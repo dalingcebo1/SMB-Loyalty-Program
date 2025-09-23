@@ -144,9 +144,21 @@ def _validate_environment():
         secret = getattr(_s, 'loyalty_secret', None)
         if not secret or len(secret) < 24:
             errors.append("SECRET_KEY must be set and >=24 chars in production")
-        # Database URL required
-        if not getattr(_s, 'database_url', None):
+        # Database URL required and must be a real Postgres URL (no placeholders)
+        dbu = getattr(_s, 'database_url', None)
+        if not dbu:
             errors.append("DATABASE_URL must be configured in production")
+        else:
+            dbu_low = dbu.strip().lower()
+            if dbu_low.startswith('sqlite:'):
+                errors.append("DATABASE_URL points to sqlite; not allowed in production")
+            # Very common placeholder tokens from templates
+            if any(tok in dbu for tok in ("HOST", "USERNAME", "PASSWORD", "DBNAME", "<", ">")):
+                errors.append("DATABASE_URL contains placeholder values (HOST/USERNAME/DBNAME/etc)")
+            # Must be postgres or postgresql (optionally +psycopg2)
+            import re as _re
+            if not _re.match(r'^postgres(ql)?(\+psycopg2)?:\/\/', dbu_low):
+                errors.append("DATABASE_URL must use postgres:// or postgresql:// scheme")
     if errors:
         for e in errors:
             logger.error(f"ENV_VALIDATION: {e}")
@@ -435,6 +447,7 @@ class GlobalAPIRateLimitMiddleware(BaseHTTPMiddleware):
     EXCLUDED_PREFIXES = (
         "/health", "/health/", "/static/",
         "/api/public/tenant-meta", "/api/public/tenant-theme", "/api/public/tenant-manifest",
+        "/tenant-theme",  # legacy alias if present
         "/docs", "/api/openapi.json", "/favicon.ico", "/robots.txt"
     )
 

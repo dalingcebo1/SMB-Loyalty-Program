@@ -102,6 +102,31 @@ jobs:
             if [ -n "${!k}" ]; then echo " - $k: set"; else echo " - $k: MISSING"; fi
           done
 
+          # Production hard checks: prevent deploying with an invalid DB URL
+          ENVIRONMENT=production
+          if [ "$ENVIRONMENT" = "production" ]; then
+            du="$RESOLVED_DATABASE_URL"
+            bad=false
+            if [ -z "$du" ]; then
+              echo "ERROR: DATABASE_URL not provided in production" >&2; bad=true;
+            fi
+            # Disallow sqlite in production
+            if echo "$du" | grep -qi '^sqlite'; then
+              echo "ERROR: DATABASE_URL points to sqlite; not allowed in production" >&2; bad=true;
+            fi
+            # Disallow obvious placeholders
+            if echo "$du" | grep -Eq 'HOST|USERNAME|PASSWORD|DBNAME|<|>' ; then
+              echo "ERROR: DATABASE_URL contains placeholder values (HOST/USERNAME/etc). Please set a real Postgres URL." >&2; bad=true;
+            fi
+            # Require postgres scheme
+            if ! echo "$du" | grep -Eq '^postgres(ql)?(\+psycopg2)?:\/\/'; then
+              echo "ERROR: DATABASE_URL must be a postgres URL (postgres:// or postgresql://)" >&2; bad=true;
+            fi
+            if [ "$bad" = true ]; then
+              exit 1
+            fi
+          fi
+
           echo "Deploying image via az containerapp update (secret refs + env)"
           # Build dynamic env var list including only non-empty values to avoid clobbering with blanks
           env_args=(
@@ -270,6 +295,15 @@ jobs:
             --command "sh -lc 'curl -s -o /dev/null -w \"deep=%{http_code}\n\" http://localhost:8000/health/ready || true'" || true
           az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
             --command "sh -lc 'curl -s -o /dev/null -w \"startup=%{http_code}\n\" http://localhost:8000/health/startup || true'" || true
+
+      - name: DB connectivity check (internal public endpoint)
+        run: |
+          set -euo pipefail
+          echo "Checking DB connectivity via internal call to /api/public/tenant-meta (expects 200/304/404, not 5xx) ..."
+          # Use explicit header to exercise DB lookup; 404 is acceptable if tenant doesn't exist
+          az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+            --command "sh -lc 'code=\$(curl -s -H \"X-Tenant-ID: ${DEFAULT_TENANT:-default}\" -o /dev/null -w \"%{http_code}\" http://localhost:8000/api/public/tenant-meta || echo 000); echo tenant-meta:\ $code; case \"$code\" in 5*) exit 1 ;; *) exit 0 ;; esac'"
+          echo "DB connectivity appears OK (no 5xx from tenant-meta)."
 
       - name: Post-deploy smoke tests
         run: |

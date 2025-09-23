@@ -21,4 +21,6 @@ htmlcov/
 .dist/
 build/
 pytest.ini
-alembic.ini
+# IMPORTANT: We need Alembic config inside the image to run migrations in Azure Container Apps
+# Do NOT ignore alembic.ini; it must be copied by the Dockerfile
+# (If you ever need to exclude it locally, comment this back in, but CI/CD expects it present.)

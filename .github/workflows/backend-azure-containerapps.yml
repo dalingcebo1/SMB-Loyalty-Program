@@ -172,9 +172,13 @@ jobs:
           echo "Warming revision $rev via target host: $target"
           # Send a burst of warm-up requests to trigger scale-up; ignore failures but print last status
           warm_ok=false
-          echo "Sending 100 parallel warm-up requests to $target"
-          seq 1 100 | xargs -n1 -P20 -I{} sh -c 'curl -sk -o /dev/null -w "warm[{}]:%{http_code}\n" "https://$0/health/ready-lite"' $target
-          echo "Parallel warm-up requests sent to $target"
+          for i in $(seq 1 120); do
+            code=$(curl -sk -o /dev/null -w "%{http_code}" "https://$target/health/ready-lite" || echo 000)
+            echo "warm[$i]: $code"
+            # If hitting app FQDN (not revision), send more requests to increase odds of 1% routing
+            sleep 2
+          done
+          echo "Warm-up requests sent to $target"
 
       - name: Wait for warmed latest revision (provisioning + >=1 replica)
         run: |

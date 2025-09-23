@@ -62,12 +62,17 @@ def upgrade() -> None:
 
     op.create_table(
         'orders',
-        sa.Column('id', sa.VARCHAR(), nullable=False),
-        sa.Column('service_id', sa.Integer(), nullable=False),
+        sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column('service_id', sa.Integer(), nullable=True),
         sa.Column('quantity', sa.Integer(), nullable=False),
         sa.Column('extras', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+        sa.Column('status', sa.VARCHAR(), nullable=True),
+        sa.Column('user_id', sa.Integer(), nullable=True),
+        sa.Column('created_at', postgresql.TIMESTAMP(), nullable=True),
+        sa.Column('started_at', postgresql.TIMESTAMP(), nullable=True),
+        sa.Column('ended_at', postgresql.TIMESTAMP(), nullable=True),
         sa.ForeignKeyConstraint(['service_id'], ['services.id'], name='orders_service_id_fkey'),
-        sa.PrimaryKeyConstraint('id', name='orders_pkey'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='orders_user_id_fkey'),
     )
 
     op.create_table(
@@ -82,9 +87,10 @@ def upgrade() -> None:
     op.create_table(
         'payments',
         sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column('order_id', sa.VARCHAR(), nullable=False),
+        sa.Column('order_id', sa.Integer(), nullable=False),
         sa.Column('amount', sa.Integer(), nullable=False),
         sa.Column('method', sa.VARCHAR(), nullable=False),
+        sa.Column('status', sa.VARCHAR(), nullable=True),
         sa.Column('transaction_id', sa.VARCHAR(), nullable=True),
         sa.Column('created_at', postgresql.TIMESTAMP(), nullable=True),
         sa.ForeignKeyConstraint(['order_id'], ['orders.id'], name='payments_order_id_fkey'),
@@ -130,7 +136,7 @@ def upgrade() -> None:
     op.create_table(
         'order_vehicles',
         sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column('order_id', sa.VARCHAR(), nullable=False),
+        sa.Column('order_id', sa.Integer(), nullable=False),
         sa.Column('vehicle_id', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(['order_id'], ['orders.id'], name='order_vehicles_order_id_fkey'),
         sa.ForeignKeyConstraint(['vehicle_id'], ['vehicles.id'], name='order_vehicles_vehicle_id_fkey'),
@@ -164,12 +170,53 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='redemptions_user_id_fkey'),
         sa.PrimaryKeyConstraint('id', name='redemptions_pkey'),
     )
+    
+    # Additional baseline tables used by the app
+    op.create_table(
+        'audit_logs',
+        sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column('tenant_id', sa.VARCHAR(), nullable=True),
+        sa.Column('user_id', sa.Integer(), nullable=True),
+        sa.Column('action', sa.VARCHAR(), nullable=False),
+        sa.Column('created_at', postgresql.TIMESTAMP(), nullable=False),
+        sa.Column('details', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+    )
+    op.create_index('ix_audit_logs_user_id', 'audit_logs', ['user_id'])
+    op.create_index('ix_audit_logs_created_at', 'audit_logs', ['created_at'])
+
+    op.create_table(
+        'notifications',
+        sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column('tenant_id', sa.VARCHAR(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False),
+        sa.Column('title', sa.VARCHAR(), nullable=False),
+        sa.Column('message', sa.Text(), nullable=False),
+        sa.Column('type', sa.VARCHAR(), nullable=False),
+        sa.Column('action_url', sa.VARCHAR(), nullable=True),
+        sa.Column('created_at', postgresql.TIMESTAMP(), nullable=False),
+        sa.Column('read_at', postgresql.TIMESTAMP(), nullable=True),
+        sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], name='notifications_tenant_id_fkey'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='notifications_user_id_fkey'),
+    )
+    op.create_index('ix_notifications_tenant_id', 'notifications', ['tenant_id'])
+    op.create_index('ix_notifications_user_id', 'notifications', ['user_id'])
+    op.create_index('ix_notifications_type', 'notifications', ['type'])
+    op.create_index('ix_notifications_created_at', 'notifications', ['created_at'])
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema: drop objects created in upgrade."""
     # Drop in reverse dependency order
+    # Drop indexes before tables where needed
+    op.drop_index('ix_notifications_created_at', table_name='notifications')
+    op.drop_index('ix_notifications_type', table_name='notifications')
+    op.drop_index('ix_notifications_user_id', table_name='notifications')
+    op.drop_index('ix_notifications_tenant_id', table_name='notifications')
+    op.drop_table('notifications')
+    op.drop_index('ix_audit_logs_created_at', table_name='audit_logs')
+    op.drop_index('ix_audit_logs_user_id', table_name='audit_logs')
+    op.drop_table('audit_logs')
     op.drop_table('redemptions')
     op.drop_table('rewards')
     op.drop_table('order_vehicles')

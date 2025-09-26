@@ -58,7 +58,7 @@ jobs:
       - name: Import smoke check
         run: |
           python - <<'PY'
-          import sys, import importlib
+          import sys, import importlib as importlib
           print('[debug] Initial sys.path head:', sys.path[:5])
           for mod in ('config', 'app.core.database', 'app.models'):
               importlib.import_module(mod)

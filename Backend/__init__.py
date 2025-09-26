@@ -5,4 +5,6 @@ application code can reliably use absolute imports like `import Backend` or
 `from Backend import main` regardless of pytest's chosen rootdir.
 """
 
-__all__ = []
+from typing import List
+
+__all__: List[str] = []

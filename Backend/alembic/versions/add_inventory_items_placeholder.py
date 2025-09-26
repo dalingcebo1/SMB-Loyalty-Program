@@ -1,7 +1,7 @@
 """placeholder migration for legacy 'add_inventory_items'
 
 Revision ID: add_inventory_items
-Revises: 20250831_add_audit_logs, 20250831_add_multivertical_fields
+Revises: 20250831_add_audit_logs, 20250831_mv_fields
 Create Date: 2025-09-01
 
 This file was introduced to satisfy an existing alembic_version entry in a
@@ -15,7 +15,7 @@ from alembic import op  # noqa: F401
 import sqlalchemy as sa  # noqa: F401
 
 revision = 'add_inventory_items'
-down_revision = ('20250831_add_audit_logs', '20250831_add_multivertical_fields')
+down_revision = ('20250831_add_audit_logs', '20250831_mv_fields')
 branch_labels = None
 depends_on = None
 

@@ -20,8 +20,8 @@ from datetime import datetime, timezone
 if 'Backend' not in sys.path[0]:  # naive guard
     sys.path.insert(0, 'Backend')
 
-from config import settings  # type: ignore
-from app.core.database import Base, engine, SessionLocal  # type: ignore
+from config import settings
+from app.core.database import Base, engine, SessionLocal
 from app.models import Tenant  # canonical models (avoid legacy root-level models.py)
 
 
@@ -35,7 +35,7 @@ def ensure_schema():
 
 
 def seed_default_tenant():
-    from seed_default_tenant import seed_default as _seed, ensure_schema as _sch  # type: ignore
+    from seed_default_tenant import seed_default as _seed, ensure_schema as _sch
     # ensure_schema already handled globally but safe / idempotent
     _sch()
     _seed()
@@ -44,7 +44,7 @@ def seed_default_tenant():
 def seed_services():
     """Import and run seed_services.seed_services()."""
     try:
-        mod = importlib.import_module('seed_services')  # type: ignore
+        mod = importlib.import_module('seed_services')
     except Exception:
         log("Error importing seed_services module:")
         traceback.print_exc()
@@ -54,7 +54,7 @@ def seed_services():
         log("seed_services() not found in module – skipped")
         return
     try:
-        fn()  # type: ignore
+        fn()
     except Exception:
         log("Error executing seed_services():")
         traceback.print_exc()
@@ -63,7 +63,7 @@ def seed_services():
 def seed_rewards():
     """Import and run seed_rewards.main()."""
     try:
-        mod = importlib.import_module('seed_rewards')  # type: ignore
+        mod = importlib.import_module('seed_rewards')
     except Exception:
         log("Error importing seed_rewards module:")
         traceback.print_exc()
@@ -73,7 +73,7 @@ def seed_rewards():
         log("main() not found in seed_rewards – skipped")
         return
     try:
-        fn()  # type: ignore
+        fn()
     except Exception:
         log("Error executing seed_rewards.main():")
         traceback.print_exc()
@@ -81,14 +81,14 @@ def seed_rewards():
 
 def seed_users(force: bool):
     try:
-        mod = importlib.import_module('seed_users')  # type: ignore
+        mod = importlib.import_module('seed_users')
         # Provide flag to underlying script logic if supports it
         if force:
             sys.argv = ['seed_users.py', '--force-update']
         else:
             sys.argv = ['seed_users.py']
         if hasattr(mod, 'main'):
-            mod.main()  # type: ignore
+            mod.main()
         else:
             log("seed_users module missing main() – skipped")
     except Exception:

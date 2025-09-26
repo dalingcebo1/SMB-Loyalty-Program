@@ -1,6 +1,6 @@
 """add aggregated_customer_metrics table
 
-Revision ID: 20250830_add_agg_customer_metrics
+Revision ID: 20250830_acm
 Revises: 
 Create Date: 2025-08-30
 """
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from datetime import datetime
 
 # revision identifiers, used by Alembic.
-revision = '20250830_add_agg_customer_metrics'
+revision = '20250830_acm'
 down_revision = '20250829_add_perf_indexes'
 branch_labels = None
 depends_on = None

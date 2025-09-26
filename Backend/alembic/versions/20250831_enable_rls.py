@@ -9,7 +9,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20250831_enable_rls'
-down_revision = '20250831_autogen_multivertical'
+down_revision = '20250831_autogen_mv'
 branch_labels = None
 depends_on = None
 
@@ -21,8 +21,23 @@ TENANT_TABLES = [
 # Only apply if using PostgreSQL; guard with simple dialect check in runtime if needed.
 
 def upgrade():
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+
     # Enable RLS and add policies referencing custom GUC app.tenant_id
     for table in TENANT_TABLES:
+        # Only apply to tables that exist and have a tenant_id column at this revision
+        try:
+            if table not in insp.get_table_names():
+                continue
+            cols = {c['name'] for c in insp.get_columns(table)}
+            if 'tenant_id' not in cols:
+                # Will be handled by a later migration when tenant_id exists
+                continue
+        except Exception:
+            # Inspector may fail on some engines; best-effort skip
+            continue
+
         op.execute(f'ALTER TABLE {table} ENABLE ROW LEVEL SECURITY')
         # Drop if exists to allow re-run idempotently (safe in dev)
         for action in ("select", "insert", "update", "delete"):

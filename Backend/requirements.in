@@ -21,7 +21,7 @@ uvicorn[standard]==0.35.0  # Ensure matching server version to avoid upstream au
 PyJWT
 firebase-admin
 Pillow
-sentry-sdk
+sentry-sdk>=1.45.1
 redis
 
 # Security: Ensure non-vulnerable setuptools (used during installs/builds)

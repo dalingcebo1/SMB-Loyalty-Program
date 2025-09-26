@@ -12,11 +12,11 @@ from app.core.database import SessionLocal
 from app.models import Tenant, VerticalType
 
 # Customize these maps before running in production if needed
-TENANT_VERTICAL_MAP = {
+TENANT_VERTICAL_MAP: dict[str, str] = {
     # 'tenant123': VerticalType.dispensary.value,
 }
 
-TENANT_DOMAIN_MAP = {
+TENANT_DOMAIN_MAP: dict[str, str] = {
     # 'tenant123': 'mytenant.example.com',
 }
 

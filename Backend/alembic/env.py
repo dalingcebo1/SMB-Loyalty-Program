@@ -1,10 +1,17 @@
 # alembic/env.py
 
 import os
+import sys
+from pathlib import Path
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+
+# Ensure the Backend directory (this file is Backend/alembic/env.py) is on sys.path so 'config' resolves in CI
+backend_dir = Path(__file__).resolve().parents[1]
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 # Load environment variables from .env
 from dotenv import load_dotenv

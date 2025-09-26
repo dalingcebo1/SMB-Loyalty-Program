@@ -760,26 +760,12 @@ def on_startup():
     else:  # pragma: no cover - production path
         logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
 
-    # Dev-only default tenant seeding (skip in production)
-    if _settings.environment != 'production' and _settings.default_tenant:
-        from sqlalchemy.orm import Session as _Session
-        from sqlalchemy import select as _select
-        from app.models import Tenant
-        with _Session(bind=engine) as _db:
-            exists = _db.execute(_select(Tenant).where(Tenant.id == _settings.default_tenant)).scalar_one_or_none()
-            if not exists:
-                t = Tenant(
-                    id=_settings.default_tenant,
-                    name="Default Tenant",
-                    loyalty_type="basic",
-                    vertical_type="carwash",
-                    config={"features": {}, "branding": {"primaryColor": "#3366ff"}},
-                )
-                _db.add(t)
-                try:
-                    _db.commit()
-                except Exception:
-                    _db.rollback()
+    # Default tenant seeding (idempotent) – now runs in ALL environments for reliability.
+    if _settings.default_tenant:
+        try:
+            _ensure_default_tenant(_settings.default_tenant)
+        except Exception:  # pragma: no cover - defensive guard
+            logger.warning("Failed to ensure default tenant exists", exc_info=True)
 
     # Firebase credentials materialization logic ---------------------------------
     try:
@@ -802,3 +788,34 @@ def on_startup():
                 logger.info('Materialized Firebase credentials JSON to temp file')
     except Exception as e:  # pragma: no cover
         logger.warning(f"Failed to set Firebase credentials: {e}")
+
+
+# --- Helper: ensure default tenant exists -------------------------------------
+def _ensure_default_tenant(tenant_id: str):
+    """Create the default tenant row if missing (safe/idempotent).
+
+    Runs at startup so public endpoints like /api/public/tenant-meta
+    don't 500 on completely fresh production databases.
+    """
+    from sqlalchemy.orm import Session as _Session
+    from sqlalchemy import select as _select
+    from app.core.database import engine
+    from app.models import Tenant
+    with _Session(bind=engine) as _db:
+        exists = _db.execute(_select(Tenant).where(Tenant.id == tenant_id)).scalar_one_or_none()
+        if exists:
+            return
+        t = Tenant(
+            id=tenant_id,
+            name="Default Tenant",
+            loyalty_type="basic",
+            vertical_type="carwash",
+            config={"features": {}, "branding": {"primaryColor": "#3366ff"}},
+        )
+        _db.add(t)
+        try:
+            _db.commit()
+            logger.info("Startup: created missing default tenant '%s'", tenant_id)
+        except Exception:
+            _db.rollback()
+            raise

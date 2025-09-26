@@ -4,7 +4,7 @@ exclude = ["Backend/app/alembic/*", "_legacy_backup/*"]
 
 [tool.ruff.lint]
 select = ["E","F","I","B","UP","SIM","ASYNC"]
-ignore = ["E501", "B904", "E402"]
+ignore = ["E501", "B904", "E402", "I001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app","config"]

@@ -1,7 +1,7 @@
 """add tenant branding table
 
 Revision ID: 20250901_add_tenant_branding
-Revises: 20250901_add_tenant_loyalty_payment_columns
+Revises: 20250901_tenant_loyalty_pay
 Create Date: 2025-09-01
 """
 from alembic import op
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20250901_add_tenant_branding'
-down_revision = '20250901_add_tenant_loyalty_payment_columns'
+down_revision = '20250901_tenant_loyalty_pay'
 branch_labels = None
 depends_on = None
 

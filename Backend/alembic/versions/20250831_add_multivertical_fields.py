@@ -1,15 +1,15 @@
 """add multi-vertical fields to tenants
 
-Revision ID: 20250831_add_multivertical_fields
-Revises: 20250830_add_agg_customer_metrics
+Revision ID: 20250831_mv_fields
+Revises: 20250830_acm
 Create Date: 2025-08-31
 """
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '20250831_add_multivertical_fields'
-down_revision = '20250830_add_agg_customer_metrics'
+revision = '20250831_mv_fields'
+down_revision = '20250830_acm'
 branch_labels = None
 depends_on = None
 

@@ -1,6 +1,6 @@
 """add tenant/loyalty/payment new columns
 
-Revision ID: 20250901_add_tenant_loyalty_payment_columns
+Revision ID: 20250901_tenant_loyalty_pay
 Revises: add_inventory_items
 Create Date: 2025-09-01
 
@@ -20,7 +20,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '20250901_add_tenant_loyalty_payment_columns'
+revision = '20250901_tenant_loyalty_pay'
 # Depends on placeholder merge revision that unifies previous heads
 down_revision = 'add_inventory_items'
 branch_labels = None
@@ -65,7 +65,8 @@ def upgrade():  # noqa: D401
         added_loyalty_col = False
         with op.batch_alter_table('services') as batch:
             if not _has_column(insp, 'services', 'loyalty_eligible'):
-                batch.add_column(sa.Column('loyalty_eligible', sa.Boolean(), nullable=False, server_default=sa.text('0')))
+                # Use proper boolean default for Postgres
+                batch.add_column(sa.Column('loyalty_eligible', sa.Boolean(), nullable=False, server_default=sa.text('false')))
                 added_loyalty_col = True
         if added_loyalty_col:
             # Drop default to match model (default handled at app layer) for Postgres

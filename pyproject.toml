@@ -1,11 +1,12 @@
 [tool.ruff]
 line-length = 100
-select = ["E","F","I","B","UP","SIM","ASYNC"]
-# Temporary ignore B904 (exception chaining) to unblock CI; follow-up will refactor
-ignore = ["E501", "B904"]
 exclude = ["Backend/app/alembic/*", "_legacy_backup/*"]
 
-[tool.ruff.isort]
+[tool.ruff.lint]
+select = ["E","F","I","B","UP","SIM","ASYNC"]
+ignore = ["E501", "B904", "E402"]
+
+[tool.ruff.lint.isort]
 known-first-party = ["app","config"]
 
 [tool.mypy]

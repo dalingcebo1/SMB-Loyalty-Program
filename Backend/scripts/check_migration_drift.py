@@ -16,6 +16,7 @@ from pathlib import Path
 from alembic.config import Config
 from alembic import command
 from alembic.autogenerate.api import compare_metadata
+from alembic.migration import MigrationContext
 from sqlalchemy import create_engine
 
 # Import app metadata
@@ -34,13 +35,11 @@ def main() -> int:
     # Use configured database URL (CI should point to ephemeral Postgres)
     engine = create_engine(settings.database_url)
     with engine.connect() as connection:
-        cfg = get_alembic_config()
-        cfg.attributes['connection'] = connection  # type: ignore
-        # Load current metadata vs migration heads
-        # Emit heads to ensure at head
-        # (We could first run upgrade head externally in CI)
+        # Configure a MigrationContext so autogenerate has the proper wrapper
+        # (Passing a raw Connection to compare_metadata raises AttributeError)
+        migration_ctx = MigrationContext.configure(connection)
         metadata = Base.metadata
-        diffs = compare_metadata(connection, metadata)
+        diffs = compare_metadata(migration_ctx, metadata)
         if diffs:
             print("Detected model vs migration drift:\n")
             for diff in diffs:

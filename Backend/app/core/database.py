@@ -22,26 +22,26 @@ connect_args to ensure all sessions share the same transient database.
 """
 
 # 2) Create the SQLAlchemy engine with tuned pool settings
-engine_kwargs = dict(
-    echo=True,
-    future=True,
-    pool_pre_ping=True,  # checks connections before using to avoid stale ones
-)
+engine_kwargs: dict = {
+    "echo": True,
+    "future": True,
+    "pool_pre_ping": True,  # checks connections before using to avoid stale ones
+}
 
 if DATABASE_URL.startswith("sqlite"):
     # Always disable same-thread check for FastAPI + tests
-    engine_kwargs.update(connect_args={"check_same_thread": False})
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
     # Special handling for pure in-memory DB so all sessions share the same
     # database (otherwise each new connection is a fresh empty database)
     if ":memory:" in DATABASE_URL:
-        engine_kwargs.update(poolclass=StaticPool)
+        engine_kwargs["poolclass"] = StaticPool
 else:
     # Production / Postgres style settings
-    engine_kwargs.update(
-        pool_size=20,
-        max_overflow=10,
-        pool_timeout=30,
-    )
+    engine_kwargs.update({
+        "pool_size": 20,
+        "max_overflow": 10,
+        "pool_timeout": 30,
+    })
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 

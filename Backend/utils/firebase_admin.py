@@ -44,7 +44,7 @@ if not firebase_admin._apps:
         # Log effective project id if we can infer it (safe for ops)
         # Attempt best-effort project id extraction (may not exist in all versions)
         try:  # pragma: no cover
-            from firebase_admin import project_id as _project_id  # type: ignore
+            from firebase_admin import project_id as _project_id
         except Exception:  # pragma: no cover
             _project_id = None
         logger.info("Firebase Admin initialized%s%s",

@@ -21,8 +21,8 @@ import os
 from sqlalchemy import create_engine
 
 # Import app metadata
-from app.core.database import Base  # type: ignore
-from config import settings  # type: ignore
+from app.core.database import Base
+from config import settings
 
 
 def get_alembic_config() -> Config:

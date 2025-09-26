@@ -35,5 +35,5 @@ def configure_logging():
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
         root.addHandler(handler)
-    root._structured_configured = True  # type: ignore[attr-defined]
+    root._structured_configured = True  # mypy: ignore dynamic attribute
 

@@ -1,4 +1,4 @@
-name: Backend: Bootstrap DB and Migrate
+name: "Backend: Bootstrap DB and Migrate"
 
 permissions:
   contents: read

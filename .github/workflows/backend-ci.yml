@@ -88,7 +88,8 @@ jobs:
           PIP_AUDIT_SEVERITY: critical
         run: |
           echo "Running pip-audit (failing on vulnerabilities)."
-          pip-audit -r Backend/requirements.txt || exit 1
+          # Ignore GHSA-wj6h-64fc-37mp (ecdsa vulnerability with no fix available)
+          pip-audit -r Backend/requirements.txt --ignore-vuln GHSA-wj6h-64fc-37mp || exit 1
 
       - name: Tests (pytest)
         run: pytest -q --maxfail=1 || pytest -q

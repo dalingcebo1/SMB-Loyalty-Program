@@ -46,7 +46,8 @@ import logging
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 from app.core.database import get_db
-from app.models import TenantBranding, Tenant as _Tenant
+from models import Tenant as _Tenant
+from app.models import TenantBranding
 import os
 import tempfile
 
@@ -824,7 +825,7 @@ def _ensure_default_tenant(tenant_id: str):
     from sqlalchemy.orm import Session as _Session
     from sqlalchemy import select as _select
     from app.core.database import engine
-    from app.models import Tenant
+    from models import Tenant
     with _Session(bind=engine) as _db:
         exists = _db.execute(_select(Tenant).where(Tenant.id == tenant_id)).scalar_one_or_none()
         if exists:

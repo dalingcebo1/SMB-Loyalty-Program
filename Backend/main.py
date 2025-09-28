@@ -624,19 +624,12 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
             seen.add(c)
             ordered.append(c)
 
-    # Try primary_domain then subdomain
+    # Try primary_domain lookup
     for h in ordered:
         t = db.query(_Tenant).filter_by(primary_domain=h).first()
         if t:
             request.state.tenant_id = t.id
             return TenantContext(t)
-        parts = h.split(".") if h else []
-        if len(parts) > 2:
-            sub = parts[0]
-            t = db.query(_Tenant).filter_by(subdomain=sub).first()
-            if t:
-                request.state.tenant_id = t.id
-                return TenantContext(t)
 
     # Production fallback to default tenant
     if settings.environment == 'production' and settings.default_tenant:

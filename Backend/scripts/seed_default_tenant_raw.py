@@ -32,24 +32,27 @@ def seed_default_tenant_raw():
             print(f"   Name: {existing_tenant[1]}")
             return
         
-        # Insert default tenant with only required fields
-        conn.execute(text("""
-            INSERT INTO tenants (id, name, display_name, vertical_type, config, created_by)
-            VALUES (:id, :name, :display_name, :vertical_type, :config, :created_by)
-        """), {
+        # Insert default tenant using raw SQL to avoid ORM issues
+        insert_sql = """
+        INSERT INTO tenants (id, name, loyalty_type, vertical_type, primary_domain, config, created_at)
+        VALUES (:id, :name, :loyalty_type, :vertical_type, :primary_domain, :config, NOW())
+        ON CONFLICT (id) DO NOTHING
+        """
+        
+        conn.execute(text(insert_sql), {
             "id": settings.default_tenant,
-            "name": "Default Tenant", 
-            "display_name": "Default",
+            "name": "Default Loyalty Program", 
+            "loyalty_type": "points",
             "vertical_type": "general",
-            "config": "{}",
-            "created_by": "system"
+            "primary_domain": "apismbloyaltyapp.redsky-09cfd59a.southafricanorth.azurecontainerapps.io",
+            "config": '{"theme_color": "#007bff"}'
         })
         
         conn.commit()
         
         print(f"✅ Created default tenant '{settings.default_tenant}'")
-        print(f"   Name: Default Tenant")
-        print(f"   Display Name: Default")
+        print(f"   Name: Default Loyalty Program")
+        print(f"   Primary Domain: apismbloyaltyapp.redsky-09cfd59a.southafricanorth.azurecontainerapps.io")
 
 if __name__ == "__main__":
     try:

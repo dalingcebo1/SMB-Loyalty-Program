@@ -37,11 +37,11 @@ def seed_default_tenant():
         # Create default tenant
         default_tenant = Tenant(
             id=settings.default_tenant,
-            name="Default Tenant",
-            display_name="Default",
+            name="Default Loyalty Program",
+            loyalty_type="points",
             vertical_type="general",
-            config={},
-            created_by="system"
+            primary_domain="apismbloyaltyapp.redsky-09cfd59a.southafricanorth.azurecontainerapps.io",
+            config={"theme_color": "#007bff"}
         )
         
         session.add(default_tenant)
@@ -49,7 +49,8 @@ def seed_default_tenant():
         
         print(f"✅ Created default tenant '{settings.default_tenant}'")
         print(f"   Name: {default_tenant.name}")
-        print(f"   Display Name: {default_tenant.display_name}")
+        print(f"   Loyalty Type: {default_tenant.loyalty_type}")
+        print(f"   Vertical: {default_tenant.vertical_type}")
 
 if __name__ == "__main__":
     try:

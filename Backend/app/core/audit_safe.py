@@ -7,9 +7,9 @@ from __future__ import annotations
 from typing import Optional, Dict, Any
 
 try:  # attempt to import a real audit recorder if it exists
-    from app.core import audit  # type: ignore
+    from app.core import audit  # dynamic optional import; if missing we degrade gracefully
 except Exception:  # pragma: no cover
-    audit = None  # type: ignore
+    audit = None
 
 
 def safe_audit(action: str, actor_user_id: Optional[str], tenant_id: Optional[str], details: Dict[str, Any]) -> None:
@@ -18,7 +18,7 @@ def safe_audit(action: str, actor_user_id: Optional[str], tenant_id: Optional[st
         return
     try:  # pragma: no cover - defensive only
         if hasattr(audit, "record"):
-            audit.record(action=action, tenant_id=tenant_id, user_id=actor_user_id, details=details)  # type: ignore[arg-type]
+            audit.record(action=action, tenant_id=tenant_id, user_id=actor_user_id, details=details)
     except Exception:
         return
 
@@ -27,7 +27,7 @@ def safe_recent_audit(limit: int = 100):
         return []
     try:
         if hasattr(audit, "recent"):
-            return audit.recent(limit=limit)  # type: ignore[attr-defined]
+            return audit.recent(limit=limit)
     except Exception:
         return []
     return []

@@ -26,14 +26,14 @@ tenant_admins = Table(
 
 class Tenant(Base):
     __tablename__ = "tenants"
-    id           = Column(String, primary_key=True)
-    name         = Column(String, nullable=False)
-    loyalty_type = Column(String, nullable=False)
-    subdomain    = Column(String, unique=True, nullable=True)
-    logo_url     = Column(String, nullable=True)
-    theme_color  = Column(String, nullable=True)
-    created_at   = Column(DateTime)
-    rewards      = relationship("Reward", back_populates="tenant")
+    id            = Column(String, primary_key=True)
+    name          = Column(String, nullable=False)
+    loyalty_type  = Column(String, nullable=False)
+    vertical_type = Column(String, nullable=True)
+    primary_domain = Column(String, nullable=True)
+    config        = Column(JSON, nullable=True)
+    created_at    = Column(DateTime)
+    rewards       = relationship("Reward", back_populates="tenant")
     # tenant-admin many-to-many
     admins       = relationship(
         "User",

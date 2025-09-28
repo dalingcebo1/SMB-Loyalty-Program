@@ -43,6 +43,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Copy only necessary application files (adjust patterns if large)
+# Copy application source (including alembic.ini)
 COPY . .
 
 RUN chown -R appuser:appuser /app

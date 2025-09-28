@@ -20,9 +20,9 @@ HERE = os.path.dirname(__file__)
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, ROOT)
 
-from app.core.database import SessionLocal  # type: ignore
-from app.models import User, Tenant  # type: ignore
-from app.plugins.auth import routes  # type: ignore
+from app.core.database import SessionLocal
+from app.models import User, Tenant
+from app.plugins.auth import routes
 
 DEV_ADMIN_EMAIL = "dali.ngubane@chaosx.co.za"
 STAFF_EMAIL = "dali.ngubane@gmail.com"

@@ -1,0 +1,98 @@
+name: "Backend: Bootstrap DB and Migrate"
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Azure Resource Group
+        required: false
+        default: SMB-Loyalty-Group
+      containerapp_name:
+        description: Container App name
+        required: false
+        default: apismbloyaltyapp
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Azure Container Apps extension
+        run: az extension add --name containerapp --upgrade
+
+      - name: Ensure target database exists (via container exec Python)
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ inputs.containerapp_name }}
+        run: |
+          set -euo pipefail
+          echo "Introspecting DATABASE_URL from running container and creating DB if missing"
+          az containerapp exec -g "$RG" -n "$APP" --command "python - <<'PY'
+          import os, sys
+          from urllib.parse import urlparse, parse_qs, unquote
+          import psycopg2
+
+          du = os.environ.get('DATABASE_URL')
+          if not du:
+              print('DATABASE_URL not set inside container', file=sys.stderr)
+              sys.exit(1)
+
+          u = urlparse(du)
+          user = u.username
+          password = unquote(u.password or '')
+          host = u.hostname
+          port = u.port or 5432
+          target_db = (u.path or '/').lstrip('/') or 'postgres'
+          sslmode = parse_qs(u.query).get('sslmode', ['require'])[0]
+
+          # Connect to the maintenance DB 'postgres'
+          conn = psycopg2.connect(host=host, port=port, dbname='postgres', user=user, password=password, sslmode=sslmode)
+          conn.autocommit = True
+          cur = conn.cursor()
+          cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (target_db,))
+          exists = cur.fetchone() is not None
+          if exists:
+              print(f"Database '{target_db}' already exists")
+          else:
+              # Create with UTF8 and assign owner to the same user
+              cur.execute(f"CREATE DATABASE \"{target_db}\" OWNER \"{user}\" TEMPLATE template0 ENCODING 'UTF8'")
+              print(f"Created database '{target_db}' owned by '{user}'")
+          cur.close()
+          conn.close()
+          PY"
+
+      - name: Run Alembic migrations
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ inputs.containerapp_name }}
+        run: |
+          set -euo pipefail
+          echo "Running Alembic migrations in the container"
+          az containerapp exec -g "$RG" -n "$APP" --command "bash -lc 'cd /app && alembic -c alembic.ini upgrade head'"
+
+      - name: Smoke check DB-backed public endpoints
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ inputs.containerapp_name }}
+        run: |
+          set -euo pipefail
+          fqdn=$(az containerapp show -g "$RG" -n "$APP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "FQDN: $fqdn"
+          for ep in /api/public/tenant-meta /api/public/tenant-theme; do
+            code=$(curl -sk -o /dev/null -w "%{http_code}" "https://$fqdn$ep")
+            echo "$ep -> $code"
+            if [ "$code" -ge 500 ]; then
+              echo "Endpoint $ep returned $code" >&2
+              exit 1
+            fi
+          done

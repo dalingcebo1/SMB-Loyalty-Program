@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 from fastapi.encoders import jsonable_encoder
+from typing import Optional
 import time, hashlib, json
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -553,7 +554,7 @@ def _normalize_host(h: str | None) -> str:
 def _strip_api_prefix(h: str) -> str:
     return h[4:] if h.startswith("api.") and len(h) > 4 else h
 
-def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
+def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantContext]:
     """Public-safe tenant resolver with production default fallback.
 
     Attempts:
@@ -561,13 +562,15 @@ def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
       2) X-Forwarded-Host / Forwarded host= / Host / Origin host
          - tries exact primary_domain, then subdomain (first label) match
       3) In production, if still unresolved and default_tenant is set, use it
+    
+    Returns None if no tenant found, allowing endpoints to handle gracefully.
     """
     # 1) Explicit header
     x_tid = request.headers.get("x-tenant-id") or request.headers.get("X-Tenant-ID")
     if x_tid:
         t = db.query(_Tenant).filter_by(id=x_tid).first()
         if not t:
-            raise HTTPException(status_code=404, detail="Tenant not found (header)")
+            return None  # Let caller handle missing tenant gracefully
         request.state.tenant_id = t.id
         return TenantContext(t)
 
@@ -621,19 +624,12 @@ def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
             seen.add(c)
             ordered.append(c)
 
-    # Try primary_domain then subdomain
+    # Try primary_domain lookup
     for h in ordered:
         t = db.query(_Tenant).filter_by(primary_domain=h).first()
         if t:
             request.state.tenant_id = t.id
             return TenantContext(t)
-        parts = h.split(".") if h else []
-        if len(parts) > 2:
-            sub = parts[0]
-            t = db.query(_Tenant).filter_by(subdomain=sub).first()
-            if t:
-                request.state.tenant_id = t.id
-                return TenantContext(t)
 
     # Production fallback to default tenant
     if settings.environment == 'production' and settings.default_tenant:
@@ -642,7 +638,7 @@ def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
             request.state.tenant_id = t.id
             return TenantContext(t)
 
-    raise HTTPException(status_code=400, detail="Unable to resolve tenant context")
+    return None  # No tenant found, let caller handle gracefully
 
 @app.get("/api/public/tenant-meta")
 def public_tenant_meta(request: Request, db: Session = Depends(get_db)):
@@ -655,6 +651,14 @@ def public_tenant_meta(request: Request, db: Session = Depends(get_db)):
     from config import settings as _settings  # local import to avoid circulars
     # Resolve tenant context with production fallback to avoid 500s
     ctx = _resolve_public_tenant(request, db)
+    
+    # Handle missing tenant gracefully instead of causing 500 error
+    if ctx is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "tenant_not_found", "detail": "No tenant available for this request"}
+        )
+    
     ip_key = _ip_key(request)
     scope_name = "ip_public_meta"
     cap = _settings.rate_limit_public_meta_capacity
@@ -760,26 +764,12 @@ def on_startup():
     else:  # pragma: no cover - production path
         logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
 
-    # Dev-only default tenant seeding (skip in production)
-    if _settings.environment != 'production' and _settings.default_tenant:
-        from sqlalchemy.orm import Session as _Session
-        from sqlalchemy import select as _select
-        from app.models import Tenant
-        with _Session(bind=engine) as _db:
-            exists = _db.execute(_select(Tenant).where(Tenant.id == _settings.default_tenant)).scalar_one_or_none()
-            if not exists:
-                t = Tenant(
-                    id=_settings.default_tenant,
-                    name="Default Tenant",
-                    loyalty_type="basic",
-                    vertical_type="carwash",
-                    config={"features": {}, "branding": {"primaryColor": "#3366ff"}},
-                )
-                _db.add(t)
-                try:
-                    _db.commit()
-                except Exception:
-                    _db.rollback()
+    # Default tenant seeding (idempotent) – now runs in ALL environments for reliability.
+    if _settings.default_tenant:
+        try:
+            _ensure_default_tenant(_settings.default_tenant)
+        except Exception:  # pragma: no cover - defensive guard
+            logger.warning("Failed to ensure default tenant exists", exc_info=True)
 
     # Firebase credentials materialization logic ---------------------------------
     try:
@@ -802,3 +792,34 @@ def on_startup():
                 logger.info('Materialized Firebase credentials JSON to temp file')
     except Exception as e:  # pragma: no cover
         logger.warning(f"Failed to set Firebase credentials: {e}")
+
+
+# --- Helper: ensure default tenant exists -------------------------------------
+def _ensure_default_tenant(tenant_id: str):
+    """Create the default tenant row if missing (safe/idempotent).
+
+    Runs at startup so public endpoints like /api/public/tenant-meta
+    don't 500 on completely fresh production databases.
+    """
+    from sqlalchemy.orm import Session as _Session
+    from sqlalchemy import select as _select
+    from app.core.database import engine
+    from app.models import Tenant
+    with _Session(bind=engine) as _db:
+        exists = _db.execute(_select(Tenant).where(Tenant.id == tenant_id)).scalar_one_or_none()
+        if exists:
+            return
+        t = Tenant(
+            id=tenant_id,
+            name="Default Tenant",
+            loyalty_type="basic",
+            vertical_type="carwash",
+            config={"features": {}, "branding": {"primaryColor": "#3366ff"}},
+        )
+        _db.add(t)
+        try:
+            _db.commit()
+            logger.info("Startup: created missing default tenant '%s'", tenant_id)
+        except Exception:
+            _db.rollback()
+            raise

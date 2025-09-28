@@ -42,10 +42,11 @@ if not firebase_admin._apps:
         else:
             firebase_admin.initialize_app(cred)
         # Log effective project id if we can infer it (safe for ops)
-        try:
-            from firebase_admin import project_id as _project_id  # type: ignore
-        except Exception:
-            _project_id = None  # type: ignore
+        # Attempt best-effort project id extraction (may not exist in all versions)
+        try:  # pragma: no cover
+            from firebase_admin import project_id as _project_id
+        except Exception:  # pragma: no cover
+            _project_id = None
         logger.info("Firebase Admin initialized%s%s",
                     f" for project '{project_id}'" if project_id else "",
                     " (ADC)" if not cred_path else "")

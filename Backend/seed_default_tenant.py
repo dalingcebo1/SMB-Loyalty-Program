@@ -6,9 +6,9 @@ Usage:
 Honors settings.default_tenant for the ID. Safe to run multiple times.
 """
 from datetime import datetime
-from config import settings  # type: ignore
-from app.core.database import SessionLocal, Base, engine  # type: ignore
-from app.models import Tenant, VerticalType  # type: ignore
+from config import settings
+from app.core.database import SessionLocal, Base, engine
+from app.models import Tenant, VerticalType
 
 
 def ensure_schema():

@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 from fastapi.encoders import jsonable_encoder
+from typing import Optional
 import time, hashlib, json
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -553,7 +554,7 @@ def _normalize_host(h: str | None) -> str:
 def _strip_api_prefix(h: str) -> str:
     return h[4:] if h.startswith("api.") and len(h) > 4 else h
 
-def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
+def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantContext]:
     """Public-safe tenant resolver with production default fallback.
 
     Attempts:
@@ -561,13 +562,15 @@ def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
       2) X-Forwarded-Host / Forwarded host= / Host / Origin host
          - tries exact primary_domain, then subdomain (first label) match
       3) In production, if still unresolved and default_tenant is set, use it
+    
+    Returns None if no tenant found, allowing endpoints to handle gracefully.
     """
     # 1) Explicit header
     x_tid = request.headers.get("x-tenant-id") or request.headers.get("X-Tenant-ID")
     if x_tid:
         t = db.query(_Tenant).filter_by(id=x_tid).first()
         if not t:
-            raise HTTPException(status_code=404, detail="Tenant not found (header)")
+            return None  # Let caller handle missing tenant gracefully
         request.state.tenant_id = t.id
         return TenantContext(t)
 
@@ -642,7 +645,7 @@ def _resolve_public_tenant(request: Request, db: Session) -> TenantContext:
             request.state.tenant_id = t.id
             return TenantContext(t)
 
-    raise HTTPException(status_code=400, detail="Unable to resolve tenant context")
+    return None  # No tenant found, let caller handle gracefully
 
 @app.get("/api/public/tenant-meta")
 def public_tenant_meta(request: Request, db: Session = Depends(get_db)):
@@ -655,6 +658,14 @@ def public_tenant_meta(request: Request, db: Session = Depends(get_db)):
     from config import settings as _settings  # local import to avoid circulars
     # Resolve tenant context with production fallback to avoid 500s
     ctx = _resolve_public_tenant(request, db)
+    
+    # Handle missing tenant gracefully instead of causing 500 error
+    if ctx is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "tenant_not_found", "detail": "No tenant available for this request"}
+        )
+    
     ip_key = _ip_key(request)
     scope_name = "ip_public_meta"
     cap = _settings.rate_limit_public_meta_capacity

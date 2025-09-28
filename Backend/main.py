@@ -722,14 +722,21 @@ def public_tenant_manifest(request: Request, db: Session = Depends(get_db)):
 def debug_seed_default_tenant():
     """Emergency endpoint to seed default tenant. Remove after fix."""
     try:
-        from config import settings
-        if settings.default_tenant:
-            _ensure_default_tenant(settings.default_tenant)
-            return {"success": True, "message": f"Default tenant '{settings.default_tenant}' ensured"}
-        else:
-            return {"success": False, "message": "No default_tenant configured"}
+        # Import and run the raw SQL seeding script
+        import sys
+        from pathlib import Path
+        
+        # Add scripts path
+        scripts_path = Path(__file__).parent / "scripts"
+        sys.path.insert(0, str(scripts_path))
+        
+        # Import and run the raw seeding function
+        from seed_default_tenant_raw import seed_default_tenant_raw
+        seed_default_tenant_raw()
+        
+        return {"success": True, "message": "Default tenant seeding completed"}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e), "traceback": str(e.__traceback__)}
     # Collect common sizes if present
     for size in [64,128,256,512]:
         for field in ['logo_light','app_icon']:

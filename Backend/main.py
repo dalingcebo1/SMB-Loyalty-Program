@@ -717,6 +717,19 @@ def public_tenant_manifest(request: Request, db: Session = Depends(get_db)):
     branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
     icons = []
     base = f"/static/branding/{ctx.id}"
+
+@app.get('/api/debug/seed-default-tenant')
+def debug_seed_default_tenant():
+    """Emergency endpoint to seed default tenant. Remove after fix."""
+    try:
+        from config import settings
+        if settings.default_tenant:
+            _ensure_default_tenant(settings.default_tenant)
+            return {"success": True, "message": f"Default tenant '{settings.default_tenant}' ensured"}
+        else:
+            return {"success": False, "message": "No default_tenant configured"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
     # Collect common sizes if present
     for size in [64,128,256,512]:
         for field in ['logo_light','app_icon']:

@@ -58,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          pip install -r Backend/requirements.txt
+          pip install -r Backend/dev-requirements.txt
 
       - name: Run backend readiness smoke tests
         run: |
@@ -67,6 +67,7 @@ jobs:
           DATABASE_URL=sqlite:///./dev.db pytest tests/test_health_endpoints.py tests/test_auth.py -q
 
       - name: Azure login (OIDC)
+        id: azure_login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -334,7 +335,7 @@ jobs:
           fi
 
       - name: Fetch latest container logs on failure
-        if: failure()
+        if: failure() && steps.azure_login.outcome == 'success'
         run: |
           echo "Collecting most recent logs for troubleshooting..."
           latest=${LATEST_REVISION:-$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)}

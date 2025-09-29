@@ -193,7 +193,11 @@ class Redemption(Base):
     redeemed_at  = Column(DateTime, nullable=True)
     qr_code      = Column(Text, nullable=True)
     reward_name  = Column(String, nullable=True)
-    order_id     = Column(String, ForeignKey("orders.id"), nullable=True)
+    # Backward compat note: API schemas expose order_id as string, but the
+    # underlying orders table uses an integer primary key. Store FK as Integer
+    # to keep the relational integrity enforced by the database layer while
+    # allowing the API to continue returning stringified ids.
+    order_id     = Column(Integer, ForeignKey("orders.id"), nullable=True)
     __table_args__ = (
         UniqueConstraint("user_id", "milestone", "status", name="uq_redemption_user_milestone_status"),
     )

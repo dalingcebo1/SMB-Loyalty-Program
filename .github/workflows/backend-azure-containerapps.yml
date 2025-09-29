@@ -24,6 +24,14 @@ on:
         description: "Max seconds to wait for /health/ready=200"
         required: false
         default: '90'
+      run_seed_all:
+        description: "Run Backend/seed_all.py inside the container after deploy (true/false)"
+        required: false
+        default: 'true'
+      seed_reset:
+        description: "Drop/recreate tables before seeding (USE WITH EXTREME CAUTION)"
+        required: false
+        default: 'false'
 
 env:
   AZURE_RESOURCE_GROUP: SMB-Loyalty-Group
@@ -40,6 +48,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies for smoke tests
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r Backend/requirements.txt
+
+      - name: Run backend readiness smoke tests
+        run: |
+          set -euo pipefail
+          cd Backend
+          DATABASE_URL=sqlite:///./dev.db pytest tests/test_health_endpoints.py -q
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -93,6 +118,9 @@ jobs:
           export S_CA_FIREBASE_PROJECT_ID='${{ secrets.CA_FIREBASE_PROJECT_ID }}'
           export V_VITE_FIREBASE_PROJECT_ID='${{ vars.VITE_FIREBASE_PROJECT_ID }}'
           export S_VITE_FIREBASE_PROJECT_ID='${{ secrets.VITE_FIREBASE_PROJECT_ID }}'
+          export S_CA_DEFAULT_TENANT='${{ secrets.CA_DEFAULT_TENANT }}'
+          export S_DEFAULT_TENANT='${{ secrets.DEFAULT_TENANT }}'
+          export V_DEFAULT_TENANT='${{ vars.DEFAULT_TENANT }}'
 
           RESOLVED_DATABASE_URL=$(res db S_CA_DATABASE_URL S_DATABASE_URL)
           RESOLVED_ALLOWED_ORIGINS=$(res ao S_CA_ALLOWED_ORIGINS S_ALLOWED_ORIGINS)
@@ -105,9 +133,11 @@ jobs:
           RESOLVED_YOCO_WEBHOOK_SECRET=$(res yw S_CA_YOCO_WEBHOOK_SECRET S_YOCO_WEBHOOK_SECRET)
           RESOLVED_FIREBASE_CREDENTIALS_JSON=$(res fj S_CA_FIREBASE_CREDENTIALS_JSON S_FIREBASE_CREDENTIALS_JSON)
           RESOLVED_FIREBASE_PROJECT_ID=$(res fp S_CA_FIREBASE_PROJECT_ID V_VITE_FIREBASE_PROJECT_ID S_VITE_FIREBASE_PROJECT_ID)
+          RESOLVED_DEFAULT_TENANT=$(res dt S_CA_DEFAULT_TENANT S_DEFAULT_TENANT V_DEFAULT_TENANT)
+          if [ -z "$RESOLVED_DEFAULT_TENANT" ]; then RESOLVED_DEFAULT_TENANT="default"; fi
 
           echo "Diagnostics (Set/Missing only; values masked):"
-          for k in RESOLVED_DATABASE_URL RESOLVED_ALLOWED_ORIGINS RESOLVED_FRONTEND_URL RESOLVED_SECRET_KEY RESOLVED_JWT_SECRET RESOLVED_RESET_SECRET RESOLVED_SENTRY_DSN RESOLVED_YOCO_SECRET_KEY RESOLVED_YOCO_WEBHOOK_SECRET RESOLVED_FIREBASE_CREDENTIALS_JSON RESOLVED_FIREBASE_PROJECT_ID; do
+          for k in RESOLVED_DATABASE_URL RESOLVED_ALLOWED_ORIGINS RESOLVED_FRONTEND_URL RESOLVED_SECRET_KEY RESOLVED_JWT_SECRET RESOLVED_RESET_SECRET RESOLVED_SENTRY_DSN RESOLVED_YOCO_SECRET_KEY RESOLVED_YOCO_WEBHOOK_SECRET RESOLVED_FIREBASE_CREDENTIALS_JSON RESOLVED_FIREBASE_PROJECT_ID RESOLVED_DEFAULT_TENANT; do
             if [ -n "${!k}" ]; then echo " - $k: set"; else echo " - $k: MISSING"; fi
           done
 
@@ -164,6 +194,7 @@ jobs:
           [ -n "$RESOLVED_YOCO_WEBHOOK_SECRET" ] && env_args+=( "YOCO_WEBHOOK_SECRET=$RESOLVED_YOCO_WEBHOOK_SECRET" )
           [ -n "$RESOLVED_FIREBASE_CREDENTIALS_JSON" ] && env_args+=( "FIREBASE_CREDENTIALS_JSON=$RESOLVED_FIREBASE_CREDENTIALS_JSON" )
           [ -n "$RESOLVED_FIREBASE_PROJECT_ID" ] && env_args+=( "FIREBASE_PROJECT_ID=$RESOLVED_FIREBASE_PROJECT_ID" )
+          [ -n "$RESOLVED_DEFAULT_TENANT" ] && env_args+=( "DEFAULT_TENANT=$RESOLVED_DEFAULT_TENANT" )
 
           az containerapp update \
             -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
@@ -214,6 +245,20 @@ jobs:
           echo "Running Alembic migrations inside container app..."
           az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --command "alembic -c alembic.ini upgrade head"
           echo "Migrations complete"
+
+      - name: Seed baseline data (optional)
+        if: ${{ inputs.run_seed_all != 'false' }}
+        run: |
+          set -euo pipefail
+          seed_args="--force-update"
+          if [ '${{ inputs.seed_reset }}' = 'true' ]; then
+            echo "WARNING: --reset requested; dropping all tables before seeding." >&2
+            seed_args="$seed_args --reset"
+          fi
+          echo "Running Backend/seed_all.py $seed_args inside container"
+          az containerapp exec -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+            --command "sh -lc 'cd /app && python seed_all.py $seed_args'"
+          echo "Seeding complete"
 
       - name: Health check (ready-lite + diagnostics)
         run: |
@@ -268,4 +313,15 @@ jobs:
             echo "Smoke tests passed"
           else
             echo "No CA_PUBLIC_API_URL provided; skipping external smoke tests due to backend ringfencing."
+          fi
+
+      - name: Fetch latest container logs on failure
+        if: failure()
+        run: |
+          echo "Collecting most recent logs for troubleshooting..."
+          latest=${LATEST_REVISION:-$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)}
+          if [ -n "$latest" ]; then
+            az containerapp logs show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --tail 200 || true
+          else
+            echo "No revision name available to fetch logs." >&2
           fi

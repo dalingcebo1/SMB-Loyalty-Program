@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.models import User
+from app.plugins.auth.routes import get_password_hash
 from sqlalchemy.orm import Session
 from config import settings
 
@@ -54,5 +55,31 @@ def test_signup_and_login_flow(client: TestClient, db_session: Session):
 def test_invalid_login(client: TestClient):
     # Unknown credentials
     resp = client.post("/api/auth/login", data={"username": "noone@example.com", "password": "nopass"})
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Invalid credentials"
+
+
+def test_long_password_is_rejected_cleanly(client: TestClient, db_session: Session):
+    email = "longpass@example.com"
+    user = User(
+        email=email,
+        hashed_password=get_password_hash("short-pass"),
+        onboarded=True,
+        first_name="Long",
+        last_name="Pass",
+        phone="0800000000",
+        tenant_id=settings.default_tenant,
+        role="user",
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    resp = client.post(
+        "/api/auth/login",
+        data={
+            "username": email,
+            "password": "p" * 120,
+        },
+    )
     assert resp.status_code == 401
     assert resp.json()["detail"] == "Invalid credentials"

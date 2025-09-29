@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, List, Callable
 
@@ -22,7 +23,10 @@ from utils.firebase_admin import admin_auth
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 from config import settings
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_ctx = CryptContext(
+    schemes=["bcrypt_sha256", "bcrypt"],
+    deprecated="auto",
+)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 reset_serializer = URLSafeTimedSerializer(settings.reset_secret)
 
@@ -107,7 +111,19 @@ def get_password_hash(password: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_ctx.verify(plain, hashed)
+    try:
+        return pwd_ctx.verify(plain, hashed)
+    except ValueError as exc:
+        if len(plain) > 72:
+            logging.getLogger("auth").warning(
+                "Rejected password exceeding bcrypt limit", extra={"length": len(plain)}
+            )
+            return False
+        logging.getLogger("auth").error("Password verification failed", exc_info=exc)
+        return False
+    except Exception:
+        logging.getLogger("auth").exception("Unexpected password verification failure")
+        return False
 
 
 def create_access_token(email: str) -> str:
@@ -325,6 +341,9 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
             meta={"email": form.username}
         )
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    if pwd_ctx.needs_update(user.hashed_password):
+        user.hashed_password = get_password_hash(form.password)
+        db.commit()
     # Determine onboarding steps - consistent logic for all login types
     onboarding_required = False
     next_step = None

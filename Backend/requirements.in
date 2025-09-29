@@ -4,6 +4,8 @@ alembic  # Migration tool
 fastapi==0.116.1  # Pin FastAPI to align with tested version
 itsdangerous
 passlib[bcrypt]
+# Temporary pin: passlib 1.7.4 expects bcrypt < 4 (uses deprecated __about__ attr)
+bcrypt==3.2.2
 pydantic==2.11.7  # Match requirements.txt pinned
 pydantic-settings==2.10.1
 email-validator>=2

@@ -30,8 +30,10 @@ const Login: React.FC = () => {
     setAuthError(null);
     try {
       const currentUser = await login(data.email, data.password);
-      if (currentUser.role === "staff" || currentUser.role === "admin") {
-        navigate("/staff", { replace: true });
+      if (currentUser.role === "admin") {
+        navigate("/admin", { replace: true });
+      } else if (currentUser.role === "staff") {
+        navigate("/staff/dashboard", { replace: true });
       } else {
         navigate("/", { replace: true });
       }

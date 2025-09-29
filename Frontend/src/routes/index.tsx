@@ -78,7 +78,10 @@ const EnhancedProfile = lazy(() => import('../pages/EnhancedProfile'));
 // Route guards
 function RequireAuth() {
   const { user, loading } = useAuth();
-  if (loading) return <LoadingFallback message="Loading user…" />;
+  const hasToken = typeof window !== 'undefined' ? Boolean(localStorage.getItem('token')) : false;
+  if (loading || (!user && hasToken)) {
+    return <LoadingFallback message="Restoring your session…" />;
+  }
   if (!user) return <Navigate to="/login" replace />;
   return <Outlet />;
 }

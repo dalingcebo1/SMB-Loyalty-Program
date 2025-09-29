@@ -1,16 +1,15 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import LoadingFallback from "./LoadingFallback";
 
 const RequireAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Loading…</p>
-      </div>
-    );
+  const hasToken = typeof window !== 'undefined' ? Boolean(localStorage.getItem('token')) : false;
+
+  if (loading || (!user && hasToken)) {
+    return <LoadingFallback message="Checking admin access…" />;
   }
 
   if (!user || user.role !== "admin") {

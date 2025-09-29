@@ -19,7 +19,7 @@ requests
 slowapi
 sendgrid
 sqlalchemy==2.0.43
-uvicorn[standard]==0.35.0  # Ensure matching server version to avoid upstream auto-upgrades
+uvicorn[standard]==0.37.0  # Ensure matching server version to avoid upstream auto-upgrades
 PyJWT
 firebase-admin
 Pillow

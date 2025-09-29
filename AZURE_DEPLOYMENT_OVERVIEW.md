@@ -123,6 +123,7 @@ curl -i $API/api/public/tenant-meta
 
 | Issue | Symptom | Resolution |
 |-------|---------|------------|
+| Revision stuck in Provisioned state | `az containerapp revision show` reports new revision but replicas stay at 0; container logs include `ENV_VALIDATION` errors | Fix production guards: ensure `ALLOWED_ORIGINS` is a specific domain list (no `*`), `SECRET_KEY` ≥ 24 chars, and `DATABASE_URL` is a real Postgres URL. Update the Container App secrets/env vars, then redeploy the latest image. |
 | Missing secrets | 500 on startup; env validation failure | Re-run env workflow; verify secrets present |
 | Health check failing post deploy | Readiness step loops & fails | View logs, check DB connectivity & migrations |
 | Migration drift errors in tests | CI drift check failing | Generate new Alembic revision & apply |

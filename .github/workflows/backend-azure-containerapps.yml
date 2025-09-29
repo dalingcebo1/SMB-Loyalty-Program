@@ -76,6 +76,12 @@ jobs:
           export S_ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}'
           export S_CA_FRONTEND_URL='${{ secrets.CA_FRONTEND_URL }}'
           export S_FRONTEND_URL='${{ secrets.FRONTEND_URL }}'
+          export S_CA_JWT_SECRET='${{ secrets.CA_JWT_SECRET }}'
+          export S_JWT_SECRET='${{ secrets.JWT_SECRET }}'
+          export S_CA_RESET_SECRET='${{ secrets.CA_RESET_SECRET }}'
+          export S_RESET_SECRET='${{ secrets.RESET_SECRET }}'
+          export S_CA_SECRET_KEY='${{ secrets.CA_SECRET_KEY }}'
+          export S_SECRET_KEY='${{ secrets.SECRET_KEY }}'
           export S_CA_SENTRY_DSN='${{ secrets.CA_SENTRY_DSN }}'
           export S_SENTRY_DSN='${{ secrets.SENTRY_DSN }}'
           export S_CA_YOCO_SECRET_KEY='${{ secrets.CA_YOCO_SECRET_KEY }}'
@@ -91,6 +97,9 @@ jobs:
           RESOLVED_DATABASE_URL=$(res db S_CA_DATABASE_URL S_DATABASE_URL)
           RESOLVED_ALLOWED_ORIGINS=$(res ao S_CA_ALLOWED_ORIGINS S_ALLOWED_ORIGINS)
           RESOLVED_FRONTEND_URL=$(res fe S_CA_FRONTEND_URL S_FRONTEND_URL)
+          RESOLVED_JWT_SECRET=$(res js S_CA_JWT_SECRET S_JWT_SECRET)
+          RESOLVED_RESET_SECRET=$(res rs S_CA_RESET_SECRET S_RESET_SECRET)
+          RESOLVED_SECRET_KEY=$(res sk S_CA_SECRET_KEY S_SECRET_KEY)
           RESOLVED_SENTRY_DSN=$(res sd S_CA_SENTRY_DSN S_SENTRY_DSN)
           RESOLVED_YOCO_SECRET_KEY=$(res ys S_CA_YOCO_SECRET_KEY S_YOCO_SECRET_KEY)
           RESOLVED_YOCO_WEBHOOK_SECRET=$(res yw S_CA_YOCO_WEBHOOK_SECRET S_YOCO_WEBHOOK_SECRET)
@@ -98,9 +107,21 @@ jobs:
           RESOLVED_FIREBASE_PROJECT_ID=$(res fp S_CA_FIREBASE_PROJECT_ID V_VITE_FIREBASE_PROJECT_ID S_VITE_FIREBASE_PROJECT_ID)
 
           echo "Diagnostics (Set/Missing only; values masked):"
-          for k in RESOLVED_DATABASE_URL RESOLVED_ALLOWED_ORIGINS RESOLVED_FRONTEND_URL RESOLVED_SENTRY_DSN RESOLVED_YOCO_SECRET_KEY RESOLVED_YOCO_WEBHOOK_SECRET RESOLVED_FIREBASE_CREDENTIALS_JSON RESOLVED_FIREBASE_PROJECT_ID; do
+          for k in RESOLVED_DATABASE_URL RESOLVED_ALLOWED_ORIGINS RESOLVED_FRONTEND_URL RESOLVED_SECRET_KEY RESOLVED_JWT_SECRET RESOLVED_RESET_SECRET RESOLVED_SENTRY_DSN RESOLVED_YOCO_SECRET_KEY RESOLVED_YOCO_WEBHOOK_SECRET RESOLVED_FIREBASE_CREDENTIALS_JSON RESOLVED_FIREBASE_PROJECT_ID; do
             if [ -n "${!k}" ]; then echo " - $k: set"; else echo " - $k: MISSING"; fi
           done
+
+          secret_args=()
+          [ -n "$RESOLVED_SECRET_KEY" ] && secret_args+=("secretkey=$RESOLVED_SECRET_KEY")
+          [ -n "$RESOLVED_JWT_SECRET" ] && secret_args+=("jwtsecretkey=$RESOLVED_JWT_SECRET")
+          [ -n "$RESOLVED_RESET_SECRET" ] && secret_args+=("resetsecretkey=$RESOLVED_RESET_SECRET")
+
+          if [ ${#secret_args[@]} -gt 0 ]; then
+            echo "Updating Container App secrets"
+            az containerapp secret set \
+              -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+              --secrets "${secret_args[@]}"
+          fi
 
           # Production hard checks: prevent deploying with an invalid DB URL
           ENVIRONMENT=production

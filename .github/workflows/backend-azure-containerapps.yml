@@ -330,7 +330,7 @@ jobs:
           while [ $SECONDS -lt $end ]; do
             attempt=$((attempt+1))
             # Run curl inside the running container to avoid public ingress/ringfence
-            if python /tmp/az_containerapp_exec.py "sh -lc 'code=\$(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/health/ready-lite || echo 000); echo ready-lite:\ $code; [ \"$code\" = 200 ]'"; then
+            if python /tmp/az_containerapp_exec.py 'sh -lc '\''code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health/ready-lite || echo 000); echo ready-lite: $code; [ "$code" = 200 ]'\'''; then
               ok=true
               break
             fi
@@ -368,7 +368,7 @@ jobs:
           set -euo pipefail
           echo "Checking DB connectivity via internal call to /api/public/tenant-meta (expects 200/304/404, not 5xx) ..."
           # Use explicit header to exercise DB lookup; 404 is acceptable if tenant doesn't exist
-          python /tmp/az_containerapp_exec.py "sh -lc 'code=\$(curl -s -H \"X-Tenant-ID: ${DEFAULT_TENANT:-default}\" -o /dev/null -w \"%{http_code}\" http://localhost:8000/api/public/tenant-meta || echo 000); echo tenant-meta:\ $code; case \"$code\" in 5*) exit 1 ;; *) exit 0 ;; esac'"
+          python /tmp/az_containerapp_exec.py 'sh -lc '\''code=$(curl -s -H "X-Tenant-ID: ${DEFAULT_TENANT:-default}" -o /dev/null -w "%{http_code}" http://localhost:8000/api/public/tenant-meta || echo 000); echo tenant-meta: $code; case "$code" in 5*) exit 1 ;; *) exit 0 ;; esac'\'''
           echo "DB connectivity appears OK (no 5xx from tenant-meta)."
 
       - name: Post-deploy smoke tests

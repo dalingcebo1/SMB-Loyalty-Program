@@ -214,11 +214,27 @@ jobs:
           echo "Latest revision: $latest"
           
           while true; do
-            state=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --query properties.provisioningState -o tsv 2>/dev/null || echo unknown)
-            replicas=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --query "length(properties.instances)" -o tsv 2>/dev/null || echo 0)
-            echo "Revision $latest state=$state replicas=$replicas"
-            
-            if [ "$state" = "Succeeded" ] && [ "$replicas" -ge 1 ]; then
+            show_values=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+              --query "[properties.latestReadyRevisionName, properties.replicasSummary.running, properties.provisioningState]" \
+              -o tsv 2>/dev/null | tr '\n' ' ' || true)
+            if [ -z "$show_values" ]; then
+              ready="unknown"
+              app_running="0"
+              app_state="unknown"
+            else
+              read -r ready app_running app_state <<<"$show_values"
+            fi
+
+            ready=${ready:-unknown}
+            app_running=${app_running:-0}
+            app_state=${app_state:-unknown}
+            if [ "$app_running" = "None" ]; then app_running=0; fi
+
+            rev_state=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --query properties.provisioningState -o tsv 2>/dev/null || echo unknown)
+            rev_running=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --query properties.runningState -o tsv 2>/dev/null || echo unknown)
+            echo "Revision $latest ready=$ready (app state=$app_state) revProvisioning=$rev_state revRunningState=$rev_running replicasRunning=$app_running"
+
+            if [ "$ready" = "$latest" ]; then
               echo "Revision $latest is running successfully"
               break
             fi

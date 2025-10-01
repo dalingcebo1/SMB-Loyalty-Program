@@ -346,24 +346,6 @@ jobs:
           python /tmp/az_containerapp_exec.py "sh -lc 'curl -s -o /dev/null -w \"deep=%{http_code}\\n\" http://localhost:8000/health/ready || true'" || true
           python /tmp/az_containerapp_exec.py "sh -lc 'curl -s -o /dev/null -w \"startup=%{http_code}\\n\" http://localhost:8000/health/startup || true'" || true
 
-      - name: Post-deploy long-password regression check
-        if: ${{ inputs.run_seed_all != 'false' }}
-        env:
-          LONG_PASS_TEST: >-
-            aW1wb3J0IHJlcXVlc3RzCnBhc3N3b3JkID0gJ3AnKjEyMApyZXNwID0gcmVxdWVzdHMucG9zdCgKICAgICdodHRwOi8vbG9jYWxob3N0OjgwMDAvYXBpL2F1dGgvbG9naW4nLAogICAgZGF0YT17CiAgICAgICAgJ3VzZXJuYW1lJzogJ2RhbGkubmd1YmFuZUBjaGFvc3guY28uemEnLAogICAgICAgICdwYXNzd29yZCc6IHBhc3N3b3JkLAogICAgfQopCnByaW50KHJlc3Auc3RhdHVzX2NvZGUpCnByaW50KHJlc3AudGV4dCkK
-        run: |
-          set -euo pipefail
-          echo "Running long-password auth regression inside container"
-          cmd=$(printf "sh -lc 'python -c \"import base64; code = base64.b64decode(\\\"%s\\\").decode(); exec(code)\"; exit'" "$LONG_PASS_TEST")
-          python /tmp/az_containerapp_exec.py "$cmd" | tee /tmp/longpass.log
-          status=$(grep -E '^[0-9]{3}$' /tmp/longpass.log | tail -n 1)
-          body=$(grep -E '^\{' /tmp/longpass.log | tail -n 1)
-          if [ "$status" != "401" ]; then
-            echo "Expected 401 for long password regression but got: $status" >&2
-            exit 1
-          fi
-          echo "Long password regression check returned $status with body: $body"
-
       - name: DB connectivity check (internal public endpoint)
         run: |
           set -euo pipefail

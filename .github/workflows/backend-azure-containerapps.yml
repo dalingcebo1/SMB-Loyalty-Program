@@ -354,7 +354,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "Running long-password auth regression inside container"
-          python /tmp/az_containerapp_exec.py $'sh -lc \'cd /app && python - <<"PY"\nimport requests\npassword = "p" * 120\nresp = requests.post(\'http://localhost:8000/api/auth/login\', json={\'username\': \'dali.ngubane@chaosx.co.za\', \'password\': password})\nprint(resp.status_code)\nprint(resp.text)\nPY\n\'' | tee /tmp/longpass.log
+          cmd=$(printf "sh -lc 'python -c \"import base64; code = base64.b64decode(\\\"%s\\\").decode(); exec(code)\"; exit'" "$LONG_PASS_TEST")
+          python /tmp/az_containerapp_exec.py "$cmd" | tee /tmp/longpass.log
           status=$(grep -E '^[0-9]{3}$' /tmp/longpass.log | tail -n 1)
           body=$(grep -E '^\{' /tmp/longpass.log | tail -n 1)
           if [ "$status" != "401" ]; then

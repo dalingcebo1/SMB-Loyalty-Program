@@ -713,11 +713,49 @@ def public_tenant_theme(request: Request, db: Session = Depends(get_db)):
 
 @app.get('/api/public/tenant-manifest')
 def public_tenant_manifest(request: Request, db: Session = Depends(get_db)):
-    # Resolve tenant context with production fallback to avoid 500s
+    """Return a lightweight web manifest for the active tenant."""
     ctx = _resolve_public_tenant(request, db)
     branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
-    icons = []
-    base = f"/static/branding/{ctx.id}"
+
+    icons: list[dict[str, str]] = []
+    branding_base = f"/static/branding/{ctx.id}"
+    dir_path = os.path.join(settings.static_dir or 'static', 'branding', ctx.id)
+
+    if os.path.isdir(dir_path):
+        available_files = set(os.listdir(dir_path))
+        for size in [64, 128, 256, 512]:
+            for field in ['logo_light', 'app_icon']:
+                prefix = f"{field}-"
+                match = next(
+                    (
+                        fname
+                        for fname in available_files
+                        if fname.startswith(prefix) and f"-{size}" in fname
+                    ),
+                    None,
+                )
+                if match:
+                    icons.append(
+                        {
+                            'src': f"{branding_base}/{match}",
+                            'sizes': f"{size}x{size}",
+                            'type': 'image/png',
+                        }
+                    )
+                    break  # prefer the first matching asset per size
+
+    manifest = {
+        'name': (branding.public_name if branding else ctx.id) or ctx.id,
+        'short_name': (branding.short_name if branding else ctx.id) or ctx.id,
+        'theme_color': (branding.primary_color if branding else None) or '#3366ff',
+        'background_color': '#ffffff',
+        'display': 'standalone',
+        'icons': icons,
+        'id': ctx.id,
+        'start_url': '/',
+    }
+
+    return manifest
 
 @app.get('/api/debug/seed-default-tenant')
 def debug_seed_default_tenant():
@@ -738,32 +776,6 @@ def debug_seed_default_tenant():
         return {"success": True, "message": "Default tenant seeding completed"}
     except Exception as e:
         return {"success": False, "error": str(e), "traceback": str(e.__traceback__)}
-    # Collect common sizes if present
-    for size in [64,128,256,512]:
-        for field in ['logo_light','app_icon']:
-            hashed_prefix = f"{field}-"  # matches generation pattern
-            # naive file system scan
-            dir_path = os.path.join(settings.static_dir or 'static','branding', ctx.id)
-            if os.path.isdir(dir_path):
-                for fname in os.listdir(dir_path):
-                    if fname.startswith(f"{field}-") and f"-{size}" in fname:
-                        icons.append({
-                            'src': f"{base}/{fname}",
-                            'sizes': f"{size}x{size}",
-                            'type': 'image/png'
-                        })
-                        break
-    manifest = {
-        'name': (branding.public_name if branding else ctx.id) or ctx.id,
-        'short_name': (branding.short_name if branding else ctx.id) or ctx.id,
-        'theme_color': (branding.primary_color if branding else None) or '#3366ff',
-        'background_color': '#ffffff',
-        'display': 'standalone',
-        'icons': icons,
-        'id': ctx.id,
-        'start_url': '/',
-    }
-    return manifest
 
 # ─── Startup: create missing tables ───────────────────────────────────────────
 @app.on_event("startup")

@@ -9,12 +9,12 @@ concurrency:
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'Backend/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'Backend/**'
 

@@ -7,6 +7,19 @@
 
 We’re building a modern loyalty infrastructure that empowers small businesses and global enterprises alike to reward customers through seamless digital experiences—starting with QR-based programs for SMBs, and evolving into a blockchain-powered loyalty protocol for the future of partner ecosystems.
 
+## Branch Strategy & Environments
+
+- `main` — production-only. The Azure Container App deploy workflow triggers automatically on pushes to this branch and requires review + passing checks.
+- `develop` — integration branch. Open Codespaces from here, land feature branches via PR, and soak changes without touching production.
+- `feature/*` (or `fix/*`) — short-lived branches for day-to-day work. Open PRs into `develop`.
+
+Deployment flow:
+1. Feature branch → PR → `develop` (CI must pass).
+2. When `develop` is stable, open a PR from `develop` to `main`.
+3. Merge into `main` to trigger the production deployment workflow. Use the manual `workflow_dispatch` on `backend-azure-containerapps.yml` for ad-hoc redeploys without merging.
+
+Tip: protect both `main` and `develop` with required reviews and status checks so accidental pushes do not bypass CI/CD.
+
 ## GitHub Secrets
 Add the following secrets under Settings > Secrets > Actions in your GitHub repository:
 

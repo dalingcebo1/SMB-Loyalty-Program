@@ -44,6 +44,7 @@ from app.core.logging_config import configure_logging
 from app.core.client_ip import get_client_ip
 import logging
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import ProgrammingError, OperationalError, DatabaseError
 from fastapi.responses import JSONResponse
 from app.core.database import get_db
 from models import Tenant as _Tenant
@@ -627,14 +628,38 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
 
     # Try primary_domain lookup
     for h in ordered:
-        t = db.query(_Tenant).filter_by(primary_domain=h).first()
+        try:
+            t = db.query(_Tenant).filter_by(primary_domain=h).first()
+        except (ProgrammingError, OperationalError, DatabaseError) as exc:
+            logger.warning(
+                "tenant lookup failed; returning no-tenant",
+                extra={"host": h},
+                exc_info=exc,
+            )
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            return None
         if t:
             request.state.tenant_id = t.id
             return TenantContext(t)
 
     # Production fallback to default tenant
     if settings.environment == 'production' and settings.default_tenant:
-        t = db.query(_Tenant).filter_by(id=settings.default_tenant).first()
+        try:
+            t = db.query(_Tenant).filter_by(id=settings.default_tenant).first()
+        except (ProgrammingError, OperationalError, DatabaseError) as exc:
+            logger.warning(
+                "default tenant lookup failed; returning no-tenant",
+                extra={"default_tenant": settings.default_tenant},
+                exc_info=exc,
+            )
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            return None
         if t:
             request.state.tenant_id = t.id
             return TenantContext(t)
@@ -696,8 +721,29 @@ def public_tenant_theme(request: Request, db: Session = Depends(get_db)):
     """
     # Resolve tenant context with production fallback to avoid 500s
     ctx = _resolve_public_tenant(request, db)
-    branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
-    tenant = db.query(_Tenant).filter_by(id=ctx.id).first()
+    if ctx is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "tenant_not_found", "detail": "No tenant available for this request"},
+        )
+    try:
+        branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
+    except (ProgrammingError, OperationalError, DatabaseError) as exc:
+        logger.warning("tenant branding lookup failed", extra={"tenant_id": ctx.id}, exc_info=exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        branding = None
+    try:
+        tenant = db.query(_Tenant).filter_by(id=ctx.id).first()
+    except (ProgrammingError, OperationalError, DatabaseError) as exc:
+        logger.warning("tenant lookup failed", extra={"tenant_id": ctx.id}, exc_info=exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        tenant = None
     data = {
         'tenant_id': ctx.id,
         'public_name': (branding.public_name if branding else None) or (tenant.name if tenant else None),
@@ -715,7 +761,20 @@ def public_tenant_theme(request: Request, db: Session = Depends(get_db)):
 def public_tenant_manifest(request: Request, db: Session = Depends(get_db)):
     """Return a lightweight web manifest for the active tenant."""
     ctx = _resolve_public_tenant(request, db)
-    branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
+    if ctx is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "tenant_not_found", "detail": "No tenant available for this request"},
+        )
+    try:
+        branding = db.query(TenantBranding).filter_by(tenant_id=ctx.id).first()
+    except (ProgrammingError, OperationalError, DatabaseError) as exc:
+        logger.warning("tenant branding lookup failed", extra={"tenant_id": ctx.id}, exc_info=exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        branding = None
 
     icons: list[dict[str, str]] = []
     branding_base = f"/static/branding/{ctx.id}"

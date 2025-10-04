@@ -1,3 +1,5 @@
+import os
+
 from config import settings
 
 from sqlalchemy import create_engine, event, text
@@ -23,7 +25,7 @@ connect_args to ensure all sessions share the same transient database.
 
 # 2) Create the SQLAlchemy engine with tuned pool settings
 engine_kwargs: dict = {
-    "echo": True,
+    "echo": os.environ.get("SQLALCHEMY_ECHO", "true").lower() in {"1", "true", "yes", "on"},
     "future": True,
     "pool_pre_ping": True,  # checks connections before using to avoid stale ones
 }

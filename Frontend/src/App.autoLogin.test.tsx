@@ -1,7 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from './utils/test-utils';
-import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 // Stub AuthProvider and useAuth for this test
 vi.mock('./auth/AuthProvider', () => ({
@@ -50,11 +49,7 @@ describe('Auto-login flow', () => {
   });
 
   it('redirects to welcome page on valid token', async () => {
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />, { routerProps: { initialEntries: ['/'] } });
     // Ensure welcome heading appears after auth load
     const heading = await waitFor(() => screen.getByRole('heading', { name: /Welcome Test User/i }));
     expect(heading).toBeInTheDocument();

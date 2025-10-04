@@ -7018,6 +7018,23 @@
         "summary": "Get Customer Orders"
       }
     },
+    "/api/debug/seed-default-tenant": {
+      "get": {
+        "description": "Emergency endpoint to seed default tenant. Remove after fix.",
+        "operationId": "debug_seed_default_tenant_api_debug_seed_default_tenant_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Debug Seed Default Tenant"
+      }
+    },
     "/api/dev/": {
       "get": {
         "description": "Basic status + tenant list.",
@@ -10672,41 +10689,8 @@
     },
     "/api/public/tenant-manifest": {
       "get": {
+        "description": "Return a lightweight web manifest for the active tenant.",
         "operationId": "public_tenant_manifest_api_public_tenant_manifest_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-Tenant-ID",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Tenant-Id"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-Bypass-Tenant-Cache",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Bypass-Tenant-Cache"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -10715,16 +10699,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Public Tenant Manifest"
@@ -10734,40 +10708,6 @@
       "get": {
         "description": "Public discovery endpoint for frontend.\n\nReturns lightweight tenant metadata (vertical, features, branding) resolved\nfrom Host header or X-Tenant-ID. Includes ETag + 60s public cache and a\nsimple IP-based rate limit (capacity/window via settings).",
         "operationId": "public_tenant_meta_api_public_tenant_meta_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-Tenant-ID",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Tenant-Id"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-Bypass-Tenant-Cache",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Bypass-Tenant-Cache"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -10776,16 +10716,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Public Tenant Meta"
@@ -10795,40 +10725,6 @@
       "get": {
         "description": "Lightweight branding/theme info for white-label bootstrap.\n\nReturns minimal fields required to paint initial shell (colors + logos).\nCached similarly to /api/public/tenant-meta.",
         "operationId": "public_tenant_theme_api_public_tenant_theme_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-Tenant-ID",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Tenant-Id"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-Bypass-Tenant-Cache",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Bypass-Tenant-Cache"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -10837,16 +10733,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Public Tenant Theme"

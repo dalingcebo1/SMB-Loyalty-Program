@@ -1,31 +1,63 @@
-from fastapi.testclient import TestClient
-from app.main import app
-from app.models import User
-from app.core.database import get_db
-from sqlalchemy.orm import Session
-from app.plugins.auth.routes import _role_capabilities
+from datetime import datetime
 
-client = TestClient(app)
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.models import Tenant, User
+from app.plugins.auth.routes import _role_capabilities, create_access_token
+from config import settings
+
+
+def _ensure_tenant(db: Session) -> Tenant:
+    tenant = db.query(Tenant).filter_by(id=settings.default_tenant).first()
+    if tenant:
+        return tenant
+    tenant = Tenant(
+        id=settings.default_tenant,
+        name="Default Tenant",
+        loyalty_type="basic",
+        vertical_type="carwash",
+        created_at=datetime.utcnow(),
+        config={},
+    )
+    db.add(tenant)
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+
+def _ensure_user(db: Session, email: str, role: str) -> User:
+    user = db.query(User).filter_by(email=email).first()
+    if user:
+        if user.role != role:
+            user.role = role
+            db.commit()
+            db.refresh(user)
+        return user
+
+    tenant = _ensure_tenant(db)
+    user = User(
+        email=email,
+        tenant_id=tenant.id,
+        role=role,
+        onboarded=True,
+        created_at=datetime.utcnow(),
+        first_name="Test",
+        last_name="User",
+        phone="0000000000",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def _make_token(email: str):
-    from app.plugins.auth.routes import create_access_token
     return create_access_token(email)
 
 
-def test_admin_metrics_capability(tmp_path):
-    # create admin user directly
-    db: Session = next(get_db())
-    u = db.query(User).filter_by(email='admin@example.com').first()
-    if not u:
-        from datetime import datetime
-        from app.models import Tenant
-        t = db.query(Tenant).first()
-        if not t:
-            t = Tenant(id='default', name='Default', loyalty_type='basic', vertical_type='carwash', created_at=datetime.utcnow(), config={})
-            db.add(t); db.commit()
-        u = User(email='admin@example.com', tenant_id=t.id, role='admin', onboarded=True)
-        db.add(u); db.commit()
+def test_admin_metrics_capability(client: TestClient, db_session: Session, tmp_path):
+    _ensure_user(db_session, 'admin@example.com', 'admin')
     token = _make_token('admin@example.com')
     r = client.get('/api/admin/metrics', headers={'Authorization': f'Bearer {token}'})
     assert r.status_code in (200, 403)  # If missing analytics.advanced capability (role map) treated by 403
@@ -42,18 +74,8 @@ def test_admin_has_required_capabilities_superset():
     assert not missing, f"Admin role missing capabilities: {missing}"
 
 
-def test_staff_forbidden_on_admin_endpoints():
-    db: Session = next(get_db())
-    staff = db.query(User).filter_by(email='staff1@example.com').first()
-    if not staff:
-        from datetime import datetime
-        from app.models import Tenant
-        t = db.query(Tenant).first()
-        if not t:
-            t = Tenant(id='default', name='Default', loyalty_type='basic', vertical_type='carwash', created_at=datetime.utcnow(), config={})
-            db.add(t); db.commit()
-        staff = User(email='staff1@example.com', tenant_id=t.id, role='staff', onboarded=True)
-        db.add(staff); db.commit()
+def test_staff_forbidden_on_admin_endpoints(client: TestClient, db_session: Session):
+    _ensure_user(db_session, 'staff1@example.com', 'staff')
     token = _make_token('staff1@example.com')
     # Staff should not access analytics advanced metrics
     r1 = client.get('/api/admin/metrics', headers={'Authorization': f'Bearer {token}'})
@@ -66,36 +88,15 @@ def test_staff_forbidden_on_admin_endpoints():
     assert r4.status_code == 403
 
 
-def test_jobs_view_forbidden_without_capability():
-    # create normal user
-    db: Session = next(get_db())
-    u = db.query(User).filter_by(email='user1@example.com').first()
-    if not u:
-        from datetime import datetime
-        from app.models import Tenant
-        t = db.query(Tenant).first()
-        if not t:
-            t = Tenant(id='default', name='Default', loyalty_type='basic', vertical_type='carwash', created_at=datetime.utcnow(), config={})
-            db.add(t); db.commit()
-        u = User(email='user1@example.com', tenant_id=t.id, role='user', onboarded=True)
-        db.add(u); db.commit()
+def test_jobs_view_forbidden_without_capability(client: TestClient, db_session: Session):
+    _ensure_user(db_session, 'user1@example.com', 'user')
     token = _make_token('user1@example.com')
     r = client.get('/api/admin/jobs', headers={'Authorization': f'Bearer {token}'})
     assert r.status_code == 403
 
 
-def test_rate_limit_edit_and_jobs_retry_admin():
-    db: Session = next(get_db())
-    admin = db.query(User).filter_by(email='admin2@example.com').first()
-    if not admin:
-        from datetime import datetime
-        from app.models import Tenant
-        t = db.query(Tenant).first()
-        if not t:
-            t = Tenant(id='default', name='Default', loyalty_type='basic', vertical_type='carwash', created_at=datetime.utcnow(), config={})
-            db.add(t); db.commit()
-        admin = User(email='admin2@example.com', tenant_id=t.id, role='admin', onboarded=True)
-        db.add(admin); db.commit()
+def test_rate_limit_edit_and_jobs_retry_admin(client: TestClient, db_session: Session):
+    _ensure_user(db_session, 'admin2@example.com', 'admin')
     token = _make_token('admin2@example.com')
     # upsert a rate limit
     rl = client.post('/api/admin/rate-limits', params={'scope':'test_scope','capacity':99,'per_seconds':60}, headers={'Authorization': f'Bearer {token}'})

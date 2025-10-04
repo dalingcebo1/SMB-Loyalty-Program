@@ -10,6 +10,8 @@ def reload_settings():
         pass
     if 'config' in importlib.sys.modules:
         del importlib.sys.modules['config']
+    if 'Backend.config' in importlib.sys.modules:
+        del importlib.sys.modules['Backend.config']
     import config  # noqa: F401
     return config.settings, config.Settings
 

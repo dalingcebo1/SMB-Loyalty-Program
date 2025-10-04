@@ -5,12 +5,16 @@ Provides DB setup, rate limit reset, and a configured TestClient with auth
 dependency overrides where appropriate.
 """
 import os
+
+# Ensure the test database URL is configured *before* importing the database layer
+# so the engine and SessionLocal bind to the fast in-memory sqlite database even if
+# a developer has a local DATABASE_URL configured for Postgres.
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
 import pytest
 from fastapi.testclient import TestClient
 from app.core.database import Base, get_db, engine, SessionLocal as TestingSessionLocal
 import main
-
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 app = main.app
 try:  # best-effort initial metadata creation
@@ -87,6 +91,27 @@ def reset_rate_limits():
     rl._BUCKETS.clear()      # type: ignore[attr-defined]
     rl._PENALTIES.clear()    # type: ignore[attr-defined]
     rl._CONFIG.clear()       # type: ignore[attr-defined]
+    yield
+
+
+@pytest.fixture(autouse=True)
+def reset_jobs_queue():
+    """Clear in-memory job queue state between tests.
+
+    Prevents cross-test contamination where a previously enqueued job could
+    be executed by later tests expecting a clean queue (e.g. run-next).
+    """
+    from app.core import jobs
+
+    jobs._queue.clear()       # type: ignore[attr-defined]
+    jobs._jobs.clear()        # type: ignore[attr-defined]
+    jobs._history.clear()     # type: ignore[attr-defined]
+    jobs._DEAD_LETTER.clear() # type: ignore[attr-defined]
+    jobs._scheduled.clear()   # type: ignore[attr-defined]
+    try:
+        jobs._overflow_rejections = 0  # type: ignore[attr-defined]
+    except Exception:
+        pass
     yield
 
 @pytest.fixture(scope="function")

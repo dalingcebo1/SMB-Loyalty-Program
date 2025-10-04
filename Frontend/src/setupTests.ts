@@ -3,6 +3,13 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import type { ReactNode } from 'react';
+
+// Ensure window.alert is available for components that expect it (e.g. AuthProvider social login)
+const alertMock = vi.fn();
+vi.stubGlobal('alert', alertMock);
+if (typeof window !== 'undefined') {
+  window.alert = alertMock;
+}
 // Partial react-hook-form mock: preserve actual exports for FormProvider and Controller
 vi.mock('react-hook-form', async () => {
   const actual = await vi.importActual<typeof import('react-hook-form')>('react-hook-form');

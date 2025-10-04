@@ -19,7 +19,7 @@ def test_access_log_middleware_exception_handled(caplog):
     def boom():  # pragma: no cover - executed via client
         raise RuntimeError("boom")
 
-    with TestClient(app) as client:
+    with TestClient(app, raise_server_exceptions=False) as client:
         with caplog.at_level(logging.INFO):
             resp = client.get("/boom")
     # FastAPI converts unhandled exception to 500

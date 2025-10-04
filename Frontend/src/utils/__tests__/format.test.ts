@@ -12,8 +12,8 @@ describe('currency formatting helpers', () => {
 
   it('formatCurrency formats rands with 2 decimals', () => {
   const out = strip(formatCurrency(1234.5)).replace(/\s/g,'');
-  // Accept either comma or dot as thousands separator; decimal part should be 50
-  expect(out).toMatch(/1234[.,]50|1[.,]?23450/);
+  // Accept optional thousands separator and ensure two decimal places remain "50"
+  expect(out).toMatch(/^1234[.,]50$|^1[.,]?234[.,]50$/);
   });
 
   it('formatCents converts integer cents to rands', () => {

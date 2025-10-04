@@ -1,21 +1,9 @@
 # Basic tests for /api/payments/business-analytics endpoint
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
 from app.models import Service, User, Order, Payment
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-
-client = TestClient(app)
-
-@pytest.fixture
-def db_session():
-    from app.core.database import SessionLocal
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
 
 @pytest.fixture(autouse=True)
 def seed_minimal(db_session: Session):
@@ -41,7 +29,7 @@ def seed_minimal(db_session: Session):
     db_session.query(Service).delete()
     db_session.commit()
 
-def test_business_analytics_basic():
+def test_business_analytics_basic(client: TestClient, db_session: Session):
     r = client.get('/api/payments/business-analytics')
     assert r.status_code == 200, r.text
     data = r.json()

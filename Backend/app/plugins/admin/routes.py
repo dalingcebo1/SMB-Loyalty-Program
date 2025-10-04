@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.plugins.auth.routes import require_capability
@@ -14,8 +16,9 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/metrics", dependencies=[Depends(require_capability("analytics.advanced"))])
 def metrics(db: Session = Depends(get_db)):
     orders_total = db.query(func.count(Order.id)).scalar() or 0
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
     active_users_30d = db.query(func.count(func.distinct(Order.user_id))) \
-        .filter(Order.created_at >= func.datetime('now', '-30 days')).scalar() or 0
+        .filter(Order.created_at >= thirty_days_ago).scalar() or 0
     snap = bucket_snapshot(include_penalties=False)
     return {
         "orders_total": orders_total,

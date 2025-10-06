@@ -5,7 +5,6 @@ Provides DB setup, rate limit reset, and a configured TestClient with auth
 dependency overrides where appropriate.
 """
 import os
-from typing import Optional
 
 # Ensure the test database URL is configured *before* importing the database layer
 # so the engine and SessionLocal bind to the fast in-memory sqlite database even if
@@ -151,26 +150,25 @@ def client(db_session, monkeypatch):
     app.dependency_overrides[require_staff] = lambda: None
 
     # Provide a default current_user from the test DB
-    def override_get_current_user(request: Optional[Request] = None):
+    def override_get_current_user(request: Request):
         """Test override that honors Authorization bearer token when provided.
 
         Falls back to the first user (seeded default) to maintain existing
         tests that rely on an implicit user when no header is sent.
         """
         try:
-            if request is not None:
-                auth = request.headers.get("Authorization")
-                if auth:
-                    token = auth.split()[1] if auth.lower().startswith("bearer ") else auth
-                    try:
-                        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.algorithm])
-                        email = payload.get("sub")
-                        if email:
-                            u = db_session.query(User).filter_by(email=email).first()
-                            if u:
-                                return u
-                    except JWTError:
-                        pass
+            auth = request.headers.get("Authorization")
+            if auth:
+                token = auth.split()[1] if auth.lower().startswith("bearer ") else auth
+                try:
+                    payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.algorithm])
+                    email = payload.get("sub")
+                    if email:
+                        u = db_session.query(User).filter_by(email=email).first()
+                        if u:
+                            return u
+                except JWTError:
+                    pass
         except Exception:
             pass
         # Fallback: first user in DB

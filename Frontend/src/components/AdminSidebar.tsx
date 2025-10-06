@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import { adminNavGroups, allAdminNavItems } from '../features/admin/nav/adminNavConfig';
+import { readJsonStorage } from '../utils/storage';
 
 const STORAGE_KEY = 'admin_nav_collapsed_v1';
 
@@ -17,11 +18,12 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
   const { has } = useCapabilities();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [collapsed, setCollapsed] = useState<CollapsedState>(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
-  });
+  const [collapsed, setCollapsed] = useState<CollapsedState>(() => readJsonStorage<CollapsedState>(STORAGE_KEY, {}));
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(collapsed)); }, [collapsed]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(collapsed)); } catch { /* ignore quota */ }
+  }, [collapsed]);
 
   // Redirect legacy embedded staff paths if user navigates directly (optional progressive enhancement)
   const legacyMatch = useMemo(() => allAdminNavItems.find(i => i.legacyPaths?.some(lp => pathname.startsWith(lp))), [pathname]);

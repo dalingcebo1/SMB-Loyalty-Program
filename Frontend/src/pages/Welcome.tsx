@@ -11,6 +11,7 @@ import { track } from '../utils/analytics';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Wash } from '../types';
+import { readJsonStorage } from '../utils/storage';
 import './Welcome.css';
 
 interface UpcomingReward {
@@ -26,17 +27,22 @@ const Welcome: React.FC = () => {
   // If admin user, send to admin dashboard
   // Initialize from localStorage if available - must be called before any early returns
   const [visits, setVisits] = useState(() => {
-    const stored = localStorage.getItem("visits");
-    return stored ? parseInt(stored, 10) : 0;
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem('visits') : null;
+    const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+    if (Number.isNaN(parsed)) {
+      if (raw) {
+        try { window.localStorage.removeItem('visits'); } catch { /* ignore */ }
+      }
+      return 0;
+    }
+    return parsed;
   });
   const [justOnboarded, setJustOnboarded] = useState(false);
   const [activeWashes, setActiveWashes] = useState<Wash[]>(() => {
-    const stored = localStorage.getItem("activeWashes");
-    return stored ? JSON.parse(stored) : [];
+    return readJsonStorage<Wash[]>("activeWashes", []);
   });
   const [recentlyEnded, setRecentlyEnded] = useState<Wash | null>(() => {
-    const stored = localStorage.getItem("recentlyEnded");
-    return stored ? JSON.parse(stored) : null;
+    return readJsonStorage<Wash | null>("recentlyEnded", null);
   });
   const [upcomingReward, setUpcomingReward] = useState<UpcomingReward | null>(null);
   const [rewardsReady, setRewardsReady] = useState<unknown[]>([]);
@@ -55,8 +61,8 @@ const Welcome: React.FC = () => {
         localStorage.setItem("visits", String(visitsRes.data.visits || 0));
         const ready = visitsRes.data.rewards_ready || [];
         setRewardsReady(ready);
-        const upcoming = visitsRes.data.upcoming_rewards || [];
-        setUpcomingReward(upcoming[0] || null);
+  const upcoming = Array.isArray(visitsRes.data.upcoming_rewards) ? visitsRes.data.upcoming_rewards : [];
+  setUpcomingReward(upcoming[0] || null);
         if (washRes.data.status === "active") {
           setActiveWashes([washRes.data]);
           setRecentlyEnded(null);
@@ -73,10 +79,18 @@ const Welcome: React.FC = () => {
           localStorage.removeItem("activeWashes");
           localStorage.removeItem("recentlyEnded");
         }
-      } catch {
+      } catch (err) {
+        console.warn('Welcome fetch failed, resetting cached state', err);
         setVisits(0);
         setActiveWashes([]);
         setRecentlyEnded(null);
+        try {
+          window.localStorage.removeItem('visits');
+          window.localStorage.removeItem('activeWashes');
+          window.localStorage.removeItem('recentlyEnded');
+        } catch {
+          /* ignore */
+        }
       } finally {
         if (isMounted) {
           timer = setTimeout(fetchAll, 3000);

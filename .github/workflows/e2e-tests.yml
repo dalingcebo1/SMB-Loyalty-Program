@@ -107,6 +107,8 @@ jobs:
           echo "Frontend did not start in time"; exit 1
         
       - name: Run Cypress tests
+        env:
+          CYPRESS_BASE_URL: http://127.0.0.1:3000
         run: |
           cd Frontend
           xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run cypress:run

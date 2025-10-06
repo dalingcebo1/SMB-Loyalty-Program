@@ -3,6 +3,8 @@
 PYTHON ?= python
 FRONTEND_DIR := Frontend
 FRONTEND_NPM := npm --prefix $(FRONTEND_DIR)
+DEV_ENV_FILE ?= Backend/.env.local
+DEV_ENV_PREFIX := APP_ENV_FILE=$(DEV_ENV_FILE)
 
 .PHONY: help snapshot-openapi refresh-openapi openapi-diff test coverage lint format backend-quality freeze-deps drift-check strict migrate \
 	frontend-install frontend-build frontend-build-safe frontend-build-minimal frontend-dev frontend-preview \
@@ -54,37 +56,37 @@ openapi-diff:
 	rm -f $$tmpfile
 
 test:
-	cd Backend && PYTHONPATH=. $(PYTHON) -m pytest -q
+	cd Backend && PYTHONPATH=. pytest -q
 
 backend-quality:
-	cd Backend && ruff check . && mypy . && PYTHONPATH=. $(PYTHON) -m pytest --cov=Backend --cov-report=term-missing -q
+	cd Backend && $(DEV_ENV_PREFIX) ruff check . && $(DEV_ENV_PREFIX) mypy . && PYTHONPATH=. pytest --cov=Backend --cov-report=term-missing -q
 
 strict:
 	# Fail if formatting changes would be applied
-	cd Backend && ruff format --check .
+	 cd Backend && $(DEV_ENV_PREFIX) ruff format --check .
 	# Lint & type check
-	cd Backend && ruff check . && mypy .
+	 cd Backend && $(DEV_ENV_PREFIX) ruff check . && $(DEV_ENV_PREFIX) mypy .
 	# Security / vulnerability audit
-	cd Backend && pip-audit -r requirements.txt || (echo "pip-audit found issues" && exit 1)
+	 cd Backend && $(DEV_ENV_PREFIX) pip-audit -r requirements.txt || (echo "pip-audit found issues" && exit 1)
 	# Migration drift
-	cd Backend && $(PYTHON) scripts/check_migration_drift.py
+	 cd Backend && $(DEV_ENV_PREFIX) $(PYTHON) scripts/check_migration_drift.py
 	# Run tests with enforced coverage threshold
-	cd Backend && PYTHONPATH=. $(PYTHON) -m pytest --cov=Backend --cov-report=term-missing --cov-fail-under=70 -q
+	cd Backend && PYTHONPATH=. pytest --cov=Backend --cov-report=term-missing --cov-fail-under=70 -q
 
 lint:
-	cd Backend && ruff check .
+	 cd Backend && $(DEV_ENV_PREFIX) ruff check .
 
 format:
-	cd Backend && ruff format .
+	 cd Backend && $(DEV_ENV_PREFIX) ruff format .
 
 coverage:
-	cd Backend && PYTHONPATH=. $(PYTHON) -m pytest --cov=Backend --cov-report=term-missing --cov-fail-under=70 -q
+	cd Backend && PYTHONPATH=. pytest --cov=Backend --cov-report=term-missing --cov-fail-under=70 -q
 
 freeze-deps:
-	./Backend/scripts/freeze_backend_deps.sh
+	 $(DEV_ENV_PREFIX) ./Backend/scripts/freeze_backend_deps.sh
 
 drift-check:
-	cd Backend && $(PYTHON) scripts/check_migration_drift.py
+	 cd Backend && $(DEV_ENV_PREFIX) $(PYTHON) scripts/check_migration_drift.py
 
 migrate:
 	@echo "[migrate] Using DATABASE_URL=$${DATABASE_URL:-<not set>}"

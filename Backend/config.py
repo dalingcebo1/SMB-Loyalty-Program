@@ -1,7 +1,10 @@
+import os
 from functools import lru_cache
-from typing import Optional
-from pydantic_settings import BaseSettings
-from pydantic import EmailStr, Field, Extra
+from pathlib import Path
+from typing import Optional, Sequence
+
+from pydantic import EmailStr, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Map to existing .env names
@@ -98,12 +101,41 @@ class Settings(BaseSettings):
             self.frontend_url = self._strip_wrapping_quotes(self.frontend_url)
         return self
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = Extra.ignore  # ignore any unrecognized vars
-        # Allow population by field name or alias (so existing code using attribute names still works).
-        populate_by_name = True
+    model_config = SettingsConfigDict(
+        env_file_encoding="utf-8",
+        extra="ignore",
+        populate_by_name=True,
+    )
+
+
+def _discover_env_files() -> Sequence[str]:
+    """Return env files in precedence order (local overrides first).
+
+    Supports an optional APP_ENV_FILE override for one-off scenarios while
+    keeping the historic .env fallback for production compatibility.
+    """
+
+    base_dir = Path(__file__).resolve().parent
+    discovered: list[str] = []
+
+    override = os.getenv("APP_ENV_FILE")
+    if override:
+        override_path = Path(override)
+        if not override_path.is_absolute():
+            override_path = base_dir / override_path
+        discovered.append(str(override_path))
+
+    for candidate in (".env.local", ".env.development", ".env.production", ".env"):
+        candidate_path = base_dir / candidate
+        candidate_str = str(candidate_path)
+        if candidate_path.exists() and candidate_str not in discovered:
+            discovered.append(candidate_str)
+
+    if os.getenv("PYTEST_CURRENT_TEST") and not override:
+        # Tests expect pure code defaults unless they opt-in via APP_ENV_FILE.
+        return []
+
+    return discovered
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -114,7 +146,11 @@ def get_settings() -> Settings:
     side-effects. In production this behaves like a singleton while avoiding
     import-time evaluation issues if env vars are injected late in the lifecycle.
     """
-    s = Settings()
+    env_files = _discover_env_files()
+    if env_files:
+        s = Settings(_env_file=env_files)
+    else:
+        s = Settings()
     return s.normalise()
 
 # Backward compatibility: keep a module-level singleton reference for existing imports.

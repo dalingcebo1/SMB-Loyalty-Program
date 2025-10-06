@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Tenant, User
 from app.plugins.auth.routes import _role_capabilities, create_access_token
+from app.services.tenant_settings import get_tenant_settings
 from config import settings
 
 
@@ -52,13 +53,19 @@ def _ensure_user(db: Session, email: str, role: str) -> User:
     return user
 
 
-def _make_token(email: str):
-    return create_access_token(email)
+def _make_token(db: Session, email: str):
+    user = db.query(User).filter_by(email=email).first()
+    assert user is not None
+    tenant = user.tenant
+    if not tenant:
+        tenant = db.query(Tenant).filter_by(id=user.tenant_id).first()
+    tenant_settings = get_tenant_settings(tenant) if tenant else None
+    return create_access_token(email, tenant_settings=tenant_settings)
 
 
 def test_admin_metrics_capability(client: TestClient, db_session: Session, tmp_path):
     _ensure_user(db_session, 'admin@example.com', 'admin')
-    token = _make_token('admin@example.com')
+    token = _make_token(db_session, 'admin@example.com')
     r = client.get('/api/admin/metrics', headers={'Authorization': f'Bearer {token}'})
     assert r.status_code in (200, 403)  # If missing analytics.advanced capability (role map) treated by 403
     if r.status_code == 200:
@@ -76,7 +83,7 @@ def test_admin_has_required_capabilities_superset():
 
 def test_staff_forbidden_on_admin_endpoints(client: TestClient, db_session: Session):
     _ensure_user(db_session, 'staff1@example.com', 'staff')
-    token = _make_token('staff1@example.com')
+    token = _make_token(db_session, 'staff1@example.com')
     # Staff should not access analytics advanced metrics
     r1 = client.get('/api/admin/metrics', headers={'Authorization': f'Bearer {token}'})
     assert r1.status_code == 403
@@ -90,14 +97,14 @@ def test_staff_forbidden_on_admin_endpoints(client: TestClient, db_session: Sess
 
 def test_jobs_view_forbidden_without_capability(client: TestClient, db_session: Session):
     _ensure_user(db_session, 'user1@example.com', 'user')
-    token = _make_token('user1@example.com')
+    token = _make_token(db_session, 'user1@example.com')
     r = client.get('/api/admin/jobs', headers={'Authorization': f'Bearer {token}'})
     assert r.status_code == 403
 
 
 def test_rate_limit_edit_and_jobs_retry_admin(client: TestClient, db_session: Session):
     _ensure_user(db_session, 'admin2@example.com', 'admin')
-    token = _make_token('admin2@example.com')
+    token = _make_token(db_session, 'admin2@example.com')
     # upsert a rate limit
     rl = client.post('/api/admin/rate-limits', params={'scope':'test_scope','capacity':99,'per_seconds':60}, headers={'Authorization': f'Bearer {token}'})
     assert rl.status_code in (200,403)  # 403 if capability mapping missing; else ensure structure

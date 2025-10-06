@@ -13,3 +13,6 @@ Provide project context and coding guidelines that AI should follow when generat
 - Check first if we already have running backend and frontend servers and use those to test.
 - Check the problems section for compilation issues instead of running build.
 - Never delete any .env files without my permission. 
+- never edit the .env files without my permission.
+- Always ask for my permission before making any changes to configuration files.
+- Always ask for my permission before making any changes to deployment files.

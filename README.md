@@ -34,6 +34,20 @@ Add the following secrets under Settings > Secrets > Actions in your GitHub repo
 ### Python Version
 The backend targets Python 3.11 (CI currently runs 3.10/3.12 for compatibility). Use 3.11 locally for closest parity.
 
+### Environment Files & Isolation
+
+Copy the local example to keep development separate from production:
+
+```
+cp Backend/.env.local.example Backend/.env.local
+```
+
+All backend Make targets now export `APP_ENV_FILE=Backend/.env.local` automatically so local commands use SQLite unless you override it. To point at a different configuration temporarily:
+
+```
+APP_ENV_FILE=Backend/.env.staging make test
+```
+
 ### Installing Dependencies
 ```
 cd Backend
@@ -86,7 +100,15 @@ Currently non-blocking in CI; convert to blocking once critical issues addressed
 ```
 uvicorn main:app --reload --port 8000
 ```
-Environment variables are loaded from `Backend/.env` (see `config.py`).
+Environment variables are loaded from layered files (highest precedence first):
+
+- `Backend/.env.local` – developer-specific overrides (not committed).
+- `Backend/.env.production` – optional checked-in reference for production defaults.
+- `Backend/.env` – legacy fallback; keep for platform deployments until migrated.
+
+Create `Backend/.env.local` from the template below to keep your local secrets out of the shared production file.
+
+> Tip: set `APP_ENV_FILE=/absolute/path/to/file` to point the backend at a one-off dotenv when debugging.
 
 ### Structured Logging
 Production uses JSON logs; locally you get human-readable logs. To preview prod style:
@@ -185,7 +207,11 @@ BACKEND_TAG=v1.0.0 FRONTEND_TAG=v1.0.0 docker compose -f docker-compose.prod.yml
 `scripts/build_push_backend.sh <tag>` and `scripts/build_push_frontend.sh <tag>` allow local image build & push (requires `docker login ghcr.io`). These mirror the CI process for ad‑hoc hotfix validation.
 
 ### Sanitized Environment Templates
-`Backend/.env.example` and `Frontend/.env.example` enumerate required variables. Copy to `.env` / `.env.local` and fill secrets locally. Add production secrets via your hosting platform (Azure, etc.).
+`Backend/.env.example` and `Frontend/.env.example` enumerate required variables. For local development:
+
+1. Copy `Backend/.env.example` to `Backend/.env.local` and adjust values (SQLite by default).
+2. Leave `Backend/.env` for production secrets only (or replace with `Backend/.env.production` and configure your host to load it).
+3. Add production secrets via Azure Container Apps or your orchestration platform rather than committing them.
 
 ### Rollback
 Redeploy previous known-good tag (no rebuild). Database downgrades are avoided unless absolutely necessary; prefer forward fixes.

@@ -65,6 +65,7 @@ class Tenant(Base):
         back_populates="tenants",
     )
     branding       = relationship("TenantBranding", back_populates="tenant", uselist=False, cascade="all, delete-orphan")
+    integrations   = relationship("TenantIntegration", back_populates="tenant", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_tenants_vertical_domain", "vertical_type", "primary_domain"),
@@ -251,6 +252,25 @@ class TenantBranding(Base):
     extra            = Column(JSON, nullable=False, default=dict)
 
     tenant = relationship("Tenant", back_populates="branding")
+
+
+class TenantIntegration(Base):
+    __tablename__ = "tenant_integrations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    category = Column(String, nullable=False)
+    provider = Column(String, nullable=False)
+    config = Column(JSON, nullable=False, default=dict)
+    secrets = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    tenant = relationship("Tenant", back_populates="integrations")
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "category", "provider", name="uq_tenant_category_provider"),
+    )
 
 
 # --- Subscription Plans ---

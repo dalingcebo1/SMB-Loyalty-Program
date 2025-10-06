@@ -2,6 +2,7 @@
 import os
 import hmac
 import hashlib
+import json
 import requests
 import jwt
 from datetime import datetime, timedelta
@@ -20,6 +21,7 @@ from app.models import (
     Order,
     OrderVehicle,
     Payment,
+    Tenant,
     User,
     Service,
     Vehicle,
@@ -30,6 +32,7 @@ from app.models import (
 )
 from app.utils.qr import generate_qr_code
 from app.plugins.loyalty.routes import _create_jwt, SECRET_KEY
+from app.services.tenant_settings import TenantSettingsService, get_tenant_settings
 
 # --- Visit logging helper --------------------------------------------------
 def _log_visit_for_paid_order(db: Session, order: Order):
@@ -67,6 +70,26 @@ def _log_visit_for_paid_order(db: Session, order: Order):
     vc.updated_at = datetime.utcnow()
 from app.plugins.auth.routes import get_current_user
 
+
+def _get_tenant_settings_by_id(tenant_id: Optional[str], db: Session) -> Optional[TenantSettingsService]:
+    if not tenant_id:
+        return None
+    tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant:
+        return None
+    return get_tenant_settings(tenant)
+
+
+def _get_payment_settings_for_order(order: Order, db: Session) -> Optional[TenantSettingsService]:
+    tenant_id = order.tenant_id
+    if not tenant_id and order.user:
+        tenant_id = order.user.tenant_id
+    if not tenant_id and order.user_id:
+        user = db.query(User).filter_by(id=order.user_id).first()
+        if user:
+            tenant_id = user.tenant_id
+    return _get_tenant_settings_by_id(tenant_id, db)
+
 # Optional auth dependency: do not force 401 for public metrics endpoints.
 from fastapi import Header
 from typing import Optional
@@ -86,9 +109,6 @@ def optional_current_user(authorization: Optional[str] = Header(default=None, al
         return get_current_user(token=token, db=db)  # reuse underlying logic
     except Exception:
         return None
-
-YOCO_SECRET_KEY = settings.yoco_secret_key
-YOCO_WEBHOOK_SECRET = settings.yoco_webhook_secret
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -117,7 +137,15 @@ def charge_yoco(
     existing = db.query(Payment).filter_by(order_id=orderId, status="success").first()
     if existing:
         raise HTTPException(status_code=400, detail="Order already paid")
-    headers = {"X-Auth-Secret-Key": YOCO_SECRET_KEY, "Content-Type": "application/json"}
+    tenant_settings = _get_payment_settings_for_order(order, db)
+    payment_settings = tenant_settings.payment if tenant_settings else None
+    provider = (payment_settings.provider if payment_settings else "yoco").lower()
+    if provider != "yoco":
+        raise HTTPException(status_code=400, detail="Unsupported payment provider for this tenant")
+    secret_key = payment_settings.secret_key if payment_settings and payment_settings.secret_key else settings.yoco_secret_key
+    if not secret_key:
+        raise HTTPException(status_code=500, detail="Payment provider credentials not configured")
+    headers = {"X-Auth-Secret-Key": secret_key, "Content-Type": "application/json"}
     yoco_payload = {"token": token, "amountInCents": amount, "currency": "ZAR"}
     try:
         resp = requests.post(
@@ -143,6 +171,7 @@ def charge_yoco(
             raw_response=yoco_data,
             created_at=datetime.utcnow(),
             card_brand=card_brand,
+            source=provider,
         )
         db.add(payment)
         db.commit()
@@ -160,7 +189,7 @@ def charge_yoco(
         created_at=datetime.utcnow(),
         card_brand=card_brand,
         qr_code_base64=qr_code,
-        source="yoco",
+        source=provider,
     )
     db.add(payment)
     order.status = "paid"
@@ -176,16 +205,27 @@ async def yoco_webhook(
     yoco_signature: str = Header(None, alias="Yoco-Signature"),
 ):
     raw_body = await request.body()
-    computed = hmac.new(
-        YOCO_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(computed, yoco_signature or ""):
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
-    payload = await request.json()
+    try:
+        payload = json.loads(raw_body.decode("utf-8") if isinstance(raw_body, bytes) else raw_body)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid webhook payload")
     data = payload.get("data", {})
     charge_id = data.get("id")
     status_ = data.get("status")
     payment = db.query(Payment).filter_by(transaction_id=charge_id).first()
+    order = None
+    tenant_settings = None
+    if payment:
+        order = db.query(Order).filter_by(id=payment.order_id).first()
+        if order:
+            tenant_settings = _get_payment_settings_for_order(order, db)
+    payment_settings = tenant_settings.payment if tenant_settings else None
+    secret = payment_settings.webhook_secret if payment_settings and payment_settings.webhook_secret else settings.yoco_webhook_secret
+    if not secret:
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+    computed = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(computed, yoco_signature or ""):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
     if not payment:
         return {"status": "ignored"}
     if status_ == "successful":
@@ -193,7 +233,6 @@ async def yoco_webhook(
         payment.status = "success"
         if not payment.qr_code_base64:
             payment.qr_code_base64 = generate_qr_code(payment.reference)["qr_code_base64"]
-        order = db.query(Order).filter_by(id=payment.order_id).first()
         if order:
             order.status = "paid"
             if not already_success:  # only log on transition to success

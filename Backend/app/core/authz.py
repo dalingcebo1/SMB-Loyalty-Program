@@ -14,7 +14,6 @@ from config import settings
 from app.models import User
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from jose import jwt, JWTError
 
 
 class UserRole(str, Enum):
@@ -97,27 +96,12 @@ def developer_only(
     # Extract bearer token (support either 'Bearer <token>' or raw token)
     token = authorization.split()[1] if authorization.lower().startswith('bearer ') else authorization
 
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.algorithm])
-        email: str | None = payload.get("sub")  # type: ignore[assignment]
-        if not email:
-            raise credentials_exception
-        user = db.query(User).filter_by(email=email).first()
-        if not user:
-            # In development, allow anonymous access to dev console even if user record is missing
-            if settings.environment == 'development':
-                return None
-            raise credentials_exception
-    except JWTError:
-        # In development, treat invalid/expired tokens as anonymous for dev tools
+        user = get_current_user(token=token, db=db)
+    except HTTPException as exc:
         if settings.environment == 'development':
             return None
-        raise credentials_exception
+        raise exc
 
     try:
         role_enum = UserRole(user.role)  # type: ignore[arg-type]

@@ -26,8 +26,13 @@ def secure_ping(
 
     scope = f"user_tenant:{ctx.id}"
     key = str(current.id or current.email)
-    cap = settings.rate_limit_user_tenant_capacity
-    win = settings.rate_limit_user_tenant_window_seconds
+    rate_limit = ctx.settings.get_rate_limit(
+        scope="user_tenant",
+        default_capacity=settings.rate_limit_user_tenant_capacity,
+        default_window=settings.rate_limit_user_tenant_window_seconds,
+    )
+    cap = rate_limit.capacity
+    win = rate_limit.window_seconds
 
     if not check_rate(scope=scope, key=key, capacity=cap, per_seconds=win):
         retry_after = compute_retry_after(scope, key, cap, win)

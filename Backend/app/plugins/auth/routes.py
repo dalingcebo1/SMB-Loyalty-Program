@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -18,17 +18,51 @@ from app.models import InviteToken, Tenant
 from config import settings
 from app.core.database import get_db
 from app.models import User, VisitCount, Vehicle
+from app.services.tenant_settings import TenantSettingsService, get_tenant_settings
 from utils.firebase_admin import admin_auth
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
-from config import settings
 
 pwd_ctx = CryptContext(
     schemes=["bcrypt_sha256", "bcrypt"],
     deprecated="auto",
 )
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-reset_serializer = URLSafeTimedSerializer(settings.reset_secret)
+
+
+def _get_tenant_settings_by_id(tenant_id: Optional[str], db: Session) -> Optional[TenantSettingsService]:
+    if not tenant_id:
+        return None
+    tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant:
+        return None
+    return get_tenant_settings(tenant)
+
+
+def _get_tenant_settings_for_user(user: User, db: Session) -> Optional[TenantSettingsService]:
+    if getattr(user, "tenant", None):
+        return get_tenant_settings(user.tenant)
+    if not user.tenant_id:
+        return None
+    tenant = db.query(Tenant).filter_by(id=user.tenant_id).first()
+    if not tenant:
+        return None
+    return get_tenant_settings(tenant)
+
+
+def _issue_access_token(user: User, db: Session) -> str:
+    tenant_settings = _get_tenant_settings_for_user(user, db)
+    return create_access_token(user.email, tenant_settings=tenant_settings)
+
+
+def _issue_reset_token(user: User, db: Session) -> Tuple[str, Optional[TenantSettingsService]]:
+    tenant_settings = _get_tenant_settings_for_user(user, db)
+    if tenant_settings:
+        serializer = URLSafeTimedSerializer(tenant_settings.auth.reset_secret)
+        signed = serializer.dumps(user.email)
+        return f"{tenant_settings.tenant.id}::{signed}", tenant_settings
+    serializer = URLSafeTimedSerializer(settings.reset_secret)
+    return serializer.dumps(user.email), None
 
 router = APIRouter(tags=["auth"])
 
@@ -126,7 +160,12 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(email: str) -> str:
+def create_access_token(email: str, tenant_settings: Optional[TenantSettingsService] = None) -> str:
+    if tenant_settings:
+        auth_settings = tenant_settings.auth
+        expire = datetime.utcnow() + timedelta(minutes=auth_settings.access_token_expire_minutes)
+        to_encode = {"sub": email, "tid": tenant_settings.tenant.id, "exp": expire}
+        return jwt.encode(to_encode, auth_settings.jwt_secret, algorithm=auth_settings.algorithm)
     expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode = {"sub": email, "exp": expire}
     return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.algorithm)
@@ -134,18 +173,62 @@ def create_access_token(email: str) -> str:
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     from jose.exceptions import ExpiredSignatureError
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    tenant_settings: Optional[TenantSettingsService] = None
+    tenant_id_claim: Optional[str] = None
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.algorithm])
+        unverified = jwt.get_unverified_claims(token)
+        tenant_id_claim = unverified.get("tid")
+    except Exception:
+        tenant_id_claim = None
+
+    if tenant_id_claim:
+        tenant_settings = _get_tenant_settings_by_id(tenant_id_claim, db)
+        if not tenant_settings:
+            raise credentials_exception
+
+    try:
+        if tenant_settings:
+            payload = jwt.decode(
+                token,
+                tenant_settings.auth.jwt_secret,
+                algorithms=[tenant_settings.auth.algorithm],
+            )
+        else:
+            payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.algorithm])
         email: str = payload.get("sub")
         if not email:
             raise credentials_exception
+        token_tenant_id = payload.get("tid")
         user = db.query(User).filter_by(email=email).first()
         if not user:
+            raise credentials_exception
+        if tenant_settings:
+            if token_tenant_id and token_tenant_id != tenant_settings.tenant.id:
+                raise credentials_exception
+            if user.tenant_id != tenant_settings.tenant.id:
+                raise credentials_exception
+        elif token_tenant_id:
+            # Token carries tenant but we lacked config; treat as invalid for safety
+            settings_for_token = _get_tenant_settings_by_id(token_tenant_id, db)
+            if settings_for_token:
+                try:
+                    jwt.decode(
+                        token,
+                        settings_for_token.auth.jwt_secret,
+                        algorithms=[settings_for_token.auth.algorithm],
+                    )
+                except JWTError:
+                    raise credentials_exception
+                if user.tenant_id != settings_for_token.tenant.id:
+                    raise credentials_exception
+                return user
             raise credentials_exception
         return user
     except ExpiredSignatureError:
@@ -308,7 +391,7 @@ def social_login(req: SocialLoginRequest, db: Session = Depends(get_db)):
             # User has profile and phone but verification may be incomplete
             onboarding_required = True
             next_step = "PHONE_VERIFICATION"
-    token = create_access_token(email)
+    token = _issue_access_token(user, db)
     return LoginResponse(
         access_token=token,
         onboarding_required=onboarding_required,
@@ -364,7 +447,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
         elif not user.onboarded:
             onboarding_required = True
             next_step = "PHONE_VERIFICATION"
-    token = create_access_token(user.email)
+    token = _issue_access_token(user, db)
     log_audit_event(
         "auth.login.success",
         user_id=user.id,
@@ -435,7 +518,7 @@ async def confirm_otp(req: ConfirmOtpRequest, db: Session = Depends(get_db)):
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="User creation failed.")
-    token = create_access_token(req.email)
+    token = _issue_access_token(user, db)
     return {"access_token": token}
 
 @router.get("/me", response_model=UserOut)
@@ -474,29 +557,63 @@ def reset_password(req: PasswordResetRequest, db: Session = Depends(get_db)):
 def request_password_reset(req: PasswordResetEmailRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter_by(email=req.email).first()
     if user:
-        token = reset_serializer.dumps(user.email)
-        reset_link = f"{settings.frontend_url}/reset-password?token={token}"
-        if settings.sendgrid_api_key:
-            msg = Mail(
-                from_email=settings.reset_email_from,
-                to_emails=user.email,
-                subject="Password Reset Request",
-                html_content=f"<p>Click to reset: <a href='{reset_link}'>{reset_link}</a></p>",
-            )
-            try:
-                SendGridAPIClient(settings.sendgrid_api_key).send(msg)
-            except:
-                pass
+        token, tenant_settings = _issue_reset_token(user, db)
+        if tenant_settings:
+            email_settings = tenant_settings.email
+            reset_link = tenant_settings.build_frontend_url(f"reset-password?token={token}")
+            if email_settings.provider == "sendgrid" and email_settings.sendgrid_api_key:
+                msg = Mail(
+                    from_email=email_settings.from_email,
+                    to_emails=user.email,
+                    subject="Password Reset Request",
+                    html_content=f"<p>Click to reset: <a href='{reset_link}'>{reset_link}</a></p>",
+                )
+                if email_settings.from_name:
+                    msg.from_email.name = email_settings.from_name
+                try:
+                    SendGridAPIClient(email_settings.sendgrid_api_key).send(msg)
+                except Exception:
+                    pass
+        else:
+            reset_link = f"{settings.frontend_url}/reset-password?token={token}"
+            if settings.sendgrid_api_key:
+                msg = Mail(
+                    from_email=settings.reset_email_from,
+                    to_emails=user.email,
+                    subject="Password Reset Request",
+                    html_content=f"<p>Click to reset: <a href='{reset_link}'>{reset_link}</a></p>",
+                )
+                try:
+                    SendGridAPIClient(settings.sendgrid_api_key).send(msg)
+                except Exception:
+                    pass
     return {"message": "If the email exists, a reset link will be sent."}
 
 @router.post("/reset-password-confirm")
 def reset_password_confirm(req: PasswordResetTokenRequest, db: Session = Depends(get_db)):
+    tenant_settings: Optional[TenantSettingsService] = None
+    signed_token = req.token
+    if "::" in req.token:
+        tenant_id, signed_token = req.token.split("::", 1)
+        tenant_settings = _get_tenant_settings_by_id(tenant_id, db)
+        if not tenant_settings:
+            raise HTTPException(status_code=400, detail="Invalid reset token")
+        serializer = URLSafeTimedSerializer(tenant_settings.auth.reset_secret)
+        max_age = tenant_settings.auth.reset_token_expire_seconds
+    else:
+        serializer = URLSafeTimedSerializer(settings.reset_secret)
+        max_age = settings.reset_token_expire_seconds
     try:
-        email = reset_serializer.loads(req.token, max_age=settings.reset_token_expire_seconds)
-    except SignatureExpired: raise HTTPException(status_code=400, detail="Reset token expired")
-    except BadSignature: raise HTTPException(status_code=400, detail="Invalid reset token")
+        email = serializer.loads(signed_token, max_age=max_age)
+    except SignatureExpired:
+        raise HTTPException(status_code=400, detail="Reset token expired")
+    except BadSignature:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
     user = db.query(User).filter_by(email=email).first()
-    if not user: raise HTTPException(status_code=404, detail="User not found")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if tenant_settings and user.tenant_id != tenant_settings.tenant.id:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
     user.hashed_password = get_password_hash(req.new_password)
     db.commit()
     return {"message": "Password reset successful"}
@@ -563,7 +680,7 @@ def complete_invite(req: CompleteInviteRequest, db: Session = Depends(get_db)):
     # mark invite used
     invite.used = True
     db.commit()
-    token = create_access_token(req.email)
+    token = _issue_access_token(u, db)
     return {"access_token": token}
 
 @router.patch("/users/{user_id}/role", status_code=200)

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import Tenant, User, VerticalType, TenantBranding
 from app.plugins.auth.routes import require_admin, get_current_user
+from app.services.tenant_settings import get_tenant_settings
 from pydantic import BaseModel
 from typing import List, Optional
 import os, pathlib, shutil, io, hashlib
@@ -511,7 +512,11 @@ def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Dep
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     token = uuid4().hex
-    expires = datetime.utcnow() + timedelta(seconds=settings.reset_token_expire_seconds)
+    tenant_settings = get_tenant_settings(tenant)
+    auth_settings = tenant_settings.auth
+    email_settings = tenant_settings.email
+
+    expires = datetime.utcnow() + timedelta(seconds=auth_settings.reset_token_expire_seconds)
     invite = InviteToken(
         token=token,
         tenant_id=tenant_id,
@@ -523,15 +528,17 @@ def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Dep
     db.commit()
     # send invitation email
     # Send invitation email if configured
-    if settings.sendgrid_api_key:
-        client = SendGridAPIClient(settings.sendgrid_api_key)
-        link = f"{settings.frontend_url}/onboarding/invite?token={token}"
+    if email_settings.provider == "sendgrid" and email_settings.sendgrid_api_key:
+        client = SendGridAPIClient(email_settings.sendgrid_api_key)
+        link = tenant_settings.build_frontend_url(f"onboarding/invite?token={token}")
         mail = Mail(
-            from_email=settings.reset_email_from,
+            from_email=email_settings.from_email,
             to_emails=payload.email,
             subject="Your onboarding invite",
             html_content=f"<p>Please <a href='{link}'>click here</a> to set up your admin account.</p>",
         )
+        if email_settings.from_name:
+            mail.from_email.name = email_settings.from_name
         try:
             client.send(mail)
         except Exception:

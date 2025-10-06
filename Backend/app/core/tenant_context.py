@@ -8,11 +8,13 @@ Resolves the active tenant for a request based on one of (precedence order):
 If none are found raises 400/404 accordingly.
 """
 from fastapi import Header, Request, HTTPException, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import Optional, Dict, Tuple
 import contextvars
 import time
 from urllib.parse import urlparse
+
+from functools import cached_property
 
 from app.core.database import get_db
 from app.models import Tenant, VerticalType
@@ -69,6 +71,12 @@ class TenantContext:
         self.id = tenant.id
         self.vertical = tenant.vertical_type or VerticalType.carwash.value
 
+    @cached_property
+    def settings(self):
+        from app.services.tenant_settings import TenantSettingsService
+
+        return TenantSettingsService(self.tenant)
+
 
 async def get_tenant_context(
     request: Request,
@@ -97,8 +105,11 @@ async def get_tenant_context(
         return h[4:] if h.startswith("api.") and len(h) > 4 else h
 
     # 0) Header explicit override
+    def _tenant_query():
+        return db.query(Tenant).options(selectinload(Tenant.integrations))
+
     if x_tenant_id:
-        tenant = db.query(Tenant).filter(Tenant.id == x_tenant_id).first()
+        tenant = _tenant_query().filter(Tenant.id == x_tenant_id).first()
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found (header)")
         set_current_tenant_id(tenant.id)
@@ -171,12 +182,12 @@ async def get_tenant_context(
         if not bypass_cache:
             cached_id = _cache_get(hostname)
             if cached_id:
-                tenant = db.query(Tenant).filter(Tenant.id == cached_id).first()
+                tenant = _tenant_query().filter(Tenant.id == cached_id).first()
                 if tenant:
                     set_current_tenant_id(tenant.id)
                     request.state.tenant_id = tenant.id
                     return TenantContext(tenant)
-        tenant = db.query(Tenant).filter(Tenant.primary_domain == hostname).first()
+        tenant = _tenant_query().filter(Tenant.primary_domain == hostname).first()
         if tenant:
             _cache_set(hostname, tenant.id)
             set_current_tenant_id(tenant.id)
@@ -192,12 +203,12 @@ async def get_tenant_context(
             if not bypass_cache:
                 cached_id = _cache_get(cache_key)
                 if cached_id:
-                    tenant = db.query(Tenant).filter(Tenant.id == cached_id).first()
+                    tenant = _tenant_query().filter(Tenant.id == cached_id).first()
                     if tenant:
                         set_current_tenant_id(tenant.id)
                         request.state.tenant_id = tenant.id
                         return TenantContext(tenant)
-            tenant = db.query(Tenant).filter(Tenant.subdomain == sub).first()
+            tenant = _tenant_query().filter(Tenant.subdomain == sub).first()
             if tenant:
                 _cache_set(cache_key, tenant.id)
                 set_current_tenant_id(tenant.id)
@@ -213,7 +224,7 @@ async def get_tenant_context(
     # Determine a single hostname for dev fallback decision (original host header)
     hostname = host_norm
     if settings.environment == 'development' and hostname in ('localhost', '127.0.0.1') and settings.default_tenant:
-        fallback = db.query(Tenant).filter(Tenant.id == settings.default_tenant).first()
+        fallback = _tenant_query().filter(Tenant.id == settings.default_tenant).first()
         if fallback:
             set_current_tenant_id(fallback.id)
             request.state.tenant_id = fallback.id

@@ -1,22 +1,32 @@
 if (typeof window !== 'undefined') {
-  const API_BASE: string | undefined = (import.meta as unknown as { env?: Record<string, string> })?.env?.VITE_API_BASE_URL;
-  if (API_BASE) {
+  const envBase = import.meta.env?.VITE_API_BASE_URL;
+  if (envBase) {
     const normalize = (base: string) => (base.endsWith('/') ? base.slice(0, -1) : base);
-    const base = normalize(API_BASE);
+    const base = normalize(envBase);
     const origFetch: typeof window.fetch = window.fetch.bind(window);
-    window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+
+    const resolveUrl = (input: RequestInfo | URL): string | null => {
+      if (typeof input === 'string') return input;
+      if (input instanceof URL) return input.toString();
+      if (input instanceof Request) return input.url;
+      return null;
+    };
+
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       try {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
-        if (url.startsWith('/api')) {
-          const newUrl = base + url;
+        const targetUrl = resolveUrl(input);
+        if (targetUrl && targetUrl.startsWith('/api')) {
+          const rewritten = `${base}${targetUrl}`;
           if (typeof input === 'string' || input instanceof URL) {
-            return origFetch(newUrl, init);
+            return origFetch(rewritten, init);
           }
-          const req = new Request(newUrl, input as RequestInit);
-          return origFetch(req, init);
+          const clonedRequest = new Request(rewritten, input as Request);
+          return origFetch(clonedRequest, init);
         }
-      } catch {}
-      return origFetch(input as RequestInfo, init as RequestInit | undefined);
+      } catch (error) {
+        console.debug('[fetchShim] failed to rewrite request', error);
+      }
+      return origFetch(input, init);
     };
   }
 }

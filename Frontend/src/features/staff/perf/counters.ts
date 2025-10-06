@@ -84,8 +84,8 @@ export function timeDerivation<T>(
 }
 
 declare global {
-  // eslint-disable-next-line no-var
-  var __STAFF_PERF: StaffPerfCounters | undefined; // readable in console
-  // eslint-disable-next-line no-var
-  var __ENABLE_STAFF_PERF: boolean | undefined; // opt-in flag
+  interface Window {
+    __STAFF_PERF?: StaffPerfCounters;
+    __ENABLE_STAFF_PERF?: boolean;
+  }
 }

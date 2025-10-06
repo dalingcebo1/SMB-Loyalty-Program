@@ -13,6 +13,8 @@ from app.core.database import get_db, engine
 from config import settings
 from typing import Optional
 
+PROCESS_START = datetime.utcnow()
+
 router = APIRouter(prefix="/health", tags=["health"])
 
 
@@ -261,10 +263,7 @@ async def startup_check() -> Dict[str, Any]:
     """
     grace = int(os.getenv("STARTUP_GRACE_SECONDS", "30") or 30)
     # Use process start time from an env var optionally injected, fallback to module import time
-    global _PROCESS_START
-    if '_PROCESS_START' not in globals():
-        globals()['_PROCESS_START'] = datetime.utcnow()
-    elapsed = (datetime.utcnow() - globals()['_PROCESS_START']).total_seconds()
+    elapsed = (datetime.utcnow() - PROCESS_START).total_seconds()
     within = elapsed < grace
     return {
         "status": "starting" if within else "started",

@@ -46,6 +46,7 @@ const Signup: React.FC = () => {
               type="email"
               placeholder="Enter your email"
               className="form-input"
+              data-cy="signup-email"
               {...register("email", { required: "Email is required" })}
             />
             <div className="form-helper">We'll never share your email.</div>
@@ -58,12 +59,13 @@ const Signup: React.FC = () => {
               type="password"
               placeholder="Create a password"
               className="form-input"
+              data-cy="signup-password"
               {...register("password", { required: "Password is required" })}
             />
             <div className="form-helper">At least 8 characters.</div>
           </div>
 
-          <button type="submit" disabled={isSubmitting} className="signup-button">
+          <button type="submit" disabled={isSubmitting} className="signup-button" data-cy="signup-submit">
             {isSubmitting && <span className="loading-spinner"></span>}
             {isSubmitting ? "Creating account..." : "Create Account"}
           </button>

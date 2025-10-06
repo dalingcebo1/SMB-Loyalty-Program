@@ -5,8 +5,8 @@ import axios from "axios";
 // If VITE_API_BASE_URL is absolute (e.g. https://api.chaosx.co.za), append /api (avoiding double).
 // If unset, fall back to relative '/api' (useful for local dev or reverse proxy setups).
 function computeBaseURL() {
-  const raw = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
-  const trimmed = (raw || "").replace(/\/+$/g, ""); // drop trailing slashes
+  const raw = import.meta.env?.VITE_API_BASE_URL ?? "";
+  const trimmed = raw.replace(/\/+$/g, "");
   if (!trimmed) return "/api";
   if (trimmed.endsWith("/api")) return trimmed; // already includes /api
   return `${trimmed}/api`;

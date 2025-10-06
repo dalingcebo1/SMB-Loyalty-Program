@@ -1,6 +1,6 @@
 // src/components/form/Form.tsx
 import React from 'react';
-import { FormProvider, useForm, SubmitHandler, FieldValues, DefaultValues } from 'react-hook-form';
+import { FormProvider, useForm, SubmitHandler, FieldValues, DefaultValues, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ZodType } from 'zod';
 
@@ -10,17 +10,16 @@ export interface FormProps<T extends FieldValues> {
   children: React.ReactNode;
   className?: string;
   /** Optional Zod schema for validation */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schema?: ZodType<any, any>;
+  schema?: ZodType<T>;
 }
 
 export function Form<T extends FieldValues>({ defaultValues, onSubmit, children, className, schema }: FormProps<T>) {
   // Setup react-hook-form with optional Zod resolver
+  const resolver = schema ? (zodResolver(schema) as unknown as Resolver<T>) : undefined;
   const methods = useForm<T>({
-    defaultValues: defaultValues as DefaultValues<T>,
-    resolver: schema ? zodResolver(schema) : undefined,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
+    defaultValues,
+    resolver,
+  });
 
   return (
     <FormProvider {...methods}>

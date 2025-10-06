@@ -94,6 +94,7 @@ const Login: React.FC = () => {
               type="email"
               placeholder="Enter your email"
               className="form-input"
+              data-cy="login-email"
               {...register("email", { required: "Email is required" })}
             />
           </div>
@@ -105,11 +106,12 @@ const Login: React.FC = () => {
               type="password"
               placeholder="Enter your password"
               className="form-input"
+              data-cy="login-password"
               {...register("password", { required: "Password is required" })}
             />
           </div>
 
-          <button type="submit" disabled={isSubmitting} className="login-button">
+          <button type="submit" disabled={isSubmitting} className="login-button" data-cy="login-submit">
             {isSubmitting && <span className="loading-spinner"></span>}
             {isSubmitting ? "Signing in..." : "Sign In"}
           </button>

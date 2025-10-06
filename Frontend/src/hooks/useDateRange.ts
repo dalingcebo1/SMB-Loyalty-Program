@@ -21,10 +21,9 @@ export function useDateRange(defaultDays = 7): DateRange & {
 
   useEffect(() => {
     if (!startParam || !endParam) {
-      // initialize URL if missing
-      setSearchParams({ start_date: start, end_date: end });
+      setSearchParams({ start_date: start, end_date: end, period });
     }
-  }, []);
+  }, [startParam, endParam, start, end, period, setSearchParams]);
   // update state when URL params change via filters
   useEffect(() => {
     if (startParam && endParam) {
@@ -32,6 +31,12 @@ export function useDateRange(defaultDays = 7): DateRange & {
       setEnd(endParam);
     }
   }, [startParam, endParam]);
+
+  useEffect(() => {
+    if (periodParam) {
+      setPeriod(periodParam);
+    }
+  }, [periodParam]);
 
   const refresh = () => setSearchParams({ start_date: start, end_date: end, period });
 

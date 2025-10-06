@@ -144,7 +144,6 @@ def client(db_session, monkeypatch):
     from app.plugins.auth.routes import require_staff, get_current_user
     from app.models import User
     from config import settings
-    from datetime import datetime, UTC
     from fastapi import Request
     from jose import jwt, JWTError
 

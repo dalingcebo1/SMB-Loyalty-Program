@@ -15,7 +15,7 @@ export interface FormProps<T extends FieldValues> {
 
 export function Form<T extends FieldValues>({ defaultValues, onSubmit, children, className, schema }: FormProps<T>) {
   // Setup react-hook-form with optional Zod resolver
-  const resolver = schema ? (zodResolver(schema) as unknown as Resolver<T>) : undefined;
+  const resolver = schema ? (zodResolver(schema as any) as Resolver<T>) : undefined;
   const methods = useForm<T>({
     defaultValues,
     resolver,

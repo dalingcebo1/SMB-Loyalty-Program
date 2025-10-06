@@ -5,6 +5,7 @@ Provides DB setup, rate limit reset, and a configured TestClient with auth
 dependency overrides where appropriate.
 """
 import os
+from typing import Optional
 
 # Ensure the test database URL is configured *before* importing the database layer
 # so the engine and SessionLocal bind to the fast in-memory sqlite database even if
@@ -88,9 +89,13 @@ def create_all_once():
 def reset_rate_limits():
     # Clear in-memory rate limiter state between tests to prevent cascading 429s
     from app.core import rate_limit as rl
-    rl._BUCKETS.clear()      # type: ignore[attr-defined]
-    rl._PENALTIES.clear()    # type: ignore[attr-defined]
-    rl._CONFIG.clear()       # type: ignore[attr-defined]
+
+    if hasattr(rl, "_BUCKETS"):
+        getattr(rl, "_BUCKETS").clear()
+    if hasattr(rl, "_PENALTIES"):
+        getattr(rl, "_PENALTIES").clear()
+    if hasattr(rl, "_CONFIG"):
+        getattr(rl, "_CONFIG").clear()
     yield
 
 
@@ -103,15 +108,21 @@ def reset_jobs_queue():
     """
     from app.core import jobs
 
-    jobs._queue.clear()       # type: ignore[attr-defined]
-    jobs._jobs.clear()        # type: ignore[attr-defined]
-    jobs._history.clear()     # type: ignore[attr-defined]
-    jobs._DEAD_LETTER.clear() # type: ignore[attr-defined]
-    jobs._scheduled.clear()   # type: ignore[attr-defined]
-    try:
-        jobs._overflow_rejections = 0  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    if hasattr(jobs, "_queue"):
+        getattr(jobs, "_queue").clear()
+    if hasattr(jobs, "_jobs"):
+        getattr(jobs, "_jobs").clear()
+    if hasattr(jobs, "_history"):
+        getattr(jobs, "_history").clear()
+    if hasattr(jobs, "_DEAD_LETTER"):
+        getattr(jobs, "_DEAD_LETTER").clear()
+    if hasattr(jobs, "_scheduled"):
+        getattr(jobs, "_scheduled").clear()
+    if hasattr(jobs, "_overflow_rejections"):
+        try:
+            setattr(jobs, "_overflow_rejections", 0)
+        except Exception:
+            pass
     yield
 
 @pytest.fixture(scope="function")
@@ -141,7 +152,7 @@ def client(db_session, monkeypatch):
     app.dependency_overrides[require_staff] = lambda: None
 
     # Provide a default current_user from the test DB
-    def override_get_current_user(request: Request = None):  # type: ignore[override]
+    def override_get_current_user(request: Optional[Request] = None):
         """Test override that honors Authorization bearer token when provided.
 
         Falls back to the first user (seeded default) to maintain existing

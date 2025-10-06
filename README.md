@@ -259,7 +259,7 @@ API base URL configured via `VITE_API_BASE_URL` (see `Frontend/.env.example` if 
 
 ### Production smoke checks (Cypress)
 
-`cypress/e2e/prod-smoke.cy.ts` exercises the production login/admin journey for admin, staff, and customer personas and fails if the React error boundary appears or if any `console.error` is raised. Populate credentials through environment variables when you run it to avoid hard-coding secrets:
+`cypress/e2e/prod-smoke.cy.ts` exercises the production login/admin journey for admin, staff, and customer personas and fails if the React error boundary appears or if any `console.error` is raised. If the required credentials are not supplied (for example in CI branches that do not expose production secrets) the suite now self-skips before any commands execute, keeping builds green while signaling the missing inputs. Populate credentials through environment variables when you run it to avoid hard-coding secrets:
 
 ```bash
 cd Frontend

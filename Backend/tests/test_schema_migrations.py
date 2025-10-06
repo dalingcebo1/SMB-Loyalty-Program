@@ -27,6 +27,8 @@ def apply_migrations():
         ('orders', 'order_redeemed_at'),
         ('services', 'loyalty_eligible'),
         ('payments', 'source'),
+        ('tenants', 'logo_url'),
+        ('tenants', 'theme_color'),
     }
     missing = []
     tables = set(inspector.get_table_names())

@@ -163,3 +163,34 @@ def test_verify_payment_qr_param(client: TestClient, db_session: Session):
     r2 = client.get("/api/payments/verify-payment", params={"qr": pay.reference})
     assert r2.status_code == 200
     assert r2.json()["status"] == "already_redeemed"
+
+
+def test_recent_verifications_returns_successful_orders(client: TestClient, db_session: Session):
+    user = db_session.query(User).first()
+    order = create_test_order(db_session, user.id)
+    order.status = "paid"
+    order.order_redeemed_at = datetime.utcnow()
+    order.amount = 1500
+    db_session.add(order)
+    db_session.commit()
+    payment = Payment(
+        order_id=order.id,
+        transaction_id="recent-1",
+        reference="recent-ref-1",
+        status="success",
+        amount=1500,
+        method="card",
+        created_at=datetime.utcnow(),
+    )
+    db_session.add(payment)
+    db_session.commit()
+
+    resp = client.get("/api/payments/recent-verifications", params={"limit": 5})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, list)
+    assert any(item["order_id"] == order.id for item in data)
+    entry = next(item for item in data if item["order_id"] == order.id)
+    assert entry["amount_cents"] == 1500
+    assert entry["payment_method"] == "card"
+    assert entry["status"] == "success"

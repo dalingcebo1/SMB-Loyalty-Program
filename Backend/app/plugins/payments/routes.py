@@ -511,40 +511,54 @@ def recent_verifications(
         .limit(limit)
         .all()
     )
-    out = []
-    for o in orders:
-        vehicle = o.vehicles[0].vehicle if o.vehicles else None
-        pay = (
+
+    results = []
+    for order in orders:
+        vehicle = order.vehicles[0].vehicle if order.vehicles else None
+        payment = (
             db.query(Payment)
-            .filter_by(order_id=o.id, status="success")
+            .filter_by(order_id=order.id, status="success")
             .order_by(Payment.created_at.desc())
             .first()
         )
-        amount = pay.amount if pay and pay.amount is not None else o.amount
-    out.append({
-            "order_id": o.id,
-            "timestamp": (o.order_redeemed_at or o.created_at).isoformat() if (o.order_redeemed_at or o.created_at) else None,
-            "status": "success",
-            "tenant_id": getattr(o, 'tenant_id', None),
-            "user": {
-                "first_name": o.user.first_name if o.user else None,
-                "last_name": o.user.last_name if o.user else None,
-                "phone": o.user.phone if o.user else None,
-            } if o.user else None,
-            "vehicle": {
-                "id": vehicle.id,
-                "make": vehicle.make,
-                "model": vehicle.model,
-                "reg": vehicle.plate,
-            } if vehicle else None,
-            "payment_method": (pay.method or pay.source) if pay else None,
-            "payment_reference": (pay.reference or pay.transaction_id) if pay else None,
-            "amount_cents": amount,
-            "amount": (amount or 0)/100,
-            "started": bool(o.started_at),
-            "completed": bool(o.ended_at),
-        })
-    return out
+        amount_cents = (payment.amount if payment and payment.amount is not None else order.amount) or 0
+        redeemed_at = order.order_redeemed_at or order.created_at
+
+        results.append(
+            {
+                "order_id": order.id,
+                "timestamp": redeemed_at.isoformat() if redeemed_at else None,
+                "status": "success",
+                "tenant_id": getattr(order, "tenant_id", None),
+                "user": (
+                    {
+                        "first_name": order.user.first_name,
+                        "last_name": order.user.last_name,
+                        "phone": order.user.phone,
+                    }
+                    if order.user
+                    else None
+                ),
+                "vehicle": (
+                    {
+                        "id": vehicle.id,
+                        "make": vehicle.make,
+                        "model": vehicle.model,
+                        "reg": vehicle.plate,
+                    }
+                    if vehicle
+                    else None
+                ),
+                "payment_method": (payment.method or payment.source) if payment else None,
+                "payment_reference": (payment.reference or payment.transaction_id) if payment else None,
+                "amount_cents": amount_cents,
+                "amount": amount_cents / 100,
+                "started": bool(order.started_at),
+                "completed": bool(order.ended_at),
+            }
+        )
+
+    return results
 
 from app.core.wash_lifecycle import start_wash as _start_wash_shared, end_wash as _end_wash_shared
 

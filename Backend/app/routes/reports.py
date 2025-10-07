@@ -6,12 +6,41 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 from app.plugins.auth.routes import get_current_user
 from app.core.database import get_db
-from app.models import User, Order, Payment, Redemption, Tenant, Service, Reward
+from app.models import (User, Order, Payment, Redemption, Tenant, Service,
+                        Reward, PointBalance)
 from sqlalchemy import func, desc, and_, text
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import calendar
+from config import settings
 
 router = APIRouter()
+
+ALLOWED_ROLES = {"admin", "staff", "superadmin", "developer"}
+
+
+def _ensure_reporting_access(user: User) -> None:
+    if user.role not in ALLOWED_ROLES:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+
+def _resolve_tenant_scope(user: User, tenant_override: str | None = None) -> str:
+    """Resolve the tenant id to use for reporting queries."""
+
+    tenant_id = user.tenant_id
+
+    if tenant_override:
+        if user.role not in {"superadmin", "developer"}:
+            raise HTTPException(status_code=403, detail="Tenant override not permitted")
+        tenant_id = tenant_override
+
+    if not tenant_id:
+        tenant_id = settings.default_tenant
+
+    if not tenant_id:
+        raise HTTPException(status_code=404, detail="Tenant not available")
+
+    return tenant_id
+
 
 def get_date_range(period: str):
     """Return start and end dates based on period"""
@@ -33,131 +62,140 @@ def get_date_range(period: str):
         
     return start_date, end_date
 
+
+def resolve_date_range(days: int | None = None, period: str | None = None):
+    """Resolve an absolute date range from either a days window or legacy period string."""
+    if days is not None:
+        clamped_days = max(1, min(days, 365))
+        today = datetime.utcnow().date()
+        end_date = datetime.combine(today, datetime.max.time())
+        start_date = datetime.combine(today - timedelta(days=clamped_days - 1), datetime.min.time())
+        return start_date, end_date
+
+    return get_date_range(period or "30d")
+
+@router.get("/summary")
 @router.get("/business-summary")
 async def get_business_summary(
-    period: str = Query("30d", regex="^(7d|30d|90d|ytd|all)$"),
+    days: int = Query(30, ge=1, le=365),
+    tenant_id: str | None = Query(None, description="Tenant scope override (superadmin/developer only)"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Get business summary metrics for the dashboard"""
-    if current_user.role not in ["admin", "staff"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-        
-    tenant_id = current_user.tenant_id
-    start_date, end_date = get_date_range(period)
-    
-    # Previous period for comparison
-    duration = (end_date - start_date).days
-    prev_end_date = start_date
-    prev_start_date = prev_end_date - timedelta(days=duration)
-    
-    # Calculate revenue metrics
-    revenue_results = db.query(
-        func.sum(Order.amount).label("total_revenue"),
-        func.count(Order.id).label("order_count"),
-        func.count(func.distinct(Order.user_id)).label("unique_customers")
-    ).filter(
-        Order.tenant_id == tenant_id,
-        Order.status == "completed",
-        Order.created_at.between(start_date, end_date)
-    ).first()
-    
-    prev_revenue_results = db.query(
-        func.sum(Order.amount).label("total_revenue"),
-        func.count(Order.id).label("order_count")
-    ).filter(
-        Order.tenant_id == tenant_id,
-        Order.status == "completed",
-        Order.created_at.between(prev_start_date, prev_end_date)
-    ).first()
-    
-    # Loyalty metrics
-    loyalty_results = db.query(
-        func.count(Redemption.id).label("redemption_count"),
-        func.sum(func.coalesce(Redemption.milestone, 0)).label("points_redeemed")
-    ).filter(
-        Redemption.tenant_id == tenant_id,
-        Redemption.status == "redeemed",
-        Redemption.redeemed_at.between(start_date, end_date)
-    ).first()
-    
-    prev_loyalty_results = db.query(
-        func.count(Redemption.id).label("redemption_count")
-    ).filter(
-        Redemption.tenant_id == tenant_id,
-        Redemption.status == "redeemed",
-        Redemption.redeemed_at.between(prev_start_date, prev_end_date)
-    ).first()
-    
-    # New customers
-    new_customers = db.query(func.count(User.id)).filter(
-        User.tenant_id == tenant_id,
-        User.role == "user",
-        User.created_at.between(start_date, end_date)
-    ).scalar()
-    
-    prev_new_customers = db.query(func.count(User.id)).filter(
-        User.tenant_id == tenant_id,
-        User.role == "user",
-        User.created_at.between(prev_start_date, prev_end_date)
-    ).scalar()
-    
-    # Calculate percent changes
-    def calc_percent_change(current, previous):
-        if not previous:
-            return 100 if current else 0
-        return round(((current - previous) / previous) * 100, 1)
-    
-    # Build response
-    current_revenue = revenue_results.total_revenue or 0
-    prev_revenue = prev_revenue_results.total_revenue or 0
-    current_orders = revenue_results.order_count or 0
-    prev_orders = prev_revenue_results.order_count or 0
-    current_redemptions = loyalty_results.redemption_count or 0
-    prev_redemptions = prev_loyalty_results.redemption_count or 0
-    
+    """Return consolidated business metrics for admin dashboards."""
+
+    _ensure_reporting_access(current_user)
+
+    tenant_scope = _resolve_tenant_scope(current_user, tenant_id)
+    start_date, end_date = resolve_date_range(days=days)
+
+    revenue_results = (
+        db.query(
+            func.coalesce(func.sum(Order.amount), 0).label("total_revenue"),
+            func.count(Order.id).label("order_count"),
+            func.count(func.distinct(Order.user_id)).label("active_customers"),
+        )
+        .filter(
+            Order.tenant_id == tenant_scope,
+            Order.status == "completed",
+            Order.created_at.between(start_date, end_date),
+        )
+        .first()
+    )
+
+    total_customers = (
+        db.query(func.count(User.id))
+        .filter(User.tenant_id == tenant_scope, User.role == "user")
+        .scalar()
+        or 0
+    )
+
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_scope).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if tenant.loyalty_type == "points":
+        points_issued = (
+            db.query(func.coalesce(func.sum(Order.amount / 100), 0))
+            .filter(
+                Order.tenant_id == tenant_scope,
+                Order.status == "completed",
+                Order.created_at.between(start_date, end_date),
+            )
+            .scalar()
+            or 0
+        )
+    else:
+        points_issued = revenue_results.order_count or 0
+
+    loyalty_results = (
+        db.query(
+            func.count(Redemption.id).label("redemption_count"),
+            func.coalesce(func.sum(func.coalesce(Redemption.milestone, 0)), 0).label(
+                "points_redeemed"
+            ),
+        )
+        .filter(
+            Redemption.tenant_id == tenant_scope,
+            Redemption.status == "redeemed",
+            Redemption.redeemed_at.between(start_date, end_date),
+        )
+        .first()
+    )
+
+    top_service = (
+        db.query(
+            Service.name.label("name"),
+            func.count(Order.id).label("order_count"),
+        )
+        .join(Order, Order.service_id == Service.id)
+        .filter(
+            Order.tenant_id == tenant_scope,
+            Order.status == "completed",
+            Order.created_at.between(start_date, end_date),
+        )
+        .group_by(Service.id, Service.name)
+        .order_by(desc("order_count"))
+        .first()
+    )
+
+    total_revenue_cents = int(revenue_results.total_revenue or 0)
+    total_orders = int(revenue_results.order_count or 0)
+    active_customers = int(revenue_results.active_customers or 0)
+    total_revenue = total_revenue_cents / 100.0
+    avg_order_value = (total_revenue / total_orders) if total_orders else 0
+
     return {
-        "revenue": {
-            "current": current_revenue,
-            "prev_period": prev_revenue,
-            "percent_change": calc_percent_change(current_revenue, prev_revenue)
-        },
-        "orders": {
-            "current": current_orders,
-            "prev_period": prev_orders,
-            "percent_change": calc_percent_change(current_orders, prev_orders)
-        },
-        "customers": {
-            "unique_count": revenue_results.unique_customers or 0,
-            "new_customers": new_customers or 0,
-            "new_customer_change": calc_percent_change(new_customers, prev_new_customers)
-        },
-        "loyalty": {
-            "redemptions": current_redemptions,
-            "redemption_change": calc_percent_change(current_redemptions, prev_redemptions),
-            "points_redeemed": loyalty_results.points_redeemed or 0
-        },
-        "period": {
-            "start_date": start_date,
-            "end_date": end_date,
-            "days": duration
+        "total_revenue": round(total_revenue, 2),
+        "total_orders": total_orders,
+        "total_customers": total_customers,
+        "active_customers": active_customers,
+        "avg_order_value": round(avg_order_value, 2),
+        "loyalty_points_issued": int(points_issued),
+        "loyalty_points_redeemed": int(loyalty_results.points_redeemed or 0),
+        "top_service": {
+            "name": top_service.name,
+            "count": int(top_service.order_count),
         }
+        if top_service
+        else None,
     }
 
 @router.get("/revenue-chart")
 async def get_revenue_chart(
-    period: str = Query("30d", regex="^(7d|30d|90d|ytd|all)$"),
+    days: int = Query(30, ge=1, le=365),
     group_by: str = Query("day", regex="^(day|week|month)$"),
+    tenant_id: str | None = Query(None, description="Tenant scope override (superadmin/developer only)"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Get revenue data for charts grouped by time period"""
-    if current_user.role not in ["admin", "staff"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-        
-    tenant_id = current_user.tenant_id
-    start_date, end_date = get_date_range(period)
-    
+    """Get revenue data for charts grouped by time period."""
+
+    _ensure_reporting_access(current_user)
+
+    tenant_scope = _resolve_tenant_scope(current_user, tenant_id)
+    start_date, end_date = resolve_date_range(days=days)
+
     # SQL date format and grouping based on group_by parameter
     if group_by == "day":
         date_format = "DATE(created_at)"
@@ -174,234 +212,256 @@ async def get_revenue_chart(
         COUNT(*) as order_count
     FROM orders
     WHERE 
-        tenant_id = :tenant_id
+    tenant_id = :tenant_id
         AND status = 'completed'
         AND created_at BETWEEN :start_date AND :end_date
     GROUP BY date_group
     ORDER BY date_group
     """
     
-    results = db.execute(text(query), {
-        "tenant_id": tenant_id,
-        "start_date": start_date,
-        "end_date": end_date
-    }).fetchall()
-    
+    results = db.execute(
+        text(query),
+        {
+            "tenant_id": tenant_scope,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    ).fetchall()
+
     # Format results
     chart_data = []
     for row in results:
-        chart_data.append({
-            "date": row[0],
-            "revenue": row[1] or 0,
-            "orders": row[2] or 0
-        })
-    
-    return {
-        "chart_data": chart_data,
-        "period": {
-            "start_date": start_date,
-            "end_date": end_date,
-            "group_by": group_by
-        }
-    }
+        bucket = row[0]
+        if isinstance(bucket, (datetime, date)):
+            date_str = bucket.isoformat()
+        else:
+            date_str = str(bucket)
+
+        chart_data.append(
+            {
+                "date": date_str,
+                "revenue": (row[1] or 0) / 100.0,
+                "orders": int(row[2] or 0),
+            }
+        )
+
+    return chart_data
 
 @router.get("/top-services")
 async def get_top_services(
-    period: str = Query("30d", regex="^(7d|30d|90d|ytd|all)$"),
-    limit: int = Query(5, ge=1, le=20),
+    days: int = Query(30, ge=1, le=365),
+    limit: int = Query(10, ge=1, le=50),
+    tenant_id: str | None = Query(None, description="Tenant scope override (superadmin/developer only)"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Get top services by revenue or order count"""
-    if current_user.role not in ["admin", "staff"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-        
-    tenant_id = current_user.tenant_id
-    start_date, end_date = get_date_range(period)
-    
-    # Query for top services
-    top_services = db.query(
-        Service.id,
-        Service.name,
-        Service.category,
-        func.sum(Order.amount).label("revenue"),
-        func.count(Order.id).label("order_count")
-    ).join(
-        Order, Service.id == Order.service_id
-    ).filter(
-        Order.tenant_id == tenant_id,
-        Order.status == "completed",
-        Order.created_at.between(start_date, end_date)
-    ).group_by(
-        Service.id
-    ).order_by(
-        desc("revenue")
-    ).limit(limit).all()
-    
-    # Format results
-    result = []
-    for service in top_services:
-        result.append({
-            "id": service.id,
-            "name": service.name,
-            "category": service.category,
-            "revenue": service.revenue or 0,
-            "order_count": service.order_count or 0
-        })
-    
-    return {
-        "top_services": result,
-        "period": {
-            "start_date": start_date,
-            "end_date": end_date
+    """Return top performing services within the requested window."""
+
+    _ensure_reporting_access(current_user)
+
+    tenant_scope = _resolve_tenant_scope(current_user, tenant_id)
+    start_date, end_date = resolve_date_range(days=days)
+
+    top_services = (
+        db.query(
+            Service.id,
+            Service.name,
+            func.sum(Order.amount).label("revenue"),
+            func.count(Order.id).label("order_count"),
+        )
+        .join(Order, Service.id == Order.service_id)
+        .filter(
+            Order.tenant_id == tenant_scope,
+            Order.status == "completed",
+            Order.created_at.between(start_date, end_date),
+        )
+        .group_by(Service.id, Service.name)
+        .order_by(desc("revenue"))
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "service_name": service.name or "Unknown Service",
+            "order_count": int(service.order_count or 0),
+            "total_revenue": (service.revenue or 0) / 100.0,
+            "avg_rating": None,
         }
-    }
+        for service in top_services
+    ]
 
 @router.get("/loyalty-stats")
 async def get_loyalty_stats(
-    period: str = Query("30d", regex="^(7d|30d|90d|ytd|all)$"),
+    days: int = Query(30, ge=1, le=365),
+    tenant_id: str | None = Query(None, description="Tenant scope override (superadmin/developer only)"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Get loyalty program statistics"""
-    if current_user.role not in ["admin", "staff"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-        
-    tenant_id = current_user.tenant_id
-    start_date, end_date = get_date_range(period)
-    
-    # Get tenant to determine loyalty type
-    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    """Return loyalty program KPIs for the dashboard."""
+
+    _ensure_reporting_access(current_user)
+
+    tenant_scope = _resolve_tenant_scope(current_user, tenant_id)
+    start_date, end_date = resolve_date_range(days=days)
+
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_scope).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-        
-    loyalty_type = tenant.loyalty_type
-    
-    # Points issued in the period (simplified - based on orders)
-    if loyalty_type == "points":
-        # Assuming 1 point per dollar spent
-        points_issued = db.query(func.sum(Order.amount / 100)).filter(
-            Order.tenant_id == tenant_id,
+
+    total_members = (
+        db.query(func.count(User.id))
+        .filter(User.tenant_id == tenant_scope, User.role == "user")
+        .scalar()
+        or 0
+    )
+
+    active_members = (
+        db.query(func.count(func.distinct(Order.user_id)))
+        .filter(
+            Order.tenant_id == tenant_scope,
             Order.status == "completed",
-            Order.created_at.between(start_date, end_date)
-        ).scalar() or 0
+            Order.created_at.between(start_date, end_date),
+        )
+        .scalar()
+        or 0
+    )
+
+    if tenant.loyalty_type == "points":
+        points_issued = (
+            db.query(func.coalesce(func.sum(Order.amount / 100), 0))
+            .filter(
+                Order.tenant_id == tenant_scope,
+                Order.status == "completed",
+                Order.created_at.between(start_date, end_date),
+            )
+            .scalar()
+            or 0
+        )
     else:
-        # For visit-based, each completed order is a visit
-        points_issued = db.query(func.count(Order.id)).filter(
-            Order.tenant_id == tenant_id,
-            Order.status == "completed",
-            Order.created_at.between(start_date, end_date)
-        ).scalar() or 0
-    
-    # Points redeemed
-    redemptions = db.query(
-        func.count(Redemption.id).label("count"),
-        func.sum(func.coalesce(Redemption.milestone, 0)).label("points")
-    ).filter(
-        Redemption.tenant_id == tenant_id,
-        Redemption.status == "redeemed",
-        Redemption.redeemed_at.between(start_date, end_date)
-    ).first()
-    
-    # Top redeemed rewards
-    top_rewards = db.query(
-        Reward.id,
-        Reward.title,
-        func.count(Redemption.id).label("redemption_count")
-    ).join(
-        Redemption, Reward.id == Redemption.reward_id
-    ).filter(
-        Redemption.tenant_id == tenant_id,
-        Redemption.status == "redeemed",
-        Redemption.redeemed_at.between(start_date, end_date)
-    ).group_by(
-        Reward.id
-    ).order_by(
-        desc("redemption_count")
-    ).limit(5).all()
-    
-    # Format top rewards
-    top_rewards_list = []
-    for reward in top_rewards:
-        top_rewards_list.append({
-            "id": reward.id,
-            "title": reward.title,
-            "redemption_count": reward.redemption_count
-        })
-    
+        points_issued = (
+            db.query(func.count(Order.id))
+            .filter(
+                Order.tenant_id == tenant_scope,
+                Order.status == "completed",
+                Order.created_at.between(start_date, end_date),
+            )
+            .scalar()
+            or 0
+        )
+
+    redemptions = (
+        db.query(
+            func.count(Redemption.id).label("count"),
+            func.coalesce(func.sum(func.coalesce(Redemption.milestone, 0)), 0).label(
+                "points"
+            ),
+        )
+        .filter(
+            Redemption.tenant_id == tenant_scope,
+            Redemption.status == "redeemed",
+            Redemption.redeemed_at.between(start_date, end_date),
+        )
+        .first()
+    )
+
+    redemption_count = int(redemptions.count or 0)
+    points_redeemed = int(redemptions.points or 0)
+
+    average_points_per_customer = (
+        points_issued / total_members if total_members else 0
+    )
+    redemption_rate = (
+        redemption_count / active_members if active_members else 0
+    )
+
     return {
-        "loyalty_type": loyalty_type,
-        "points_issued": int(points_issued),
-        "points_redeemed": int(redemptions.points or 0),
-        "redemption_count": redemptions.count or 0,
-        "top_redeemed_rewards": top_rewards_list,
-        "period": {
-            "start_date": start_date,
-            "end_date": end_date
-        }
+        "total_members": total_members,
+        "active_members": active_members,
+        "points_issued_this_month": int(points_issued),
+        "points_redeemed_this_month": points_redeemed,
+        "average_points_per_customer": round(average_points_per_customer, 2),
+        "redemption_rate": round(redemption_rate, 4),
     }
 
+@router.get("/customer-segmentation")
 @router.get("/customer-segments")
 async def get_customer_segments(
+    days: int = Query(180, ge=1, le=365),
+    tenant_id: str | None = Query(None, description="Tenant scope override (superadmin/developer only)"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Get customer segmentation analysis"""
-    if current_user.role not in ["admin", "staff"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-        
-    tenant_id = current_user.tenant_id
-    
-    # Simple customer segmentation based on visit frequency and spend
-    segments = db.execute(text("""
-    SELECT 
-        CASE 
-            WHEN total_orders >= 10 AND total_spent >= 50000 THEN 'VIP'
-            WHEN total_orders >= 5 AND total_spent >= 20000 THEN 'Regular'
-            WHEN total_orders >= 2 THEN 'Occasional'
-            ELSE 'New'
-        END as segment,
-        COUNT(*) as customer_count,
-        AVG(total_spent) as avg_spent,
-        AVG(total_orders) as avg_orders
-    FROM (
+    """Return customer segmentation buckets for the dashboard."""
+
+    _ensure_reporting_access(current_user)
+
+    tenant_scope = _resolve_tenant_scope(current_user, tenant_id)
+    start_date, end_date = resolve_date_range(days=days)
+
+    segments = db.execute(
+        text(
+            """
+        WITH customer_stats AS (
+            SELECT 
+                u.id,
+                COUNT(CASE WHEN o.status = 'completed' AND o.created_at BETWEEN :start_date AND :end_date THEN 1 END) AS total_orders,
+                COALESCE(SUM(CASE WHEN o.status = 'completed' AND o.created_at BETWEEN :start_date AND :end_date THEN o.amount ELSE 0 END), 0) AS total_spent
+            FROM users u
+            LEFT JOIN orders o ON u.id = o.user_id
+            WHERE u.tenant_id = :tenant_id AND u.role = 'user'
+            GROUP BY u.id
+        )
         SELECT 
-            u.id,
-            COUNT(o.id) as total_orders,
-            COALESCE(SUM(o.amount), 0) as total_spent
-        FROM users u
-        LEFT JOIN orders o ON u.id = o.user_id AND o.status = 'completed'
-        WHERE u.tenant_id = :tenant_id AND u.role = 'user'
-        GROUP BY u.id
-    ) customer_stats
-    GROUP BY segment
-    ORDER BY 
-        CASE segment 
-            WHEN 'VIP' THEN 1 
-            WHEN 'Regular' THEN 2 
-            WHEN 'Occasional' THEN 3 
-            WHEN 'New' THEN 4 
-        END
-    """), {"tenant_id": tenant_id}).fetchall()
-    
-    # Format results
-    segment_data = []
-    total_customers = 0
-    
-    for segment in segments:
-        segment_data.append({
-            "segment": segment[0],
-            "customer_count": segment[1],
-            "avg_spent": float(segment[2] or 0),
-            "avg_orders": float(segment[3] or 0)
-        })
-        total_customers += segment[1]
-    
-    # Add percentages
-    for segment in segment_data:
-        segment["percentage"] = round((segment["customer_count"] / total_customers) * 100, 1) if total_customers > 0 else 0
-    
-    return {
-        "segments": segment_data,
-        "total_customers": total_customers
-    }
+            CASE 
+                WHEN total_orders >= 10 AND total_spent >= 50000 THEN 'VIP'
+                WHEN total_orders >= 5 AND total_spent >= 20000 THEN 'Regular'
+                WHEN total_orders >= 2 THEN 'Occasional'
+                ELSE 'New'
+            END AS segment,
+            COUNT(*) AS customer_count,
+            SUM(total_spent) AS segment_spent,
+            SUM(total_orders) AS segment_orders
+        FROM customer_stats
+        GROUP BY segment
+        ORDER BY 
+            CASE segment 
+                WHEN 'VIP' THEN 1
+                WHEN 'Regular' THEN 2
+                WHEN 'Occasional' THEN 3
+                WHEN 'New' THEN 4
+            END
+        """
+        ),
+        {
+            "tenant_id": tenant_scope,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    ).fetchall()
+
+    total_customers = sum(row[1] for row in segments)
+
+    response: List[Dict[str, Any]] = []
+    for segment, customer_count, segment_spent, segment_orders in segments:
+        total_revenue = (segment_spent or 0) / 100.0
+        avg_order_value = (
+            (segment_spent or 0) / segment_orders / 100.0 if segment_orders else 0
+        )
+        percentage = (
+            round((customer_count / total_customers) * 100, 1)
+            if total_customers
+            else 0
+        )
+
+        response.append(
+            {
+                "segment": segment,
+                "count": int(customer_count),
+                "percentage": percentage,
+                "avg_order_value": round(avg_order_value, 2),
+                "total_revenue": round(total_revenue, 2),
+            }
+        )
+
+    return response

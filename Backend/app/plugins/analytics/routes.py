@@ -911,12 +911,81 @@ Previous: {previous}
 Insights:
 """
     try:
-        # AI integration removed for now to avoid external dependency; placeholder heuristic insights
-        dummy = [
-            "User growth stable vs prior period.",
-            "Transaction volume change minimal; monitor campaign impact.",
-            "Loyalty redemption steady; consider promo to boost penetration."
+        def _to_float(value: float | int | None) -> float:
+            return float(value or 0.0)
+
+        def _format_value(value: float) -> str:
+            if abs(value - round(value)) < 0.01:
+                return f"{int(round(value)):,}"
+            return f"{value:,.2f}"
+
+        def _describe_change(label: str, current_value: float, previous_value: float) -> str | None:
+            diff = current_value - previous_value
+            if abs(diff) < 1e-6:
+                return f"{label} held steady at {_format_value(current_value)}."
+            direction = "increased" if diff > 0 else "declined"
+            if abs(previous_value) > 1e-6:
+                pct = abs(diff) / abs(previous_value) * 100
+                if pct < 0.5:
+                    return f"{label} held essentially flat at {_format_value(current_value)}."
+                return f"{label} {direction} {pct:.1f}% to {_format_value(current_value)}."
+            return f"{label} {direction} by {_format_value(abs(diff))} to {_format_value(current_value)}."
+
+        insights: List[str] = []
+        metric_labels = [
+            ("user_count", "Active customers"),
+            ("transaction_count", "Completed transactions"),
+            ("points_redeemed", "Points redeemed"),
+            ("visits_total", "Location visits"),
+            ("redemptions_count", "Reward redemptions"),
         ]
-        return dummy
+
+        for key, label in metric_labels:
+            curr_val = _to_float(current.get(key))
+            prev_val = _to_float(previous.get(key))
+            if curr_val == prev_val == 0:
+                continue
+            desc = _describe_change(label, curr_val, prev_val)
+            if desc:
+                insights.append(desc)
+
+        def _series_total(series: List[dict] | None) -> float:
+            if not series:
+                return 0.0
+            return sum(_to_float(item.get("value")) for item in series)
+
+        current_revenue = _series_total(current.get("transaction_volume"))
+        previous_revenue = _series_total(previous.get("transaction_volume"))
+        if current_revenue or previous_revenue:
+            desc = _describe_change("Total revenue", current_revenue, previous_revenue)
+            if desc:
+                insights.append(desc)
+
+        top_rewards = current.get("top_rewards") or []
+        if top_rewards:
+            top_reward = top_rewards[0]
+            title = top_reward.get("title") or "Top reward"
+            count = _to_float(top_reward.get("count"))
+            insights.append(
+                f"'{title}' led reward engagement with {_format_value(count)} redemption(s) this period."
+            )
+
+        unique_insights: List[str] = []
+        seen: set[str] = set()
+        for text in insights:
+            if text and text not in seen:
+                unique_insights.append(text)
+                seen.add(text)
+            if len(unique_insights) >= 5:
+                break
+
+        if not unique_insights:
+            unique_insights.append("Key metrics were unchanged compared with the prior period.")
+        if len(unique_insights) < 3:
+            unique_insights.append("Overall performance remained broadly in line with the previous interval.")
+        if len(unique_insights) < 3:
+            unique_insights.append("Monitor campaign levers to unlock incremental growth while trends are steady.")
+
+        return unique_insights[:5]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OpenAI error: {e}")
+        raise HTTPException(status_code=500, detail=f"Insight generation error: {e}")

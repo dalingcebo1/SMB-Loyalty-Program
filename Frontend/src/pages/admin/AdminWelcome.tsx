@@ -6,30 +6,17 @@ import api from '../../api/api';
 import { useAuth } from '../../auth/AuthProvider';
 
 interface BusinessSummaryResponse {
-  revenue: {
-    current: number;
-    prev_period: number;
-    percent_change: number | null;
-  };
-  orders: {
-    current: number;
-    prev_period: number;
-    percent_change: number | null;
-  };
-  customers: {
-    unique_count: number;
-    new_customers: number;
-    new_customer_change: number | null;
-  };
-  loyalty: {
-    redemptions: number;
-    redemption_change: number | null;
-  };
-  period: {
-    start_date: string;
-    end_date: string;
-    days: number;
-  };
+  total_revenue: number;
+  total_orders: number;
+  total_customers: number;
+  active_customers: number;
+  avg_order_value: number;
+  loyalty_points_issued: number;
+  loyalty_points_redeemed: number;
+  top_service: {
+    name: string;
+    count: number;
+  } | null;
 }
 
 interface BusinessAnalyticsSummary {
@@ -57,7 +44,7 @@ const AdminWelcome: React.FC = () => {
     queryKey: ['admin-welcome', 'summary', '7d'],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await api.get('/reports/business-summary', { params: { period: '7d' } });
+      const { data } = await api.get('/reports/summary', { params: { days: 7 } });
       return data as BusinessSummaryResponse;
     },
   });
@@ -91,7 +78,7 @@ const AdminWelcome: React.FC = () => {
     if (value === undefined || value === null || Number.isNaN(value)) {
       return '—';
     }
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value / 100);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   };
 
   const buildDeltaBadge = (value?: number | null) => {
@@ -104,18 +91,18 @@ const AdminWelcome: React.FC = () => {
     };
   };
 
-  const activeCustomers = summary?.customers.unique_count ?? analytics?.active_customers ?? null;
+  const activeCustomers = summary?.active_customers ?? analytics?.active_customers ?? null;
   const totalCompletedOrders =
     analytics?.wash_volume_trend?.reduce(
       (sum: number, day: BusinessAnalyticsSummary['wash_volume_trend'][number]) => sum + (day.completed ?? 0),
       0,
     ) ?? null;
-  const revenueChange = summary?.revenue.percent_change ?? null;
-  const revenueCurrent = summary?.revenue.current ?? null;
+  const revenueChange = null;
+  const revenueCurrent = summary?.total_revenue ?? null;
   const pendingOrders = analytics?.pending_orders_over_10m ?? null;
   const lastUpdated = analytics?.meta?.generated_at ? new Date(analytics.meta.generated_at) : null;
-  const ordersChange = summary?.orders.percent_change ?? null;
-  const newCustomerChange = summary?.customers.new_customer_change ?? null;
+  const ordersChange = null;
+  const newCustomerChange = null;
   const newCustomersDelta = buildDeltaBadge(newCustomerChange);
   const ordersDelta = buildDeltaBadge(ordersChange);
   const revenueDelta = buildDeltaBadge(revenueChange);

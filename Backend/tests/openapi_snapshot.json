@@ -879,8 +879,13 @@
         "title": "CreateBusinessRequest",
         "type": "object"
       },
-      "CustomerDetail": {
+      "CustomerDetailResponse": {
         "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -893,16 +898,11 @@
             "title": "Id",
             "type": "integer"
           },
-          "joined_date": {
-            "format": "date-time",
-            "title": "Joined Date",
-            "type": "string"
-          },
           "last_name": {
             "title": "Last Name",
             "type": "string"
           },
-          "last_visit": {
+          "last_order_date": {
             "anyOf": [
               {
                 "format": "date-time",
@@ -912,47 +912,56 @@
                 "type": "null"
               }
             ],
-            "title": "Last Visit"
-          },
-          "loyalty_history": {
-            "default": [],
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Loyalty History",
-            "type": "array"
+            "title": "Last Order Date"
           },
           "loyalty_points": {
+            "default": 0,
+            "minimum": 0.0,
             "title": "Loyalty Points",
             "type": "integer"
           },
+          "loyalty_summary": {
+            "$ref": "#/components/schemas/LoyaltySummary"
+          },
+          "order_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Order Count",
+            "type": "integer"
+          },
           "phone": {
-            "title": "Phone",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
           },
           "recent_orders": {
             "default": [],
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/CustomerOrder"
             },
             "title": "Recent Orders",
             "type": "array"
           },
-          "total_spent": {
-            "title": "Total Spent",
-            "type": "integer"
+          "role": {
+            "title": "Role",
+            "type": "string"
           },
-          "total_visits": {
-            "title": "Total Visits",
-            "type": "integer"
+          "total_spent": {
+            "default": 0,
+            "description": "Total spent in account currency",
+            "title": "Total Spent",
+            "type": "number"
           },
           "vehicles": {
             "default": [],
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/CustomerVehicle"
             },
             "title": "Vehicles",
             "type": "array"
@@ -960,20 +969,24 @@
         },
         "required": [
           "id",
+          "email",
           "first_name",
           "last_name",
-          "email",
           "phone",
-          "joined_date",
-          "total_visits",
-          "total_spent",
-          "loyalty_points"
+          "role",
+          "created_at",
+          "loyalty_summary"
         ],
-        "title": "CustomerDetail",
+        "title": "CustomerDetailResponse",
         "type": "object"
       },
-      "CustomerOverview": {
+      "CustomerListItem": {
         "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -986,16 +999,11 @@
             "title": "Id",
             "type": "integer"
           },
-          "joined_date": {
-            "format": "date-time",
-            "title": "Joined Date",
-            "type": "string"
-          },
           "last_name": {
             "title": "Last Name",
             "type": "string"
           },
-          "last_visit": {
+          "last_order_date": {
             "anyOf": [
               {
                 "format": "date-time",
@@ -1005,37 +1013,256 @@
                 "type": "null"
               }
             ],
-            "title": "Last Visit"
+            "title": "Last Order Date"
           },
           "loyalty_points": {
+            "default": 0,
+            "minimum": 0.0,
             "title": "Loyalty Points",
             "type": "integer"
           },
+          "order_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Order Count",
+            "type": "integer"
+          },
           "phone": {
-            "title": "Phone",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "role": {
+            "title": "Role",
             "type": "string"
           },
           "total_spent": {
+            "default": 0,
+            "description": "Total spent in account currency",
             "title": "Total Spent",
-            "type": "integer"
-          },
-          "total_visits": {
-            "title": "Total Visits",
-            "type": "integer"
+            "type": "number"
           }
         },
         "required": [
           "id",
+          "email",
           "first_name",
           "last_name",
-          "email",
           "phone",
-          "joined_date",
-          "total_visits",
-          "total_spent",
-          "loyalty_points"
+          "role",
+          "created_at"
         ],
-        "title": "CustomerOverview",
+        "title": "CustomerListItem",
+        "type": "object"
+      },
+      "CustomerListResponse": {
+        "properties": {
+          "customers": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerListItem"
+            },
+            "title": "Customers",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_pages": {
+            "title": "Total Pages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customers",
+          "total",
+          "page",
+          "limit",
+          "total_pages"
+        ],
+        "title": "CustomerListResponse",
+        "type": "object"
+      },
+      "CustomerOrder": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "service_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "total_amount": {
+            "title": "Total Amount",
+            "type": "number"
+          },
+          "vehicle_info": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Info"
+          }
+        },
+        "required": [
+          "id",
+          "service_name",
+          "total_amount",
+          "status",
+          "created_at"
+        ],
+        "title": "CustomerOrder",
+        "type": "object"
+      },
+      "CustomerUpdate": {
+        "properties": {
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "title": "CustomerUpdate",
+        "type": "object"
+      },
+      "CustomerVehicle": {
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "license_plate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Plate"
+          },
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "id",
+          "make",
+          "model"
+        ],
+        "title": "CustomerVehicle",
         "type": "object"
       },
       "DailyCount": {
@@ -1321,6 +1548,46 @@
           "outstanding_points"
         ],
         "title": "LoyaltyOverview",
+        "type": "object"
+      },
+      "LoyaltySummary": {
+        "properties": {
+          "current_points": {
+            "title": "Current Points",
+            "type": "integer"
+          },
+          "next_tier_points": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Tier Points"
+          },
+          "tier_name": {
+            "title": "Tier Name",
+            "type": "string"
+          },
+          "total_earned": {
+            "title": "Total Earned",
+            "type": "integer"
+          },
+          "total_redeemed": {
+            "title": "Total Redeemed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current_points",
+          "total_earned",
+          "total_redeemed",
+          "tier_name",
+          "next_tier_points"
+        ],
+        "title": "LoyaltySummary",
         "type": "object"
       },
       "ManualUserCreate": {
@@ -3760,6 +4027,269 @@
           }
         ],
         "summary": "Remove Rate Limit",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/transactions": {
+      "get": {
+        "operationId": "list_transactions_api_admin_transactions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by payment status (comma separated)",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by payment status (comma separated)",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Filter by payment method",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by payment method",
+              "title": "Method"
+            }
+          },
+          {
+            "description": "Filter by payment source",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by payment source",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Search reference, transaction id, email, phone, or order id",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search reference, transaction id, email, phone, or order id",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Filter payments created on/after this ISO date",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter payments created on/after this ISO date",
+              "title": "Start Date"
+            }
+          },
+          {
+            "description": "Filter payments created on/before this ISO date",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter payments created on/before this ISO date",
+              "title": "End Date"
+            }
+          },
+          {
+            "description": "Minimum payment amount in cents",
+            "in": "query",
+            "name": "min_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum payment amount in cents",
+              "title": "Min Amount"
+            }
+          },
+          {
+            "description": "Maximum payment amount in cents",
+            "in": "query",
+            "name": "max_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum payment amount in cents",
+              "title": "Max Amount"
+            }
+          },
+          {
+            "description": "Filter by numeric order id",
+            "in": "query",
+            "name": "order_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by numeric order id",
+              "title": "Order Id"
+            }
+          },
+          {
+            "description": "Sort field: created_at, amount, status, order_created_at",
+            "in": "query",
+            "name": "sort_by",
+            "required": false,
+            "schema": {
+              "default": "created_at",
+              "description": "Sort field: created_at, amount, status, order_created_at",
+              "title": "Sort By",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Sort order: asc or desc",
+            "in": "query",
+            "name": "sort_order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "description": "Sort order: asc or desc",
+              "title": "Sort Order",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin only)",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Transactions",
         "tags": [
           "admin"
         ]
@@ -6810,10 +7340,34 @@
     },
     "/api/customers/": {
       "get": {
-        "description": "Get a list of customers with basic metrics",
+        "description": "Return paginated customer records with aggregate metrics.",
         "operationId": "list_customers_api_customers__get",
         "parameters": [
           {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Search by name, email, or phone",
             "in": "query",
             "name": "search",
             "required": false,
@@ -6826,30 +7380,8 @@
                   "type": "null"
                 }
               ],
+              "description": "Search by name, email, or phone",
               "title": "Search"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
             }
           },
           {
@@ -6857,19 +7389,38 @@
             "name": "sort_by",
             "required": false,
             "schema": {
-              "default": "last_visit",
+              "default": "created_at",
               "title": "Sort By",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "sort_dir",
+            "name": "sort_order",
             "required": false,
             "schema": {
               "default": "desc",
-              "title": "Sort Dir",
+              "pattern": "^(asc|desc)$",
+              "title": "Sort Order",
               "type": "string"
+            }
+          },
+          {
+            "description": "Filter by role (user/staff/admin)",
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by role (user/staff/admin)",
+              "title": "Role"
             }
           }
         ],
@@ -6878,11 +7429,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CustomerOverview"
-                  },
-                  "title": "Response List Customers Api Customers  Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/CustomerListResponse"
                 }
               }
             },
@@ -6909,7 +7456,7 @@
     },
     "/api/customers/{customer_id}": {
       "get": {
-        "description": "Get detailed information about a specific customer",
+        "description": "Return a single customer's profile, loyalty, and recent activity.",
         "operationId": "get_customer_api_customers__customer_id__get",
         "parameters": [
           {
@@ -6927,7 +7474,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CustomerDetail"
+                  "$ref": "#/components/schemas/CustomerDetailResponse"
                 }
               }
             },
@@ -6950,11 +7497,64 @@
           }
         ],
         "summary": "Get Customer"
+      },
+      "patch": {
+        "description": "Update customer profile fields (admin/staff only).",
+        "operationId": "update_customer_api_customers__customer_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "title": "Customer Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Customer"
       }
     },
     "/api/customers/{customer_id}/orders": {
       "get": {
-        "description": "Get paginated orders for a specific customer",
+        "description": "Return paginated orders for a single customer.",
         "operationId": "get_customer_orders_api_customers__customer_id__orders_get",
         "parameters": [
           {
@@ -10740,18 +11340,37 @@
     },
     "/api/reports/business-summary": {
       "get": {
-        "description": "Get business summary metrics for the dashboard",
+        "description": "Return consolidated business metrics for admin dashboards.",
         "operationId": "get_business_summary_api_reports_business_summary_get",
         "parameters": [
           {
             "in": "query",
-            "name": "period",
+            "name": "days",
             "required": false,
             "schema": {
-              "default": "30d",
-              "pattern": "^(7d|30d|90d|ytd|all)$",
-              "title": "Period",
-              "type": "string"
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin/developer only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin/developer only)",
+              "title": "Tenant Id"
             }
           }
         ],
@@ -10783,10 +11402,42 @@
         "summary": "Get Business Summary"
       }
     },
-    "/api/reports/customer-segments": {
+    "/api/reports/customer-segmentation": {
       "get": {
-        "description": "Get customer segmentation analysis",
-        "operationId": "get_customer_segments_api_reports_customer_segments_get",
+        "description": "Return customer segmentation buckets for the dashboard.",
+        "operationId": "get_customer_segments_api_reports_customer_segmentation_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 180,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin/developer only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin/developer only)",
+              "title": "Tenant Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -10795,6 +11446,80 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Customer Segments"
+      }
+    },
+    "/api/reports/customer-segments": {
+      "get": {
+        "description": "Return customer segmentation buckets for the dashboard.",
+        "operationId": "get_customer_segments_api_reports_customer_segments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 180,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin/developer only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin/developer only)",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -10807,18 +11532,37 @@
     },
     "/api/reports/loyalty-stats": {
       "get": {
-        "description": "Get loyalty program statistics",
+        "description": "Return loyalty program KPIs for the dashboard.",
         "operationId": "get_loyalty_stats_api_reports_loyalty_stats_get",
         "parameters": [
           {
             "in": "query",
-            "name": "period",
+            "name": "days",
             "required": false,
             "schema": {
-              "default": "30d",
-              "pattern": "^(7d|30d|90d|ytd|all)$",
-              "title": "Period",
-              "type": "string"
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin/developer only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin/developer only)",
+              "title": "Tenant Id"
             }
           }
         ],
@@ -10852,18 +11596,19 @@
     },
     "/api/reports/revenue-chart": {
       "get": {
-        "description": "Get revenue data for charts grouped by time period",
+        "description": "Get revenue data for charts grouped by time period.",
         "operationId": "get_revenue_chart_api_reports_revenue_chart_get",
         "parameters": [
           {
             "in": "query",
-            "name": "period",
+            "name": "days",
             "required": false,
             "schema": {
-              "default": "30d",
-              "pattern": "^(7d|30d|90d|ytd|all)$",
-              "title": "Period",
-              "type": "string"
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
             }
           },
           {
@@ -10875,6 +11620,24 @@
               "pattern": "^(day|week|month)$",
               "title": "Group By",
               "type": "string"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin/developer only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin/developer only)",
+              "title": "Tenant Id"
             }
           }
         ],
@@ -10906,20 +11669,85 @@
         "summary": "Get Revenue Chart"
       }
     },
+    "/api/reports/summary": {
+      "get": {
+        "description": "Return consolidated business metrics for admin dashboards.",
+        "operationId": "get_business_summary_api_reports_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin/developer only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin/developer only)",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Business Summary"
+      }
+    },
     "/api/reports/top-services": {
       "get": {
-        "description": "Get top services by revenue or order count",
+        "description": "Return top performing services within the requested window.",
         "operationId": "get_top_services_api_reports_top_services_get",
         "parameters": [
           {
             "in": "query",
-            "name": "period",
+            "name": "days",
             "required": false,
             "schema": {
-              "default": "30d",
-              "pattern": "^(7d|30d|90d|ytd|all)$",
-              "title": "Period",
-              "type": "string"
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
             }
           },
           {
@@ -10927,11 +11755,29 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 5,
-              "maximum": 20,
+              "default": 10,
+              "maximum": 50,
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Tenant scope override (superadmin/developer only)",
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant scope override (superadmin/developer only)",
+              "title": "Tenant Id"
             }
           }
         ],

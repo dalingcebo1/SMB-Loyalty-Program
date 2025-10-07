@@ -64,47 +64,51 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
   return (
     <aside className="w-72 bg-white shadow-xl border-r border-gray-200 sticky top-0 h-screen overflow-y-auto flex flex-col">
       {/* Mobile close button */}
-      <div className="lg:hidden p-4 border-b border-gray-100">
+      <div className="lg:hidden p-3 border-b border-gray-100">
         <button
           onClick={() => onClose?.()}
-          className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className="w-full flex items-center justify-center px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
           Close Menu
         </button>
       </div>
 
-      {/* Header */}
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+      {/* Header - Clickable to return home */}
+      <NavLink 
+        to="/admin" 
+        className="block p-4 border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-colors duration-200 group"
+        onClick={() => onClose?.()}
+      >
+        <div className="flex items-center space-x-3 mb-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Admin Panel</h2>
-            <p className="text-xs text-gray-500">System Management</p>
+            <h2 className="text-xl font-bold text-gray-800 group-hover:text-blue-700 transition-colors">Admin Panel</h2>
+            <p className="text-xs text-gray-500 group-hover:text-blue-600 transition-colors">Click to return home</p>
           </div>
         </div>
-        <div className="h-1 w-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full"></div>
-      </div>
+        <div className="h-1 w-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full group-hover:from-blue-700 group-hover:to-indigo-700 transition-all"></div>
+      </NavLink>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-3 space-y-1">
         {adminNavGroups.map(group => {
           const groupItems = group.items.filter(i => !i.cap || has(i.cap));
           if (!groupItems.length) return null;
           const isCollapsed = collapsed[group.key] ?? group.defaultCollapsed ?? false;
           const groupActive = group.key === activeGroupKey; // single source of truth
-          const groupButtonBase = 'w-full flex justify-between items-center text-left text-xs tracking-wider font-bold uppercase py-3 px-3 rounded-lg transition-all duration-200 group';
+          const groupButtonBase = 'w-full flex justify-between items-center text-left text-xs tracking-wider font-bold uppercase py-2 px-2.5 rounded-lg transition-all duration-200 group';
           const groupButtonClasses = groupActive
             ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm'
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50';
           return (
-            <div key={group.key} className="mb-4">
+            <div key={group.key} className="mb-3">
               <button
                 type="button"
                 onClick={() => toggle(group.key)}
@@ -122,7 +126,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                 </span>
               </button>
               {!isCollapsed && (
-                <ul className="mt-1 space-y-1 pl-2">
+                <ul className="mt-1 space-y-0.5 pl-1.5">
                   {groupItems.map(item => (
                     <li key={item.key}>
                       <NavLink
@@ -134,16 +138,16 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                           //  - It is a parent of current path (boundary match) except for the root '/admin' item which should only be exact.
                           const boundaryMatch = pathname === item.path || pathname.startsWith(item.path + '/');
                           const active = item.path === '/admin' ? pathname === '/admin' : (isActive || boundaryMatch);
-                          return `group flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          return `group flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             active
-                              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25 transform scale-[1.02]'
-                              : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:scale-[1.01] hover:shadow-sm'
+                              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+                              : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:shadow-sm'
                           }`;
                         }}
                       >
                         <span className="flex items-center justify-between w-full">
                           <span className="flex items-center">
-                            <span className={`w-2 h-2 rounded-full mr-3 transition-all duration-200 ${
+                            <span className={`w-1.5 h-1.5 rounded-full mr-2.5 transition-all duration-200 ${
                               pathname.startsWith(item.path) 
                                 ? 'bg-white shadow-sm' 
                                 : 'bg-gray-300 group-hover:bg-gray-400'

@@ -3,15 +3,16 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import StatusBanner from './StatusBanner';
+import FloatingHomeButton from './FloatingHomeButton';
 
 const AdminLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Mobile header */}
-      <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
-        <h1 className="text-lg font-semibold text-gray-800">Admin Panel</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-50 flex flex-col">
+      {/* Compact Mobile header */}
+      <div className="lg:hidden bg-white border-b border-gray-200 px-3 py-2.5 flex items-center justify-between shadow-sm">
+        <h1 className="text-base font-semibold text-gray-800">Admin Panel</h1>
         <button
           type="button"
           onClick={() => setSidebarOpen((open) => !open)}
@@ -42,11 +43,14 @@ const AdminLayout: React.FC = () => {
         )}
 
         <main className="flex-1 overflow-y-auto focus:outline-none">
-          <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
+          <div className="min-h-full px-4 py-4 sm:px-6 lg:px-8">
             <Outlet />
           </div>
         </main>
       </div>
+
+      {/* Floating Home Button */}
+      <FloatingHomeButton />
 
       <footer className="mt-auto">
         <StatusBanner />

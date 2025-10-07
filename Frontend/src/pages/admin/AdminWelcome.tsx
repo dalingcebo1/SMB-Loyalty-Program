@@ -1,13 +1,124 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { HiUsers, HiUserAdd, HiCog, HiOfficeBuilding, HiChartBar, HiShieldCheck, HiClipboardList, HiBell, HiClock, HiLockClosed } from 'react-icons/hi';
+import api from '../../api/api';
 import { useAuth } from '../../auth/AuthProvider';
+
+interface BusinessSummaryResponse {
+  revenue: {
+    current: number;
+    prev_period: number;
+    percent_change: number | null;
+  };
+  orders: {
+    current: number;
+    prev_period: number;
+    percent_change: number | null;
+  };
+  customers: {
+    unique_count: number;
+    new_customers: number;
+    new_customer_change: number | null;
+  };
+  loyalty: {
+    redemptions: number;
+    redemption_change: number | null;
+  };
+  period: {
+    start_date: string;
+    end_date: string;
+    days: number;
+  };
+}
+
+interface BusinessAnalyticsSummary {
+  active_customers: number;
+  pending_orders_over_10m: number;
+  wash_volume_trend: { day: string; started: number; completed: number }[];
+  payment_mix: { manual_started: number; paid_started: number };
+  deltas?: {
+    revenue_pct?: number | null;
+  };
+  meta?: { generated_at?: string };
+}
 
 /**
  * AdminWelcome - modern admin dashboard with grouped quick actions and status overview
  */
 const AdminWelcome: React.FC = () => {
   const { user } = useAuth();
+
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    error: summaryError,
+  } = useQuery<BusinessSummaryResponse>({
+    queryKey: ['admin-welcome', 'summary', '7d'],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await api.get('/reports/business-summary', { params: { period: '7d' } });
+      return data as BusinessSummaryResponse;
+    },
+  });
+
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+    error: analyticsError,
+  } = useQuery<BusinessAnalyticsSummary>({
+    queryKey: ['admin-welcome', 'analytics', 7],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await api.get('/payments/business-analytics', {
+        params: { range_days: 7, recent_days: 7 },
+      });
+      return data as BusinessAnalyticsSummary;
+    },
+  });
+
+  const isLoadingMetrics = summaryLoading || analyticsLoading;
+  const hasMetricsError = summaryError || analyticsError;
+
+  const formatNumber = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return '—';
+    }
+    return value.toLocaleString();
+  };
+
+  const formatCurrency = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return '—';
+    }
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value / 100);
+  };
+
+  const buildDeltaBadge = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return null;
+    }
+    return {
+      text: `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`,
+      tone: value >= 0 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100',
+    };
+  };
+
+  const activeCustomers = summary?.customers.unique_count ?? analytics?.active_customers ?? null;
+  const totalCompletedOrders =
+    analytics?.wash_volume_trend?.reduce(
+      (sum: number, day: BusinessAnalyticsSummary['wash_volume_trend'][number]) => sum + (day.completed ?? 0),
+      0,
+    ) ?? null;
+  const revenueChange = summary?.revenue.percent_change ?? null;
+  const revenueCurrent = summary?.revenue.current ?? null;
+  const pendingOrders = analytics?.pending_orders_over_10m ?? null;
+  const lastUpdated = analytics?.meta?.generated_at ? new Date(analytics.meta.generated_at) : null;
+  const ordersChange = summary?.orders.percent_change ?? null;
+  const newCustomerChange = summary?.customers.new_customer_change ?? null;
+  const newCustomersDelta = buildDeltaBadge(newCustomerChange);
+  const ordersDelta = buildDeltaBadge(ordersChange);
+  const revenueDelta = buildDeltaBadge(revenueChange);
 
   // Helper function for color classes to ensure Tailwind includes them
   const getColorClasses = (color: string, type: 'bg' | 'text') => {
@@ -125,36 +236,70 @@ const AdminWelcome: React.FC = () => {
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-gray-800">System Overview</h2>
             <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Real-time data</span>
+              <div
+                className={`w-2 h-2 rounded-full ${pendingOrders && pendingOrders > 0 ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}
+              ></div>
+              <span>{lastUpdated ? `Last updated ${lastUpdated.toLocaleString()}` : 'Awaiting latest data'}</span>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="relative group">
+          {hasMetricsError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              We couldn't load the latest metrics. Please refresh the page or try again shortly.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative text-center p-6 rounded-xl border-2 border-dashed border-gray-200 group-hover:border-blue-300 transition-colors duration-300">
-                <div className="text-3xl font-bold text-gray-400 mb-2">—</div>
-                <div className="text-sm font-semibold text-gray-600 mb-1">Active Users</div>
-                <div className="text-xs text-gray-500">Last 24 hours</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {isLoadingMetrics ? '…' : formatNumber(activeCustomers)}
+                </div>
+                <div className="text-sm font-semibold text-gray-600 mb-1">Active Customers</div>
+                <div className="text-xs text-gray-500">Unique users over the last 7 days</div>
+                {!isLoadingMetrics && newCustomersDelta ? (
+                  <div className={`mt-3 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${newCustomersDelta.tone}`}>
+                    {newCustomersDelta.text} new customers
+                  </div>
+                ) : null}
               </div>
             </div>
-            <div className="relative group">
+              <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-green-100 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative text-center p-6 rounded-xl border-2 border-dashed border-gray-200 group-hover:border-green-300 transition-colors duration-300">
-                <div className="text-3xl font-bold text-gray-400 mb-2">—</div>
-                <div className="text-sm font-semibold text-gray-600 mb-1">Recent Orders</div>
-                <div className="text-xs text-gray-500">This week</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {isLoadingMetrics ? '…' : formatNumber(totalCompletedOrders)}
+                </div>
+                <div className="text-sm font-semibold text-gray-600 mb-1">Completed Orders</div>
+                <div className="text-xs text-gray-500">Last 7 days of wash volume</div>
+                {!isLoadingMetrics && ordersDelta ? (
+                  <div className={`mt-3 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${ordersDelta.tone}`}>
+                    {ordersDelta.text} vs previous period
+                  </div>
+                ) : null}
               </div>
             </div>
-            <div className="relative group">
+              <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative text-center p-6 rounded-xl border-2 border-dashed border-gray-200 group-hover:border-emerald-300 transition-colors duration-300">
-                <div className="text-3xl font-bold text-emerald-500 mb-2">●</div>
-                <div className="text-sm font-semibold text-gray-600 mb-1">System Health</div>
-                <div className="text-xs text-gray-500">All systems operational</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {isLoadingMetrics ? '…' : formatCurrency(revenueCurrent)}
+                </div>
+                <div className="text-sm font-semibold text-gray-600 mb-1">Revenue (7 days)</div>
+                <div className="text-xs text-gray-500">
+                  {!isLoadingMetrics && revenueDelta ? `${revenueDelta.text} vs last period` : 'Monitoring trend performance'}
+                </div>
+                {!isLoadingMetrics && pendingOrders !== null ? (
+                  <div className="mt-3 text-xs font-semibold text-gray-600">
+                    Pending &gt;10m: {' '}
+                    <span className={pendingOrders > 0 ? 'text-amber-600' : 'text-emerald-600'}>
+                      {formatNumber(pendingOrders)}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

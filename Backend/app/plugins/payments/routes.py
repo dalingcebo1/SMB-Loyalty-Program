@@ -1132,6 +1132,8 @@ def business_analytics(
     first_visit_rows = db.query(Order.user_id, func.min(func.date(Order.started_at))).group_by(Order.user_id).all()
     first_visit_map = {}
     for uid, first_day in first_visit_rows:
+        if not first_day:
+            continue
         # SQLite returns str, Postgres returns date; normalize to date object
         if hasattr(first_day, 'isoformat'):
             first_visit_map[uid] = first_day

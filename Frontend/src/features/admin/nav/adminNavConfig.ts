@@ -48,6 +48,13 @@ export const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'payments',
+    title: 'Payments & Billing',
+    items: [
+      { key: 'transactions', label: 'Transactions', path: '/admin/transactions', cap: 'payments.view' },
+    ],
+  },
+  {
     key: 'staff-ops',
     title: 'Staff Operations',
     items: [

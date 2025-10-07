@@ -65,6 +65,7 @@ const InventoryPage = lazy(() => import('../pages/admin/InventoryPage'));
 const AdminAuditLogs = lazy(() => import('../features/admin/pages/AuditLogs'));
 const AdminJobsMonitor = lazy(() => import('../features/admin/pages/JobsMonitor'));
 const AdminRateLimitEditor = lazy(() => import('../features/admin/pages/RateLimitEditor'));
+const TransactionsAdmin = lazy(() => import('../features/admin/pages/TransactionsAdmin'));
 // New admin pages for MVP
 const CustomersAdmin = lazy(() => import('../features/admin/pages/CustomersAdmin'));
 const CustomerDetailPage = lazy(() => import('../features/admin/pages/CustomerDetailPage'));
@@ -160,6 +161,7 @@ const AppRoutes: React.FC = () => {
             { path: 'users-admin', element: <AdminUsers /> },
             { path: 'branding', element: <BrandingPage /> },
             { path: 'inventory', element: <InventoryPage /> },
+            { path: 'transactions', element: <TransactionsAdmin /> },
             { path: 'audit', element: <AdminAuditLogs /> },
             { path: 'jobs', element: <AdminJobsMonitor /> },
             { path: 'rate-limits', element: <AdminRateLimitEditor /> },

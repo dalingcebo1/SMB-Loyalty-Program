@@ -58,7 +58,7 @@ jobs:
           lfs: false
       - name: Upsert repository Variables from manual inputs (no-op if empty)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           VITE_API_BASE_URL_IN: ${{ github.event.inputs.vite_api_base_url }}
           VITE_FIREBASE_API_KEY_IN: ${{ github.event.inputs.firebase_api_key }}

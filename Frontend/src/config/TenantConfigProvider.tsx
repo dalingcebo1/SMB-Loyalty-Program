@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import api from '../api/api';
 import { ModuleFlags, getModuleFlags } from './modules';
 import { applyFeatureDefaults } from './features';
 
@@ -41,9 +42,10 @@ const VERTICAL_FLAG_OVERRIDES: Partial<Record<Vertical, Partial<ModuleFlags>>> =
 const TENANT_META_QUERY_KEY = ['tenant-meta'];
 
 async function fetchTenantMeta(): Promise<TenantMetaResponse> {
-  const res = await fetch('/api/public/tenant-meta', { credentials: 'include' });
-  if (!res.ok) throw new Error(`tenant-meta ${res.status}`);
-  return res.json();
+  const { data } = await api.get<TenantMetaResponse>('/public/tenant-meta', {
+    withCredentials: true,
+  });
+  return data;
 }
 
 export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -68,8 +70,8 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const base = getModuleFlags();
     const vertical = meta?.vertical || 'carwash';
     const overrides = VERTICAL_FLAG_OVERRIDES[vertical] || {};
-  const mergedFeatureFlags = applyFeatureDefaults(meta?.features || {});
-  return { ...base, ...overrides, ...mergedFeatureFlags } as ModuleFlags;
+    const mergedFeatureFlags = applyFeatureDefaults(meta?.features || {});
+    return { ...base, ...overrides, ...mergedFeatureFlags } as ModuleFlags;
   }, [meta]);
 
   const value: TenantConfigContextValue = {

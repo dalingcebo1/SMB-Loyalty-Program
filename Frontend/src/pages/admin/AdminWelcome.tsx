@@ -135,14 +135,14 @@ const AdminWelcome: React.FC = () => {
     {
       category: 'People Management',
       items: [
-        { to: '/admin/users', icon: HiUsers, title: 'Manage Users', description: 'View & manage user accounts', color: 'blue' },
-  { to: '/admin/users-admin?registerStaff=1', icon: HiUserAdd, title: 'Register Staff', description: 'Invite staff & assign roles', color: 'green' },
+        { to: '/admin/users-admin', icon: HiUsers, title: 'Manage Users', description: 'View & manage user accounts', color: 'blue' },
+        { to: '/admin/users-admin?registerStaff=1', icon: HiUserAdd, title: 'Register Staff', description: 'Invite staff & assign roles', color: 'green' },
       ]
     },
     {
       category: 'Business Configuration',
       items: [
-  { to: '/admin/branding', icon: HiOfficeBuilding, title: 'Branding', description: 'Logos, colors & brand identity', color: 'purple' },
+        { to: '/admin/branding', icon: HiOfficeBuilding, title: 'Branding', description: 'Logos, colors & brand identity', color: 'purple' },
         { to: '/admin/modules', icon: HiCog, title: 'Modules', description: 'Feature toggles & settings', color: 'orange' },
         { to: '/admin/inventory', icon: HiClipboardList, title: 'Inventory', description: 'Manage services & extras', color: 'teal' },
       ]

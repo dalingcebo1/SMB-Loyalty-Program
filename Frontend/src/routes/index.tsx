@@ -52,7 +52,6 @@ const AdminLayout = lazy(() => import('../components/AdminLayout'));
 
 // Admin pages
 const AdminWelcome = lazy(() => import('../pages/admin/AdminWelcome'));
-const UsersList = lazy(() => import('../pages/admin/UsersList'));
 const ModuleSettings = lazy(() => import('../pages/admin/ModuleSettings'));
 const AdminUserEdit = lazy(() => import('../pages/AdminUserEdit'));
 const TenantsList = lazy(() => import('../pages/admin/TenantsList'));
@@ -165,7 +164,6 @@ const AppRoutes: React.FC = () => {
             { path: 'audit', element: <AdminAuditLogs /> },
             { path: 'jobs', element: <AdminJobsMonitor /> },
             { path: 'rate-limits', element: <AdminRateLimitEditor /> },
-            { path: 'users', element: <UsersList /> },
             { path: 'register-staff', element: <Navigate to='users-admin?registerStaff=1' replace /> },
             { path: 'users/:userId/edit', element: <AdminUserEdit /> },
             { path: 'modules', element: <ModuleSettings /> },

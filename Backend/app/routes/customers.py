@@ -199,6 +199,15 @@ async def list_customers(
     )
 
 
+# Provide a non-trailing-slash alias to avoid 307 redirects that can drop auth headers
+router.add_api_route(
+    "",
+    list_customers,
+    response_model=CustomerListResponse,
+    methods=["GET"],
+)
+
+
 @router.get("/{customer_id}", response_model=CustomerDetailResponse)
 async def get_customer(
     customer_id: int,

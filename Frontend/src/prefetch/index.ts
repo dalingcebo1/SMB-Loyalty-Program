@@ -16,7 +16,6 @@ export const preloadWashHistory = () => import('../features/staff/components/Enh
 
 // Admin pages (barrel) prefetch: importing each lazily-used page ensures their chunks are warmed.
 export const preloadAdminWelcome = () => import('../pages/admin/AdminWelcome');
-export const preloadAdminUsers = () => import('../pages/admin/UsersList');
 export const preloadAdminStaffRegister = () => import('../pages/admin/StaffRegisterForm');
 export const preloadAdminModuleSettings = () => import('../pages/admin/ModuleSettings');
 export const preloadAdminUserEdit = () => import('../pages/AdminUserEdit');
@@ -70,7 +69,6 @@ export function scheduleAdminPrefetch() {
   requestIdle(() => {
     Promise.all([
       preloadAdminWelcome(),
-      preloadAdminUsers(),
       preloadAdminStaffRegister(),
       preloadAdminModuleSettings(),
       preloadAdminUserEdit(),

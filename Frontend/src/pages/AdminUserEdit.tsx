@@ -42,7 +42,7 @@ const AdminUserEdit: React.FC = () => {
       })
       .catch(() => {
         toast.error('Cannot load user');
-        navigate('/admin/users');
+  navigate('/admin/users-admin');
       })
       .finally(() => setLoading(false));
   }, [userId, reset, navigate]);
@@ -52,7 +52,7 @@ const AdminUserEdit: React.FC = () => {
     try {
       await api.patch<ApiUser>(`/users/${userId}`, data);
       toast.success('User updated');
-      navigate('/admin/users');
+  navigate('/admin/users-admin');
     } catch {
       toast.error('Update failed');
     }

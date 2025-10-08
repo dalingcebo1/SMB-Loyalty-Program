@@ -41,61 +41,6 @@ export default defineConfig({
     minify: 'esbuild',
     sourcemap: false, // Disable sourcemaps to reduce memory usage
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      // Coarse grouping to reduce total chunk count for deployment limits
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react-router') || id.includes('/react-dom/')) {
-              return 'vendor-react';
-            }
-            if (id.includes('/@headlessui/') || id.includes('/framer-motion') || id.includes('/react-icons')) {
-              return 'vendor-ui';
-            }
-            if (id.includes('/react-hook-form') || id.includes('/@hookform/') || id.includes('/zod/')) {
-              return 'vendor-forms';
-            }
-            if (id.includes('/@tanstack/') || id.includes('/axios/')) {
-              return 'vendor-data';
-            }
-            if (id.includes('/recharts') || id.includes('circular-progressbar')) {
-              return 'vendor-analytics';
-            }
-            return 'vendor-shared';
-          }
-
-          if (id.includes('/src/pages/admin/')) {
-            return 'admin-pages';
-          }
-          if (id.includes('/src/pages/staff/')) {
-            return 'staff-pages';
-          }
-          if (id.includes('/src/pages/auth/')) {
-            return 'auth-pages';
-          }
-          if (id.includes('/src/pages/')) {
-            return 'app-pages';
-          }
-          if (id.includes('/src/features/admin/')) {
-            return 'admin-features';
-          }
-          if (id.includes('/src/features/')) {
-            return 'app-features';
-          }
-          if (id.includes('/src/components/ui/')) {
-            return 'ui-kit';
-          }
-          if (id.includes('/src/components/')) {
-            return 'shared-components';
-          }
-          if (id.includes('/src/utils/')) {
-            return 'shared-utils';
-          }
-
-          return undefined;
-        },
-      },
-    },
   },
   server: {
     // Temporarily remove COOP header to test popup behavior

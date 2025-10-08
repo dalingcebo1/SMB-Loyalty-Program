@@ -1,6 +1,7 @@
 // src/components/AdminLayout.tsx
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
+import { HiHome } from 'react-icons/hi';
 import AdminSidebar from './AdminSidebar';
 import StatusBanner from './StatusBanner';
 import FloatingHomeButton from './FloatingHomeButton';
@@ -12,7 +13,16 @@ const AdminLayout: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-50 flex flex-col">
       {/* Compact Mobile header */}
       <div className="lg:hidden bg-white border-b border-gray-200 px-3 py-2.5 flex items-center justify-between shadow-sm">
-        <h1 className="text-base font-semibold text-gray-800">Admin Panel</h1>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin"
+            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+            aria-label="Go to admin home"
+          >
+            <HiHome className="w-5 h-5" />
+          </Link>
+          <h1 className="text-base font-semibold text-gray-800">Admin Panel</h1>
+        </div>
         <button
           type="button"
           onClick={() => setSidebarOpen((open) => !open)}

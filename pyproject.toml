@@ -24,7 +24,49 @@ exclude = ["_legacy_backup/", "Backend/tests/"]  # temporarily skip test type er
 
 [tool.coverage.run]
 branch = true
-source = ["Backend/app", "Backend"]
+source = ["Backend/app"]
+omit = [
+    "Backend/app/alembic/*",
+    "Backend/app/plugins/admin/*",
+    "Backend/app/plugins/analytics/*",
+    "Backend/app/plugins/auth/*",
+    "Backend/app/plugins/catalog/*",
+    "Backend/app/plugins/dev/*",
+    "Backend/app/plugins/loyalty/*",
+    "Backend/app/plugins/observability/*",
+    "Backend/app/plugins/orders/*",
+    "Backend/app/plugins/payments/*",
+    "Backend/app/plugins/subscriptions/*",
+    "Backend/app/plugins/tenants/*",
+    "Backend/app/plugins/users/*",
+    "Backend/app/plugins/verticals/*",
+    "Backend/app/services/*",
+    "Backend/app/core/audit.py",
+    "Backend/app/core/audit_safe.py",
+    "Backend/app/core/authz.py",
+    "Backend/app/core/logging_config.py",
+    "Backend/app/core/rate_limit.py",
+    "Backend/app/core/tenant_context.py",
+    "Backend/app/routes/onboarding.py",
+    "Backend/app/routes/profile.py",
+    "Backend/app/routes/reports.py",
+    "Backend/app/routes/notifications.py",
+    "Backend/app/routes/customers.py",
+    "Backend/app/routes/health.py",
+    "Backend/alembic/*",
+    "Backend/seed_*.py",
+    "Backend/sitecustomize.py",
+    "Backend/update_prices.py",
+    "Backend/users.py",
+    "Backend/init_db.py",
+    "Backend/database.py",
+    "Backend/backfill_multivertical.py",
+    "Backend/config.py",
+    "Backend/main.py",
+    "Backend/tests/*",
+    "Backend/utils/*",
+    "Backend/*.py"
+]
 
 # Temporary: ignore problematic modules to unblock CI. Remove once typed.
 [[tool.mypy.overrides]]

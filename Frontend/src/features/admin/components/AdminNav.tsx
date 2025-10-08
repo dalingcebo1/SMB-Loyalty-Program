@@ -1,18 +1,22 @@
 import React from 'react';
-import { useCapabilities } from '../hooks/useCapabilities';
 import { Link } from 'react-router-dom';
+import { adminNavGroups } from '../nav/adminNavConfig';
+import { useCapabilities } from '../hooks/useCapabilities';
 
-// Minimal placeholder admin nav; expand as routes added.
+// Compact horizontal nav for dashboard-style embeds; mirrors sidebar config.
 export const AdminNav: React.FC = () => {
   const { has } = useCapabilities();
+  const items = adminNavGroups
+    .flatMap(group => group.items)
+    .filter(item => !item.cap || has(item.cap));
+
   return (
-    <nav className="flex gap-4 text-sm">
-      {has('tenant.edit') && <Link to="/admin/tenant">Tenant</Link>}
-      {has('users.invite') && <Link to="/admin/users">Users</Link>}
-      {has('analytics.advanced') && <Link to="/admin/analytics">Analytics</Link>}
-      {has('audit.view') && <Link to="/admin/audit">Audit</Link>}
-      {has('jobs.view') && <Link to="/admin/jobs">Jobs</Link>}
-      {has('rate_limit.edit') && <Link to="/admin/rate-limits">Rate Limits</Link>}
+    <nav className="flex flex-wrap gap-3 text-sm">
+      {items.map(item => (
+        <Link key={item.key} to={item.path} className="text-blue-600 hover:text-blue-800">
+          {item.label}
+        </Link>
+      ))}
     </nav>
   );
 };

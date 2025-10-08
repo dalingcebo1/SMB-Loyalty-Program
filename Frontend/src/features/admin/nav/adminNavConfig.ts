@@ -35,12 +35,20 @@ export const adminNavGroups: NavGroup[] = [
     title: 'People & Access',
     items: [
       { key: 'users-admin', label: 'Users Admin', path: '/admin/users-admin', cap: 'users.role.update' },
+      {
+        key: 'customers-admin',
+        label: 'Customers',
+        path: '/admin/customers',
+        cap: 'manage_customers',
+        legacyPaths: ['/staff/customer-analytics']
+      },
     ],
   },
   {
     key: 'tenant-config',
     title: 'My Business',
     items: [
+      { key: 'tenants', label: 'Tenants', path: '/admin/tenants', cap: 'tenant.edit', legacyPaths: ['/admin/tenant'] },
       { key: 'branding', label: 'Branding', path: '/admin/branding', cap: 'tenant.edit' },
       { key: 'modules', label: 'Modules', path: '/admin/modules', cap: 'services.manage' },
       { key: 'inventory', label: 'Inventory', path: '/admin/inventory', cap: 'services.manage' },
@@ -71,9 +79,17 @@ export const adminNavGroups: NavGroup[] = [
     key: 'insights',
     title: 'Insights & History',
     items: [
+      { key: 'reports', label: 'Reports', path: '/admin/reports', cap: 'view_reports' },
       { key: 'audit-logs', label: 'Audit Logs', path: '/admin/audit', cap: 'audit.view' },
       { key: 'jobs', label: 'Jobs', path: '/admin/jobs', cap: 'jobs.view' },
       { key: 'rate-limits', label: 'Rate Limits', path: '/admin/rate-limits', cap: 'rate_limit.edit' },
+    ],
+  },
+  {
+    key: 'communications',
+    title: 'Customer Engagement',
+    items: [
+      { key: 'notifications', label: 'Notifications', path: '/admin/notifications', cap: 'manage_notifications' },
     ],
   },
 ];

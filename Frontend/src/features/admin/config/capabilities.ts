@@ -14,7 +14,8 @@ export const ROLE_CAPABILITIES: Record<string, string[]> = {
     'loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update',
     // Admin-only extras:
     'tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced',
-    'audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view'
+    'audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view',
+    'manage_customers','view_reports','manage_notifications'
   ],
   developer: [
     'dev.tools','jobs.view','jobs.retry','audit.view','rate_limit.edit'

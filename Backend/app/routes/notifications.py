@@ -193,6 +193,30 @@ async def get_unread_count(
     
     return {"unread_count": count}
 
+@router.delete("/admin/{notification_id}")
+async def admin_delete_notification(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Allow admins to delete any tenant notification (legacy route)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    notification = db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    db.delete(notification)
+    db.commit()
+
+    return {"status": "success"}
+
+
 @router.delete("/{notification_id}")
 async def delete_notification(
     notification_id: int,
@@ -215,6 +239,24 @@ async def delete_notification(
     return {"status": "success"}
 
 # Admin endpoints for managing notifications
+@router.get("/admin")
+async def get_admin_notifications(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    notification_type: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Backward-compatible alias returning all notifications for the tenant."""
+    return await get_all_notifications(
+        limit=limit,
+        offset=offset,
+        notification_type=notification_type,
+        current_user=current_user,
+        db=db,
+    )
+
+
 @router.get("/admin/all")
 async def get_all_notifications(
     limit: int = Query(100, ge=1, le=500),

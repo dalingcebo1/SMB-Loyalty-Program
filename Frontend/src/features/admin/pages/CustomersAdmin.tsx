@@ -42,6 +42,7 @@ const pageSize = 20;
 
 const CustomersAdmin: React.FC = () => {
   const { has: hasCapability } = useCapabilities();
+  const canManageCustomers = hasCapability('manage_customers');
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -107,6 +108,7 @@ const CustomersAdmin: React.FC = () => {
       return response.data;
     },
     staleTime: 30000, // 30 seconds
+    enabled: canManageCustomers,
   });
 
   const handleRefresh = useCallback(() => {
@@ -119,7 +121,7 @@ const CustomersAdmin: React.FC = () => {
   };
 
   // Check permissions
-  if (!hasCapability('manage_customers')) {
+  if (!canManageCustomers) {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">

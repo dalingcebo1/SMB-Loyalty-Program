@@ -1,42 +1,52 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FaBell, FaPaperPlane, FaUsers, FaEye, FaTrash, FaPlus, FaTimes } from 'react-icons/fa';
+import { FaBell, FaPaperPlane, FaUsers, FaEye, FaPlus, FaTimes } from 'react-icons/fa';
 import { HiOutlineRefresh } from 'react-icons/hi';
 import api from '../../../api/api';
 import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { toast } from 'react-toastify';
 
-interface Notification {
+interface AdminNotification {
   id: number;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  recipient_type: 'all' | 'role' | 'individual';
-  recipient_filter: string | null;
-  read_count: number;
-  total_recipients: number;
-  sent_at: string;
-  sender_name: string;
+  type: string;
+  created_at: string;
+  read_at: string | null;
+  action_url: string | null;
+  user: {
+    id: number;
+    email: string;
+    name?: string | null;
+  } | null;
 }
 
-interface NotificationStats {
-  total_sent: number;
-  total_read: number;
-  unread_notifications: number;
-  delivery_rate: number;
+interface NotificationStatsResponse {
+  stats_by_type: Array<{
+    type: string;
+    total: number;
+    read: number;
+    unread: number;
+    read_rate: number;
+  }>;
+  recent_activity: Array<{
+    date: string;
+    count: number;
+  }>;
 }
 
 interface SendNotificationForm {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  recipient_type: 'all' | 'role' | 'individual';
+  recipient_type: 'all' | 'individual';
   recipient_filter: string;
 }
 
 const NotificationsAdmin: React.FC = () => {
   const { has: hasCapability } = useCapabilities();
+  const canManageNotifications = hasCapability('manage_notifications');
   const queryClient = useQueryClient();
   const [showSendForm, setShowSendForm] = useState(false);
   const [sendForm, setSendForm] = useState<SendNotificationForm>({
@@ -48,33 +58,78 @@ const NotificationsAdmin: React.FC = () => {
   });
 
   // Fetch notifications
-  const { data: notifications, isLoading: notificationsLoading } = useQuery<Notification[]>({
+  const { data: notificationsData, isLoading: notificationsLoading } = useQuery<AdminNotification[]>({
     queryKey: ['admin-notifications'],
     queryFn: async () => {
-      const response = await api.get('/notifications/admin');
-      return response.data;
+      const response = await api.get('/notifications/admin/all');
+      return response.data as AdminNotification[];
     },
+    enabled: canManageNotifications,
   });
 
+  const notifications = notificationsData ?? [];
+
   // Fetch notification stats
-  const { data: stats, isLoading: statsLoading } = useQuery<NotificationStats>({
+  const { data: statsData, isLoading: statsLoading } = useQuery<NotificationStatsResponse>({
     queryKey: ['notification-stats'],
     queryFn: async () => {
       const response = await api.get('/notifications/admin/stats');
-      return response.data;
+      return response.data as NotificationStatsResponse;
     },
+    enabled: canManageNotifications,
   });
+
+  const statsSummary = useMemo(() => {
+    if (!statsData) {
+      return null;
+    }
+
+    const totals = statsData.stats_by_type.reduce(
+      (acc, item) => {
+        acc.totalSent += item.total;
+        acc.totalRead += item.read;
+        acc.totalUnread += item.unread;
+        return acc;
+      },
+      { totalSent: 0, totalRead: 0, totalUnread: 0 }
+    );
+
+    const deliveryRate = totals.totalSent > 0 ? totals.totalRead / totals.totalSent : 0;
+
+    return {
+      totalSent: totals.totalSent,
+      totalRead: totals.totalRead,
+      totalUnread: totals.totalUnread,
+      deliveryRate,
+    };
+  }, [statsData]);
 
   // Send notification mutation
   const sendNotificationMutation = useMutation({
     mutationFn: async (notification: SendNotificationForm) => {
-      const payload = {
-        title: notification.title,
-        message: notification.message,
+      const payload: Record<string, unknown> = {
+        title: notification.title.trim(),
+        message: notification.message.trim(),
         type: notification.type,
-        recipient_type: notification.recipient_type,
-        recipient_filter: notification.recipient_filter || undefined,
       };
+
+      if (notification.recipient_type === 'all') {
+        payload.all_users = true;
+      } else {
+        const userIds = notification.recipient_filter
+          .split(',')
+          .map((id) => id.trim())
+          .filter(Boolean)
+          .map((id) => Number(id))
+          .filter((id) => !Number.isNaN(id));
+
+        if (userIds.length === 0) {
+          throw new Error('Please provide at least one valid user ID.');
+        }
+
+        payload.user_ids = userIds;
+      }
+
       const response = await api.post('/notifications/send', payload);
       return response.data;
     },
@@ -97,22 +152,6 @@ const NotificationsAdmin: React.FC = () => {
     },
   });
 
-  // Delete notification mutation
-  const deleteNotificationMutation = useMutation({
-    mutationFn: async (notificationId: number) => {
-      await api.delete(`/notifications/admin/${notificationId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notification-stats'] });
-      toast.success('Notification deleted successfully');
-    },
-    onError: (error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete notification';
-      toast.error(errorMessage);
-    },
-  });
-
   const handleSendNotification = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sendForm.title.trim() || !sendForm.message.trim()) {
@@ -120,12 +159,6 @@ const NotificationsAdmin: React.FC = () => {
       return;
     }
     sendNotificationMutation.mutate(sendForm);
-  };
-
-  const handleDeleteNotification = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this notification?')) {
-      deleteNotificationMutation.mutate(id);
-    }
   };
 
   const getTypeColor = (type: string) => {
@@ -137,21 +170,26 @@ const NotificationsAdmin: React.FC = () => {
     }
   };
 
-  const getRecipientText = (notification: Notification) => {
-    switch (notification.recipient_type) {
-      case 'all':
-        return 'All users';
-      case 'role':
-        return `${notification.recipient_filter} users`;
-      case 'individual':
-        return `User ID: ${notification.recipient_filter}`;
-      default:
-        return 'Unknown';
+  const formatRecipient = (notification: AdminNotification) => {
+    if (!notification.user) {
+      return 'Unknown recipient';
     }
+    const name = notification.user.name?.trim();
+    if (name) {
+      return name;
+    }
+    if (notification.user.email) {
+      return notification.user.email;
+    }
+    return `User #${notification.user.id}`;
   };
 
+  const formatReadStatus = (notification: AdminNotification) => (
+    notification.read_at ? 'Read' : 'Unread'
+  );
+
   // Check permissions
-  if (!hasCapability('manage_notifications')) {
+  if (!canManageNotifications) {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -258,34 +296,15 @@ const NotificationsAdmin: React.FC = () => {
                   value={sendForm.recipient_type}
                   onChange={(e) => setSendForm({ 
                     ...sendForm, 
-                    recipient_type: e.target.value as 'all' | 'role' | 'individual',
+                    recipient_type: e.target.value as 'all' | 'individual',
                     recipient_filter: ''
                   })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="all">All Users</option>
-                  <option value="role">By Role</option>
                   <option value="individual">Individual User</option>
                 </select>
               </div>
-              
-              {sendForm.recipient_type === 'role' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Role
-                  </label>
-                  <select
-                    value={sendForm.recipient_filter}
-                    onChange={(e) => setSendForm({ ...sendForm, recipient_filter: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select role...</option>
-                    <option value="user">Users</option>
-                    <option value="staff">Staff</option>
-                    <option value="admin">Admins</option>
-                  </select>
-                </div>
-              )}
               
               {sendForm.recipient_type === 'individual' && (
                 <div>
@@ -297,8 +316,9 @@ const NotificationsAdmin: React.FC = () => {
                     value={sendForm.recipient_filter}
                     onChange={(e) => setSendForm({ ...sendForm, recipient_filter: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter user ID..."
+                    placeholder="Enter user ID (e.g. 42)"
                   />
+                  <p className="mt-1 text-xs text-gray-500">To send to multiple users, enter comma-separated IDs (e.g. 4,12,19).</p>
                 </div>
               )}
               
@@ -331,13 +351,13 @@ const NotificationsAdmin: React.FC = () => {
       ) : (
         <>
           {/* Statistics */}
-          {stats && (
+          {statsSummary && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Sent</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.total_sent}</p>
+                    <p className="text-2xl font-bold text-gray-900">{statsSummary.totalSent}</p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-full">
                     <FaPaperPlane className="w-6 h-6 text-blue-600" />
@@ -349,7 +369,7 @@ const NotificationsAdmin: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Read</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.total_read}</p>
+                    <p className="text-2xl font-bold text-gray-900">{statsSummary.totalRead}</p>
                   </div>
                   <div className="p-3 bg-green-100 rounded-full">
                     <FaEye className="w-6 h-6 text-green-600" />
@@ -361,7 +381,7 @@ const NotificationsAdmin: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Unread</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.unread_notifications}</p>
+                    <p className="text-2xl font-bold text-gray-900">{statsSummary.totalUnread}</p>
                   </div>
                   <div className="p-3 bg-yellow-100 rounded-full">
                     <FaBell className="w-6 h-6 text-yellow-600" />
@@ -374,7 +394,7 @@ const NotificationsAdmin: React.FC = () => {
                   <div>
                     <p className="text-sm text-gray-600">Read Rate</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {(stats.delivery_rate * 100).toFixed(1)}%
+                      {(statsSummary.deliveryRate * 100).toFixed(1)}%
                     </p>
                   </div>
                   <div className="p-3 bg-purple-100 rounded-full">
@@ -384,6 +404,36 @@ const NotificationsAdmin: React.FC = () => {
               </div>
             </div>
           )}
+
+          {statsData?.stats_by_type?.length ? (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-md font-semibold text-gray-900 mb-4">Breakdown by Type</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Type</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Total</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Read</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Unread</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Read Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {statsData.stats_by_type.map((row) => (
+                      <tr key={row.type}>
+                        <td className="px-4 py-2 capitalize text-gray-900">{row.type}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.total}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.read}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.unread}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.read_rate.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
 
           {/* Notifications List */}
           <div className="bg-white rounded-lg shadow">
@@ -399,9 +449,9 @@ const NotificationsAdmin: React.FC = () => {
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {notifications?.map((notification) => (
+                {notifications.map((notification) => (
                   <div key={notification.id} className="p-6">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-medium text-gray-900">{notification.title}</h3>
@@ -410,22 +460,22 @@ const NotificationsAdmin: React.FC = () => {
                           </span>
                         </div>
                         <p className="text-gray-600 mb-3">{notification.message}</p>
-                        <div className="flex items-center gap-6 text-sm text-gray-500">
-                          <span>To: {getRecipientText(notification)}</span>
-                          <span>
-                            Read: {notification.read_count}/{notification.total_recipients}
-                          </span>
-                          <span>Sent: {new Date(notification.sent_at).toLocaleString()}</span>
-                          <span>By: {notification.sender_name}</span>
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                          <span>Recipient: {formatRecipient(notification)}</span>
+                          <span>Status: {formatReadStatus(notification)}</span>
+                          <span>Sent: {new Date(notification.created_at).toLocaleString()}</span>
+                          {notification.action_url && (
+                            <a
+                              href={notification.action_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              View action
+                            </a>
+                          )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteNotification(notification.id)}
-                        className="ml-4 p-2 text-gray-400 hover:text-red-600 transition-colors"
-                        title="Delete notification"
-                      >
-                        <FaTrash className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 ))}

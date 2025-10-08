@@ -57,13 +57,25 @@ const ENV_FLAGS: ModuleFlags = {
 
 const STORAGE_KEY = 'moduleFlags';
 
+function safeGetStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch (err) {
+    console.warn('[modules] localStorage unavailable, falling back to ENV flags', err);
+    return null;
+  }
+}
+
 export function getModuleFlags(): ModuleFlags {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const storage = safeGetStorage();
+  if (!storage) return ENV_FLAGS;
+  const stored = storage.getItem(STORAGE_KEY);
   if (stored) {
-    try { 
-      return { ...ENV_FLAGS, ...JSON.parse(stored) }; 
-    } catch {
-      // Invalid JSON in localStorage, return defaults
+    try {
+      return { ...ENV_FLAGS, ...JSON.parse(stored) };
+    } catch (err) {
+      console.warn('[modules] failed to parse stored module flags, resetting', err);
       return ENV_FLAGS;
     }
   }
@@ -71,9 +83,15 @@ export function getModuleFlags(): ModuleFlags {
 }
 
 export function setModuleFlags(flags: Partial<ModuleFlags>): void {
+  const storage = safeGetStorage();
+  if (!storage) return;
   const current = getModuleFlags();
   const updated = { ...current, ...flags };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('[modules] failed to persist module flags', err);
+  }
 }
 
 export const moduleFlags = getModuleFlags();

@@ -1,6 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import api from '../../api/api';
+import { useCapabilities } from '../../features/admin/hooks/useCapabilities';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface ServiceItem {
   id: number;
@@ -17,9 +20,6 @@ interface ExtraItem {
 }
 
 const InventoryPage: React.FC = () => {
-  const [services, setServices] = useState<ServiceItem[]>([]);
-  const [extras, setExtras] = useState<ExtraItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ category: '', name: '', base_price: 0, loyalty_eligible: false });
   const [extraForm, setExtraForm] = useState({ name: '', price_map: '{}' });
@@ -44,35 +44,54 @@ const InventoryPage: React.FC = () => {
     name: string;
   }>({ isOpen: false, type: 'service', id: 0, name: '' });
 
-  async function fetchAll() {
-    setLoading(true); setError(null);
-    try {
-      const svc = await fetch('/api/inventory/services');
-      const svcData = await svc.json();
-      setServices(svcData.services || []);
-      const ex = await fetch('/api/inventory/extras');
-      const exData = await ex.json();
-      setExtras(exData.extras || []);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to load';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const { has: hasCapability } = useCapabilities();
+  const canManageInventory = hasCapability('services.manage');
+  const queryClient = useQueryClient();
 
-  useEffect(() => { fetchAll(); }, []);
+  const servicesQuery = useQuery<ServiceItem[]>({
+    queryKey: ['inventory', 'services'],
+    queryFn: async () => {
+      const { data } = await api.get<{ services: ServiceItem[] }>('/inventory/services');
+      return data?.services ?? [];
+    },
+    enabled: canManageInventory,
+  });
+
+  const extrasQuery = useQuery<ExtraItem[]>({
+    queryKey: ['inventory', 'extras'],
+    queryFn: async () => {
+      const { data } = await api.get<{ extras: ExtraItem[] }>('/inventory/extras');
+      return data?.extras ?? [];
+    },
+    enabled: canManageInventory,
+  });
+
+  const services = servicesQuery.data ?? [];
+  const extras = extrasQuery.data ?? [];
+  const loading = servicesQuery.isFetching || extrasQuery.isFetching;
+  const loadError =
+    (servicesQuery.error instanceof Error ? servicesQuery.error.message : null) ||
+    (extrasQuery.error instanceof Error ? extrasQuery.error.message : null);
+  const displayError = error ?? loadError;
+  const { refetch: refetchServices } = servicesQuery;
+  const { refetch: refetchExtras } = extrasQuery;
+
+  const refreshInventory = useCallback(() => {
+    if (!canManageInventory) return;
+    refetchServices();
+    refetchExtras();
+  }, [canManageInventory, refetchServices, refetchExtras]);
 
   async function createService(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true); setError(null);
+    setSubmitting(true);
+    setError(null);
     try {
-  if (form.base_price < 0) throw new Error('Price must be >= 0');
-      const r = await fetch('/api/inventory/services', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      if (!r.ok) throw new Error('Create failed');
+      if (form.base_price < 0) throw new Error('Price must be >= 0');
+      await api.post('/inventory/services', form);
       setForm({ category: '', name: '', base_price: 0, loyalty_eligible: false });
       setSuccess('Service created');
-      fetchAll();
+      await queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] });
     } catch (err) {
       console.error('Create service failed', err);
       setError('Could not create service');
@@ -96,9 +115,9 @@ const InventoryPage: React.FC = () => {
     if (!deleteConfirm.isOpen || deleteConfirm.type !== 'service') return;
     setSubmitting(true);
     try {
-      await fetch(`/api/inventory/services/${deleteConfirm.id}`, { method: 'DELETE' });
+      await api.delete(`/inventory/services/${deleteConfirm.id}`);
       setSuccess('Service deleted successfully');
-      fetchAll();
+      await queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] });
     } catch {
       setError('Failed to delete service');
     } finally { 
@@ -114,19 +133,20 @@ const InventoryPage: React.FC = () => {
   function cancelEditService() { setEditingService(null); setEditingServiceDraft({}); }
   async function saveEditService() {
     if (editingService == null) return;
-    setSubmitting(true); setError(null);
+    setSubmitting(true);
+    setError(null);
     try {
       type ServiceUpdatePayload = Partial<Pick<ServiceItem, 'name' | 'category' | 'base_price' | 'loyalty_eligible'>>;
       const payload: ServiceUpdatePayload = {};
-  if (editingServiceDraft.name !== undefined) payload.name = editingServiceDraft.name;
-  if (editingServiceDraft.category !== undefined) payload.category = editingServiceDraft.category;
-  if (editingServiceDraft.base_price !== undefined) payload.base_price = Number(editingServiceDraft.base_price);
-  if (editingServiceDraft.loyalty_eligible !== undefined) payload.loyalty_eligible = Boolean(editingServiceDraft.loyalty_eligible);
-      const r = await fetch(`/api/inventory/services/${editingService}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!r.ok) throw new Error('Update failed');
+      if (editingServiceDraft.name !== undefined) payload.name = editingServiceDraft.name;
+      if (editingServiceDraft.category !== undefined) payload.category = editingServiceDraft.category;
+      if (editingServiceDraft.base_price !== undefined) payload.base_price = Number(editingServiceDraft.base_price);
+      if (editingServiceDraft.loyalty_eligible !== undefined) payload.loyalty_eligible = Boolean(editingServiceDraft.loyalty_eligible);
+
+      await api.put(`/inventory/services/${editingService}`, payload);
       setSuccess('Service updated');
       setEditingService(null); setEditingServiceDraft({});
-      fetchAll();
+      await queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] });
     } catch {
       setError('Update failed');
     } finally { setSubmitting(false); }
@@ -134,15 +154,24 @@ const InventoryPage: React.FC = () => {
 
   async function createExtra(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true); setError(null);
+    setSubmitting(true);
+    setError(null);
     try {
       let map: Record<string, number> = {};
-  try { map = JSON.parse(extraForm.price_map); setPriceMapError(null); } catch { setPriceMapError('Invalid JSON'); throw new Error('Invalid JSON'); }
-      const r = await fetch('/api/inventory/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: extraForm.name, price_map: map }) });
-      if (!r.ok) throw new Error('Create failed');
+      try {
+        map = JSON.parse(extraForm.price_map);
+        setPriceMapError(null);
+      } catch {
+        setPriceMapError('Invalid JSON');
+        throw new Error('Invalid JSON');
+      }
+      await api.post('/inventory/extras', { name: extraForm.name, price_map: map });
       setExtraForm({ name: '', price_map: '{}' });
       setSuccess('Extra created');
-      fetchAll();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['inventory', 'extras'] }),
+        queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] }),
+      ]);
     } catch (err) {
       console.error('Create extra failed', err);
       setError('Could not create extra');
@@ -164,9 +193,9 @@ const InventoryPage: React.FC = () => {
     if (!deleteConfirm.isOpen || deleteConfirm.type !== 'extra') return;
     setSubmitting(true);
     try {
-      await fetch(`/api/inventory/extras/${deleteConfirm.id}`, { method: 'DELETE' });
+      await api.delete(`/inventory/extras/${deleteConfirm.id}`);
       setSuccess('Extra deleted successfully');
-      fetchAll();
+      await queryClient.invalidateQueries({ queryKey: ['inventory', 'extras'] });
     } catch {
       setError('Failed to delete extra');
     } finally { 
@@ -182,17 +211,17 @@ const InventoryPage: React.FC = () => {
   function cancelEditExtra() { setEditingExtra(null); setEditingExtraDraft({}); }
   async function saveEditExtra() {
     if (editingExtra == null) return;
-    setSubmitting(true); setError(null);
+    setSubmitting(true);
+    setError(null);
     try {
       type ExtraUpdatePayload = { name?: string; price_map?: Record<string, number> };
       const payload: ExtraUpdatePayload = {};
       if (editingExtraDraft.name !== undefined) payload.name = editingExtraDraft.name as string;
       if (editingExtraDraft.price_map !== undefined) payload.price_map = editingExtraDraft.price_map as Record<string, number>;
-      const r = await fetch(`/api/inventory/extras/${editingExtra}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!r.ok) throw new Error('Update failed');
+      await api.put(`/inventory/extras/${editingExtra}`, payload);
       setSuccess('Extra updated');
       setEditingExtra(null); setEditingExtraDraft({});
-      fetchAll();
+      await queryClient.invalidateQueries({ queryKey: ['inventory', 'extras'] });
     } catch { setError('Update failed'); }
     finally { setSubmitting(false); }
   }
@@ -236,6 +265,16 @@ const InventoryPage: React.FC = () => {
     });
   }
 
+  if (!canManageInventory) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">You don't have permission to manage inventory.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8'>
@@ -269,14 +308,14 @@ const InventoryPage: React.FC = () => {
 
         {/* Status Messages */}
         <div className="space-y-3">
-          {error && (
+          {displayError && (
             <div className='bg-red-50 border-l-4 border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-sm flex items-start space-x-3'>
               <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
               <div>
                 <h3 className="font-medium">Error</h3>
-                <p className="text-sm">{error}</p>
+                <p className="text-sm">{displayError}</p>
               </div>
             </div>
           )}
@@ -331,7 +370,7 @@ const InventoryPage: React.FC = () => {
                 </select>
                 <button 
                   type='button' 
-                  onClick={()=>fetchAll()} 
+                  onClick={refreshInventory} 
                   className='text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors'
                 >
                   Refresh
@@ -553,7 +592,7 @@ const InventoryPage: React.FC = () => {
                 </select>
                 <button 
                   type='button' 
-                  onClick={()=>fetchAll()} 
+                  onClick={refreshInventory} 
                   className='text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors'
                 >
                   Refresh

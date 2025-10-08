@@ -162,14 +162,16 @@ async def list_customers(
     }
 
     sort_column = sort_map.get(sort_by, User.created_at)
-    if sort_order == "desc":
-        query = query.order_by(sort_column.desc().nullslast())
-    else:
-        query = query.order_by(sort_column.asc().nullsfirst())
+    ordered_query = (
+        query.order_by(sort_column.desc().nullslast())
+        if sort_order == "desc"
+        else query.order_by(sort_column.asc().nullsfirst())
+    )
 
-    total = int(query.with_entities(func.count()).scalar() or 0)
+    total_query = query.order_by(None).with_entities(func.count(func.distinct(User.id)))
+    total = int(total_query.scalar() or 0)
     offset = (page - 1) * limit
-    rows = query.offset(offset).limit(limit).all()
+    rows = ordered_query.offset(offset).limit(limit).all()
 
     customers = [
         CustomerListItem(

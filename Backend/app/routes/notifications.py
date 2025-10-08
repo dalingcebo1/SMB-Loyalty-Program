@@ -269,8 +269,8 @@ async def get_notification_stats(
     stats_by_type = db.query(
         Notification.type,
         func.count(Notification.id).label("total"),
-        func.sum(case([(Notification.read_at != None, 1)], else_=0)).label("read"),
-        func.sum(case([(Notification.read_at == None, 1)], else_=0)).label("unread")
+        func.sum(case((Notification.read_at != None, 1), else_=0)).label("read"),
+        func.sum(case((Notification.read_at == None, 1), else_=0)).label("unread")
     ).filter(
         Notification.tenant_id == current_user.tenant_id
     ).group_by(Notification.type).all()

@@ -421,16 +421,16 @@ async def get_customer_segments(
             END AS segment,
             COUNT(*) AS customer_count,
             SUM(total_spent) AS segment_spent,
-            SUM(total_orders) AS segment_orders
+            SUM(total_orders) AS segment_orders,
+            CASE 
+                WHEN total_orders >= 10 AND total_spent >= 50000 THEN 1
+                WHEN total_orders >= 5 AND total_spent >= 20000 THEN 2
+                WHEN total_orders >= 2 THEN 3
+                ELSE 4
+            END AS segment_priority
         FROM customer_stats
-        GROUP BY segment
-        ORDER BY 
-            CASE segment 
-                WHEN 'VIP' THEN 1
-                WHEN 'Regular' THEN 2
-                WHEN 'Occasional' THEN 3
-                WHEN 'New' THEN 4
-            END
+        GROUP BY segment, segment_priority
+        ORDER BY segment_priority
         """
         ),
         {
@@ -443,7 +443,7 @@ async def get_customer_segments(
     total_customers = sum(row[1] for row in segments)
 
     response: List[Dict[str, Any]] = []
-    for segment, customer_count, segment_spent, segment_orders in segments:
+    for segment, customer_count, segment_spent, segment_orders, _priority in segments:
         total_revenue = (segment_spent or 0) / 100.0
         avg_order_value = (
             (segment_spent or 0) / segment_orders / 100.0 if segment_orders else 0

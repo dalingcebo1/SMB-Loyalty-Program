@@ -1,6 +1,6 @@
 import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { timeDerivation } from '../../staff/perf/counters';
-import { useActiveWashes, useEndWash } from '../../../api/queries';
+import { useActiveWashes, useEndWash } from '../hooks';
 import { useWashHistory } from '../hooks';
 import { toast } from 'react-toastify';
 import LoadingFallback from '../../../components/LoadingFallback';

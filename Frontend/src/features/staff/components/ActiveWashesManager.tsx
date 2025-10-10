@@ -148,7 +148,14 @@ const ActiveWashCard = React.memo(ActiveWashCardComponent);
 const ActiveWashesManager: React.FC = () => {
   // Allow faster local UI duration tick separate from network polling
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const { data: activeWashes = [], isLoading, refetch } = useActiveWashes(autoRefresh ? 15000 : 0);
+  const {
+    data: activeWashes = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching
+  } = useActiveWashes({ refetchIntervalMs: autoRefresh ? 15000 : 0 });
 
   const endWashMutation = useEndWash();
   const [confirmWash, setConfirmWash] = useState<string | null>(null);
@@ -167,6 +174,21 @@ const ActiveWashesManager: React.FC = () => {
 
   if (isLoading) {
     return <LoadingFallback message="Loading active washes..." />;
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-white rounded-xl border border-red-200 p-12 text-center">
+        <h2 className="text-lg font-semibold text-red-600 mb-2">Unable to load active washes</h2>
+        <p className="text-sm text-red-500 mb-4">{error instanceof Error ? error.message : 'Please try refreshing the page.'}</p>
+        <button
+          onClick={() => refetch()}
+          className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const handleEndClick = (orderId: string) => {
@@ -253,10 +275,11 @@ const ActiveWashesManager: React.FC = () => {
               </label>
               <button
                 onClick={() => refetch()}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                disabled={isFetching}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Manual refresh active washes"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <svg className={`w-4 h-4 ${isFetching ? 'animate-spin text-blue-500' : ''}`} fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                 </svg>
               </button>

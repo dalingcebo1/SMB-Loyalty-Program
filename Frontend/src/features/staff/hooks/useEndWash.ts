@@ -22,7 +22,7 @@ export function useEndWash() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['washes', 'active'] });
-  queryClient.invalidateQueries({ queryKey: ['washes', 'history'] });
+      queryClient.invalidateQueries({ queryKey: ['washes', 'history'] });
       // Optionally cache duration somewhere or trigger toast here
     },
   });

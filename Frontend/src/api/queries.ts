@@ -1,19 +1,6 @@
 // src/api/queries.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
-import { Wash } from '../types';
-
-// Fetch all active washes
-export function useActiveWashes() {
-  return useQuery({
-    queryKey: ['washes', 'active'],
-    queryFn: async () => {
-      const { data } = await api.get('/payments/active-washes');
-      return data as Wash[];
-    },
-  });
-}
-
 // Mutation: start a wash
 export function useStartWash() {
   const queryClient = useQueryClient();
@@ -48,17 +35,6 @@ export function useExtras() {
   });
 }
 
-// Mutation: end a wash
-export function useEndWash() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (orderId: string) => api.post(`/payments/end-wash/${orderId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['washes', 'active'] });
-    },
-  });
-}
-
 // Mutation: verify a payment, loyalty, or pos reference
 export function useVerify() {
   return useMutation({
@@ -76,6 +52,9 @@ export function useVerify() {
     },
   });
 }
+
+export { useActiveWashes } from '../features/staff/hooks/useActiveWashes';
+export { useEndWash } from '../features/staff/hooks/useEndWash';
 
 // Query: fetch user and vehicles for a given order_id
 export function useOrderUser(orderId?: string) {

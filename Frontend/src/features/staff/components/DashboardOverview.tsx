@@ -1,7 +1,7 @@
 // src/features/staff/components/DashboardOverview.tsx
 import React, { useMemo } from 'react';
 import { FaCar, FaPlay, FaChartBar, FaClock, FaCheckCircle, FaCalendarWeek } from 'react-icons/fa';
-import { useActiveWashes } from '../../../api/queries';
+import { useActiveWashes } from '../hooks/useActiveWashes';
 import { useDashboardAnalytics } from '../hooks/useDashboardAnalytics';
 import { useBusinessAnalytics } from '../hooks/useBusinessAnalytics';
 import { useWashHistory } from '../hooks'; // retained as fallback / for derived metrics if backend incomplete

@@ -1,8 +1,26 @@
+const ABSOLUTE_URL = /^[a-z]+:\/\//i;
+
+function computeBaseURL(): string | null {
+  const raw = import.meta.env?.VITE_API_BASE_URL ?? '';
+  const trimmed = raw.replace(/\/+$/g, '');
+  if (!trimmed) return null;
+  if (trimmed.endsWith('/api')) return trimmed;
+  return `${trimmed}/api`;
+}
+
+function normalizeRelativePath(path: string): string {
+  const ensured = path.startsWith('/') ? path : `/${path}`;
+  if (ensured === '/api') return '/';
+  if (ensured.startsWith('/api/')) {
+    const trimmed = ensured.slice(4);
+    return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  }
+  return ensured;
+}
+
 if (typeof window !== 'undefined') {
-  const envBase = import.meta.env?.VITE_API_BASE_URL;
-  if (envBase) {
-    const normalize = (base: string) => (base.endsWith('/') ? base.slice(0, -1) : base);
-    const base = normalize(envBase);
+  const baseURL = computeBaseURL();
+  if (baseURL) {
     const origFetch: typeof window.fetch = window.fetch.bind(window);
 
     const resolveUrl = (input: RequestInfo | URL): string | null => {
@@ -12,11 +30,12 @@ if (typeof window !== 'undefined') {
       return null;
     };
 
-  window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       try {
         const targetUrl = resolveUrl(input);
-        if (targetUrl && targetUrl.startsWith('/api')) {
-          const rewritten = `${base}${targetUrl}`;
+        if (targetUrl && !ABSOLUTE_URL.test(targetUrl)) {
+          const normalizedPath = normalizeRelativePath(targetUrl);
+          const rewritten = `${baseURL}${normalizedPath}`;
           if (typeof input === 'string' || input instanceof URL) {
             return origFetch(rewritten, init);
           }

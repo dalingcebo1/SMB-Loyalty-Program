@@ -16,8 +16,23 @@ const api = axios.create({
   baseURL: computeBaseURL(),
 });
 
+const ABSOLUTE_URL = /^[a-z]+:\/\//i;
+
+// Collapse accidental /api prefixes so shared baseURL does not produce /api/api/...
+function normalizeRelativePath(url: string): string {
+  const withLeadingSlash = url.startsWith("/") ? url : `/${url}`;
+  if (withLeadingSlash === "/api") return "/";
+  if (withLeadingSlash.startsWith("/api/")) {
+    return `/${withLeadingSlash.slice(5)}`.replace(/\/+/g, "/");
+  }
+  return withLeadingSlash;
+}
+
 // --- AUTH HEADER INTERCEPTOR ---
 api.interceptors.request.use((config) => {
+  if (config.url && !ABSOLUTE_URL.test(config.url)) {
+    config.url = normalizeRelativePath(config.url);
+  }
   const token = localStorage.getItem("token");
   if (token && config.headers) {
     config.headers["Authorization"] = `Bearer ${token}`;

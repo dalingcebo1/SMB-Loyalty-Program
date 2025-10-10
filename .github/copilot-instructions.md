@@ -15,6 +15,7 @@
 - Follow `.github/instructions/Server run.instructions.md`: do **not** start dev or production servers (`npm run dev`, `uvicorn`, etc.) without explicit approval; rely on lint/tests instead.
 - Backend quality gates: `cd Backend && pytest` for tests, `ruff check` and `mypy` for lint/type checks, `make backend-quality` to mirror CI. OpenAPI changes require updating `Backend/tests/openapi_snapshot.json` via `make snapshot-openapi`.
 - Frontend validation: `npm run lint` and `npm test` (Vitest). Cypress smoke spec lives at `cypress/e2e/prod-smoke.cy.ts` and expects credentials via `CYPRESS_*` env vars when you run it manually.
+- Always run tests against Backend CI and Frontend CI workflows to catch integration issues early.
 
 ## Implementation patterns
 - When mutating backend data, invalidate the relevant React Query caches (`queryClient.invalidateQueries`) as seen in admin inventory/components.

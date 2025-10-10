@@ -15,11 +15,11 @@ from app.core.tenant_context import get_tenant_context, TenantContext
 from app.models import Tenant, User, VisitCount, Reward, Redemption, Order, Service, Extra, OrderItem
 from app.utils.qr import generate_qr_code
 from app.plugins.auth.routes import get_current_user
+from .constants import REWARD_INTERVAL
 
 SECRET_KEY = settings.loyalty_secret
 DEFAULT_TENANT = settings.default_tenant
 
-REWARD_INTERVAL = 5  # visits per reward
 EXPIRY_DAYS = 10     # days until voucher expiry
 
 router = APIRouter(prefix="", dependencies=[Depends(get_current_user)], tags=["loyalty"])

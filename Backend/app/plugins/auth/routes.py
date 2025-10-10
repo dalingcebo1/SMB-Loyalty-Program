@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.models import User, VisitCount, Vehicle
 from app.services.tenant_settings import TenantSettingsService, get_tenant_settings
 from utils.firebase_admin import admin_auth
+from app.plugins.loyalty.constants import REWARD_INTERVAL
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 
@@ -138,6 +139,18 @@ class VehicleOut(BaseModel):
     plate: str
     make: str
     model: str
+
+
+class ManualVisitRequest(BaseModel):
+    cellphone: str
+
+
+class ManualVisitResponse(BaseModel):
+    message: str
+    phone: str
+    name: str
+    count: int
+    nextMilestone: int
 
 # ─── UTILS ────────────────────────────────────────────────────────────────
 def get_password_hash(password: str) -> str:
@@ -691,9 +704,74 @@ def update_user_role(user_id: int, new_role: str, db: Session = Depends(get_db),
     user.role = new_role; db.commit()
     return {"message": f"User role updated to {new_role}"}
 
+@router.post("/visits/manual", response_model=ManualVisitResponse)
+def log_manual_visit(
+    req: ManualVisitRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff),
+):
+    cellphone = (req.cellphone or "").strip()
+    if not cellphone or not cellphone.isdigit() or len(cellphone) != 10 or not cellphone.startswith("0"):
+        raise HTTPException(status_code=400, detail="Invalid cellphone number")
+
+    local_cell = cellphone
+    international_cell = "+27" + cellphone[1:]
+
+    user = (
+        db.query(User)
+        .filter(
+            or_(
+                User.phone == local_cell,
+                User.phone == international_cell,
+            )
+        )
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    visit_count = (
+        db.query(VisitCount)
+        .filter_by(user_id=user.id, tenant_id=user.tenant_id)
+        .first()
+    )
+
+    now = datetime.utcnow()
+    if visit_count:
+        visit_count.count += 1
+        visit_count.updated_at = now
+    else:
+        visit_count = VisitCount(
+            user_id=user.id,
+            tenant_id=user.tenant_id,
+            count=1,
+            updated_at=now,
+        )
+        db.add(visit_count)
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not log visit")
+
+    next_milestone = ((visit_count.count // REWARD_INTERVAL) + 1) * REWARD_INTERVAL
+    full_name = " ".join(filter(None, [user.first_name, user.last_name])).strip()
+    display_name = full_name or user.phone
+
+    return ManualVisitResponse(
+        message=f"Visit logged for {display_name} ({user.phone})",
+        phone=user.phone,
+        name=display_name,
+        count=visit_count.count,
+        nextMilestone=next_milestone,
+    )
+
+
 @router.get("/payments/verify/{ref}")
 def verify_payment_ref(ref: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if ref == "valid": return {"status": "ok"}
+    if ref == "valid":
+        return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Invalid or unpaid reference")
 
 

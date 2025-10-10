@@ -5,6 +5,8 @@ import { moduleFlags } from '../config/modules';
 import { useAuth } from '../auth/AuthProvider';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import LoadingFallback from '../components/LoadingFallback';
+import DashboardLayout from '../components/DashboardLayout';
+import AdminLayout from '../components/AdminLayout';
 // Dev admin area (developer portal)
 import DeveloperAdminApp from '../dev-admin/DeveloperAdminApp';
 import CreateTenant from '../dev-admin/CreateTenant';
@@ -45,10 +47,6 @@ const CustomerAnalytics = lazy(() => import('../features/staff/pages/CustomerAna
 const StaffLayout = lazy(() => import('../features/staff/components/StaffLayout'));
 // Staff guard (strict staff only)
 const RequireStaff = lazy(() => import('../components/RequireStaff'));
-
-// Layouts
-const DashboardLayout = lazy(() => import('../components/DashboardLayout'));
-const AdminLayout = lazy(() => import('../components/AdminLayout'));
 
 // Admin pages
 const AdminWelcome = lazy(() => import('../pages/admin/AdminWelcome'));

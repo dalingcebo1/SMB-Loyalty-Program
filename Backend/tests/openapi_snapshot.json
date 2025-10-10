@@ -1717,6 +1717,52 @@
         "title": "ManualUserCreate",
         "type": "object"
       },
+      "ManualVisitRequest": {
+        "properties": {
+          "cellphone": {
+            "title": "Cellphone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cellphone"
+        ],
+        "title": "ManualVisitRequest",
+        "type": "object"
+      },
+      "ManualVisitResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nextMilestone": {
+            "title": "Nextmilestone",
+            "type": "integer"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "phone",
+          "name",
+          "count",
+          "nextMilestone"
+        ],
+        "title": "ManualVisitResponse",
+        "type": "object"
+      },
       "NotificationCreate": {
         "properties": {
           "action_url": {
@@ -6159,6 +6205,52 @@
           }
         },
         "summary": "Validate Invite",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/visits/manual": {
+      "post": {
+        "operationId": "log_manual_visit_api_auth_visits_manual_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualVisitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualVisitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Log Manual Visit",
         "tags": [
           "auth"
         ]

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { HiUsers, HiUserAdd, HiCog, HiOfficeBuilding, HiChartBar, HiShieldCheck, HiClipboardList, HiBell, HiClock, HiLockClosed } from 'react-icons/hi';
 import api from '../../api/api';
 import { useAuth } from '../../auth/AuthProvider';
+import { formatCurrency as formatCurrencyZAR } from '../../utils/format';
 
 interface BusinessSummaryResponse {
   total_revenue: number;
@@ -78,7 +79,7 @@ const AdminWelcome: React.FC = () => {
     if (value === undefined || value === null || Number.isNaN(value)) {
       return '—';
     }
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    return formatCurrencyZAR(value);
   };
 
   const buildDeltaBadge = (value?: number | null) => {

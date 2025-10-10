@@ -7,6 +7,7 @@ import api from '../../../api/api';
 import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { toast } from 'react-toastify';
+import { formatCurrency } from '../../../utils/format';
 
 interface CustomerDetail {
   id: number;
@@ -333,7 +334,7 @@ const CustomerDetailPage: React.FC = () => {
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-gray-900">${order.total_amount.toFixed(2)}</p>
+                        <p className="font-medium text-gray-900">{formatCurrency(order.total_amount)}</p>
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           order.status === 'completed' ? 'bg-green-100 text-green-800' :
                           order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -363,7 +364,7 @@ const CustomerDetailPage: React.FC = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Total Spent</span>
-                <span className="font-semibold text-gray-900">${customer.total_spent.toFixed(2)}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(customer.total_spent)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Loyalty Points</span>

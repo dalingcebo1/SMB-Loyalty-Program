@@ -6,6 +6,7 @@ import { HiOutlineRefresh } from 'react-icons/hi';
 import api from '../../../api/api';
 import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
+import { formatCurrency } from '../../../utils/format';
 
 interface Customer {
   id: number;
@@ -319,7 +320,7 @@ const CustomersAdmin: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          ${customer.total_spent.toFixed(2)}
+                          {formatCurrency(customer.total_spent)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

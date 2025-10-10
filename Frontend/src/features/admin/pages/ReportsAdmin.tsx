@@ -5,6 +5,7 @@ import { HiOutlineRefresh } from 'react-icons/hi';
 import api from '../../../api/api';
 import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
+import { formatCurrency as formatCurrencyZAR } from '../../../utils/format';
 
 interface BusinessSummary {
   total_revenue: number;
@@ -104,15 +105,19 @@ const ReportsAdmin: React.FC = () => {
     setRefreshKey(prev => prev + 1);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount?: number | null) => {
+    if (amount === undefined || amount === null || Number.isNaN(amount)) {
+      return formatCurrencyZAR(0);
+    }
+    return formatCurrencyZAR(amount);
   };
 
   const formatPercentage = (value: number) => {
-    return `${(value * 100).toFixed(1)}%`;
+    if (!Number.isFinite(value)) {
+      return '0.0%';
+    }
+    const displayValue = value > 1 ? value : value * 100;
+    return `${displayValue.toFixed(1)}%`;
   };
 
   // Check permissions

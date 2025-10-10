@@ -19,6 +19,20 @@ interface ExtraItem {
   price_map: Record<string, number>;
 }
 
+const CURRENCY_LOCALE = 'en-ZA';
+const CURRENCY_CODE = 'ZAR';
+const CENT_FACTOR = 100;
+
+const EMPTY_SERVICES: ServiceItem[] = [];
+const EMPTY_EXTRAS: ExtraItem[] = [];
+
+const toCents = (value: number) => Math.max(0, Math.round(Number(value || 0) * CENT_FACTOR));
+const centsToRand = (value: number) => Number((Number(value || 0) / CENT_FACTOR).toFixed(2));
+const priceMapToCents = (prices: Record<string, number>) =>
+  Object.fromEntries(
+    Object.entries(prices).map(([tier, amount]) => [tier, toCents(Number(amount))])
+  );
+
 const InventoryPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ category: '', name: '', base_price: 0, loyalty_eligible: false });
@@ -48,6 +62,12 @@ const InventoryPage: React.FC = () => {
   const canManageInventory = hasCapability('services.manage');
   const queryClient = useQueryClient();
 
+  const currencyFormatter = useMemo(
+    () => new Intl.NumberFormat(CURRENCY_LOCALE, { style: 'currency', currency: CURRENCY_CODE }),
+    []
+  );
+  const formatCurrency = useCallback((cents: number) => currencyFormatter.format(cents / CENT_FACTOR), [currencyFormatter]);
+
   const servicesQuery = useQuery<ServiceItem[]>({
     queryKey: ['inventory', 'services'],
     queryFn: async () => {
@@ -66,8 +86,14 @@ const InventoryPage: React.FC = () => {
     enabled: canManageInventory,
   });
 
-  const services = servicesQuery.data ?? [];
-  const extras = extrasQuery.data ?? [];
+  const services = useMemo<ServiceItem[]>(
+    () => servicesQuery.data ?? EMPTY_SERVICES,
+    [servicesQuery.data]
+  );
+  const extras = useMemo<ExtraItem[]>(
+    () => extrasQuery.data ?? EMPTY_EXTRAS,
+    [extrasQuery.data]
+  );
   const loading = servicesQuery.isFetching || extrasQuery.isFetching;
   const loadError =
     (servicesQuery.error instanceof Error ? servicesQuery.error.message : null) ||
@@ -88,7 +114,13 @@ const InventoryPage: React.FC = () => {
     setError(null);
     try {
       if (form.base_price < 0) throw new Error('Price must be >= 0');
-      await api.post('/inventory/services', form);
+      const payload = {
+        category: form.category.trim(),
+        name: form.name.trim(),
+        base_price: toCents(form.base_price),
+        loyalty_eligible: form.loyalty_eligible,
+      };
+      await api.post('/inventory/services', payload);
       setForm({ category: '', name: '', base_price: 0, loyalty_eligible: false });
       setSuccess('Service created');
       await queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] });
@@ -128,7 +160,13 @@ const InventoryPage: React.FC = () => {
 
   function startEditService(s: ServiceItem) {
     setEditingService(s.id);
-    setEditingServiceDraft({ ...s });
+    setEditingServiceDraft({
+      id: s.id,
+      category: s.category,
+      name: s.name,
+      base_price: centsToRand(s.base_price),
+      loyalty_eligible: s.loyalty_eligible,
+    });
   }
   function cancelEditService() { setEditingService(null); setEditingServiceDraft({}); }
   async function saveEditService() {
@@ -138,9 +176,9 @@ const InventoryPage: React.FC = () => {
     try {
       type ServiceUpdatePayload = Partial<Pick<ServiceItem, 'name' | 'category' | 'base_price' | 'loyalty_eligible'>>;
       const payload: ServiceUpdatePayload = {};
-      if (editingServiceDraft.name !== undefined) payload.name = editingServiceDraft.name;
-      if (editingServiceDraft.category !== undefined) payload.category = editingServiceDraft.category;
-      if (editingServiceDraft.base_price !== undefined) payload.base_price = Number(editingServiceDraft.base_price);
+  if (editingServiceDraft.name !== undefined) payload.name = editingServiceDraft.name.trim();
+  if (editingServiceDraft.category !== undefined) payload.category = editingServiceDraft.category.trim();
+    if (editingServiceDraft.base_price !== undefined) payload.base_price = toCents(Number(editingServiceDraft.base_price));
       if (editingServiceDraft.loyalty_eligible !== undefined) payload.loyalty_eligible = Boolean(editingServiceDraft.loyalty_eligible);
 
       await api.put(`/inventory/services/${editingService}`, payload);
@@ -159,13 +197,28 @@ const InventoryPage: React.FC = () => {
     try {
       let map: Record<string, number> = {};
       try {
-        map = JSON.parse(extraForm.price_map);
+        const parsed = JSON.parse(extraForm.price_map);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          setPriceMapError('JSON must be an object of {"tier": price}');
+          throw new Error('Invalid JSON shape');
+        }
+        const sanitized = Object.fromEntries(
+          Object.entries(parsed).map(([tier, amount]) => {
+            const numeric = Number(amount);
+            if (Number.isNaN(numeric)) {
+              throw new Error(`Invalid price for tier ${tier}`);
+            }
+            return [tier, numeric];
+          })
+        );
+        map = priceMapToCents(sanitized);
         setPriceMapError(null);
-      } catch {
-        setPriceMapError('Invalid JSON');
-        throw new Error('Invalid JSON');
+      } catch (parseErr) {
+        const message = parseErr instanceof Error && parseErr.message ? parseErr.message : 'Invalid JSON';
+        setPriceMapError(message);
+        throw new Error(message);
       }
-      await api.post('/inventory/extras', { name: extraForm.name, price_map: map });
+      await api.post('/inventory/extras', { name: extraForm.name.trim(), price_map: map });
       setExtraForm({ name: '', price_map: '{}' });
       setSuccess('Extra created');
       await Promise.all([
@@ -216,7 +269,7 @@ const InventoryPage: React.FC = () => {
     try {
       type ExtraUpdatePayload = { name?: string; price_map?: Record<string, number> };
       const payload: ExtraUpdatePayload = {};
-      if (editingExtraDraft.name !== undefined) payload.name = editingExtraDraft.name as string;
+  if (editingExtraDraft.name !== undefined) payload.name = (editingExtraDraft.name as string).trim();
       if (editingExtraDraft.price_map !== undefined) payload.price_map = editingExtraDraft.price_map as Record<string, number>;
       await api.put(`/inventory/extras/${editingExtra}`, payload);
       setSuccess('Extra updated');
@@ -251,8 +304,6 @@ const InventoryPage: React.FC = () => {
     if (extraSort === 'name') list.sort((a,b)=>a.name.localeCompare(b.name));
     return list;
   }, [extras, extraFilter, extraSort]);
-
-  const currency = useMemo(()=> new Intl.NumberFormat(undefined,{ style:'currency', currency:'USD'}), []);
 
   // Auto dismiss success toast
   useEffect(()=> { if (success) { const t = setTimeout(()=>setSuccess(null), 3000); return ()=>clearTimeout(t); }}, [success]);
@@ -410,7 +461,7 @@ const InventoryPage: React.FC = () => {
                   />
                 </div>
                 <div className='space-y-1'>
-                  <label className='block text-sm font-semibold text-gray-700'>Base Price ($)</label>
+                  <label className='block text-sm font-semibold text-gray-700'>Base Price (R)</label>
                   <input 
                     className='w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400' 
                     min={0}
@@ -523,7 +574,7 @@ const InventoryPage: React.FC = () => {
                           <div className='flex-1'>
                             <h4 className='font-semibold text-gray-900 text-lg'>{s.name}</h4>
                             <div className='flex items-center gap-4 mt-1'>
-                              <span className='text-green-600 font-bold text-lg'>{currency.format(s.base_price)}</span>
+                              <span className='text-green-600 font-bold text-lg'>{formatCurrency(s.base_price)}</span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 s.loyalty_eligible 
                                   ? 'bg-blue-100 text-blue-800' 
@@ -625,7 +676,7 @@ const InventoryPage: React.FC = () => {
                     className={`w-full border px-3 py-2 rounded-lg text-sm font-mono focus:ring-2 focus:border-purple-500 transition-colors h-20 ${
                       priceMapError ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-500'
                     }`} 
-                    placeholder='{"basic": 5.00, "premium": 8.00, "deluxe": 12.00}' 
+                    placeholder='{"basic": 50.00, "premium": 80.00, "deluxe": 120.00}' 
                     value={extraForm.price_map} 
                     onChange={e=>{
                       const val = e.target.value; 
@@ -639,7 +690,7 @@ const InventoryPage: React.FC = () => {
                     }} 
                   />
                   <div className='text-xs text-gray-500 mt-1'>
-                    Define prices for different service tiers. Example: {"{"}"basic": 5.00, "premium": 8.00{"}"}
+                    Define prices (in Rands) for different service tiers. Example: {"{"}"basic": 50.00, "premium": 80.00{"}"}
                   </div>
                 </div>
               </div>
@@ -681,11 +732,22 @@ const InventoryPage: React.FC = () => {
                         <label className='block text-sm font-medium text-gray-700 mb-1'>Price Mapping (JSON)</label>
                         <textarea 
                           className='w-full border border-gray-300 px-3 py-2 rounded-lg font-mono text-sm h-24 focus:ring-2 focus:ring-purple-500 focus:border-purple-500' 
-                          value={JSON.stringify(editingExtraDraft.price_map, null, 2)} 
+                          value={JSON.stringify(editingExtraDraft.price_map ?? {}, null, 2)} 
                           onChange={e=>{
-                            try { 
-                              setEditingExtraDraft(d=>({...d, price_map: JSON.parse(e.target.value)})); 
-                            } catch { 
+                            try {
+                              const parsed = JSON.parse(e.target.value);
+                              if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+                              const sanitized = Object.fromEntries(
+                                Object.entries(parsed).map(([tier, amount]) => {
+                                  const numeric = Number(amount);
+                                  if (Number.isNaN(numeric)) {
+                                    throw new Error(`Invalid price for tier ${tier}`);
+                                  }
+                                  return [tier, numeric];
+                                })
+                              );
+                              setEditingExtraDraft(d=>({...d, price_map: sanitized }));
+                            } catch {
                               // Ignore parse errors while editing
                             }
                           }} 
@@ -721,7 +783,7 @@ const InventoryPage: React.FC = () => {
                               key={tier} 
                               className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800'
                             >
-                              {tier}: {currency.format(Number(price))}
+                              {tier}: {formatCurrency(Number(price))}
                             </span>
                           ))}
                         </div>

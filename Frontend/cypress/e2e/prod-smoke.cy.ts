@@ -1,4 +1,6 @@
-// @ts-nocheck
+/// <reference types="cypress" />
+
+import '../support/commands';
 
 describe('Production smoke checks', () => {
   const credentialPairs = [
@@ -70,7 +72,7 @@ describe('Production smoke checks', () => {
   });
 
   it('allows admin to reach the admin overview without error boundary', () => {
-  loginViaUi('ADMIN_EMAIL', 'ADMIN_PASSWORD');
+    loginViaUi('ADMIN_EMAIL', 'ADMIN_PASSWORD');
 
     cy.location('pathname', { timeout: 60000 }).should('match', /\/admin(\/?|$)/);
     cy.contains('Admin Panel', { timeout: 20000 }).should('be.visible');
@@ -78,20 +80,20 @@ describe('Production smoke checks', () => {
   });
 
   it('allows staff to reach the staff dashboard without error boundary', () => {
-  loginViaUi('STAFF_EMAIL', 'STAFF_PASSWORD');
+    loginViaUi('STAFF_EMAIL', 'STAFF_PASSWORD');
 
-  cy.location('pathname', { timeout: 60000 }).should('include', '/staff');
-  cy.contains('Staff Dashboard', { timeout: 20000 }).should('be.visible');
+    cy.location('pathname', { timeout: 60000 }).should('include', '/staff');
+    cy.contains('Staff Dashboard', { timeout: 20000 }).should('be.visible');
     ensureNoErrorBoundary();
   });
 
   it('allows standard user to reach the customer dashboard without error boundary', () => {
-  loginViaUi('USER_EMAIL', 'USER_PASSWORD');
+    loginViaUi('USER_EMAIL', 'USER_PASSWORD');
 
     cy.location('pathname', { timeout: 60000 }).should((pathname: string) => {
-      expect(pathname === '/' || pathname.startsWith('/my')).to.be.true;
+      expect(pathname === '/' || pathname.startsWith('/my')).to.equal(true);
     });
-    cy.contains(/welcome|loyalty|dashboard/i, { timeout: 20000 });
+    cy.contains(/welcome|loyalty|dashboard/i, { timeout: 20000 }).should('be.visible');
     ensureNoErrorBoundary();
   });
 });

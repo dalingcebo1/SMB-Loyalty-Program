@@ -86,7 +86,7 @@ const EnhancedAnalytics: React.FC = () => {
   // Align recent_days with selected period; keep rangeDays at least 30 for stable trend calcs.
   const { data: businessAnalytics, isLoading: businessLoading } = useBusinessAnalytics({
     rangeDays: Math.max(30, periodInfo.days),
-    recentDays: periodInfo.days
+    recentDays: Math.min(periodInfo.days, 30)
   });
   // Active washes for current status (not included in analytics payload)
   const { data: activeWashesData = [] } = useActiveWashes();

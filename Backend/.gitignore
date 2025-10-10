@@ -3,3 +3,5 @@ venv/
 *.env
 smb-loyalty-program-firebase-adminsdk-fbsvc-0fa92a294f.json
 .env
+.env.local
+copilot-instructions.md

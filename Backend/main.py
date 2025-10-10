@@ -28,6 +28,7 @@ from app.plugins.subscriptions import router as subscriptions_router
 from app.plugins.dev            import router as dev_router
 from app.plugins.analytics.routes import router as analytics_router
 from app.plugins.admin.routes import router as admin_router
+from app.plugins.inventory.routes import router as inventory_router
 from app.routes.onboarding import router as onboarding_router
 from app.routes.health import router as health_router
 from app.routes.customers import router as customers_router
@@ -491,6 +492,7 @@ router_mounts = [
     ("/api/orders",    orders_router),
     ("/api/payments",  payments_router),
     ("/api/tenants",   tenants_router),
+    ("/api/inventory", inventory_router),
     ("/api/subscriptions", subscriptions_router),
     ("/api/billing",   subscriptions_router),  # billing endpoints live in same router
     ("/api",           analytics_router),  # analytics_router already has internal prefix

@@ -70,7 +70,7 @@ const ManualVisitLogger: React.FC = () => {
     setStatus(null);
     setLoading(true);
     try {
-  const res = await api.post("/api/auth/visits/manual", { cellphone: cell });
+  const res = await api.post("/auth/visits/manual", { cellphone: cell });
       // Expecting backend to return: { message, phone, name, count }
       const data: VisitResponse = res.data;
       setStatus(`Visit logged for ${data.name} (${normalizePhone(data.phone)})`);
@@ -106,7 +106,7 @@ const ManualVisitLogger: React.FC = () => {
     setLoading(true);
     setStatus(null);
     try {
-  await api.post("/api/payments/start-manual-wash", { phone: normalizePhone(lastVisit?.phone || "") });
+  await api.post("/payments/start-manual-wash", { phone: normalizePhone(lastVisit?.phone || "") });
   toast.success("Wash started for POS client!");
       setStatus(null);
     } catch {

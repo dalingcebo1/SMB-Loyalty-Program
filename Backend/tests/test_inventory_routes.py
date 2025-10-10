@@ -13,7 +13,7 @@ def admin_user(db_session):
 
 def test_list_inventory_services_and_extras(client, db_session, admin_user):
     service = Service(category="wash", name="Deluxe Wash", base_price=1500, loyalty_eligible=True)
-    extra = Extra(name="Wax", price_map={"default": 500})
+    extra = Extra(name="Integration Wax", price_map={"default": 500})
 
     db_session.add(service)
     db_session.add(extra)
@@ -29,4 +29,4 @@ def test_list_inventory_services_and_extras(client, db_session, admin_user):
     assert resp_extras.status_code == 200
     payload_extras = resp_extras.json()
     assert payload_extras["extras"]
-    assert payload_extras["extras"][0]["name"] == "Wax"
+    assert payload_extras["extras"][0]["name"] == "Integration Wax"

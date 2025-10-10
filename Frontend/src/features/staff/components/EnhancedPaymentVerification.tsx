@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import api from '../../../api/api';
 import { useActiveWashes } from '../hooks/useActiveWashes';
 import { useStartWash } from '../hooks/useStartWash';
 import { useRecentVerifications, useVerifyPayment, VerifiedPaymentDetails, VerificationRecord } from '../hooks/usePaymentVerification';
@@ -218,14 +219,12 @@ const EnhancedPaymentVerification: React.FC = () => {
   const handleCreateVehicle = async () => {
     if (!selectedPayment?.user) return;
     try {
-      const token = localStorage.getItem('token');
-      const resp = await fetch(`/api/users/${selectedPayment.user.id}/vehicles`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plate: newVehicle.plate, make: newVehicle.make, model: newVehicle.model })
+      const resp = await api.post(`/users/${selectedPayment.user.id}/vehicles`, {
+        plate: newVehicle.plate,
+        make: newVehicle.make,
+        model: newVehicle.model,
       });
-      if (!resp.ok) throw new Error('Failed to add vehicle');
-      const veh = await resp.json();
+      const veh = resp.data;
       setSelectedPayment(prev => prev ? { ...prev, vehicle: { id: veh.id, reg: veh.plate, make: veh.make, model: veh.model } } : prev);
       setShowVehicleModal(false);
       toast.success('Vehicle added and linked');
@@ -488,11 +487,11 @@ const EnhancedPaymentVerification: React.FC = () => {
                   onClick={async () => {
                     // Re-fetch verify-payment for details & open start dialog if not yet started
                     try {
-                      const token = localStorage.getItem('token');
                       if (!v.payment_reference) return;
-                      const resp = await fetch(`/api/payments/verify-payment?ref=${encodeURIComponent(v.payment_reference)}`, { headers: { Authorization: `Bearer ${token}` } });
-                      if (!resp.ok) return;
-                      const paymentData: VerifiedPaymentDetails = await resp.json();
+                      const resp = await api.get('/payments/verify-payment', {
+                        params: { ref: v.payment_reference },
+                      });
+                      const paymentData: VerifiedPaymentDetails = resp.data;
                       setSelectedPayment(paymentData);
                       setShowConfirmDialog(true);
                     } catch (e) {

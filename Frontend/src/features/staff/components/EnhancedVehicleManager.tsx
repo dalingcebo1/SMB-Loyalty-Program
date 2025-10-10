@@ -60,7 +60,10 @@ const EnhancedVehicleManager: React.FC = () => {
     debounceTimeout.current = setTimeout(async () => {
       setLoading(true);
       try {
-  const response = await api.get(`/api/users/vehicles/search?q=${encodeURIComponent(searchQuery)}`, { signal: controller.signal });
+        const response = await api.get('/users/vehicles/search', {
+          params: { q: searchQuery },
+          signal: controller.signal,
+        });
         type BackendVehicle = { id: number; plate: string; make: string; model: string; user: User; total_washes?: number; last_wash?: string };
         const mapped: VehicleSearchResult[] = (response.data as BackendVehicle[]).map(v => ({ ...v, reg: v.plate }));
         setSearchResults(mapped);
@@ -91,7 +94,10 @@ const EnhancedVehicleManager: React.FC = () => {
     userDebounceTimeout.current = setTimeout(async () => {
       setUserLoading(true);
       try {
-  const response = await api.get(`/api/users/search?query=${encodeURIComponent(userSearch)}`, { signal: controller.signal });
+        const response = await api.get('/users/search', {
+          params: { query: userSearch },
+          signal: controller.signal,
+        });
         setUserResults(response.data);
       } catch (error: unknown) {
         const errObj = error as { name?: string; code?: string } | undefined;
@@ -121,7 +127,7 @@ const EnhancedVehicleManager: React.FC = () => {
 
     try {
       setLoading(true);
-      await api.post(`/api/users/${selectedUser.id}/vehicles`, {
+      await api.post(`/users/${selectedUser.id}/vehicles`, {
         plate: normalizeReg(newVehicle.reg),
         make: newVehicle.make.trim(),
         model: newVehicle.model.trim()
@@ -167,7 +173,7 @@ const EnhancedVehicleManager: React.FC = () => {
     try {
       const target = selectedVehicle || searchResults.find(v => v.id === vehicleId) || null;
       if (!target) return;
-      await api.delete(`/api/users/${target.user.id}/vehicles/${vehicleId}`);
+  await api.delete(`/users/${target.user.id}/vehicles/${vehicleId}`);
       toast.success('Vehicle deleted successfully');
       
       // Remove from search results

@@ -1,6 +1,7 @@
 // src/features/staff/components/DashboardOverview.tsx
 import React, { useMemo } from 'react';
 import { FaCar, FaPlay, FaChartBar, FaClock, FaCheckCircle, FaCalendarWeek } from 'react-icons/fa';
+import { formatCents } from '../../../utils/format';
 import { useActiveWashes } from '../hooks/useActiveWashes';
 import { useDashboardAnalytics } from '../hooks/useDashboardAnalytics';
 import { useBusinessAnalytics } from '../hooks/useBusinessAnalytics';
@@ -80,7 +81,22 @@ const DashboardOverview: React.FC = () => {
   const metrics = useMemo(() => {
     return timeDerivation('dashboardOverviewMetricPasses','dashboardOverviewDerivationMs', () => {
       // Fallback local derivation if dashboardAnalytics absent
-  const fallback = { todayCount: 0, yesterdayCount: 0, thisWeekCount: 0, completedCount: 0, avgDurationMin: 0, dailyTrend: 0, weeklyAvg: 0, completionRate: 0 };
+      const fallback = {
+        todayCount: 0,
+        yesterdayCount: 0,
+        thisWeekCount: 0,
+        completedCount: 0,
+        avgDurationMin: 0,
+        dailyTrend: 0,
+        weeklyAvg: 0,
+        completionRate: 0,
+        activeCount: 0,
+        periodRevenueCents: 0,
+        todayRevenueCents: 0,
+        mtdRevenueCents: 0,
+        revenueGrowthPct: 0,
+        customerCount: 0
+      };
       const today = endStr;
   const endDate = new Date(endStr + 'T00:00:00');
   const yesterday = new Date(endDate); yesterday.setDate(endDate.getDate()-1); const yesterdayStr = yesterday.toISOString().slice(0,10);
@@ -101,6 +117,11 @@ const DashboardOverview: React.FC = () => {
         fallback.dailyTrend = fallback.yesterdayCount>0 ? Math.round(((fallback.todayCount - fallback.yesterdayCount)/fallback.yesterdayCount)*100) : (fallback.todayCount>0?100:0);
         fallback.weeklyAvg = Math.round(fallback.thisWeekCount/7);
         fallback.completionRate = history.length>0 ? Math.round((fallback.completedCount/history.length)*100):0;
+        fallback.activeCount = activeWashes.length;
+        fallback.periodRevenueCents = fallback.completedCount * 15000; // rough heuristic
+        fallback.todayRevenueCents = fallback.todayCount * 15000;
+        fallback.mtdRevenueCents = fallback.thisWeekCount * (15000/7) * 30;
+  fallback.customerCount = new Set((history as Wash[]).map(w => w.user?.id ?? w.order_id)).size;
       }
       // If backend available, map it
       if (dashboardAnalytics) {
@@ -115,6 +136,11 @@ const DashboardOverview: React.FC = () => {
         // Duration from business analytics if present
         const avgDurationMin = businessAnalytics?.duration_stats.average_s != null ? Math.round((businessAnalytics.duration_stats.average_s || 0)/60) : fallback.avgDurationMin;
         const completionRate = dashboardAnalytics.total_washes>0 ? Math.round((completed / dashboardAnalytics.total_washes)*100) : 0;
+        const revenueBreakdown = dashboardAnalytics.revenue_breakdown;
+        const revenueCents = revenueBreakdown?.period_revenue_cents ?? Math.round((dashboardAnalytics.revenue || 0) * 100);
+        const todayRevenueCents = revenueBreakdown?.today_revenue_cents ?? fallback.todayRevenueCents;
+        const mtdRevenueCents = revenueBreakdown?.month_to_date_revenue_cents ?? fallback.mtdRevenueCents;
+        const revenueGrowthPct = revenueBreakdown?.period_vs_prev_pct ?? fallback.revenueGrowthPct;
         return {
           todayCount,
           yesterdayCount,
@@ -124,7 +150,12 @@ const DashboardOverview: React.FC = () => {
           dailyTrend,
           weeklyAvg: Math.round(last7Total/7),
           completionRate,
-          activeCount: activeWashes.length
+          activeCount: activeWashes.length,
+          periodRevenueCents: revenueCents,
+          todayRevenueCents,
+          mtdRevenueCents,
+          revenueGrowthPct,
+          customerCount: dashboardAnalytics.customer_count
         };
       }
       return { ...fallback, activeCount: activeWashes.length };
@@ -132,6 +163,62 @@ const DashboardOverview: React.FC = () => {
   }, [dashboardAnalytics, businessAnalytics, activeWashes.length, history, endStr, startStr]);
 
   const isLoading = loadingDashboard || loadingBusiness || loadingActive;
+
+  const highlightCards = [
+    {
+      key: 'revenue',
+      title: 'Revenue (period)',
+      value: formatCents(metrics.periodRevenueCents || 0),
+      delta: metrics.revenueGrowthPct,
+      deltaLabel: 'vs prev period',
+      accent: 'from-blue-500 via-blue-500 to-indigo-500'
+    },
+    {
+      key: 'today',
+      title: "Today's washes",
+      value: metrics.todayCount,
+      delta: metrics.dailyTrend,
+      deltaLabel: 'vs yesterday',
+      accent: 'from-purple-500 via-purple-500 to-violet-500'
+    },
+    {
+      key: 'active',
+      title: 'Active washes',
+      value: metrics.activeCount,
+      delta: null,
+      deltaLabel: null,
+      accent: 'from-emerald-500 via-emerald-500 to-teal-500'
+    },
+    {
+      key: 'customers',
+      title: `${startStr} to ${endStr}`,
+      subtitle: 'Unique customers in range',
+      value: metrics.customerCount,
+      delta: null,
+      deltaLabel: null,
+      accent: 'from-amber-500 via-amber-500 to-orange-500'
+    }
+  ];
+
+  const renderDeltaBadge = (delta: number | null | undefined, label?: string | null) => {
+    if (delta === null || delta === undefined) return null;
+    if (!Number.isFinite(delta)) return null;
+    const rounded = Math.round(delta * 10) / 10;
+    const positive = rounded >= 0;
+  const arrow = positive ? '+' : '-';
+    const tone = positive ? 'text-emerald-600 bg-emerald-50 border border-emerald-200' : 'text-rose-600 bg-rose-50 border border-rose-200';
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full ${tone}`}>
+        <span>{arrow}</span>
+        <span>{Math.abs(rounded)}%</span>
+        {label ? <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{label}</span> : null}
+      </span>
+    );
+  };
+
+  const renderHighlightValue = (value: string | number) => {
+    return typeof value === 'number' ? value.toLocaleString() : value;
+  };
 
   if (isLoading) {
     return (
@@ -158,7 +245,40 @@ const DashboardOverview: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {highlightCards.map(card => (
+            <div key={card.key} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-20`} aria-hidden="true" />
+              <div className="relative p-5 flex flex-col gap-3">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  {card.title}
+                </div>
+                {card.subtitle ? (
+                  <div className="text-[11px] text-gray-400 tracking-wide">{card.subtitle}</div>
+                ) : null}
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-2xl font-bold text-gray-900">
+                    {renderHighlightValue(card.value)}
+                  </span>
+                  {renderDeltaBadge(card.delta, card.deltaLabel)}
+                </div>
+                {card.key === 'revenue' ? (
+                  <div className="text-xs text-gray-500">
+                    Today: <span className="font-semibold text-gray-700">{formatCents(metrics.todayRevenueCents || 0)}</span>
+                  </div>
+                ) : null}
+                {card.key === 'active' ? (
+                  <div className="flex items-center gap-2 text-xs font-medium text-emerald-600">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+                    System Online
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <MetricCard
             title="Today's Washes"

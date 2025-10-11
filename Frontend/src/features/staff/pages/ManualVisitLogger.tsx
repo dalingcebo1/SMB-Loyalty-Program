@@ -113,18 +113,18 @@ const ManualVisitLogger: React.FC = () => {
       <StaffPageContainer
         as="div"
         surface="plain"
-        width="lg"
+        width="xl"
         padding="relaxed"
         className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-700 text-white shadow-lg"
       >
         <div className="relative z-10 space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Manual Visit Logging</h1>
-          <p className="text-base text-teal-100">Record loyalty visits & start washes for POS customers without QR codes</p>
+          <h1 className="text-[clamp(2rem,3vw+1rem,2.5rem)] font-bold tracking-tight">Manual Visit Logging</h1>
+          <p className="text-[clamp(1rem,1.6vw+0.75rem,1.125rem)] text-teal-100">Record loyalty visits & start washes for POS customers without QR codes</p>
         </div>
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
       </StaffPageContainer>
 
-  <StaffPageContainer as="div" surface="plain" width="lg" padding="default" className="space-y-8">
+      <StaffPageContainer as="div" surface="plain" width="xl" padding="default" className="space-y-8">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
             <div className="mb-6 flex items-center gap-3">

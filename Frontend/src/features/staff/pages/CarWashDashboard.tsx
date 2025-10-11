@@ -84,7 +84,7 @@ const CarWashDashboard: React.FC = () => {
 
       <StaffPageContainer
         surface="glass"
-        width="wide"
+        width="xl"
         padding="relaxed"
         className="relative overflow-hidden text-white"
       >
@@ -101,7 +101,7 @@ const CarWashDashboard: React.FC = () => {
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" aria-hidden />
       </StaffPageContainer>
 
-      <StaffPageContainer surface="plain" width="wide">
+  <StaffPageContainer surface="plain" width="xl">
         <SummaryStats
           totalHistory={history.length}
           completedCount={metrics.completedCount}
@@ -110,7 +110,7 @@ const CarWashDashboard: React.FC = () => {
         />
       </StaffPageContainer>
 
-      <StaffPageContainer surface="solid" width="wide" className="space-y-4">
+  <StaffPageContainer surface="solid" width="xl" className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Active washes</h2>
           <button
@@ -151,7 +151,7 @@ const CarWashDashboard: React.FC = () => {
         )}
       </StaffPageContainer>
 
-      <StaffPageContainer surface="solid" width="wide" className="space-y-5">
+  <StaffPageContainer surface="solid" width="xl" className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Wash history</h2>
@@ -192,7 +192,7 @@ const CarWashDashboard: React.FC = () => {
       </StaffPageContainer>
 
       {history.length > 0 && (
-        <StaffPageContainer surface="glass" width="wide" className="overflow-hidden">
+  <StaffPageContainer surface="glass" width="xl" className="overflow-hidden">
           <h2 className="mb-4 text-lg font-semibold text-slate-900 sm:text-xl">Washes by date</h2>
           <Suspense fallback={<div className="text-sm text-slate-500">Loading chart…</div>}>
             <WashesByDateChart data={metrics.chartData} />

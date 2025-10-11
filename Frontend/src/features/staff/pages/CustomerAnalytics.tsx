@@ -65,14 +65,14 @@ const CustomerAnalytics: React.FC = () => {
       <StaffPageContainer
         as="div"
         surface="glass"
-        width="wide"
+        width="xl"
         padding="relaxed"
         className="relative overflow-hidden text-white shadow-lg"
       >
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
-            <h2 className="text-balance text-3xl font-bold leading-tight tracking-tight">Customer & Loyalty Analytics</h2>
-            <p className="text-base text-indigo-100">Deep dive into customer value, loyalty penetration & churn risk</p>
+            <h2 className="text-balance text-[clamp(2rem,3vw+1rem,2.5rem)] font-bold leading-tight tracking-tight">Customer &amp; Loyalty Analytics</h2>
+            <p className="text-[clamp(1rem,1.6vw+0.75rem,1.125rem)] text-indigo-100">Deep dive into customer value, loyalty penetration &amp; churn risk</p>
           </div>
           <div className="flex flex-col items-center gap-4 sm:flex-row">
             <div className="flex items-center gap-3 rounded-lg bg-white/10 px-4 py-2 backdrop-blur-sm">
@@ -107,7 +107,7 @@ const CustomerAnalytics: React.FC = () => {
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
       </StaffPageContainer>
 
-  <StaffPageContainer as="div" surface="plain" width="wide" padding="default" className="space-y-8">
+      <StaffPageContainer as="div" surface="plain" width="xl" padding="default" className="space-y-8">
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
           {snapshot.isLoading ? (
             Array.from({ length: 4 }).map((_, index) => (

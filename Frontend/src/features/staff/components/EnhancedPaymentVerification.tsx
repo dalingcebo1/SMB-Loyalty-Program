@@ -259,50 +259,51 @@ const EnhancedPaymentVerification: React.FC = () => {
   // (Removed old formatTime / formatCurrency implementations; using shared utils)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-sm">
       {/* Header Section */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+      <div className="flex flex-col gap-5 border-b border-gray-200 pb-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-1 min-w-[220px] items-center gap-3">
             <div className="p-2 bg-green-50 rounded-lg">
               <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Payment Verification</h2>
+              <h2 className="text-balance text-[clamp(1.2rem,2.8vw,1.6rem)] font-semibold text-gray-900">Payment verification</h2>
               <p className="text-sm text-gray-500">Verify payments and start wash services</p>
             </div>
           </div>
           
           {/* Daily Stats */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-2 text-sm">
+            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
               <span className="text-lg font-semibold text-blue-700">{dailyStats.total_verified}</span>
               <span className="text-sm text-blue-600">Verified Today</span>
             </div>
-            <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
               <span className="text-lg font-semibold text-green-700">{formatCurrency(dailyStats.total_amount)}</span>
               <span className="text-sm text-green-600">Total Amount</span>
             </div>
-            <div className="flex items-center space-x-2 px-3 py-2 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
               <span className="text-lg font-semibold text-purple-700">{dailyStats.success_rate.toFixed(1)}%</span>
               <span className="text-sm text-purple-600">Success Rate</span>
             </div>
-            <div className="flex items-center space-x-2 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200">
+            <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2">
               <span className="text-lg font-semibold text-orange-700">{dailyStats.avg_processing_time}s</span>
               <span className="text-sm text-orange-600">Avg Time</span>
             </div>
           </div>
         </div>
+        <div className="text-xs text-slate-400">Auto-refresh {autoRefreshHistory ? 'enabled' : 'disabled'} • last sync just now</div>
       </div>
 
       {/* Verification Methods */}
-      <div className="p-6">
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+      <div className="flex flex-col gap-6">
+        <div>
+          <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1 text-sm font-medium">
             <button 
-              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-md px-4 py-2 transition-colors ${
                 verificationMethod === 'qr' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -316,7 +317,7 @@ const EnhancedPaymentVerification: React.FC = () => {
               <span>QR Scanner</span>
             </button>
             <button 
-              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-md px-4 py-2 transition-colors ${
                 verificationMethod === 'manual' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -331,7 +332,7 @@ const EnhancedPaymentVerification: React.FC = () => {
               <span>Manual Entry</span>
             </button>
             <button 
-              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-md px-4 py-2 transition-colors ${
                 verificationMethod === 'pin' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -347,7 +348,7 @@ const EnhancedPaymentVerification: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-gray-50 rounded-xl p-6 min-h-96">
+  <div className="min-h-96 rounded-2xl bg-gray-50 p-6">
           {verificationMethod === 'qr' && (
             <div className="flex justify-center items-center h-full">
               <div className="w-full max-w-md">

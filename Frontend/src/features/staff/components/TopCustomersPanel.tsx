@@ -34,12 +34,12 @@ export const TopCustomersPanel: React.FC<Props> = ({ startDate, endDate }) => {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-indigo-50/50 border-b-2 border-indigo-100">
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Name</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Washes</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Loyalty %</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Revenue</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Avg Spend</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wide">Last Visit</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs tracking-wide">Name</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs tracking-wide">Washes</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs tracking-wide">Loyalty %</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs tracking-wide">Revenue</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs tracking-wide">Avg spend</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-xs tracking-wide">Last visit</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

@@ -22,7 +22,7 @@
 
 .header-title h2 {
   color: #1a202c;
-  font-size: 1.75rem;
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
   font-weight: 700;
   margin: 0 0 0.5rem 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -34,7 +34,7 @@
 .header-title p {
   color: #4a5568;
   margin: 0;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2.2vw, 1.05rem);
 }
 
 .status-summary {
@@ -65,7 +65,7 @@
 
 .status-number {
   display: block;
-  font-size: 1.5rem;
+  font-size: clamp(1.3rem, 3.2vw, 1.75rem);
   font-weight: 700;
   color: #1a202c;
   line-height: 1;
@@ -73,11 +73,10 @@
 
 .status-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: clamp(0.7rem, 1.8vw, 0.85rem);
   color: #4a5568;
   margin-top: 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 /* Washes Container */
@@ -87,8 +86,8 @@
 
 .washes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: clamp(1.25rem, 3vw, 1.75rem);
 }
 
 /* Active Wash Card */
@@ -230,8 +229,7 @@
   color: #4a5568;
   font-size: 0.8rem;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 .service-name {
@@ -258,9 +256,8 @@
 
 .time-label {
   color: #4a5568;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+  letter-spacing: 0.08em;
   font-weight: 500;
 }
 

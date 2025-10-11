@@ -1,13 +1,12 @@
 // Minimal wrapper page delegating to the enhanced component.
 import React from 'react';
 import EnhancedPaymentVerification from '../components/EnhancedPaymentVerification';
+import StaffPageContainer from '../components/StaffPageContainer';
 
 const PaymentVerification: React.FC = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <EnhancedPaymentVerification />
-    </div>
-  </div>
+  <StaffPageContainer surface="plain" width="wide" padding="none" className="space-y-8">
+    <EnhancedPaymentVerification />
+  </StaffPageContainer>
 );
 
 export default PaymentVerification;

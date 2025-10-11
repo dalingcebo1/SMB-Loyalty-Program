@@ -34,9 +34,8 @@
   text-align: left;
   padding: 0.75rem;
   border-bottom: 2px solid rgba(102, 126, 234, 0.1);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: clamp(0.7rem, 1.9vw, 0.85rem);
+  letter-spacing: 0.08em;
 }
 
 .data-table td {

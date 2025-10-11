@@ -30,36 +30,36 @@ export const LoyaltyOverviewPanel: React.FC<Props> = ({ startDate, endDate }) =>
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <span className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Penetration</span>
+          <span className="block text-xs font-medium text-gray-600 tracking-wide mb-2">Penetration</span>
           <strong className="block text-xl font-bold text-gray-900">{(overview.loyalty_penetration*100).toFixed(1)}%</strong>
         </div>
         <div className="text-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <span className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Avg Points / Wash</span>
+          <span className="block text-xs font-medium text-gray-600 tracking-wide mb-2">Avg points / wash</span>
           <strong className="block text-xl font-bold text-gray-900">{overview.avg_points_redeemed_per_wash.toFixed(1)}</strong>
         </div>
         <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <span className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Pts Redeemed</span>
+          <span className="block text-xs font-medium text-gray-600 tracking-wide mb-2">Pts redeemed</span>
           <strong className="block text-xl font-bold text-gray-900">{overview.total_points_redeemed.toLocaleString()}</strong>
         </div>
         <div className="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <span className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Pts Outstanding</span>
+          <span className="block text-xs font-medium text-gray-600 tracking-wide mb-2">Pts outstanding</span>
           <strong className="block text-xl font-bold text-gray-900">{overview.outstanding_points.toLocaleString()}</strong>
         </div>
       </div>
       
       {/* Churn Candidates */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-          At-Risk Customers (Churn Candidates)
+        <h4 className="text-sm font-semibold text-gray-700 tracking-wide mb-4">
+          At-risk customers (churn candidates)
         </h4>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-red-50/50 border-b-2 border-red-100">
-                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs uppercase tracking-wide">User</th>
-                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs uppercase tracking-wide">Days Since</th>
-                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs uppercase tracking-wide">Value %tile</th>
-                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs uppercase tracking-wide">Flag</th>
+                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs tracking-wide">User</th>
+                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs tracking-wide">Days since</th>
+                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs tracking-wide">Value percentile</th>
+                <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs tracking-wide">Flag</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

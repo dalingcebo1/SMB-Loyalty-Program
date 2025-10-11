@@ -62,11 +62,10 @@
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: clamp(0.72rem, 1.9vw, 0.85rem);
   color: #4a5568;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 /* Verification Methods */
@@ -439,12 +438,11 @@
 }
 
 .status-badge {
-  font-size: 0.75rem;
+  font-size: clamp(0.72rem, 1.9vw, 0.85rem);
   font-weight: 600;
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 .status-badge.success {

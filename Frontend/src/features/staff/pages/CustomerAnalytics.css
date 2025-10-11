@@ -22,7 +22,7 @@
 
 .header-content h2 {
   color: #1a202c;
-  font-size: 1.75rem;
+  font-size: clamp(1.6rem, 3vw, 2rem);
   font-weight: 700;
   margin: 0 0 0.5rem 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -37,7 +37,7 @@
 .header-content p {
   color: #4a5568;
   margin: 0;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
 }
 
 .header-actions {
@@ -58,11 +58,10 @@
 }
 
 .range-controls label {
-  font-size: 0.875rem;
+  font-size: clamp(0.8rem, 1.7vw, 0.95rem);
   font-weight: 500;
   color: #4a5568;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.03em;
 }
 
 .range-controls select {
@@ -138,7 +137,7 @@
 
 .section-header h3 {
   color: #1a202c;
-  font-size: 1.125rem;
+  font-size: clamp(1rem, 2.4vw, 1.25rem);
   font-weight: 600;
   margin: 0 0 0.25rem 0;
   display: flex;
@@ -148,7 +147,7 @@
 
 .section-header p {
   color: #718096;
-  font-size: 0.875rem;
+  font-size: clamp(0.8rem, 1.9vw, 0.95rem);
   margin: 0;
 }
 

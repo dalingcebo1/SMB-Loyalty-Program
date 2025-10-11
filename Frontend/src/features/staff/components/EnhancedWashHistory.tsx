@@ -30,6 +30,12 @@ const periodPresets = [
   { label: 'Custom', value: 'custom', days: 0 }
 ];
 
+const paymentLabels: Record<'all' | 'paid' | 'loyalty', string> = {
+  all: 'All',
+  paid: 'Paid',
+  loyalty: 'Loyalty'
+};
+
 const EnhancedWashHistory: React.FC = () => {
   const [filters, setFilters] = useState<FilterOptions>({
     startDate: '',
@@ -343,7 +349,7 @@ const EnhancedWashHistory: React.FC = () => {
                   }`}
                   onClick={() => handleFilterChange('paymentType', p)}
                 >
-                  {p === 'all' ? 'All' : p.charAt(0).toUpperCase()+p.slice(1)}
+                  {paymentLabels[p as keyof typeof paymentLabels]}
                 </button>
               ))}
             </div>
@@ -392,7 +398,7 @@ const EnhancedWashHistory: React.FC = () => {
           <>
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               {/* Table Header */}
-              <div className="bg-gray-50 grid grid-cols-8 gap-4 px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">
+              <div className="bg-gray-50 grid grid-cols-8 gap-4 px-6 py-4 text-xs font-semibold text-gray-600 tracking-wide border-b">
                 <div>Customer</div>
                 <div>Vehicle</div>
                 <div>Service</div>

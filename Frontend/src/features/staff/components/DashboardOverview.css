@@ -42,7 +42,7 @@
 
 .overview-header h2 {
   color: #1a202c;
-  font-size: 1.75rem;
+  font-size: clamp(1.5rem, 3.3vw, 1.9rem);
   font-weight: 700;
   margin: 0 0 0.5rem 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -54,15 +54,15 @@
 .overview-header p {
   color: #4a5568;
   margin: 0;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
 }
 
 /* Metrics Grid */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  padding: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(1.25rem, 3vw, 1.75rem);
+  padding: clamp(1.5rem, 3vw, 2rem);
 }
 
 /* Metric Card */
@@ -120,11 +120,10 @@
 
 .metric-title {
   color: #4a5568;
-  font-size: 0.875rem;
+  font-size: clamp(0.8rem, 2vw, 0.95rem);
   font-weight: 500;
   margin: 0 0 0.5rem 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 .metric-value {

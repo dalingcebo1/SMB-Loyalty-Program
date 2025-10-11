@@ -211,7 +211,7 @@ const DashboardOverview: React.FC = () => {
       <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full ${tone}`}>
         <span>{arrow}</span>
         <span>{Math.abs(rounded)}%</span>
-        {label ? <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{label}</span> : null}
+        {label ? <span className="text-[10px] font-medium text-gray-500 tracking-wide">{label}</span> : null}
       </span>
     );
   };
@@ -239,8 +239,8 @@ const DashboardOverview: React.FC = () => {
             <FaChartBar className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Dashboard Overview</h2>
-            <p className="text-sm text-gray-500">Real-time car wash operation metrics</p>
+              <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Dashboard overview</h2>
+              <p className="text-sm text-gray-500 sm:text-base">Real-time car wash operation metrics</p>
           </div>
         </div>
       </div>
@@ -251,7 +251,7 @@ const DashboardOverview: React.FC = () => {
             <div key={card.key} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
               <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-20`} aria-hidden="true" />
               <div className="relative p-5 flex flex-col gap-3">
-                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <div className="text-xs font-semibold text-gray-500 tracking-wide">
                   {card.title}
                 </div>
                 {card.subtitle ? (

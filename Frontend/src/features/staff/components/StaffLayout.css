@@ -301,7 +301,7 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
 
 .staff-shell-main {
   flex: 1;
-  padding: clamp(1.35rem, 2.75vw, 2.25rem) clamp(0.85rem, 2.8vw, 2.2rem) clamp(2rem, 3.6vw, 2.75rem);
+  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.1rem, 3.2vw, 2.6rem) clamp(2.25rem, 4vw, 3rem);
   display: flex;
   justify-content: center;
   align-items: stretch;
@@ -309,12 +309,16 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
 
 .staff-content {
   width: 100%;
-  max-width: 1150px;
+  max-width: min(100%, 1200px);
   margin: 0 auto;
-  padding: clamp(0.65rem, 1.8vw, 1.35rem) clamp(0.7rem, 2.2vw, 1.8rem);
+  padding: clamp(0.85rem, 2.1vw, 1.6rem) clamp(0.95rem, 2.6vw, 2.2rem);
   display: flex;
   flex-direction: column;
-  gap: clamp(1.35rem, 3.5vw, 2.25rem);
+  gap: clamp(1.5rem, 3.75vw, 2.75rem);
+}
+
+.staff-content > * {
+  width: 100%;
 }
 
 @media (min-width: 640px) {

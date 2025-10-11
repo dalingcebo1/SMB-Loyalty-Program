@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { timeDerivation } from '../../staff/perf/counters';
 import { useActiveWashes, useEndWash } from '../hooks';
 import { useWashHistory } from '../hooks';
@@ -12,6 +12,7 @@ const WashesByDateChart = lazy(() => import('../components/WashesByDateChart'));
 import TableContainer from '../../../components/ui/TableContainer';
 import { Wash } from '../../../types';
 import VirtualizedWashHistory from '../components/VirtualizedWashHistory';
+import StaffPageContainer from '../components/StaffPageContainer';
 
 const CarWashDashboard: React.FC = () => {
   const { data: activeWashes = [], isLoading, refetch } = useActiveWashes();
@@ -70,103 +71,135 @@ const CarWashDashboard: React.FC = () => {
 
   
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-  {/* ToastContainer handles notifications */}
-  <ConfirmDialog
+    <>
+      <ConfirmDialog
         isOpen={!!confirmWash}
         title="End Wash?"
         description="Are you sure you want to end this wash?"
         confirmLabel="Yes, End"
         onConfirm={confirmEnd}
         onCancel={() => setConfirmWash(null)}
-  loading={endWashMutation.status === 'pending'}
+        loading={endWashMutation.status === 'pending'}
       />
 
-      <h1 className="text-2xl font-bold mb-4 text-center">Car Wash Dashboard</h1>
+      <StaffPageContainer
+        surface="glass"
+        width="wide"
+        padding="relaxed"
+        className="relative overflow-hidden text-white"
+      >
+        <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Car wash dashboard</h1>
+            <p className="mt-1 text-sm text-blue-100 sm:text-base">Monitor active washes and historic performance</p>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-medium backdrop-blur-lg">
+            <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-300" aria-hidden />
+            Live metrics
+          </div>
+        </div>
+        <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" aria-hidden />
+      </StaffPageContainer>
 
-      <section className="bg-white shadow rounded p-4 mb-6">
-        <h2 className="text-xl font-semibold mb-2">Active Washes</h2>
+      <StaffPageContainer surface="plain" width="wide">
+        <SummaryStats
+          totalHistory={history.length}
+          completedCount={metrics.completedCount}
+          inProgressCount={metrics.inProgressCount}
+          avgDurationMin={metrics.avgDurationMin}
+        />
+      </StaffPageContainer>
+
+      <StaffPageContainer surface="solid" width="wide" className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Active washes</h2>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
+          >
+            Refresh
+          </button>
+        </div>
         {activeWashes.length === 0 ? (
-          <p className="text-gray-500">No active washes.</p>
+          <p className="text-sm text-gray-500">No active washes right now.</p>
         ) : (
           <TableContainer>
-            <ul>
+            <ul className="divide-y divide-slate-200">
               {activeWashes.map((wash: Wash) => (
-                <li key={wash.order_id} className="flex justify-between items-center py-2 border-b">
-                  <span>
-                    {wash.user?.first_name} {wash.user?.last_name} — {wash.vehicle?.make} {wash.vehicle?.model} {wash.vehicle?.reg}
-                  </span>
+                <li key={wash.order_id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-slate-700">
+                    {wash.user?.first_name} {wash.user?.last_name}
+                    {wash.vehicle && (
+                      <span className="text-slate-500">
+                        {' '}
+                        — {wash.vehicle.make} {wash.vehicle.model} {wash.vehicle.reg}
+                      </span>
+                    )}
+                  </div>
                   <button
+                    type="button"
                     onClick={() => handleEndClick(wash.order_id)}
-                    className="px-2 py-1 bg-red-600 text-white rounded"
+                    className="inline-flex items-center justify-center rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700"
                   >
-                    End Wash
+                    End wash
                   </button>
                 </li>
               ))}
             </ul>
           </TableContainer>
         )}
-      </section>
+      </StaffPageContainer>
 
-      {/* Summary */}
-      <SummaryStats
-        totalHistory={history.length}
-        completedCount={metrics.completedCount}
-        inProgressCount={metrics.inProgressCount}
-        avgDurationMin={metrics.avgDurationMin}
-      />
-      {/* Wash History */}
-      <section className="bg-white shadow rounded p-4 mb-6">
-        <h2 className="text-xl font-semibold mb-2">Wash History</h2>
+      <StaffPageContainer surface="solid" width="wide" className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Wash history</h2>
+            <p className="text-sm text-gray-500">Filter and review completed or in-progress washes</p>
+          </div>
+        </div>
         <FilterBar filters={filters} onChange={setFilters} />
         {historyLoading ? (
           <LoadingFallback message="Loading history…" />
         ) : history.length === 0 ? (
-          <p className="text-gray-500">No washes found for selected filters.</p>
-  // Phase 3: virtualize once list is moderately large to cut DOM nodes
-  ) : history.length > 50 ? (
-          <VirtualizedWashHistory washes={history} className="border rounded" />
+          <p className="text-sm text-gray-500">No washes found for the selected filters.</p>
+        ) : history.length > 50 ? (
+          <VirtualizedWashHistory washes={history} className="rounded-lg border border-slate-200" />
         ) : (
-          <ul>
+          <ul className="space-y-4">
             {history.map((wash: Wash) => (
-              <li key={wash.order_id} className="mb-4 border-b pb-2">
-                <div>
-                  <span className="font-semibold">{wash.user?.first_name} {wash.user?.last_name}</span>
+              <li key={wash.order_id} className="rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                <div className="flex flex-col gap-1 text-sm text-slate-700">
+                  <span className="font-semibold text-slate-900">
+                    {wash.user?.first_name} {wash.user?.last_name}
+                  </span>
                   {wash.vehicle && (
-                    <>: {wash.vehicle.make} {wash.vehicle.model} {wash.vehicle.reg}</>
+                    <span className="text-slate-500">
+                      {wash.vehicle.make} {wash.vehicle.model} {wash.vehicle.reg}
+                    </span>
                   )}
-                </div>
-                <div className="mt-1">
-                  <span className="font-semibold">Type:</span> {wash.service_name || 'N/A'}
-                </div>
-                <div className="mt-1">
-                  <span className="font-semibold">Started:</span> {wash.started_at}
-                </div>
-                <div className="mt-1">
-                  <span className="font-semibold">Ended:</span> {wash.ended_at || '—'}
-                </div>
-                <div className="mt-1">
-                  <span className={wash.status === 'started' ? 'text-blue-600' : 'text-green-600'}>
-                    {wash.status === 'started' ? 'In Progress' : 'Completed'}
+                  <span><strong>Type:</strong> {wash.service_name || 'N/A'}</span>
+                  <span><strong>Started:</strong> {wash.started_at}</span>
+                  <span><strong>Ended:</strong> {wash.ended_at || '—'}</span>
+                  <span className={wash.status === 'started' ? 'text-blue-600 font-medium' : 'text-emerald-600 font-medium'}>
+                    {wash.status === 'started' ? 'In progress' : 'Completed'}
                   </span>
                 </div>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </StaffPageContainer>
 
-      {/* Washes by Date Chart (lazy-loaded) */}
       {history.length > 0 && (
-        <div className="bg-white shadow rounded p-4 mb-6 overflow-x-auto">
-          <h2 className="text-xl font-semibold mb-2">Washes by Date</h2>
-          <Suspense fallback={<div className="text-gray-500 text-sm">Loading chart…</div>}>
+        <StaffPageContainer surface="glass" width="wide" className="overflow-hidden">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900 sm:text-xl">Washes by date</h2>
+          <Suspense fallback={<div className="text-sm text-slate-500">Loading chart…</div>}>
             <WashesByDateChart data={metrics.chartData} />
           </Suspense>
-        </div>
+        </StaffPageContainer>
       )}
-    </div>
+    </>
   );
 };
 

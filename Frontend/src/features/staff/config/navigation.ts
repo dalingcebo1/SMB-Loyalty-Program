@@ -11,13 +11,13 @@ export interface StaffNavItem {
 }
 
 export const staffNavItems: StaffNavItem[] = [
-  { path: '/staff/dashboard', label: 'Dashboard', icon: 'analytics', description: 'Overview & Active Washes' },
-  { path: '/staff/vehicle-manager', label: 'Vehicles', icon: 'car', description: 'Vehicle Management' },
-  { path: '/staff/wash-history', label: 'History', icon: 'wash', description: 'Wash History & Tracking' },
-  { path: '/staff/payment', label: 'Payments', icon: 'revenue', description: 'Payment Verification' },
-  { path: '/staff/analytics', label: 'Analytics', icon: 'performance', description: 'Business Analytics & Reports' },
-  { path: '/staff/customer-analytics', label: 'Customers', icon: 'user', description: 'Top & Loyalty Analytics' },
-  { path: '/staff/manual-visit', label: 'Manual Log', icon: 'inProgress', description: 'Manual Visit Logger' },
+  { path: '/staff/dashboard', label: 'Dashboard', icon: 'analytics', description: 'Overview & active washes' },
+  { path: '/staff/vehicle-manager', label: 'Vehicles', icon: 'car', description: 'Vehicle management' },
+  { path: '/staff/wash-history', label: 'History', icon: 'wash', description: 'Wash history & tracking' },
+  { path: '/staff/payment', label: 'Payments', icon: 'revenue', description: 'Payment verification' },
+  { path: '/staff/analytics', label: 'Analytics', icon: 'performance', description: 'Business analytics & reports' },
+  { path: '/staff/customer-analytics', label: 'Customers', icon: 'user', description: 'Top & loyalty analytics' },
+  { path: '/staff/manual-visit', label: 'Manual log', icon: 'inProgress', description: 'Manual visit logger' },
 ];
 
 type StaffRole = 'staff' | 'admin';

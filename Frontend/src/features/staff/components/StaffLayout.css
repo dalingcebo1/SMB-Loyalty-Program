@@ -8,6 +8,8 @@
   background: radial-gradient(circle at top left, rgba(80, 129, 251, 0.3), transparent 55%),
     radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.25), transparent 60%),
     linear-gradient(140deg, #4c51bf 0%, #7c3aed 50%, #0ea5e9 100%);
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .staff-shell::before {
@@ -136,6 +138,8 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
   z-index: 1;
   display: flex;
   flex: 1;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .staff-sidebar {
@@ -305,6 +309,9 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
   display: flex;
   justify-content: center;
   align-items: stretch;
+  overflow-x: hidden;
+  width: 100%;
+  min-width: 0;
 }
 
 .staff-content {
@@ -315,10 +322,14 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
   display: flex;
   flex-direction: column;
   gap: clamp(1.5rem, 3.75vw, 2.75rem);
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .staff-content > * {
   width: 100%;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 @media (min-width: 640px) {

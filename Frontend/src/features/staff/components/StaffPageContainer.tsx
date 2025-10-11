@@ -51,7 +51,7 @@ const StaffPageContainer: React.FC<StaffPageContainerProps> = ({
   const paddingClass = paddingMap[padding] ?? paddingMap.default;
 
   return (
-    <Component className={join('w-full mx-auto', widthClass, surfaceClass, paddingClass, className)}>
+    <Component className={join('w-full min-w-0 mx-auto overflow-x-hidden', widthClass, surfaceClass, paddingClass, className)}>
       {children}
     </Component>
   );

@@ -263,20 +263,20 @@ const EnhancedPaymentVerification: React.FC = () => {
       {/* Header Section */}
       <div className="flex flex-col gap-5 border-b border-gray-200 pb-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-1 min-w-[220px] items-center gap-3">
-            <div className="p-2 bg-green-50 rounded-lg">
+          <div className="flex flex-1 min-w-0 items-center gap-3">
+            <div className="p-2 bg-green-50 rounded-lg flex-shrink-0">
               <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" />
               </svg>
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-balance text-[clamp(1.2rem,2.8vw,1.6rem)] font-semibold text-gray-900">Payment verification</h2>
               <p className="text-sm text-gray-500">Verify payments and start wash services</p>
             </div>
           </div>
           
           {/* Daily Stats */}
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-2 text-sm">
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-2 text-sm min-w-0">
             <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
               <span className="text-lg font-semibold text-blue-700">{dailyStats.total_verified}</span>
               <span className="text-sm text-blue-600">Verified Today</span>
@@ -301,9 +301,9 @@ const EnhancedPaymentVerification: React.FC = () => {
       {/* Verification Methods */}
       <div className="flex flex-col gap-6">
         <div>
-          <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1 text-sm font-medium">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 rounded-lg bg-gray-100 p-1 text-sm font-medium">
             <button 
-              className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-md px-4 py-2 transition-colors ${
+              className={`flex-1 sm:min-w-[120px] flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
                 verificationMethod === 'qr' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -314,10 +314,10 @@ const EnhancedPaymentVerification: React.FC = () => {
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4zm2 2V5h1v1h-1zM11 4a1 1 0 100-2 1 1 0 000 2zM11 7a1 1 0 100-2 1 1 0 000 2zM11 10a1 1 0 100-2 1 1 0 000 2zM11 13a1 1 0 100-2 1 1 0 000 2zM11 16a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
               </svg>
-              <span>QR Scanner</span>
+              <span className="whitespace-nowrap">QR Scanner</span>
             </button>
             <button 
-              className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-md px-4 py-2 transition-colors ${
+              className={`flex-1 sm:min-w-[120px] flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
                 verificationMethod === 'manual' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -329,10 +329,10 @@ const EnhancedPaymentVerification: React.FC = () => {
                 <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
                 <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
               </svg>
-              <span>Manual Entry</span>
+              <span className="whitespace-nowrap">Manual Entry</span>
             </button>
             <button 
-              className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-md px-4 py-2 transition-colors ${
+              className={`flex-1 sm:min-w-[120px] flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
                 verificationMethod === 'pin' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -343,7 +343,7 @@ const EnhancedPaymentVerification: React.FC = () => {
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clipRule="evenodd" />
               </svg>
-              <span>PIN Verification</span>
+              <span className="whitespace-nowrap">PIN Verification</span>
             </button>
           </div>
         </div>

@@ -4,7 +4,7 @@ import EnhancedPaymentVerification from '../components/EnhancedPaymentVerificati
 import StaffPageContainer from '../components/StaffPageContainer';
 
 const PaymentVerification: React.FC = () => (
-  <StaffPageContainer surface="plain" width="wide" padding="none" className="space-y-8">
+  <StaffPageContainer surface="plain" width="wide" padding="default" className="space-y-8">
     <EnhancedPaymentVerification />
   </StaffPageContainer>
 );

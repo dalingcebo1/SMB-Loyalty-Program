@@ -124,7 +124,7 @@ const ManualVisitLogger: React.FC = () => {
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
       </StaffPageContainer>
 
-      <StaffPageContainer as="div" surface="plain" width="lg" padding="none" className="space-y-8">
+  <StaffPageContainer as="div" surface="plain" width="lg" padding="default" className="space-y-8">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
             <div className="mb-6 flex items-center gap-3">

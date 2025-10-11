@@ -107,7 +107,7 @@ const CustomerAnalytics: React.FC = () => {
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
       </StaffPageContainer>
 
-      <StaffPageContainer as="div" surface="plain" width="wide" padding="none" className="space-y-8">
+  <StaffPageContainer as="div" surface="plain" width="wide" padding="default" className="space-y-8">
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
           {snapshot.isLoading ? (
             Array.from({ length: 4 }).map((_, index) => (

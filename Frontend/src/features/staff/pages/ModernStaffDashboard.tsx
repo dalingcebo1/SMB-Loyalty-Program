@@ -24,7 +24,7 @@ const ModernStaffDashboard: React.FC = () => {
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" aria-hidden />
       </StaffPageContainer>
 
-      <StaffPageContainer surface="plain" width="wide" padding="none">
+      <StaffPageContainer surface="plain" width="wide" padding="default">
         <DashboardOverview />
       </StaffPageContainer>
 

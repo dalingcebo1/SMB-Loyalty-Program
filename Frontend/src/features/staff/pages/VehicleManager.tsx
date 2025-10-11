@@ -5,7 +5,7 @@ import EnhancedVehicleManager from '../components/EnhancedVehicleManager';
 
 const VehicleManager: React.FC = () => {
   return (
-    <StaffPageContainer surface="plain" width="wide" padding="none" className="space-y-8">
+    <StaffPageContainer surface="plain" width="wide" padding="default" className="space-y-8">
       <EnhancedVehicleManager />
     </StaffPageContainer>
   );

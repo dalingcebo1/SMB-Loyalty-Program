@@ -79,9 +79,23 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
 
 .staff-topbar-title {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.staff-topbar-logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+}
+
+.staff-topbar-text {
+  display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  text-decoration: none;
 }
 
 .staff-topbar-label {

@@ -47,8 +47,11 @@ const StaffLayout: React.FC = () => {
               </svg>
             </button>
             <Link to="/staff/dashboard" className="staff-topbar-title" aria-label="Go to staff dashboard home">
-              <span className="staff-topbar-label">Staff Dashboard</span>
-              <span className="staff-topbar-subtitle">Car Wash Management System</span>
+              <img src="/logo.svg" alt="SMB Loyalty" className="staff-topbar-logo" />
+              <div className="staff-topbar-text">
+                <span className="staff-topbar-label">Staff Dashboard</span>
+                <span className="staff-topbar-subtitle">Car Wash Management System</span>
+              </div>
             </Link>
           </div>
           <div className="staff-topbar-actions">

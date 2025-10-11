@@ -1,0 +1,44 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#gradient1)"/>
+  
+  <!-- Inner circle -->
+  <circle cx="256" cy="256" r="200" fill="white" opacity="0.1"/>
+  
+  <!-- Star/Badge shape (loyalty symbol) -->
+  <g transform="translate(256, 256)">
+    <!-- Outer star points -->
+    <path d="M 0,-120 L 15,-40 L 85,-85 L 40,-15 L 120,0 L 40,15 L 85,85 L 15,40 L 0,120 L -15,40 L -85,85 L -40,15 L -120,0 L -40,-15 L -85,-85 L -15,-40 Z" 
+          fill="white" opacity="0.9"/>
+    
+    <!-- Inner circle for contrast -->
+    <circle cx="0" cy="0" r="70" fill="url(#gradient2)"/>
+    
+    <!-- Sparkle effect -->
+    <circle cx="0" cy="-90" r="8" fill="white"/>
+    <circle cx="90" cy="0" r="6" fill="white" opacity="0.8"/>
+    <circle cx="0" cy="90" r="6" fill="white" opacity="0.8"/>
+    <circle cx="-90" cy="0" r="6" fill="white" opacity="0.8"/>
+    
+    <!-- Center icon - checkmark/reward -->
+    <path d="M -20,0 L -5,20 L 30,-20" 
+          stroke="white" 
+          stroke-width="10" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          fill="none"/>
+  </g>
+  
+  <!-- Gradient definitions -->
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#667eea;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>

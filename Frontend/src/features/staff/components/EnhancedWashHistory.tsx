@@ -397,26 +397,29 @@ const EnhancedWashHistory: React.FC = () => {
         ) : (
           <>
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              {/* Table Header */}
-              <div className="bg-gray-50 grid grid-cols-8 gap-4 px-6 py-4 text-xs font-semibold text-gray-600 tracking-wide border-b">
-                <div>Customer</div>
-                <div>Vehicle</div>
-                <div>Service</div>
-                <div>Amount</div>
-                <div>Started</div>
-                <div>Ended</div>
-                <div>Duration</div>
-                <div>Status</div>
+              {/* Table Header - horizontal scroll on mobile */}
+              <div className="overflow-x-auto">
+                <div className="bg-gray-50 grid grid-cols-8 gap-4 px-6 py-4 text-xs font-semibold text-gray-600 tracking-wide border-b min-w-[900px]">
+                  <div>Customer</div>
+                  <div>Vehicle</div>
+                  <div>Service</div>
+                  <div>Amount</div>
+                  <div>Started</div>
+                  <div>Ended</div>
+                  <div>Duration</div>
+                  <div>Status</div>
+                </div>
               </div>
               
-              {washes.map((wash) => (
-                <div
-                  key={wash.order_id}
-                  className={`grid grid-cols-8 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                    selectedWash?.order_id === wash.order_id ? 'bg-indigo-50 border-indigo-200' : ''
-                  }`}
-                  onClick={() => setSelectedWash(wash)}
-                >
+              <div className="overflow-x-auto">
+                {washes.map((wash) => (
+                  <div
+                    key={wash.order_id}
+                    className={`grid grid-cols-8 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-b-0 min-w-[900px] ${
+                      selectedWash?.order_id === wash.order_id ? 'bg-indigo-50 border-indigo-200' : ''
+                    }`}
+                    onClick={() => setSelectedWash(wash)}
+                  >
                   <div className="flex flex-col">
                     <div className="font-medium text-gray-900">
                       {wash.user?.first_name} {wash.user?.last_name}
@@ -480,8 +483,9 @@ const EnhancedWashHistory: React.FC = () => {
                       {wash.status === 'started' ? 'In Progress' : 'Completed'}
                     </span>
                   </div>
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
             
             {/* Pagination */}

@@ -34,12 +34,12 @@ const ModernStaffDashboard: React.FC = () => {
 
       <StaffPageContainer surface="glass" width="xl" className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 border-b border-white/20 pb-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100">
-            <FaChartLine className="h-5 w-5 text-purple-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100">
+            <FaChartLine className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
-            <h2 className="text-[clamp(1.1rem,2.6vw,1.35rem)] font-semibold text-slate-900">Quick analytics</h2>
-            <p className="text-[clamp(0.85rem,2.2vw,1rem)] text-slate-500">Today's performance at a glance</p>
+            <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">Quick analytics</h2>
+            <p className="text-sm text-slate-500 sm:text-base">Today's performance at a glance</p>
           </div>
         </div>
         <div className="pt-4">

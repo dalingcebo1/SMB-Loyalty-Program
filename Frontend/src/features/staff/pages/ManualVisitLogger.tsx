@@ -112,14 +112,14 @@ const ManualVisitLogger: React.FC = () => {
     <div className="manual-visit-logger space-y-8">
       <StaffPageContainer
         as="div"
-        surface="plain"
+        surface="glass"
         width="xl"
         padding="relaxed"
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-700 text-white shadow-lg"
+        className="relative overflow-hidden text-white"
       >
         <div className="relative z-10 space-y-2">
-          <h1 className="text-[clamp(2rem,3vw+1rem,2.5rem)] font-bold tracking-tight">Manual Visit Logging</h1>
-          <p className="text-[clamp(1rem,1.6vw+0.75rem,1.125rem)] text-teal-100">Record loyalty visits & start washes for POS customers without QR codes</p>
+          <h1 className="text-[clamp(1.75rem,3.5vw,2.5rem)] font-bold tracking-tight">Manual Visit Logging</h1>
+          <p className="text-[clamp(1rem,2vw,1.125rem)] text-blue-100">Record loyalty visits & start washes for POS customers without QR codes</p>
         </div>
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
       </StaffPageContainer>
@@ -128,8 +128,8 @@ const ManualVisitLogger: React.FC = () => {
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100">
-                <svg className="h-5 w-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100">
+                <svg className="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
               </div>
@@ -161,7 +161,7 @@ const ManualVisitLogger: React.FC = () => {
                 <button
                   onClick={confirmAndLog}
                   disabled={!isValidCell || loading}
-                  className="w-full rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-3 font-medium text-white shadow-sm transition-all duration-200 hover:from-teal-700 hover:to-cyan-700 hover:shadow-md disabled:cursor-not-allowed disabled:from-gray-300 disabled:to-gray-400"
+                  className="w-full rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -177,7 +177,7 @@ const ManualVisitLogger: React.FC = () => {
                   <button
                     onClick={handleStartWash}
                     disabled={loading}
-                    className="w-full rounded-lg border-2 border-teal-600 bg-white px-6 py-3 font-medium text-teal-600 transition-all duration-200 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-6 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -237,8 +237,8 @@ const ManualVisitLogger: React.FC = () => {
 
             {history.length === 0 ? (
               <div className="py-8 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>

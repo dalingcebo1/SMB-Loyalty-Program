@@ -5,7 +5,7 @@ import StaffPageContainer from '../components/StaffPageContainer';
 
 const Analytics: React.FC = () => {
   return (
-  <StaffPageContainer surface="plain" width="xl" padding="default" className="space-y-8">
+    <StaffPageContainer surface="plain" width="xl" padding="default" className="space-y-8">
       <EnhancedAnalyticsLazy />
     </StaffPageContainer>
   );

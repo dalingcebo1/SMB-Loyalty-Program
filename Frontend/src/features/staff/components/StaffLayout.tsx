@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../auth/AuthProvider';
 import './StaffLayout.css';
+import './text-wrapping-fixes.css';
 import { filterStaffNav } from '../config/navigation';
 import { StaffIcon, StaffIconName } from './StaffIcon';
 import { StaffSectionProvider } from '../context/StaffSectionContext';

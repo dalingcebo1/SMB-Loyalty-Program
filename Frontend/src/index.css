@@ -3,14 +3,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mobile overflow prevention for staff layout */
+/* Mobile overflow prevention and professional text handling */
 @layer base {
+  /* Prevent horizontal scroll on mobile */
   html, body {
     overflow-x: hidden;
     width: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
-  * {
+  /* Only apply min-width: 0 to direct flex/grid children to allow proper shrinking */
+  .flex > *, .grid > *, 
+  [class*="flex"] > *, [class*="grid"] > * {
     min-width: 0;
+  }
+  
+  /* Industry standard: Headings should not break words or wrap awkwardly */
+  h1, h2, h3, h4, h5, h6 {
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: none;
+  }
+  
+  /* Buttons and interactive elements should maintain single line when possible */
+  button, a[role="button"], [role="button"] {
+    word-break: keep-all;
+    hyphens: none;
+  }
+  
+  /* Labels, badges, and tags should not wrap */
+  label, .badge, [class*="badge"], [class*="tag"], [class*="pill"] {
+    word-break: keep-all;
+    hyphens: none;
+  }
+  
+  /* Paragraph text can wrap naturally at word boundaries */
+  p, article, .prose {
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* Long URLs or code should break appropriately */
+  code, pre, .monospace {
+    word-break: break-all;
+    overflow-wrap: anywhere;
+  }
+  
+  /* Navigation items should not wrap */
+  nav a, nav button, .nav-item, [class*="nav-"] a {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+  
+  /* Form controls maintain normal text flow */
+  input, textarea, select {
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+  
+  /* Prevent text orphans and improve readability */
+  .text-balance {
+    text-wrap: balance;
   }
 }

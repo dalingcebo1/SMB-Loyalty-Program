@@ -1,0 +1,62 @@
+/* Global text wrapping fixes for professional UI */
+
+/* Prevent text from breaking unnecessarily in headings and UI elements */
+h1, h2, h3, h4, h5, h6 {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+}
+
+/* Buttons should never wrap text awkwardly */
+button, a.button, [role="button"] {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Labels and short text should stay on one line */
+label, .badge, .tag, .pill {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Card titles and metrics should not break */
+.metric-title, .card-title, [class*="title"] {
+  white-space: nowrap;
+  word-break: normal;
+}
+
+/* Allow paragraph text to wrap naturally */
+p, .text-content, article {
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Prevent awkward breaks in navigation */
+nav a, nav button, .nav-item {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Form inputs should handle overflow properly */
+input, textarea, select {
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* Tables need careful handling */
+th, td {
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Status badges and pills */
+.status, .badge, [class*="badge"], [class*="pill"] {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Flex containers should not break text */
+.flex > span, .flex > a, .flex > button {
+  flex-shrink: 0;
+}

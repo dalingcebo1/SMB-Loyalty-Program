@@ -248,10 +248,10 @@ const DashboardOverview: React.FC = () => {
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {highlightCards.map(card => (
-            <div key={card.key} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div key={card.key} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm min-w-0">
               <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-20`} aria-hidden="true" />
-              <div className="relative p-5 flex flex-col gap-3">
-                <div className="text-xs font-semibold text-gray-500 tracking-wide">
+              <div className="relative p-5 flex flex-col gap-3 min-w-0">
+                <div className="text-xs font-semibold text-gray-500 tracking-wide whitespace-nowrap">
                   {card.title}
                 </div>
                 {card.subtitle ? (

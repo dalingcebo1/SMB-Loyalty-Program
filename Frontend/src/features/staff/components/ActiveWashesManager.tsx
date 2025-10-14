@@ -234,28 +234,28 @@ const ActiveWashesManager: React.FC = () => {
 
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-50 rounded-lg">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 min-w-0 flex-shrink-0">
+            <div className="p-2 bg-green-50 rounded-lg flex-shrink-0">
               <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
               </svg>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Active Washes</h2>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-gray-900 whitespace-nowrap">Active Washes</h2>
               <p className="text-sm text-gray-500">Monitor and manage ongoing car washes</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4">
             {/* Status Summary */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center space-x-3 flex-wrap">
+              <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200 whitespace-nowrap">
                 <span className="text-lg font-semibold text-blue-700">{total}</span>
                 <span className="text-sm text-blue-600">Active</span>
               </div>
               {longRunning > 0 && (
-                <div className="flex items-center space-x-2 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200">
+                <div className="flex items-center space-x-2 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200 whitespace-nowrap">
                   <span className="text-lg font-semibold text-orange-700">{longRunning}</span>
                   <span className="text-sm text-orange-600">Long Running</span>
                 </div>
@@ -263,8 +263,8 @@ const ActiveWashesManager: React.FC = () => {
             </div>
 
             {/* Controls */}
-            <div className="flex items-center space-x-3">
-              <label className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-3 flex-wrap">
+              <label className="flex items-center space-x-2 text-sm text-gray-600 whitespace-nowrap">
                 <input
                   type="checkbox"
                   checked={autoRefresh}

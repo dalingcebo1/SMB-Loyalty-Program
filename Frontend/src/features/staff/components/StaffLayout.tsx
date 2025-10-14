@@ -1,6 +1,7 @@
 // src/features/staff/components/StaffLayout.tsx
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../../../auth/AuthProvider';
 import './StaffLayout.css';
 import './text-wrapping-fixes.css';
@@ -61,9 +62,9 @@ const StaffLayout: React.FC = () => {
               onClick={logout}
               className="logout-button"
               aria-label="Log out"
+              title="Log out"
             >
-              <span className="logout-icon" aria-hidden="true">🔒</span>
-              Log out
+              <FiLogOut className="logout-icon" aria-hidden="true" />
             </button>
           </div>
         </header>

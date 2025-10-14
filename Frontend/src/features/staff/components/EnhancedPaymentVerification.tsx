@@ -262,36 +262,36 @@ const EnhancedPaymentVerification: React.FC = () => {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-sm">
       {/* Header Section */}
       <div className="flex flex-col gap-5 border-b border-gray-200 pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-1 min-w-0 items-center gap-3">
-            <div className="p-2 bg-green-50 rounded-lg flex-shrink-0">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="p-2 bg-green-50 rounded-lg">
               <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" />
               </svg>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-balance text-[clamp(1.2rem,2.8vw,1.6rem)] font-semibold text-gray-900">Payment verification</h2>
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 whitespace-nowrap">Payment Verification</h2>
               <p className="text-sm text-gray-500">Verify payments and start wash services</p>
             </div>
           </div>
           
           {/* Daily Stats */}
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-2 text-sm min-w-0">
-            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
-              <span className="text-lg font-semibold text-blue-700">{dailyStats.total_verified}</span>
-              <span className="text-sm text-blue-600">Verified Today</span>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 min-w-[90px]">
+              <span className="text-lg font-bold text-blue-700">{dailyStats.total_verified}</span>
+              <span className="text-xs text-blue-600 whitespace-nowrap">Verified</span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
-              <span className="text-lg font-semibold text-green-700">{formatCurrency(dailyStats.total_amount)}</span>
-              <span className="text-sm text-green-600">Total Amount</span>
+            <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-green-200 bg-green-50 min-w-[90px]">
+              <span className="text-lg font-bold text-green-700">{formatCurrency(dailyStats.total_amount)}</span>
+              <span className="text-xs text-green-600 whitespace-nowrap">Amount</span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
-              <span className="text-lg font-semibold text-purple-700">{dailyStats.success_rate.toFixed(1)}%</span>
-              <span className="text-sm text-purple-600">Success Rate</span>
+            <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 min-w-[90px]">
+              <span className="text-lg font-bold text-purple-700">{dailyStats.success_rate.toFixed(1)}%</span>
+              <span className="text-xs text-purple-600 whitespace-nowrap">Success</span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2">
-              <span className="text-lg font-semibold text-orange-700">{dailyStats.avg_processing_time}s</span>
-              <span className="text-sm text-orange-600">Avg Time</span>
+            <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 min-w-[90px]">
+              <span className="text-lg font-bold text-orange-700">{dailyStats.avg_processing_time}s</span>
+              <span className="text-xs text-orange-600 whitespace-nowrap">Avg Time</span>
             </div>
           </div>
         </div>

@@ -16,8 +16,8 @@ const ModernStaffDashboard: React.FC = () => {
             <h1 className="text-balance text-[clamp(1.6rem,4vw,2.4rem)] font-semibold leading-tight tracking-tight">Staff dashboard</h1>
             <p className="text-[clamp(0.9rem,2.4vw,1.05rem)] text-blue-100">Monitor and manage car wash operations in real-time</p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-medium backdrop-blur-lg">
-            <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-300" aria-hidden />
+          <div className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md">
+            <span className="flex h-2 w-2 animate-pulse rounded-full bg-white" aria-hidden />
             <span>System online</span>
           </div>
         </div>

@@ -1,19 +1,18 @@
 /* src/features/staff/components/EnhancedAnalytics.css */
 
 .enhanced-analytics {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
   overflow: hidden;
 }
 
 /* Header Section */
 .analytics-header {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: #ffffff;
   padding: 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -22,29 +21,25 @@
 }
 
 .analytics-header h2 {
-  color: #1a202c;
-  font-size: 1.75rem;
+  color: #0f172a;
+  font-size: 1.5rem;
   font-weight: 700;
   margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .analytics-header p {
-  color: #4a5568;
+  color: #64748b;
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.9375rem;
 }
 
 .period-selector {
   display: flex;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 12px;
+  gap: 0.25rem;
+  background: #f1f5f9;
+  border-radius: 10px;
   padding: 0.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid #e2e8f0;
 }
 
 .period-btn {
@@ -54,20 +49,21 @@
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #6b7280;
+  color: #64748b;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .period-btn:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
+  background: #e2e8f0;
+  color: #475569;
 }
 
 .period-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   font-weight: 600;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.25);
 }
 
 /* Loading State */

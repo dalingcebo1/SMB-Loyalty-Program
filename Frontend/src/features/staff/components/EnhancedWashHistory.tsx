@@ -253,7 +253,7 @@ const EnhancedWashHistory: React.FC = () => {
       {/* Period & Filters */}
       <div className="p-8 border-b border-gray-100">
         {/* Period Tabs */}
-        <div className="flex flex-wrap items-center gap-2 mb-6" role="tablist" aria-label="Period presets">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6" role="tablist" aria-label="Period presets">
           {periodPresets.map(p => (
             <button
               key={p.value}
@@ -267,13 +267,13 @@ const EnhancedWashHistory: React.FC = () => {
               aria-selected={period === p.value}
             >{p.label}</button>
           ))}
-          <div className="ml-auto px-3 py-1 bg-gray-50 rounded-lg text-sm text-gray-600 font-mono">
+          <div className="col-span-2 sm:col-span-3 lg:col-span-6 px-3 py-1 bg-gray-50 rounded-lg text-sm text-gray-600 font-mono text-center">
             {derivedRange.start} → {derivedRange.end}
           </div>
         </div>
 
         {/* Filter Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {period === 'custom' && (
             <>
               <div className="space-y-2">
@@ -318,15 +318,15 @@ const EnhancedWashHistory: React.FC = () => {
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Status</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {['all','started','ended'].map(s => (
                 <button 
                   key={s} 
                   type="button" 
-                  className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
+                  className={`px-3 py-2 text-sm rounded-lg transition-all duration-200 font-medium ${
                     filters.status === s
-                      ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                      ? 'bg-indigo-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
                   }`}
                   onClick={() => handleFilterChange('status', s)}
                 >
@@ -337,15 +337,15 @@ const EnhancedWashHistory: React.FC = () => {
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Payment</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {['all','paid','loyalty'].map(p => (
                 <button 
                   key={p} 
                   type="button" 
-                  className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
+                  className={`px-3 py-2 text-sm rounded-lg transition-all duration-200 font-medium ${
                     filters.paymentType === p
-                      ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                      ? 'bg-indigo-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
                   }`}
                   onClick={() => handleFilterChange('paymentType', p)}
                 >
@@ -396,86 +396,119 @@ const EnhancedWashHistory: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              {/* Table Header - horizontal scroll on mobile */}
-              <div className="overflow-x-auto">
-                <div className="bg-gray-50 grid grid-cols-8 gap-4 px-6 py-4 text-xs font-semibold text-gray-600 tracking-wide border-b min-w-[900px]">
-                  <div>Customer</div>
-                  <div>Vehicle</div>
-                  <div>Service</div>
-                  <div>Amount</div>
-                  <div>Started</div>
-                  <div>Ended</div>
-                  <div>Duration</div>
-                  <div>Status</div>
-                </div>
+            {/* Desktop Table View (hidden on mobile) */}
+            <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="bg-gray-50 grid grid-cols-8 gap-4 px-6 py-4 text-xs font-semibold text-gray-600 tracking-wide uppercase border-b">
+                <div>Customer</div>
+                <div>Vehicle</div>
+                <div>Service</div>
+                <div>Amount</div>
+                <div>Started</div>
+                <div>Ended</div>
+                <div>Duration</div>
+                <div>Status</div>
               </div>
               
-              <div className="overflow-x-auto">
+              <div>
                 {washes.map((wash) => (
                   <div
                     key={wash.order_id}
-                    className={`grid grid-cols-8 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-b-0 min-w-[900px] ${
+                    className={`grid grid-cols-8 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-b-0 ${
                       selectedWash?.order_id === wash.order_id ? 'bg-indigo-50 border-indigo-200' : ''
                     }`}
                     onClick={() => setSelectedWash(wash)}
                   >
-                  <div className="flex flex-col">
-                    <div className="font-medium text-gray-900">
-                      {wash.user?.first_name} {wash.user?.last_name}
-                    </div>
-                    {wash.user?.phone && (
-                      <div className="text-sm text-gray-500">{wash.user.phone}</div>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    {wash.vehicle ? (
-                      <div>
-                        <div className="font-medium text-gray-900">{wash.vehicle.reg}</div>
-                        <div className="text-sm text-gray-500">
-                          {wash.vehicle.make} {wash.vehicle.model}
-                        </div>
+                    <div className="flex flex-col">
+                      <div className="font-medium text-gray-900">
+                        {wash.user?.first_name} {wash.user?.last_name}
                       </div>
-                    ) : (
-                      <span className="text-gray-400">No vehicle</span>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <div className="font-medium text-gray-900">
-                      {wash.service_name || 'Unknown Service'}
+                      {wash.user?.phone && (
+                        <div className="text-sm text-gray-500">{wash.user.phone}</div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      {wash.vehicle ? (
+                        <div>
+                          <div className="font-medium text-gray-900">{wash.vehicle.reg}</div>
+                          <div className="text-sm text-gray-500">
+                            {wash.vehicle.make} {wash.vehicle.model}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No vehicle</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <div className="font-medium text-gray-900">
+                        {wash.service_name || 'Unknown Service'}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <div className="font-medium text-gray-900">
+                        {(() => {
+                          const cents = (wash as unknown as { amount_cents?: number }).amount_cents ?? wash.amount;
+                          if (cents == null) return '—';
+                          return formatCents(cents);
+                        })()}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <div className="text-sm text-gray-900">{formatDateTime(wash.started_at)}</div>
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <div className="text-sm text-gray-900">
+                        {wash.ended_at ? formatDateTime(wash.ended_at) : '—'}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <div className={`text-sm font-medium ${getDurationColorClass(wash.duration_minutes)}`}>
+                        {formatDuration(wash.duration_minutes)}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        wash.status === 'started' 
+                          ? 'bg-amber-100 text-amber-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {wash.status === 'started' ? 'In Progress' : 'Completed'}
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col">
-                    <div className="font-medium text-gray-900">
-                      {(() => {
-                        const cents = (wash as unknown as { amount_cents?: number }).amount_cents ?? wash.amount;
-                        if (cents == null) return '—';
-                        return formatCents(cents);
-                      })()}
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile Card View (visible on mobile) */}
+            <div className="lg:hidden space-y-4">
+              {washes.map((wash) => (
+                <div
+                  key={wash.order_id}
+                  className={`bg-white rounded-xl border-2 p-4 shadow-sm cursor-pointer transition-all ${
+                    selectedWash?.order_id === wash.order_id 
+                      ? 'border-indigo-500 bg-indigo-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setSelectedWash(wash)}
+                >
+                  {/* Header: Customer & Status */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 text-base">
+                        {wash.user?.first_name} {wash.user?.last_name}
+                      </div>
+                      {wash.user?.phone && (
+                        <div className="text-sm text-gray-500">{wash.user.phone}</div>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <div className="text-sm text-gray-900">{formatDateTime(wash.started_at)}</div>
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <div className="text-sm text-gray-900">
-                      {wash.ended_at ? formatDateTime(wash.ended_at) : '—'}
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <div className={`text-sm font-medium ${getDurationColorClass(wash.duration_minutes)}`}>
-                      {formatDuration(wash.duration_minutes)}
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
                       wash.status === 'started' 
                         ? 'bg-amber-100 text-amber-800' 
                         : 'bg-green-100 text-green-800'
@@ -483,9 +516,58 @@ const EnhancedWashHistory: React.FC = () => {
                       {wash.status === 'started' ? 'In Progress' : 'Completed'}
                     </span>
                   </div>
+
+                  {/* Vehicle Info */}
+                  {wash.vehicle && (
+                    <div className="mb-3 pb-3 border-b border-gray-200">
+                      <div className="flex items-center gap-2 text-sm">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="font-medium text-gray-900">{wash.vehicle.reg}</span>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-gray-600">
+                          {wash.vehicle.make} {wash.vehicle.model}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Service & Amount */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <div className="text-xs font-medium text-gray-500 uppercase mb-1">Service</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {wash.service_name || 'Unknown'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium text-gray-500 uppercase mb-1">Amount</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {(() => {
+                          const cents = (wash as unknown as { amount_cents?: number }).amount_cents ?? wash.amount;
+                          if (cents == null) return '—';
+                          return formatCents(cents);
+                        })()}
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Timing Info */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <div className="text-gray-500 mb-1">Started</div>
+                      <div className="text-gray-900">{formatDateTime(wash.started_at)}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">Duration</div>
+                      <div className={`font-medium ${getDurationColorClass(wash.duration_minutes)}`}>
+                        {formatDuration(wash.duration_minutes)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
             
             {/* Pagination */}

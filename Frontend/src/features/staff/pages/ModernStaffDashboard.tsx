@@ -13,8 +13,8 @@ const ModernStaffDashboard: React.FC = () => {
       <StaffPageContainer surface="glass" width="xl" className="relative overflow-hidden text-white" padding="relaxed">
         <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="max-w-xl space-y-2">
-            <h1 className="text-balance text-[clamp(1.6rem,4vw,2.4rem)] font-semibold leading-tight tracking-tight">Staff dashboard</h1>
-            <p className="text-[clamp(0.9rem,2.4vw,1.05rem)] text-blue-100">Monitor and manage car wash operations in real-time</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold leading-tight tracking-tight">Staff dashboard</h1>
+            <p className="text-sm sm:text-base text-blue-100">Monitor and manage car wash operations in real-time</p>
           </div>
           <div className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md">
             <span className="flex h-2 w-2 animate-pulse rounded-full bg-white" aria-hidden />

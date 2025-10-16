@@ -89,9 +89,9 @@ const CarWashDashboard: React.FC = () => {
         className="relative overflow-hidden text-white"
       >
         <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-balance text-[clamp(1.5rem,3.5vw,2rem)] font-semibold tracking-tight">Car wash dashboard</h1>
-            <p className="mt-1 text-[clamp(0.875rem,2vw,1rem)] text-blue-100">Monitor active washes and historic performance</p>
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight">Car wash dashboard</h1>
+            <p className="text-sm sm:text-base text-blue-100">Monitor active washes and historic performance</p>
           </div>
           <div className="flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-medium backdrop-blur-lg flex-shrink-0">
             <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-300" aria-hidden />

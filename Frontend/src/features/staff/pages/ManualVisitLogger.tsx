@@ -118,8 +118,8 @@ const ManualVisitLogger: React.FC = () => {
         className="relative overflow-hidden text-white"
       >
         <div className="relative z-10 space-y-2">
-          <h1 className="text-[clamp(1.75rem,3.5vw,2.5rem)] font-bold tracking-tight">Manual Visit Logging</h1>
-          <p className="text-[clamp(1rem,2vw,1.125rem)] text-blue-100">Record loyalty visits & start washes for POS customers without QR codes</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">Manual Visit Logging</h1>
+          <p className="text-sm sm:text-base text-blue-100">Record loyalty visits & start washes for POS customers without QR codes</p>
         </div>
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
       </StaffPageContainer>

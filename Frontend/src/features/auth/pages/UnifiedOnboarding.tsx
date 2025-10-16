@@ -169,9 +169,11 @@ const UnifiedOnboarding: React.FC = () => {
       return setError("Phone must be in E.164 format, e.g. +27821234567.");
     }
     // Ensure verifier present (handles HMR or unmounted container)
+    let baseVerifier: RecaptchaVerifier;
     try {
-      await ensureRecaptchaReady();
-  } catch {
+      // Grab the verifier from the helper so we avoid relying on async state updates
+      baseVerifier = await ensureRecaptchaReady();
+    } catch {
       setError('Could not prepare reCAPTCHA. Please reload the page.');
       return;
     }
@@ -179,30 +181,30 @@ const UnifiedOnboarding: React.FC = () => {
     setSending(true);
     try {
       // Always sign in with phone (no account linking path for simplicity)
-    let activeVerifier = verifier!;
+      let activeVerifier = baseVerifier;
       let triedRebuild = false;
       async function attemptSend(): Promise<ConfirmationResult> {
         try {
-      return await signInWithPhoneNumber(auth, phone.trim(), activeVerifier);
+          return await signInWithPhoneNumber(auth, phone.trim(), activeVerifier);
         } catch (e: unknown) {
           // If element removed, rebuild once then retry
-            const msg = (e as { message?: string })?.message || '';
-            if (!triedRebuild && (msg.includes('has been removed') || msg.includes('element has been removed'))) {
-              triedRebuild = true;
-              console.warn('Rebuilding reCAPTCHA after removal');
-              activeVerifier = await ensureRecaptchaReady();
-              return attemptSend();
-            }
-            throw e;
+          const msg = (e as { message?: string })?.message || '';
+          if (!triedRebuild && (msg.includes('has been removed') || msg.includes('element has been removed'))) {
+            triedRebuild = true;
+            console.warn('Rebuilding reCAPTCHA after removal');
+            activeVerifier = await ensureRecaptchaReady();
+            return attemptSend();
+          }
+          throw e;
         }
       }
       const confirmation: ConfirmationResult = await attemptSend();
       confirmationRef.current = confirmation;
 
       // Navigate to OTP verification
-    navigate("/onboarding/verify", {
+      navigate("/onboarding/verify", {
         state: {
-      email: email,
+          email: email,
           password: state?.password,
           firstName,
           lastName,

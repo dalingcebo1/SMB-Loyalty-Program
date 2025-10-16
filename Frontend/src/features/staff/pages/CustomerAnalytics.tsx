@@ -71,8 +71,8 @@ const CustomerAnalytics: React.FC = () => {
       >
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
-            <h2 className="text-balance text-[clamp(2rem,3vw+1rem,2.5rem)] font-bold leading-tight tracking-tight">Customer &amp; Loyalty Analytics</h2>
-            <p className="text-[clamp(1rem,1.6vw+0.75rem,1.125rem)] text-indigo-100">Deep dive into customer value, loyalty penetration &amp; churn risk</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight tracking-tight">Customer &amp; Loyalty Analytics</h1>
+            <p className="text-sm sm:text-base text-indigo-100">Deep dive into customer value, loyalty penetration &amp; churn risk</p>
           </div>
           <div className="flex flex-col items-center gap-4 sm:flex-row">
             <div className="flex items-center gap-3 rounded-lg bg-white/10 px-4 py-2 backdrop-blur-sm">

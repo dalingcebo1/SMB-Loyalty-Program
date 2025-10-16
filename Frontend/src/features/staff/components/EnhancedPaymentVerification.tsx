@@ -301,9 +301,9 @@ const EnhancedPaymentVerification: React.FC = () => {
       {/* Verification Methods */}
       <div className="flex flex-col gap-6">
         <div>
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 rounded-lg bg-gray-100 p-1 text-sm font-medium">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1 text-sm font-medium">
             <button 
-              className={`flex-1 sm:min-w-[120px] flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
+              className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
                 verificationMethod === 'qr' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -317,7 +317,7 @@ const EnhancedPaymentVerification: React.FC = () => {
               <span className="whitespace-nowrap">QR Scanner</span>
             </button>
             <button 
-              className={`flex-1 sm:min-w-[120px] flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
+              className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
                 verificationMethod === 'manual' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -332,7 +332,7 @@ const EnhancedPaymentVerification: React.FC = () => {
               <span className="whitespace-nowrap">Manual Entry</span>
             </button>
             <button 
-              className={`flex-1 sm:min-w-[120px] flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
+              className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 transition-colors ${
                 verificationMethod === 'pin' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'

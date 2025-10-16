@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import api from "../../../api/api";
 import { toast } from 'react-toastify';
 import StaffPageContainer from '../components/StaffPageContainer';
+import StaffEligibilityGate from '../components/StaffEligibilityGate';
 
 interface VisitResponse {
   message: string;
@@ -37,7 +38,7 @@ const normalizePhone = (phone: string) => {
   return phone;
 };
 
-const ManualVisitLogger: React.FC = () => {
+const ManualVisitLoggerContent: React.FC = () => {
   const [cell, setCell] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -272,5 +273,11 @@ const ManualVisitLogger: React.FC = () => {
     </div>
   );
 };
+
+const ManualVisitLogger: React.FC = () => (
+  <StaffEligibilityGate required={['orders.create']}>
+    <ManualVisitLoggerContent />
+  </StaffEligibilityGate>
+);
 
 export default ManualVisitLogger;

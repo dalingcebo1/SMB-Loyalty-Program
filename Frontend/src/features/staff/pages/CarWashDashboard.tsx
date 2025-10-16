@@ -13,8 +13,9 @@ import TableContainer from '../../../components/ui/TableContainer';
 import { Wash } from '../../../types';
 import VirtualizedWashHistory from '../components/VirtualizedWashHistory';
 import StaffPageContainer from '../components/StaffPageContainer';
+import StaffEligibilityGate from '../components/StaffEligibilityGate';
 
-const CarWashDashboard: React.FC = () => {
+const CarWashDashboardContent: React.FC = () => {
   const { data: activeWashes = [], isLoading, refetch } = useActiveWashes();
   // Filters for history
   const [filters, setFilters] = useState<Filters>({ startDate: '', endDate: '', paymentType: '' });
@@ -202,5 +203,11 @@ const CarWashDashboard: React.FC = () => {
     </>
   );
 };
+
+const CarWashDashboard: React.FC = () => (
+  <StaffEligibilityGate required={['orders.view']}>
+    <CarWashDashboardContent />
+  </StaffEligibilityGate>
+);
 
 export default CarWashDashboard;

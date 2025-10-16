@@ -5,9 +5,10 @@ import DashboardOverview from '../components/DashboardOverview';
 import ActiveWashesManager from '../components/ActiveWashesManager';
 import EnhancedAnalyticsLazy from '../components/EnhancedAnalyticsLazy';
 import StaffPageContainer from '../components/StaffPageContainer';
+import StaffEligibilityGate from '../components/StaffEligibilityGate';
 import '../pages/ModernStaffDashboard.css';
 
-const ModernStaffDashboard: React.FC = () => {
+const ModernStaffDashboardContent: React.FC = () => {
   return (
     <div className="modern-staff-dashboard space-y-6">
       <StaffPageContainer surface="glass" width="xl" className="relative overflow-hidden text-white" padding="relaxed">
@@ -49,5 +50,11 @@ const ModernStaffDashboard: React.FC = () => {
     </div>
   );
 };
+
+const ModernStaffDashboard: React.FC = () => (
+  <StaffEligibilityGate required={['orders.view']}>
+    <ModernStaffDashboardContent />
+  </StaffEligibilityGate>
+);
 
 export default ModernStaffDashboard;

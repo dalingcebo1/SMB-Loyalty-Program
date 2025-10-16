@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../../../auth/AuthProvider';
+import { useCapabilities } from '../../admin/hooks/useCapabilities';
 import './StaffLayout.css';
 import './text-wrapping-fixes.css';
 import { filterStaffNav } from '../config/navigation';
@@ -12,8 +13,9 @@ import { StaffSectionProvider } from '../context/StaffSectionContext';
 
 const StaffLayout: React.FC = () => {
   const location = useLocation();
-  const { logout, user } = useAuth();
-  const itemsToRender = filterStaffNav(user?.role, location.pathname);
+  const { logout } = useAuth();
+  const { role, capabilities } = useCapabilities();
+  const itemsToRender = filterStaffNav(role, location.pathname, capabilities);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Mark that staff layout is mounted to help suppress any transient UI overlap

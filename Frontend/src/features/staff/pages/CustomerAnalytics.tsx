@@ -8,6 +8,7 @@ import useAnalyticsSnapshot from '../hooks/useAnalyticsSnapshot';
 import { formatCurrency } from '../../../utils/format';
 import { StaffIcon } from '../components/StaffIcon';
 import StaffPageContainer from '../components/StaffPageContainer';
+import StaffEligibilityGate from '../components/StaffEligibilityGate';
 
 interface ApiErrorLike {
   response?: {
@@ -15,7 +16,7 @@ interface ApiErrorLike {
   };
 }
 
-const CustomerAnalytics: React.FC = () => {
+const CustomerAnalyticsContent: React.FC = () => {
   const [range, setRange] = useState(30);
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -178,5 +179,11 @@ const CustomerAnalytics: React.FC = () => {
     </div>
   );
 };
+
+const CustomerAnalytics: React.FC = () => (
+  <StaffEligibilityGate required={['loyalty.view']}>
+    <CustomerAnalyticsContent />
+  </StaffEligibilityGate>
+);
 
 export default CustomerAnalytics;

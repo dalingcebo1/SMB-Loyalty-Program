@@ -318,10 +318,7 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
 
 .staff-shell-main {
   flex: 1;
-  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.1rem, 3.2vw, 2.6rem) clamp(2.25rem, 4vw, 3rem);
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
+  overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
   min-width: 0;
@@ -329,12 +326,12 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
 
 .staff-content {
   width: 100%;
-  max-width: min(100%, 1200px);
+  max-width: 1536px;
   margin: 0 auto;
-  padding: clamp(0.85rem, 2.1vw, 1.6rem) clamp(0.95rem, 2.6vw, 2.2rem);
+  padding: 1rem 1rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: clamp(1.5rem, 3.75vw, 2.75rem);
+  gap: 1.5rem;
   overflow-x: hidden;
   min-width: 0;
 }
@@ -346,8 +343,8 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
 }
 
 @media (min-width: 640px) {
-  .staff-shell-main {
-    padding: clamp(2rem, 3vw, 3rem) clamp(1.75rem, 4vw, 3rem) clamp(3rem, 4vw, 3.75rem);
+  .staff-content {
+    padding: 1.5rem 1.5rem 2rem;
   }
 }
 
@@ -387,6 +384,7 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
     position: relative;
     transform: none !important;
     width: 280px;
+    flex-shrink: 0;
     padding: 1.75rem 1.5rem;
     background: rgba(255, 255, 255, 0.92);
     color: #0f172a;

@@ -2,7 +2,7 @@
 line-length = 100
 # Temporarily exclude tests from lint to unblock CI (798 style issues).
 # Once refactored, remove "Backend/tests/*" and "tests/*" from this list.
-extend-exclude = ["Backend/app/alembic/*", "_legacy_backup/*", "Backend/tests/*", "tests/*"]
+exclude = ["Backend/app/alembic/*", "_legacy_backup/*", "Backend/tests/*", "tests/*"]
 
 [tool.ruff.lint]
 # Temporary minimal rule set (focus on likely real bugs) to unblock CI.

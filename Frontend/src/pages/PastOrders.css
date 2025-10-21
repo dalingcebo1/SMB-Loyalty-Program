@@ -630,6 +630,11 @@
 
   .orders-filters__group {
     width: 100%;
+    min-width: 0;
+  }
+
+  .orders-grid {
+    grid-template-columns: 1fr;
   }
 
   .order-header {

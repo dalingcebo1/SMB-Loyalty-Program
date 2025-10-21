@@ -195,4 +195,8 @@
   .account-logout {
     width: 100%;
   }
+
+  .account-form__grid {
+    grid-template-columns: 1fr;
+  }
 }

@@ -157,4 +157,8 @@
 	.progress-card__body {
 		grid-template-columns: 1fr;
 	}
+
+	.insights-grid {
+		grid-template-columns: 1fr;
+	}
 }

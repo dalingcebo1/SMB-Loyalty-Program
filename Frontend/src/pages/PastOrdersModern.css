@@ -4,6 +4,8 @@
   min-height: 100vh;
   background: var(--color-background);
   padding: var(--spacing-6) var(--spacing-4);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .past-orders-modern__container {

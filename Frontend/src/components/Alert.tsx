@@ -1,6 +1,6 @@
 import React from 'react';
 import { classNames } from '../utils/classNames';
-import Button from './ui/Button';
+import { Button } from './ui/Button';
 
 interface AlertProps {
   type?: 'error' | 'info' | 'success';

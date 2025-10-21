@@ -1,0 +1,157 @@
+/* Modern Avatar Component Styles */
+
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.avatar-content {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-variant);
+  color: var(--color-text-secondary);
+}
+
+/* ===========================
+ * SIZES
+ * =========================== */
+
+.avatar--xs {
+  width: 24px;
+  height: 24px;
+  font-size: var(--font-size-xs);
+}
+
+.avatar--sm {
+  width: 32px;
+  height: 32px;
+  font-size: var(--font-size-sm);
+}
+
+.avatar--base {
+  width: 40px;
+  height: 40px;
+  font-size: var(--font-size-base);
+}
+
+.avatar--lg {
+  width: 56px;
+  height: 56px;
+  font-size: var(--font-size-lg);
+}
+
+.avatar--xl {
+  width: 72px;
+  height: 72px;
+  font-size: var(--font-size-xl);
+}
+
+.avatar--2xl {
+  width: 96px;
+  height: 96px;
+  font-size: var(--font-size-2xl);
+}
+
+/* ===========================
+ * CONTENT TYPES
+ * =========================== */
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-initials {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.avatar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.avatar-icon svg {
+  width: 50%;
+  height: 50%;
+}
+
+/* ===========================
+ * STATUS INDICATOR
+ * =========================== */
+
+.avatar-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 25%;
+  height: 25%;
+  min-width: 8px;
+  min-height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.avatar-status--online {
+  background: var(--color-success);
+}
+
+.avatar-status--offline {
+  background: var(--color-gray-400);
+}
+
+.avatar-status--away {
+  background: var(--color-warning);
+}
+
+.avatar-status--busy {
+  background: var(--color-error);
+}
+
+/* Pulse animation for online status */
+.avatar-status--online {
+  animation: pulse-status 2s ease-in-out infinite;
+}
+
+@keyframes pulse-status {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ===========================
+ * ACCESSIBILITY
+ * =========================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-status--online {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .avatar-content {
+    border: 2px solid currentColor;
+  }
+  
+  .avatar-status {
+    border-width: 3px;
+  }
+}

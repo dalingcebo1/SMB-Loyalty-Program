@@ -1,0 +1,134 @@
+/* Modern Badge Component Styles */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  line-height: var(--line-height-tight);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+/* ===========================
+ * SIZES
+ * =========================== */
+
+.badge--sm {
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--font-size-xs);
+}
+
+.badge--base {
+  padding: calc(var(--spacing-1) + 1px) var(--spacing-3);
+  font-size: var(--font-size-sm);
+}
+
+.badge--lg {
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-base);
+}
+
+/* ===========================
+ * VARIANTS
+ * =========================== */
+
+.badge--default {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+}
+
+.badge--primary {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.badge--success {
+  background: var(--color-success-100);
+  color: var(--color-success-700);
+}
+
+.badge--warning {
+  background: var(--color-warning-100);
+  color: var(--color-warning-700);
+}
+
+.badge--error {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+}
+
+.badge--info {
+  background: var(--color-info-100);
+  color: var(--color-info-700);
+}
+
+/* ===========================
+ * DOT INDICATOR
+ * =========================== */
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.badge--default .badge-dot {
+  background: var(--color-gray-500);
+}
+
+.badge--primary .badge-dot {
+  background: var(--color-primary);
+}
+
+.badge--success .badge-dot {
+  background: var(--color-success);
+}
+
+.badge--warning .badge-dot {
+  background: var(--color-warning);
+}
+
+.badge--error .badge-dot {
+  background: var(--color-error);
+}
+
+.badge--info .badge-dot {
+  background: var(--color-info);
+}
+
+/* Pulse animation for active status */
+.badge--success.badge--with-dot .badge-dot {
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* ===========================
+ * ACCESSIBILITY
+ * =========================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-dot {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .badge {
+    border: 1px solid currentColor;
+  }
+}

@@ -3,7 +3,7 @@ import { useForm, FormProvider } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../api/api";
 import { TextFieldControlled } from "../components/form/TextFieldControlled";
-import Button from "../components/ui/Button";
+import { Button } from "../components/ui/Button";
 import PageLayout from "../components/PageLayout";
 
 type FormData = {

@@ -7,7 +7,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { isFirebaseEnabled } from "../firebase";
 import { TextFieldControlled } from "../components/form/TextFieldControlled";
-import Button from "../components/ui/Button";
+import { Button } from "../components/ui/Button";
 import PageLayout from "../components/PageLayout";
 
 interface FormData {

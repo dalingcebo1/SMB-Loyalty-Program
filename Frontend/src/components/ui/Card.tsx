@@ -1,5 +1,5 @@
 import React, { HTMLAttributes } from 'react';
-import { motion, HTMLMotionProps } from 'framer-motion';
+import { motion } from 'framer-motion';
 import './Card.css';
 
 export type CardVariant = 'default' | 'elevated' | 'outlined' | 'ghost';

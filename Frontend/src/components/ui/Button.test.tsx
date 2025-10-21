@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '../../utils/test-utils';
-import Button from './Button';
+import { Button } from './Button';
 
 describe('Button component', () => {
   it('renders with default text', () => {
@@ -19,7 +19,7 @@ describe('Button component', () => {
     render(<Button isLoading>Submit</Button>);
     const btn = screen.getByRole('button');
     expect(btn).toBeDisabled();
-    expect(btn).toHaveTextContent(/loading/i);
+    expect(btn).toHaveClass('btn--loading');
   });
 
   it('supports variants and size props', () => {
@@ -29,8 +29,8 @@ describe('Button component', () => {
       </Button>
     );
     const btn = screen.getByRole('button', { name: /test/i });
-    // primary adds 'bg-primary' and large adds 'text-lg'
-    expect(btn).toHaveClass('bg-primary');
-    expect(btn).toHaveClass('text-lg');
+    // New Button uses BEM-style classes
+    expect(btn).toHaveClass('btn--primary');
+    expect(btn).toHaveClass('btn--lg');
   });
 });

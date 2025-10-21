@@ -16,16 +16,14 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, Navigate } from 'react-router-dom';
 import { 
-  HiOutlineGift, 
   HiOutlineShoppingCart, 
   HiOutlineClipboardList,
   HiOutlineTruck,
   HiOutlineRefresh,
   HiOutlineStar,
   HiOutlineCheckCircle,
-  HiOutlineClock
+  HiOutlineGift
 } from 'react-icons/hi';
-import { toast } from 'react-toastify';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 
@@ -77,7 +75,6 @@ const WelcomeModern: React.FC = () => {
 
   // Fetch data
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     let isMounted = true;
 
     const fetchData = async () => {
@@ -123,7 +120,7 @@ const WelcomeModern: React.FC = () => {
     fetchData();
 
     // Poll every 5 seconds for active wash status
-    interval = setInterval(fetchData, 5000);
+    const interval = setInterval(fetchData, 5000);
 
     return () => {
       isMounted = false;
@@ -171,7 +168,7 @@ const WelcomeModern: React.FC = () => {
     <div className="welcome-page-modern">
       <AnimatePresence>
         {justOnboarded && (
-          <WelcomeModal onClose={() => setJustOnboarded(false)} userName={user?.firstName || 'there'} />
+          <WelcomeModal onClose={() => setJustOnboarded(false)} name={user?.firstName || 'there'} />
         )}
       </AnimatePresence>
 
@@ -275,9 +272,11 @@ const WelcomeModern: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <Button variant="success" size="lg" isFullWidth as="a" href="/past-orders">
-                View Receipt
-              </Button>
+              <Link to="/past-orders" style={{ textDecoration: 'none' }}>
+                <Button variant="success" size="lg" isFullWidth>
+                  View Receipt
+                </Button>
+              </Link>
             </Card>
           </motion.div>
         )}
@@ -355,50 +354,56 @@ const WelcomeModern: React.FC = () => {
       >
         <h2 className="welcome-actions__title">Quick Actions</h2>
         <div className="welcome-actions__grid">
-          <Card variant="outlined" padding="lg" isInteractive as={Link as any} to="/order">
-            <div className="welcome-action-card">
-              <div className="welcome-action-card__icon welcome-action-card__icon--primary">
-                <HiOutlineShoppingCart />
+          <Link to="/order" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Card variant="outlined" padding="lg" isInteractive>
+              <div className="welcome-action-card">
+                <div className="welcome-action-card__icon welcome-action-card__icon--primary">
+                  <HiOutlineShoppingCart />
+                </div>
+                <h3 className="welcome-action-card__title">Book a Wash</h3>
+                <p className="welcome-action-card__description">
+                  Choose your service and schedule a time
+                </p>
               </div>
-              <h3 className="welcome-action-card__title">Book a Wash</h3>
-              <p className="welcome-action-card__description">
-                Choose your service and schedule a time
-              </p>
-            </div>
-          </Card>
+            </Card>
+          </Link>
 
-          <Card variant="outlined" padding="lg" isInteractive as={Link as any} to="/past-orders">
-            <div className="welcome-action-card">
-              <div className="welcome-action-card__icon welcome-action-card__icon--secondary">
-                <HiOutlineClipboardList />
+          <Link to="/past-orders" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Card variant="outlined" padding="lg" isInteractive>
+              <div className="welcome-action-card">
+                <div className="welcome-action-card__icon welcome-action-card__icon--secondary">
+                  <HiOutlineClipboardList />
+                </div>
+                <h3 className="welcome-action-card__title">Order History</h3>
+                <p className="welcome-action-card__description">
+                  View your past orders and receipts
+                </p>
               </div>
-              <h3 className="welcome-action-card__title">Order History</h3>
-              <p className="welcome-action-card__description">
-                View your past orders and receipts
-              </p>
-            </div>
-          </Card>
+            </Card>
+          </Link>
 
-          <Card variant="outlined" padding="lg" isInteractive as={Link as any} to="/myloyalty">
-            <div className="welcome-action-card">
-              <div className="welcome-action-card__icon welcome-action-card__icon--success">
-                <HiOutlineGift />
+          <Link to="/myloyalty" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Card variant="outlined" padding="lg" isInteractive>
+              <div className="welcome-action-card">
+                <div className="welcome-action-card__icon welcome-action-card__icon--success">
+                  <HiOutlineGift />
+                </div>
+                <h3 className="welcome-action-card__title">My Rewards</h3>
+                <p className="welcome-action-card__description">
+                  Check and redeem your loyalty rewards
+                </p>
               </div>
-              <h3 className="welcome-action-card__title">My Rewards</h3>
-              <p className="welcome-action-card__description">
-                Check and redeem your loyalty rewards
-              </p>
-            </div>
-          </Card>
+            </Card>
+          </Link>
         </div>
       </motion.section>
 
       {/* Loading State */}
       {isLoading && (
         <div className="welcome-loading">
-          <Card variant="elevated" padding="lg" isLoading />
-          <Card variant="elevated" padding="lg" isLoading />
-          <Card variant="elevated" padding="lg" isLoading />
+          <Card variant="elevated" padding="lg" isLoading><div /></Card>
+          <Card variant="elevated" padding="lg" isLoading><div /></Card>
+          <Card variant="elevated" padding="lg" isLoading><div /></Card>
         </div>
       )}
     </div>

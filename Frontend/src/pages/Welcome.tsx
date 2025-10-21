@@ -235,8 +235,8 @@ const Welcome: React.FC = () => {
               styles={buildStyles({
                 textSize: '18px',
                 pathColor: '#22c55e',
-                textColor: '#ffffff',
-                trailColor: 'rgba(255, 255, 255, 0.2)',
+                textColor: '#1a202c',
+                trailColor: '#e5e7eb',
               })}
             />
           </div>

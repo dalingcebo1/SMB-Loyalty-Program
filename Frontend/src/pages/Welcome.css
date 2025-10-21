@@ -14,12 +14,12 @@
  */
 
 .welcome-page {
-	padding: 1.5rem 1rem;
-	max-width: 1200px;
-	margin: 0 auto;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	padding: 0;
+	max-width: none;
+	margin: 0;
+	background: #ffffff;
 	min-height: 100vh;
-	color: white;
+	color: #1a202c;
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 	line-height: 1.6;
 	/* Add padding bottom to ensure content doesn't get hidden by bottom nav */
@@ -28,55 +28,58 @@
 
 /* Header Section */
 .welcome-header {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	padding: 2rem 1.5rem;
 	text-align: center;
 	margin-bottom: 2rem;
+	color: white;
 }
 
 .welcome-header h1 {
 	font-size: 2.5rem;
-	font-weight: bold;
+	font-weight: 700;
 	margin-bottom: 0.5rem;
 	color: white;
-	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 	line-height: 1.2;
 }
 
 .welcome-header .subtitle {
 	font-size: 1.1rem;
 	margin: 0 0 1rem 0;
-	opacity: 0.9;
+	opacity: 0.95;
 	color: white;
+	font-weight: 400;
 }
 
 /* Welcome Message Card */
 .welcome-message-card {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	border-radius: 20px;
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	max-width: 500px;
+	background: white;
+	border-radius: 16px;
+	border: 1px solid #e5e7eb;
+	max-width: 600px;
 	margin: 0 auto 2rem auto;
 	padding: 2rem;
 	text-align: center;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 	transition: all 0.3s ease;
 }
 
 .welcome-message-card:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .welcome-message-card h2 {
 	font-size: 1.5rem;
 	font-weight: 600;
 	margin-bottom: 1rem;
-	color: white;
+	color: #1a202c;
 }
 
 .welcome-message-card .description {
 	font-size: 1rem;
-	opacity: 0.9;
+	color: #4b5563;
 	margin-bottom: 1.5rem;
 	line-height: 1.5;
 }
@@ -134,59 +137,61 @@
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 	gap: 1.5rem;
-	margin-bottom: 2rem;
+	margin: 0 auto 2rem auto;
+	max-width: 1200px;
+	padding: 0 1.5rem;
 }
 
 /* Status Message */
 .status-message {
 	grid-column: 1 / -1;
-	background: rgba(255, 255, 255, 0.15);
-	backdrop-filter: blur(10px);
-	border-radius: 15px;
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: white;
+	border-radius: 12px;
+	border: 1px solid #e5e7eb;
 	padding: 1.5rem;
 	text-align: center;
 	margin-bottom: 1rem;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .status-message.active {
-	background: rgba(59, 130, 246, 0.2);
-	border-color: rgba(59, 130, 246, 0.3);
+	background: #eff6ff;
+	border-color: #3b82f6;
 }
 
 .status-message.ready {
-	background: rgba(34, 197, 94, 0.2);
-	border-color: rgba(34, 197, 94, 0.3);
+	background: #f0fdf4;
+	border-color: #22c55e;
 }
 
 .status-message h3 {
 	font-size: 1.2rem;
 	font-weight: 600;
 	margin-bottom: 0.5rem;
+	color: #1a202c;
 }
 
 .status-message p {
 	font-size: 1rem;
-	opacity: 0.9;
+	color: #4b5563;
 	margin: 0;
 }
 
 /* Panel Cards */
 .panel-card {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	border-radius: 20px;
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: white;
+	border-radius: 16px;
+	border: 1px solid #e5e7eb;
 	padding: 2rem;
 	text-align: center;
 	transition: all 0.3s ease;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .panel-card:hover {
-	transform: translateY(-5px);
-	background: rgba(255, 255, 255, 0.15);
-	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+	transform: translateY(-2px);
+	border-color: #667eea;
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 .panel-icon {
@@ -207,12 +212,12 @@
 	font-size: 1.5rem;
 	font-weight: 600;
 	margin-bottom: 1rem;
-	color: white;
+	color: #1a202c;
 }
 
 .panel-card .description {
 	font-size: 0.9rem;
-	opacity: 0.8;
+	color: #6b7280;
 	margin-bottom: 1.5rem;
 	line-height: 1.5;
 }
@@ -232,7 +237,7 @@
 .loyalty-info p {
 	font-size: 0.9rem;
 	margin-bottom: 0.5rem;
-	opacity: 0.9;
+	color: #4b5563;
 }
 
 .claim-button {

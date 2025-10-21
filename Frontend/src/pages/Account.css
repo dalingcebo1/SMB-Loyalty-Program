@@ -14,54 +14,57 @@
  */
 
 .account-page {
-	padding: 1.5rem;
-	max-width: 1200px;
-	margin: 0 auto;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	padding: 0;
+	max-width: none;
+	margin: 0;
+	background: #ffffff;
 	min-height: 100vh;
-	color: white;
+	color: #1a202c;
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 	line-height: 1.6;
 }
 
 /* Header Section */
 .page-header {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	padding: 2rem 1.5rem;
 	text-align: center;
 	margin-bottom: 2rem;
+	color: white;
 }
 
 .page-header h1 {
 	font-size: 2.5rem;
-	font-weight: bold;
+	font-weight: 700;
 	margin-bottom: 0.5rem;
 	color: white;
-	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 	line-height: 1.2;
 }
 
 .page-header .subtitle {
 	font-size: 1.1rem;
 	margin: 0 0 1rem 0;
-	opacity: 0.9;
+	opacity: 0.95;
 	color: white;
+	font-weight: 400;
 }
 
 /* Account Details Card */
 .account-details-card {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	border-radius: 15px;
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: white;
+	border-radius: 12px;
+	border: 1px solid #e5e7eb;
 	max-width: 600px;
-	margin: 0 auto;
+	margin: 0 auto 2rem auto;
 	overflow: hidden;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Detail Sections */
 .detail-section {
 	padding: 1.5rem;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	border-bottom: 1px solid #e5e7eb;
 }
 
 .detail-section:last-child {
@@ -70,7 +73,7 @@
 
 .detail-label {
 	font-size: 0.9rem;
-	opacity: 0.8;
+	color: #6b7280;
 	margin-bottom: 0.5rem;
 	font-weight: 500;
 	text-transform: uppercase;
@@ -80,7 +83,7 @@
 .detail-value {
 	font-size: 1.1rem;
 	font-weight: 600;
-	color: white;
+	color: #1a202c;
 }
 
 /* Edit Form */
@@ -97,26 +100,25 @@
 }
 
 .form-input {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	border-radius: 10px;
+	background: white;
+	border: 1px solid #d1d5db;
+	border-radius: 8px;
 	padding: 0.75rem 1rem;
-	color: white;
+	color: #1a202c;
 	font-size: 1rem;
 	font-weight: 400;
 	flex: 1;
-	transition: all 0.3s ease;
+	transition: all 0.2s ease;
 }
 
 .form-input:focus {
 	outline: none;
-	border-color: rgba(255, 255, 255, 0.4);
-	background: rgba(255, 255, 255, 0.15);
+	border-color: #667eea;
+	box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .form-input::placeholder {
-	color: rgba(255, 255, 255, 0.6);
+	color: #9ca3af;
 }
 
 /* Buttons */
@@ -193,12 +195,12 @@
 
 /* Error Message */
 .error-message {
-	background: rgba(239, 68, 68, 0.2);
-	border: 1px solid rgba(239, 68, 68, 0.3);
+	background: #fef2f2;
+	border: 1px solid #fecaca;
 	border-radius: 8px;
 	padding: 0.75rem;
 	margin-top: 1rem;
-	color: #fecaca;
+	color: #dc2626;
 	font-size: 0.9rem;
 	display: flex;
 	align-items: center;
@@ -209,9 +211,9 @@
 .page-footer {
 	text-align: center;
 	margin-top: 2rem;
-	padding-top: 1.5rem;
-	border-top: 1px solid rgba(255, 255, 255, 0.1);
-	opacity: 0.7;
+	padding: 1.5rem;
+	border-top: 1px solid #e5e7eb;
+	color: #6b7280;
 	font-size: 0.8rem;
 }
 

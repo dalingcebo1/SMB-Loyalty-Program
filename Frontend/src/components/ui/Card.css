@@ -1,0 +1,237 @@
+/* Modern Card Component Styles */
+
+.card {
+  /* Reset */
+  margin: 0;
+  padding: 0;
+  
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  
+  /* Appearance */
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  transition: all var(--transition-base);
+  
+  /* Accessibility */
+  outline-offset: 2px;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--color-primary);
+}
+
+/* ===========================
+ * VARIANTS
+ * =========================== */
+
+.card--default {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.card--elevated {
+  background: var(--color-surface-elevated);
+  border: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.card--outlined {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  box-shadow: none;
+}
+
+.card--ghost {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* ===========================
+ * PADDING
+ * =========================== */
+
+.card--padding-none {
+  padding: 0;
+}
+
+.card--padding-sm {
+  padding: var(--card-padding-sm);
+}
+
+.card--padding-base {
+  padding: var(--card-padding);
+}
+
+.card--padding-lg {
+  padding: var(--card-padding-lg);
+}
+
+/* ===========================
+ * INTERACTIVE STATE
+ * =========================== */
+
+.card--interactive {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card--interactive:hover,
+.card--clickable:hover {
+  box-shadow: var(--shadow-xl);
+  border-color: var(--color-border-strong);
+}
+
+.card--interactive:active,
+.card--clickable:active {
+  box-shadow: var(--shadow-md);
+}
+
+/* Special elevated hover */
+.card--elevated.card--interactive:hover,
+.card--elevated.card--clickable:hover {
+  box-shadow: var(--shadow-2xl);
+}
+
+/* ===========================
+ * CARD SECTIONS
+ * =========================== */
+
+.card-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  flex: 1;
+}
+
+.card-footer {
+  display: flex;
+  gap: var(--spacing-3);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--color-border);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* When card has sections, remove padding from card itself */
+.card:has(.card-header),
+.card:has(.card-body),
+.card:has(.card-footer) {
+  padding: var(--card-padding);
+}
+
+.card--padding-none:has(.card-header),
+.card--padding-none:has(.card-body),
+.card--padding-none:has(.card-footer) {
+  padding: 0;
+}
+
+/* ===========================
+ * LOADING STATE
+ * =========================== */
+
+.card--loading {
+  pointer-events: none;
+  min-height: 200px;
+}
+
+.card-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-6);
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-gray-200) 0%,
+    var(--color-gray-100) 50%,
+    var(--color-gray-200) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius-base);
+}
+
+.skeleton--title {
+  height: 24px;
+  width: 60%;
+}
+
+.skeleton--text {
+  height: 16px;
+  width: 100%;
+}
+
+.skeleton--short {
+  width: 80%;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ===========================
+ * RESPONSIVE
+ * =========================== */
+
+@media (max-width: 640px) {
+  .card--padding-base {
+    padding: var(--spacing-4);
+  }
+  
+  .card--padding-lg {
+    padding: var(--spacing-6);
+  }
+  
+  .card-header,
+  .card-body,
+  .card-footer {
+    gap: var(--spacing-3);
+  }
+}
+
+/* ===========================
+ * ACCESSIBILITY
+ * =========================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .card--default,
+  .card--outlined {
+    border-width: 2px;
+  }
+  
+  .card-header,
+  .card-footer {
+    border-width: 2px;
+  }
+}

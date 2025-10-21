@@ -1,53 +1,138 @@
 // src/components/ui/Button.tsx
-import React from 'react';
-import { twMerge } from 'tailwind-merge';
+import React, { ButtonHTMLAttributes, forwardRef } from 'react';
+import { motion } from 'framer-motion';
+import './Button.css';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger';
-type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'success';
+export type ButtonSize = 'sm' | 'base' | 'lg' | 'xl';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'style'> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
+  isFullWidth?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  as?: 'button' | 'a';
+  href?: string;
+  children: React.ReactNode;
 }
 
-const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-primary hover:bg-primary-hover text-white',
-  secondary: 'bg-secondary hover:bg-secondary-hover text-gray-800',
-  outline: 'border border-gray-300 hover:bg-secondary text-gray-800',
-  danger: 'bg-danger hover:bg-danger-hover text-white',
-};
+/**
+ * Modern Button Component
+ * 
+ * Features:
+ * - Multiple variants for different contexts
+ * - Responsive sizes with proper touch targets
+ * - Loading states with spinner
+ * - Icon support (left and right)
+ * - Full ARIA attributes for accessibility
+ * - Keyboard navigation support
+ * - Smooth animations with Framer Motion
+ * 
+ * @example
+ * <Button variant="primary" size="lg" leftIcon={<FaCheck />} onClick={handleSubmit}>
+ *   Submit Order
+ * </Button>
+ */
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      variant = 'primary',
+      size = 'base',
+      isLoading = false,
+      isFullWidth = false,
+      leftIcon,
+      rightIcon,
+      disabled,
+      className = '',
+      children,
+      type = 'button',
+      as = 'button',
+      href,
+      ...props
+    },
+    ref
+  ) => {
+    const combinedClassName = [
+      'btn',
+      `btn--${variant}`,
+      `btn--${size}`,
+      isFullWidth && 'btn--full-width',
+      isLoading && 'btn--loading',
+      className,
+    ]
+      .filter(Boolean)
+      .join(' ');
 
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'text-sm px-3 py-1',
-  md: 'px-4 py-2',
-  lg: 'text-lg px-5 py-2.5',
-};
+    const content = (
+      <>
+        {isLoading && (
+          <span className="btn__spinner" role="status" aria-label="Loading">
+            <svg className="btn__spinner-icon" viewBox="0 0 24 24" fill="none">
+              <circle
+                className="btn__spinner-track"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="3"
+              />
+              <circle
+                className="btn__spinner-fill"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+        )}
+        {!isLoading && leftIcon && <span className="btn__icon btn__icon--left">{leftIcon}</span>}
+        <span className="btn__label">{children}</span>
+        {!isLoading && rightIcon && <span className="btn__icon btn__icon--right">{rightIcon}</span>}
+      </>
+    );
 
-const Button: React.FC<ButtonProps> = ({
-  variant = 'primary',
-  size = 'md',
-  isLoading = false,
-  leftIcon,
-  rightIcon,
-  children,
-  className,
-  disabled,
-  ...props
-}) => (
-  <button
-    role="button"
-    aria-disabled={disabled || isLoading}
-    className={twMerge(
-      'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
-      variantClasses[variant],
-      sizeClasses[size],
-      (disabled || isLoading) && 'opacity-60 cursor-not-allowed',
-      className
-    )}
-    disabled={disabled || isLoading}
+    const buttonProps = {
+      ref,
+      className: combinedClassName,
+      disabled: disabled || isLoading,
+      type: as === 'button' ? type : undefined,
+      'aria-disabled': disabled || isLoading,
+      ...props,
+    };
+
+    if (as === 'a' && href) {
+      return (
+        <motion.a
+          {...(buttonProps as any)}
+          href={href}
+          whileHover={{ scale: disabled || isLoading ? 1 : 1.02 }}
+          whileTap={{ scale: disabled || isLoading ? 1 : 0.98 }}
+          transition={{ duration: 0.15 }}
+        >
+          {content}
+        </motion.a>
+      );
+    }
+
+    return (
+      <motion.button
+        {...buttonProps}
+        whileHover={{ scale: disabled || isLoading ? 1 : 1.02 }}
+        whileTap={{ scale: disabled || isLoading ? 1 : 0.98 }}
+        transition={{ duration: 0.15 }}
+      >
+        {content}
+      </motion.button>
+    );
+  }
+);
+
+Button.displayName = 'Button';
     {...props}
   >
     {isLoading ? (

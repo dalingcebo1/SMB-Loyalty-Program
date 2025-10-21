@@ -273,18 +273,26 @@ body.staff-layout-active .modern-staff-dashboard .dashboard-header {
   flex-direction: column;
   gap: 0.2rem;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .staff-nav-label {
   font-weight: 600;
   letter-spacing: 0.01em;
   font-size: clamp(0.9rem, 2.2vw, 1rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .staff-nav-description {
   font-size: clamp(0.7rem, 2vw, 0.85rem);
   color: rgba(226, 232, 240, 0.76);
   letter-spacing: 0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .staff-nav-item.active .staff-nav-description {

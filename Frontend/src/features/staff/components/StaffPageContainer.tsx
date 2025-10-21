@@ -2,8 +2,8 @@
 import React from 'react';
 
 const surfaceMap = {
-  solid: 'bg-white/95 border border-slate-200 shadow-lg shadow-slate-900/10 rounded-3xl',
-  glass: 'bg-white/70 backdrop-blur-md border border-white/40 shadow-xl shadow-slate-900/10 rounded-3xl',
+  solid: 'bg-white border border-slate-200 shadow-lg shadow-slate-900/10 rounded-3xl',
+  glass: 'bg-white/90 backdrop-blur-sm border border-white/50 shadow-xl shadow-slate-900/10 rounded-3xl',
   neutral: 'bg-slate-900/80 border border-slate-700/40 text-slate-50 shadow-2xl rounded-3xl',
   plain: ''
 } as const;

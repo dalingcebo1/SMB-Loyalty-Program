@@ -38,6 +38,18 @@ nav a, nav button, .nav-item {
   word-break: keep-all;
 }
 
+/* Exception: Staff navigation needs text truncation within flex containers */
+.staff-nav-item {
+  white-space: normal !important;
+}
+
+.staff-nav-label,
+.staff-nav-description {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 /* Form inputs should handle overflow properly */
 input, textarea, select {
   word-break: normal;

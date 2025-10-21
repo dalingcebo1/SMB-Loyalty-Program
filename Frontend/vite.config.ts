@@ -41,6 +41,7 @@ export default defineConfig({
     minify: 'esbuild',
     sourcemap: false, // Disable sourcemaps to reduce memory usage
     chunkSizeWarningLimit: 1000,
+    cssCodeSplit: false,
   },
   server: {
     // Temporarily remove COOP header to test popup behavior

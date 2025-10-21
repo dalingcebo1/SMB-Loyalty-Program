@@ -13,6 +13,18 @@ import CreateTenant from '../dev-admin/CreateTenant';
 import TenantList from '../dev-admin/TenantList';
 import { RequireDeveloper as DevRequireDeveloper } from '../dev-admin/routeGuard';
 
+// Critical user experience pages are eagerly imported to ensure they are always
+// available even if the CDN temporarily misses a chunk. This avoids runtime
+// failures like the production 404s observed for OrderForm.
+import Welcome from '../pages/Welcome';
+import MyLoyalty from '../features/loyalty/pages/MyLoyalty';
+import OrderForm from '../pages/OrderForm';
+import Payment from '../features/order/pages/Payment';
+import OrderConfirmation from '../pages/OrderConfirmation';
+import PastOrders from '../pages/PastOrders';
+import Account from '../pages/Account';
+import EnhancedProfile from '../pages/EnhancedProfile';
+
 // Auth pages (using unified onboarding flow)
 const Signup = lazy(() => import('../features/auth/pages/Signup'));
 const Login = lazy(() => import('../features/auth/pages/Login'));
@@ -26,15 +38,6 @@ const FirebaseTest = lazy(() => import('../debug/FirebaseTest'));
 const GoogleLoginTest = lazy(() => import('../debug/GoogleLoginTest'));
 const GoogleRedirectTest = lazy(() => import('../debug/GoogleRedirectTest'));
 const GoogleLoginDebug = lazy(() => import('../pages/GoogleLoginDebug'));  
-
-// User pages
-const Welcome = lazy(() => import('../pages/Welcome'));
-const MyLoyalty = lazy(() => import('../features/loyalty/pages/MyLoyalty'));
-const OrderForm = lazy(() => import('../pages/OrderForm')); // Use complete implementation
-const Payment = lazy(() => import('../features/order/pages/Payment'));
-const OrderConfirmation = lazy(() => import('../pages/OrderConfirmation'));
-const PastOrders = lazy(() => import('../pages/PastOrders')); // Use complete implementation
-const Account = lazy(() => import('../pages/Account'));
 
 // Staff pages
 const PaymentVerification = lazy(() => import('../features/staff/pages/PaymentVerification'));
@@ -71,7 +74,6 @@ const NotificationsAdmin = lazy(() => import('../features/admin/pages/Notificati
 // New subscription management stub (replaces removed usage page)
 const SubscriptionManagePage = lazy(() => import('../pages/admin/SubscriptionManagePageNew'));
 // Enhanced user profile
-const EnhancedProfile = lazy(() => import('../pages/EnhancedProfile'));
 
 // Route guards
 function RequireAuth() {

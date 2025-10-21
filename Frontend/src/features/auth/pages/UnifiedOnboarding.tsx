@@ -52,10 +52,10 @@ const UnifiedOnboarding: React.FC = () => {
 
   // Update step when profile data changes
   useEffect(() => {
-    const updatedNeedsProfile = !firstName.trim() || !lastName.trim();
-    const newStep = updatedNeedsProfile ? 'profile' : 'phone';
-    if (newStep !== currentStep) {
-      setCurrentStep(newStep);
+    if (currentStep !== 'phone') return;
+    const missingProfileFields = !firstName.trim() || !lastName.trim();
+    if (missingProfileFields) {
+      setCurrentStep('profile');
     }
   }, [firstName, lastName, currentStep]);
 

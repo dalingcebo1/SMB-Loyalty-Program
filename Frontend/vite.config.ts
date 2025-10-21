@@ -21,6 +21,7 @@ export default defineConfig({
     // PWA support for offline caching
     VitePWA({
       registerType: 'autoUpdate',
+      selfDestroying: true,
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: 'SMB Loyalty',

@@ -138,23 +138,26 @@ const Welcome: React.FC = () => {
     return <WelcomeModal name={name} onClose={handleCloseModal} />;
   }
 
-  // Status message logic
-  let statusMessage = null;
-  if (activeWashes.length > 0) {
-    statusMessage = (
-      <div className="status-message active">
-        <h3><FaClock style={{ display: 'inline', marginRight: '0.5rem' }} />Wash in Progress</h3>
-        <p>Your vehicles are currently being washed. You will be notified when ready for collection.</p>
-      </div>
-    );
-  } else if (recentlyEnded) {
-    statusMessage = (
-      <div className="status-message ready">
-        <h3><FaCheckCircle style={{ display: 'inline', marginRight: '0.5rem' }} />Ready for Collection</h3>
-        <p>Your car is ready for collection.</p>
-      </div>
-    );
-  }
+  // Status banner logic for wash progress insights
+  const statusBanner = (() => {
+    if (activeWashes.length > 0) {
+      return {
+        variant: 'info' as const,
+        title: 'Wash in Progress',
+        description: 'Your vehicles are currently being washed. You will be notified when ready for collection.',
+        icon: <FaClock />,
+      };
+    }
+    if (recentlyEnded) {
+      return {
+        variant: 'success' as const,
+        title: 'Ready for Collection',
+        description: 'Your car is ready for collection.',
+        icon: <FaCheckCircle />,
+      };
+    }
+    return null;
+  })();
 
   const handleClaimReward = async () => {
     if (!user) return;

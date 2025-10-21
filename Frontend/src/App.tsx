@@ -11,8 +11,10 @@ import { useIdlePrefetch } from './prefetch';
 
 export default function App() {
   useIdlePrefetch(); // schedule background chunk/data prefetches based on route heuristics
-  return <>
-    <ToastContainer position="top-center" />
-    <AppRoutes />
-  </>;
+  return (
+    <div className="app-shell">
+      <ToastContainer position="top-center" />
+      <AppRoutes />
+    </div>
+  );
 }

@@ -77,7 +77,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder }) => {
   };
 
   return (
-    <div className="order-card" onClick={() => onViewOrder(order.id)}>
+    <article className="order-card surface-card surface-card--interactive" onClick={() => onViewOrder(order.id)}>
       <div className="order-header">
         <div className="service-icon">
           <FaCar className="icon" />
@@ -126,7 +126,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder }) => {
           <FaRedo /> Book Again
         </button>
       </div>
-    </div>
+    </article>
   );
 };
 
@@ -306,53 +306,66 @@ const PastOrders: React.FC = () => {
   // Show skeleton loader while fetching past orders
   if (dataLoading) {
     return (
-      <div className="past-orders-page">
-        <div className="page-header">
-          <h1>Past Orders</h1>
-          <p className="subtitle">View your car wash history and reorder your favorites</p>
-        </div>
-        <div className="orders-loading">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="skeleton-card">
-              <div className="skeleton-header">
-                <div className="skeleton-circle" />
-                <div className="skeleton-lines">
-                  <div className="skeleton-line-short" />
-                  <div className="skeleton-line-long" />
+      <div className="past-orders-page user-page user-page--wide">
+        <section className="page-header user-hero user-hero--compact">
+          <span className="user-hero__eyebrow">Orders</span>
+          <h1 className="user-hero__title">Past Orders</h1>
+          <p className="user-hero__subtitle">View your car wash history and reorder your favorites.</p>
+        </section>
+        <section className="user-page__section">
+          <div className="surface-card surface-card--muted orders-loading">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-card">
+                <div className="skeleton-header">
+                  <div className="skeleton-circle" />
+                  <div className="skeleton-lines">
+                    <div className="skeleton-line-short" />
+                    <div className="skeleton-line-long" />
+                  </div>
+                </div>
+                <div className="skeleton-body">
+                  <div className="skeleton-line-full" />
+                  <div className="skeleton-line-full" />
+                </div>
+                <div className="skeleton-actions">
+                  <div className="skeleton-button" />
+                  <div className="skeleton-button" />
                 </div>
               </div>
-              <div className="skeleton-body">
-                <div className="skeleton-line-full" />
-                <div className="skeleton-line-full" />
-              </div>
-              <div className="skeleton-actions">
-                <div className="skeleton-button" />
-                <div className="skeleton-button" />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
       </div>
     );
   }
   return (
-    <div className="past-orders-page">
-      <div className="page-header">
-        <h1>Order History</h1>
-        <p className="subtitle">Track your car wash orders and service history</p>
-        <div className="filters">
-          <select 
-            className="filter-dropdown"
-            value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value)}
-          >
-            <option value="all">All Time</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="quarter">Last 3 Months</option>
-          </select>
-          <div className="search-container">
+    <div className="past-orders-page user-page user-page--wide">
+      <section className="page-header user-hero user-hero--compact">
+        <span className="user-hero__eyebrow">Orders</span>
+        <h1 className="user-hero__title">Order History</h1>
+        <p className="user-hero__subtitle">Track your car wash orders and service history.</p>
+      </section>
+
+      <section className="user-page__section">
+        <div className="surface-card orders-filters">
+          <div className="orders-filters__group">
+            <label className="orders-filters__label" htmlFor="order-time-filter">Timeframe</label>
+            <select 
+              id="order-time-filter"
+              className="filter-dropdown"
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+            >
+              <option value="all">All Time</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="quarter">Last 3 Months</option>
+            </select>
+          </div>
+          <div className="orders-filters__group search-container">
+            <label className="orders-filters__label" htmlFor="order-search">Search</label>
             <input 
+              id="order-search"
               type="text" 
               placeholder="Search orders..." 
               value={searchTerm}
@@ -361,9 +374,10 @@ const PastOrders: React.FC = () => {
             <FaSearch className="search-icon" />
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="orders-container">
+      <section className="user-page__section">
+        <div className="orders-container">
         {error && (
           <div className="no-orders">
             <h3>Unable to load orders</h3>
@@ -388,8 +402,11 @@ const PastOrders: React.FC = () => {
         {!dataLoading && orders.length > 0 && (
           <div className="orders-timeline">
             {groupedOrders.today.length > 0 && (
-              <div className="time-section">
-                <h2>Today <span className="count">{groupedOrders.today.length}</span></h2>
+              <div className="time-section surface-card">
+                <div className="time-section__header">
+                  <h2 className="section-title">Today</h2>
+                  <span className="count">{groupedOrders.today.length}</span>
+                </div>
                 <div className="orders-grid">
                   {groupedOrders.today.map((order) => (
                     <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
@@ -399,8 +416,11 @@ const PastOrders: React.FC = () => {
             )}
 
             {groupedOrders.thisWeek.length > 0 && (
-              <div className="time-section">
-                <h2>This Week <span className="count">{groupedOrders.thisWeek.length}</span></h2>
+              <div className="time-section surface-card">
+                <div className="time-section__header">
+                  <h2 className="section-title">This Week</h2>
+                  <span className="count">{groupedOrders.thisWeek.length}</span>
+                </div>
                 <div className="orders-grid">
                   {groupedOrders.thisWeek.map((order) => (
                     <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
@@ -410,8 +430,11 @@ const PastOrders: React.FC = () => {
             )}
 
             {groupedOrders.thisMonth.length > 0 && (
-              <div className="time-section">
-                <h2>This Month <span className="count">{groupedOrders.thisMonth.length}</span></h2>
+              <div className="time-section surface-card">
+                <div className="time-section__header">
+                  <h2 className="section-title">This Month</h2>
+                  <span className="count">{groupedOrders.thisMonth.length}</span>
+                </div>
                 <div className="orders-grid">
                   {groupedOrders.thisMonth.map((order) => (
                     <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
@@ -421,20 +444,23 @@ const PastOrders: React.FC = () => {
             )}
 
             {groupedOrders.earlier.length > 0 && (
-              <div className="time-section">
-                <h2>Older <span className="count">{groupedOrders.earlier.length}</span></h2>
+              <div className="time-section surface-card">
+                <div className="time-section__header">
+                  <h2 className="section-title">Older</h2>
+                  <span className="count">{groupedOrders.earlier.length}</span>
+                </div>
                 <div className="orders-grid">
                   {groupedOrders.earlier.slice(0, showAll ? undefined : 3).map((order) => (
                     <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
                   ))}
                 </div>
                 {!showAll && groupedOrders.earlier.length > 3 && (
-                  <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                  <div className="orders-more">
                     <button
-                      className="view-details-btn"
+                      className="btn btn--ghost"
                       onClick={() => setShowAll(true)}
                     >
-                      View More Orders
+                      View more orders
                     </button>
                   </div>
                 )}
@@ -442,7 +468,8 @@ const PastOrders: React.FC = () => {
             )}
           </div>
         )}
-      </div>
+        </div>
+      </section>
 
       {/* Loading Modal */}
       {modalLoading && (

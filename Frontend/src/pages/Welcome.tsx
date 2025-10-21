@@ -172,99 +172,99 @@ const Welcome: React.FC = () => {
   };
 
   return (
-    <div className="welcome-page">
-      <div className="welcome-header">
-        <h1>Welcome {name}!</h1>
-        <p className="subtitle">Your car wash companion for loyalty rewards and service booking</p>
-      </div>
-
-      {/* Welcome message card */}
-      <div className="welcome-message-card">
-        <h2>
-          {justOnboarded
-            ? "Thank you for registering!"
-            : "Glad to see you again"}
-        </h2>
-        <div className="description">
-          {justOnboarded
-            ? "Welcome to your full service car wash application. Start earning loyalty rewards with every visit!"
-            : "Check out your rewards or book a service to keep your car looking great!"}
-        </div>
-        <div className="action-buttons">
+    <div className="user-page user-page--welcome">
+      <section className="user-hero">
+        <span className="user-hero__eyebrow">Welcome back</span>
+        <h1 className="user-hero__title">Welcome {name || 'there'}!</h1>
+        <p className="user-hero__subtitle">
+          Your car wash companion for loyalty rewards and effortless service bookings.
+        </p>
+        <div className="user-hero__actions">
           <Link
             to="/myloyalty"
-            className="action-btn action-btn-primary"
+            className="btn btn--primary"
             onClick={() => track('cta_click', { label: 'View Rewards', page: 'Welcome' })}
           >
             <FaGift /> View Rewards
           </Link>
           <Link
             to="/order"
-            className="action-btn action-btn-secondary"
+            className="btn btn--secondary"
             onClick={() => track('cta_click', { label: 'Book a Service', page: 'Welcome' })}
           >
             <FaCar /> Book a Service
           </Link>
         </div>
-      </div>
+      </section>
 
-      {/* Status and panels grid */}
-      <div className="panels-grid">
-        {/* Status message if there is one */}
-        {statusMessage}
-
-        {/* Wash status panel */}
-        <div className="panel-card">
-          <HiOutlineRefresh className="panel-icon wash-icon" />
-          <h3>Wash Status</h3>
-          <div className="description">
-            {activeWashes.length > 0
-              ? "Your wash is currently in progress"
-              : recentlyEnded
-              ? "Your car is ready for collection"
-              : "No active washes at the moment"}
+      {statusBanner && (
+        <div className={`status-banner status-banner--${statusBanner.variant}`}>
+          <span className="status-banner__icon">{statusBanner.icon}</span>
+          <div className="status-banner__body">
+            <h3 className="status-banner__title">{statusBanner.title}</h3>
+            <p className="status-banner__description">{statusBanner.description}</p>
           </div>
         </div>
+      )}
 
-        {/* Loyalty rewards panel */}
-        <div className="panel-card">
-          <HiOutlineGift className="panel-icon loyalty-icon" />
-          <h3>Loyalty Progress</h3>
-          <div className="progress-container">
+      <section className="insights-grid">
+        <article className="surface-card surface-card--interactive insight-card">
+          <span className="insight-card__icon insight-card__icon--wash">
+            <HiOutlineRefresh />
+          </span>
+          <div className="surface-card__header">
+            <h3 className="surface-card__title">Wash Status</h3>
+            <span className="badge badge--info">Live</span>
+          </div>
+          <p className="surface-card__subtitle">
+            {activeWashes.length > 0
+              ? 'Your wash is currently in progress.'
+              : recentlyEnded
+              ? 'Your car is ready for collection.'
+              : 'No active washes at the moment.'}
+          </p>
+        </article>
+
+        <article className="surface-card surface-card--interactive insight-card">
+          <span className="insight-card__icon insight-card__icon--loyalty">
+            <HiOutlineGift />
+          </span>
+          <div className="surface-card__header">
+            <h3 className="surface-card__title">Loyalty Progress</h3>
+            <span className="badge badge--success">Rewards</span>
+          </div>
+          <div className="insight-card__progress">
             <CircularProgressbar
               value={progress === 0 && visits > 0 ? nextMilestone : progress}
               maxValue={nextMilestone}
               text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
               styles={buildStyles({
-                textSize: '18px',
+                textSize: '16px',
                 pathColor: '#22c55e',
-                textColor: '#1a202c',
-                trailColor: '#e5e7eb',
+                textColor: '#0f172a',
+                trailColor: '#e2e8f0',
               })}
             />
           </div>
-          <div className="loyalty-info">
+          <div className="insight-card__footer">
             {rewardsReady.length > 0 ? (
               <div>
-                <p>You have a reward ready to claim!</p>
-                <button
-                  onClick={handleClaimReward}
-                  className="claim-button"
-                >
-                  Claim Now
+                <p className="insight-card__text">You have a reward ready to claim!</p>
+                <button onClick={handleClaimReward} className="btn btn--primary btn--dense">
+                  Claim reward
                 </button>
               </div>
             ) : upcomingReward ? (
               <div>
-                <p>Next reward: {upcomingReward.reward}</p>
-                <p>At {upcomingReward.milestone} visits</p>
+                <p className="insight-card__text">Next reward: {upcomingReward.reward}</p>
+                <p className="insight-card__meta">Unlocked at {upcomingReward.milestone} visits</p>
               </div>
             ) : (
-              <p>Keep visiting to earn rewards!</p>
+              <p className="insight-card__text">Keep visiting to earn your next reward.</p>
             )}
           </div>
-        </div>
-      </div>
+        </article>
+      </section>
     </div>
   );
 };

@@ -127,8 +127,9 @@ const EnhancedVehicleManager: React.FC = () => {
 
     try {
       setLoading(true);
+      const normalizedReg = normalizeReg(newVehicle.reg);
       await api.post(`/users/${selectedUser.id}/vehicles`, {
-        plate: normalizeReg(newVehicle.reg),
+        plate: normalizedReg,
         make: newVehicle.make.trim(),
         model: newVehicle.model.trim()
       });
@@ -142,12 +143,8 @@ const EnhancedVehicleManager: React.FC = () => {
       setUserResults([]);
       
       // Switch to search tab if there's a query
-      if (searchQuery.trim()) {
-        setActiveTab('search');
-        // Trigger search refresh
-        const refreshEvent = new Event('refresh-search');
-        window.dispatchEvent(refreshEvent);
-      }
+      setActiveTab('search');
+      setSearchQuery(normalizedReg);
     } catch (error: unknown) {
       console.error('Add vehicle error:', error);
       if (error && typeof error === 'object' && 'response' in error) {

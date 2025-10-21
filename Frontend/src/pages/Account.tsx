@@ -50,11 +50,12 @@ const Account: React.FC = () => {
     setError(null);
     try {
       await api.put("/auth/me", {
-        firstName,
-        lastName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
       });
       await refreshUser();
       setEditing(false);
+      toast.success('Profile updated successfully');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update profile");
     }

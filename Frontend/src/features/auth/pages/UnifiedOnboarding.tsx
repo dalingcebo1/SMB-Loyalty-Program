@@ -25,6 +25,20 @@ interface OnboardingLocationState {
 // E.164 format validator
 const validateE164 = (num: string) => /^\+\d{10,15}$/.test(num);
 
+const normalizePhoneInput = (raw: string): string => {
+  let phone = raw.trim();
+  if (!phone) return phone;
+  phone = phone.replace(/[\s()-]/g, '');
+  if (phone.startsWith('+')) return phone;
+  if (phone.startsWith('0') && phone.length === 10) {
+    return `+27${phone.slice(1)}`;
+  }
+  if (phone.startsWith('27') && phone.length === 11) {
+    return `+${phone}`;
+  }
+  return phone;
+};
+
 const UnifiedOnboarding: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -165,9 +179,11 @@ const UnifiedOnboarding: React.FC = () => {
     if (!phone.trim()) {
       return setError("Phone number is required.");
     }
-    if (!validateE164(phone.trim())) {
-      return setError("Phone must be in E.164 format, e.g. +27821234567.");
+    const normalizedPhone = normalizePhoneInput(phone);
+    if (!validateE164(normalizedPhone)) {
+      return setError("Phone must be a valid South African number, e.g. 0731234567 or +27831234567.");
     }
+    setPhone(normalizedPhone);
     // Ensure verifier present (handles HMR or unmounted container)
     let baseVerifier: RecaptchaVerifier;
     try {
@@ -185,7 +201,7 @@ const UnifiedOnboarding: React.FC = () => {
       let triedRebuild = false;
       async function attemptSend(): Promise<ConfirmationResult> {
         try {
-          return await signInWithPhoneNumber(auth, phone.trim(), activeVerifier);
+          return await signInWithPhoneNumber(auth, normalizedPhone, activeVerifier);
         } catch (e: unknown) {
           // If element removed, rebuild once then retry
           const msg = (e as { message?: string })?.message || '';
@@ -208,7 +224,7 @@ const UnifiedOnboarding: React.FC = () => {
           password: state?.password,
           firstName,
           lastName,
-          phone: phone.trim(),
+          phone: normalizedPhone,
           subscribe,
           fromSocialLogin: state?.fromSocialLogin ?? false,
         },
@@ -377,14 +393,14 @@ const UnifiedOnboarding: React.FC = () => {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="+27821234567"
+                    onChange={e => setPhone(e.target.value.replace(/[^\d+\s()-]/g, ''))}
+                    placeholder="e.g., 0731234567 or +27831234567"
                     className="form-input phone-input"
                     required
                   />
                 </div>
                 <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                  Include country code (e.g., +27 for South Africa)
+                  We accept local numbers (073…) and full international format (+27…)
                 </small>
               </div>
 

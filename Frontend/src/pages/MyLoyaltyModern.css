@@ -408,6 +408,31 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .loyalty-modern {
+    padding: var(--spacing-5) var(--spacing-4);
+  }
+
+  .loyalty-modern__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .progress-card__content {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-6);
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+
+  .redeem-modal__actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 768px) {
   .loyalty-modern {
     padding: var(--spacing-4) var(--spacing-3);

@@ -370,6 +370,29 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .past-orders-modern {
+    padding: var(--spacing-5) var(--spacing-4);
+  }
+
+  .past-orders-modern__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .filters {
+    gap: var(--spacing-3);
+  }
+
+  .timeline-item {
+    grid-template-columns: 50px 1fr;
+  }
+
+  .order-details__actions {
+    flex-wrap: wrap;
+  }
+}
+
 @media (max-width: 768px) {
   .past-orders-modern {
     padding: var(--spacing-4) var(--spacing-3);

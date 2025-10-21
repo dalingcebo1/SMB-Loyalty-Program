@@ -292,6 +292,22 @@
   gap: var(--spacing-4);
 }
 
+.welcome-action-card__link,
+.welcome-loyalty__link,
+.welcome-ended-wash__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.welcome-ended-wash__link {
+  width: 100%;
+}
+
+.welcome-loyalty__link {
+  height: 100%;
+}
+
 .welcome-action-card {
   display: flex;
   flex-direction: column;
@@ -366,6 +382,33 @@
 /* ===========================
  * RESPONSIVE
  * =========================== */
+
+@media (max-width: 1024px) {
+  .welcome-page-modern {
+    padding: var(--spacing-5) var(--spacing-4);
+    gap: var(--spacing-5);
+  }
+
+  .welcome-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+
+  .welcome-active-wash__progress {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-4);
+  }
+
+  .welcome-loyalty__progress {
+    gap: var(--spacing-6);
+  }
+
+  .welcome-actions__grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
 
 @media (max-width: 768px) {
   .welcome-page-modern {

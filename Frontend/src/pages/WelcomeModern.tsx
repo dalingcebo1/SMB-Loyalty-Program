@@ -272,7 +272,7 @@ const WelcomeModern: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <Link to="/past-orders" style={{ textDecoration: 'none' }}>
+              <Link to="/past-orders" className="welcome-ended-wash__link">
                 <Button variant="success" size="lg" isFullWidth>
                   View Receipt
                 </Button>
@@ -288,8 +288,9 @@ const WelcomeModern: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5 }}
       >
-        <Card variant="elevated" padding="lg" isInteractive as="article" onClick={() => window.location.href = '/myloyalty'}>
-          <CardHeader>
+        <Link to="/myloyalty" className="welcome-loyalty__link">
+          <Card variant="elevated" padding="lg" isInteractive as="article">
+            <CardHeader>
             <div className="welcome-loyalty__header">
               <HiOutlineStar className="welcome-loyalty__icon" />
               <div>
@@ -331,18 +332,19 @@ const WelcomeModern: React.FC = () => {
               </div>
             </div>
           </CardBody>
-          {loyaltyData?.rewards_ready && loyaltyData.rewards_ready.length > 0 && (
-            <CardFooter>
-              <div className="welcome-loyalty__available">
-                <HiOutlineCheckCircle />
-                <span>You have {loyaltyData.rewards_ready.length} reward{loyaltyData.rewards_ready.length > 1 ? 's' : ''} ready!</span>
-              </div>
-              <Button variant="primary" size="sm" rightIcon={<HiOutlineGift />}>
-                Claim Now
-              </Button>
-            </CardFooter>
-          )}
-        </Card>
+            {loyaltyData?.rewards_ready && loyaltyData.rewards_ready.length > 0 && (
+              <CardFooter>
+                <div className="welcome-loyalty__available">
+                  <HiOutlineCheckCircle />
+                  <span>You have {loyaltyData.rewards_ready.length} reward{loyaltyData.rewards_ready.length > 1 ? 's' : ''} ready!</span>
+                </div>
+                <Button variant="primary" size="sm" rightIcon={<HiOutlineGift />}>
+                  Claim Now
+                </Button>
+              </CardFooter>
+            )}
+          </Card>
+        </Link>
       </motion.div>
 
       {/* Quick Actions */}
@@ -354,7 +356,7 @@ const WelcomeModern: React.FC = () => {
       >
         <h2 className="welcome-actions__title">Quick Actions</h2>
         <div className="welcome-actions__grid">
-          <Link to="/order" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link to="/order" className="welcome-action-card__link">
             <Card variant="outlined" padding="lg" isInteractive>
               <div className="welcome-action-card">
                 <div className="welcome-action-card__icon welcome-action-card__icon--primary">
@@ -368,7 +370,7 @@ const WelcomeModern: React.FC = () => {
             </Card>
           </Link>
 
-          <Link to="/past-orders" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link to="/past-orders" className="welcome-action-card__link">
             <Card variant="outlined" padding="lg" isInteractive>
               <div className="welcome-action-card">
                 <div className="welcome-action-card__icon welcome-action-card__icon--secondary">
@@ -382,7 +384,7 @@ const WelcomeModern: React.FC = () => {
             </Card>
           </Link>
 
-          <Link to="/myloyalty" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link to="/myloyalty" className="welcome-action-card__link">
             <Card variant="outlined" padding="lg" isInteractive>
               <div className="welcome-action-card">
                 <div className="welcome-action-card__icon welcome-action-card__icon--success">

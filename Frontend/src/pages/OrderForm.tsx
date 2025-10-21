@@ -289,25 +289,28 @@ const OrderForm: React.FC = () => {
   }
 
   return (
-    <div className="order-form-wrapper">
-      <div className="order-form-page">
-        <ToastContainer position="top-right" />
-        
-        {/* Header */}
-        <div className="order-form-header">
-          <h1>Book Your Service</h1>
-          <p className="subtitle">Select your service, choose a time, and we'll take care of the rest</p>
-        </div>
+    <div className="order-form-page user-page">
+      <ToastContainer position="top-right" />
+      
+      {/* Hero Section */}
+      <section className="user-hero">
+        <span className="user-hero__eyebrow">Booking</span>
+        <h1 className="user-hero__title">Book Your Service</h1>
+        <p className="user-hero__subtitle">Select your service, choose a time, and we'll take care of the rest</p>
+      </section>
 
-        {/* Step Indicator */}
-        <div className="step-indicator-container">
+      {/* Step Indicator */}
+      <section className="user-page__section">
+        <div className="order-step-indicator">
           <StepIndicator 
             currentStep={currentStep}
             stepsCompleted={currentStep > 1 ? [1] : []}
           />
         </div>
+      </section>
 
-        {/* Step Content */}
+      {/* Step Content */}
+      <section className="user-page__section">
         <AnimatePresence mode="wait">
           {/* Step 1: Service Selection */}
           {currentStep === 1 && (
@@ -316,9 +319,11 @@ const OrderForm: React.FC = () => {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className="form-step"
+              className="form-step surface-card"
                 >
-                  <h2 className="step-title">Step 1: Select Your Service</h2>
+                  <div className="card-header">
+                    <h2 className="section-title">Step 1: Select Your Service</h2>
+                  </div>
                   
                   {/* Category Selection */}
                   <div className="category-tabs">
@@ -414,9 +419,11 @@ const OrderForm: React.FC = () => {
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
-                  className="form-step"
+                  className="form-step surface-card"
                 >
-                  <h2 className="step-title">Step 2: Choose Date & Time</h2>
+                  <div className="card-header">
+                    <h2 className="section-title">Step 2: Choose Date & Time</h2>
+                  </div>
                   
                   <DateTimePicker
                     selectedDate={selectedDate}
@@ -454,9 +461,11 @@ const OrderForm: React.FC = () => {
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
-                  className="form-step"
+                  className="form-step surface-card"
                 >
-                  <h2 className="step-title">Step 3: Review Your Booking</h2>
+                  <div className="card-header">
+                    <h2 className="section-title">Step 3: Review Your Booking</h2>
+                  </div>
                   
                   {/* Order Summary */}
                   <div className="order-summary">
@@ -528,9 +537,7 @@ const OrderForm: React.FC = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-
-  {/* Confirmation modal removed */}
-      </div>
+      </section>
     </div>
   );
 };

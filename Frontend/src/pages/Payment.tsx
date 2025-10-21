@@ -334,26 +334,41 @@ const Payment: React.FC = () => {
   const hasRewardExpired = rewardInfo?.expiry ? new Date(rewardInfo.expiry) < new Date() : false;
 
   return (
-    <div className="payment-wrapper">
-      <div className="payment-page">
-        <StepIndicator currentStep={2} stepsCompleted={[1]} />
-        <ToastContainer position="top-right" />
-        <div className="payment-container">
-          <h2 className="payment-title">Complete Your Payment</h2>
-          <div className="payment-amount">
-            Amount: <span className="payment-amount-value">R {(amountToPay / 100).toFixed(2)}</span>
+    <div className="payment-page user-page">
+      <ToastContainer position="top-right" />
+      
+      {/* Hero Section */}
+      <section className="user-hero user-hero--compact">
+        <span className="user-hero__eyebrow">Payment</span>
+        <h1 className="user-hero__title">Complete Your Payment</h1>
+        <p className="user-hero__subtitle">Review your booking and proceed with secure payment</p>
+      </section>
+
+      {/* Step Indicator */}
+      <section className="user-page__section">
+        <div className="payment-step-indicator">
+          <StepIndicator currentStep={2} stepsCompleted={[1]} />
+        </div>
+      </section>
+
+      {/* Payment Details */}
+      <section className="user-page__section">
+        <div className="surface-card payment-summary-card">
+          <div className="payment-amount-display">
+            <span className="payment-amount-label">Total Amount</span>
+            <span className="payment-amount-value">{formatCents(amountToPay)}</span>
           </div>
           {/* Loyalty section: show loading, eligibility or reward info */}
           {loadingEligibility ? (
-            <div className="payment-status loading">Checking loyalty eligibility…</div>
+            <div className="payment-status payment-status--loading">Checking loyalty eligibility…</div>
           ) : rewardInfo ? (
             canApplyLoyalty ? (
               hasRewardExpired ? (
-                <div className="payment-status error">
+                <div className="payment-status payment-status--error">
                   Loyalty Reward Expired
                 </div>
               ) : (
-                <div className="payment-status success">
+                <div className="payment-status payment-status--success">
                   <div>
                     Loyalty Reward Available: {rewardInfo.reward}
                   </div>
@@ -365,27 +380,39 @@ const Payment: React.FC = () => {
                 </div>
               )
             ) : (
-              <div className="payment-status info">
+              <div className="payment-status payment-status--info">
                 Loyalty rewards cannot be applied to this service.
               </div>
             )
           ) : null}
-          {summary.length > 0 && (
-            <div className="order-summary">
-              <h3 className="order-summary-title">Order Summary</h3>
-              <ul className="order-summary-list">
-                {summary.map((item, idx) => (
-                  <li key={idx} className="order-summary-item">{item}</li>
-                ))}
-              </ul>
+        </div>
+      </section>
+
+      {/* Order Summary */}
+      {summary.length > 0 && (
+        <section className="user-page__section">
+          <div className="surface-card">
+            <div className="card-header">
+              <h3 className="section-title">Booking Summary</h3>
             </div>
-          )}
+            <ul className="order-summary-list">
+              {summary.map((item, idx) => (
+                <li key={idx} className="order-summary-item">{item}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Payment Actions */}
+      <section className="user-page__section">
+        <div className="surface-card payment-actions-card">
           <div className="payment-buttons">
             <button
               onClick={handlePay}
               disabled={paying || !yocoLoaded}
-              className={`payment-button ${
-                paying || !yocoLoaded ? "" : "primary"
+              className={`payment-button payment-button--primary ${
+                paying || !yocoLoaded ? "payment-button--disabled" : ""
               }`}
             >
               {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
@@ -394,27 +421,27 @@ const Payment: React.FC = () => {
               <button
                 onClick={handleApplyReward}
                 disabled={paying || loadingReward}
-                className="payment-button success"
+                className="payment-button payment-button--success"
               >
                 {loadingReward ? 'Checking reward…' : 'Apply Reward'}
               </button>
             )}
-            {rewardInfo && hasRewardExpired && (
-              <div className="payment-status error">
-                This reward has expired.
-              </div>
-            )}
-            {rewardApplied && (
-              <div className="reward-applied">
-                Reward applied! New total: R{(amountToPay / 100).toFixed(2)}
-              </div>
-            )}
           </div>
+          {rewardInfo && hasRewardExpired && (
+            <div className="payment-status payment-status--error">
+              This reward has expired.
+            </div>
+          )}
+          {rewardApplied && (
+            <div className="reward-applied">
+              Reward applied! New total: {formatCents(amountToPay)}
+            </div>
+          )}
           <div className="payment-security">
             Secured by <span className="payment-security-brand">YOCO</span>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

@@ -34,11 +34,18 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin-bottom: var(--spacing-2);
+  line-height: var(--line-height-tight);
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .past-orders-modern__subtitle {
   font-size: var(--font-size-lg);
   color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 /* Filters */
@@ -77,6 +84,9 @@
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  word-break: keep-all;
+  line-height: var(--line-height-normal);
 }
 
 .status-button:hover {
@@ -172,6 +182,8 @@
 
 .order-card__title-section {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .order-card__title {
@@ -179,11 +191,20 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin-bottom: var(--spacing-1);
+  line-height: var(--line-height-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .order-card__date {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .order-card__details {

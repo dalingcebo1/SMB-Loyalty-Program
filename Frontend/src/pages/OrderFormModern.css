@@ -38,11 +38,18 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin-bottom: var(--spacing-2);
+  line-height: var(--line-height-tight);
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .order-form-modern__subtitle {
   font-size: var(--font-size-lg);
   color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 /* Step Indicator */
@@ -115,6 +122,9 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  word-break: keep-all;
+  line-height: var(--line-height-normal);
 }
 
 .step-indicator__step--active .step-indicator__label {
@@ -139,6 +149,9 @@
   color: var(--color-text-primary);
   text-align: center;
   margin-bottom: var(--spacing-2);
+  line-height: var(--line-height-tight);
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .step-subtitle {
@@ -146,6 +159,9 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin-bottom: var(--spacing-3);
+  line-height: var(--line-height-snug);
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 /* Service Grid */
@@ -203,12 +219,26 @@
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+  line-height: var(--line-height-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .service-card__description {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: var(--line-height-relaxed);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .service-card__footer {
@@ -288,6 +318,12 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
+  line-height: var(--line-height-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .extra-card__check {

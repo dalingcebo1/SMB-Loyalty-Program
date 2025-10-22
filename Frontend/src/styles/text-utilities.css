@@ -1,0 +1,285 @@
+/**
+ * Text Utilities
+ * Industry-standard text overflow and typography utilities
+ * Following best practices from the article on UI design principles
+ */
+
+/* ===========================
+ * TEXT OVERFLOW UTILITIES
+ * =========================== */
+
+/* Single line truncation with ellipsis */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Multi-line truncation with ellipsis (webkit browsers) */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* ===========================
+ * WORD BREAK UTILITIES
+ * =========================== */
+
+/* Prevent text from breaking */
+.text-nowrap {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Allow natural word wrapping */
+.text-wrap {
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Break long words if necessary */
+.text-break {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Break anywhere (for URLs, codes) */
+.text-break-all {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* Balanced text for better readability (modern browsers) */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* ===========================
+ * FLEX/GRID TEXT CONTAINMENT
+ * =========================== */
+
+/* Ensure flex/grid children can shrink properly */
+.min-w-0 {
+  min-width: 0;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+/* ===========================
+ * TYPOGRAPHY HIERARCHY
+ * =========================== */
+
+/* Display headings - large, bold, tight line-height */
+.text-display {
+  line-height: var(--line-height-tight);
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+/* Heading text - medium, bold, snug line-height */
+.text-heading {
+  line-height: var(--line-height-snug);
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* Body text - normal line-height, readable */
+.text-body {
+  line-height: var(--line-height-normal);
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Relaxed body text - more breathing room */
+.text-body-relaxed {
+  line-height: var(--line-height-relaxed);
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Label text - small, uppercase, wide spacing */
+.text-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wider);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Caption text - small, secondary */
+.text-caption {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+/* ===========================
+ * BUTTON & INTERACTIVE TEXT
+ * =========================== */
+
+/* Button text should not wrap */
+.button-text {
+  white-space: nowrap;
+  word-break: keep-all;
+  line-height: var(--line-height-normal);
+}
+
+/* Badge/pill text */
+.badge-text {
+  white-space: nowrap;
+  word-break: keep-all;
+  line-height: var(--line-height-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===========================
+ * CARD TEXT CONTAINMENT
+ * =========================== */
+
+/* Card title - truncate with ellipsis */
+.card-title {
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* Card description - max 3 lines */
+.card-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* ===========================
+ * ACCESSIBILITY
+ * =========================== */
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible outline */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ===========================
+ * RESPONSIVE TEXT SIZES
+ * =========================== */
+
+@media (max-width: 768px) {
+  /* Slightly smaller text on mobile for better fit */
+  .text-responsive-lg {
+    font-size: var(--font-size-xl);
+  }
+  
+  .text-responsive-xl {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .text-responsive-2xl {
+    font-size: var(--font-size-3xl);
+  }
+}
+
+@media (min-width: 769px) {
+  .text-responsive-lg {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .text-responsive-xl {
+    font-size: var(--font-size-3xl);
+  }
+  
+  .text-responsive-2xl {
+    font-size: var(--font-size-4xl);
+  }
+}
+
+/* ===========================
+ * FONT WEIGHTS
+ * =========================== */
+
+.font-light { font-weight: var(--font-weight-light); }
+.font-regular { font-weight: var(--font-weight-regular); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+.font-extrabold { font-weight: var(--font-weight-extrabold); }
+
+/* ===========================
+ * TEXT COLORS
+ * =========================== */
+
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+.text-disabled { color: var(--color-text-disabled); }
+.text-inverse { color: var(--color-text-inverse); }
+
+.text-brand { color: var(--color-primary); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-error { color: var(--color-error); }
+.text-info { color: var(--color-info); }

@@ -15,6 +15,9 @@
   border-radius: 20px;
   font-weight: 500;
   font-size: 0.875rem;
+  white-space: nowrap;
+  word-break: keep-all;
+  line-height: 1.5;
 }
 
 .status-indicator.online {
@@ -77,12 +80,19 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  line-height: 1.25;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .section-header p {
   color: #6b7280;
   margin: 0;
   font-size: 0.875rem;
+  line-height: 1.5;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 /* Responsive Design */

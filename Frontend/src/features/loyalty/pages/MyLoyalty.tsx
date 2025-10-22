@@ -1,5 +1,5 @@
 // src/features/loyalty/pages/MyLoyalty.tsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowRight, FaGift, FaHistory, FaTrophy } from 'react-icons/fa';
 import { CgSpinner } from 'react-icons/cg';
@@ -15,6 +15,32 @@ const MyLoyalty: React.FC = () => {
   const { data, isLoading, isError } = useLoyalty(phoneNumber);
   const [selectedReward, setSelectedReward] = useState<RewardReady | null>(null);
   const [showRewardModal, setShowRewardModal] = useState(false);
+
+  // Memoize progress calculations for performance (must be before early returns)
+  const visits = data?.visits ?? 0;
+  const rewards = data?.rewards_ready ?? [];
+  const upcoming = useMemo(() => data?.upcoming_rewards ?? [], [data?.upcoming_rewards]);
+  const userName = data?.name || user?.firstName || 'User';
+
+  const progressData = useMemo(() => {
+    const nextMilestone = upcoming.length > 0 ? upcoming[0].milestone : visits + 5;
+    const visitsNeeded = upcoming.length > 0 ? upcoming[0].visits_needed : 5;
+    const currentProgress = Math.max(0, visits - (nextMilestone - visitsNeeded));
+    const progressPercentage = visitsNeeded > 0 ? Math.min(100, (currentProgress / visitsNeeded) * 100) : 0;
+    const cappedProgress = Math.min(currentProgress, visitsNeeded);
+    const visitsRemaining = Math.max(visitsNeeded - currentProgress, 0);
+    const primaryUpcoming = upcoming.length > 0 ? upcoming[0] : null;
+
+    return {
+      visitsNeeded,
+      progressPercentage,
+      cappedProgress,
+      visitsRemaining,
+      primaryUpcoming
+    };
+  }, [visits, upcoming]);
+
+  const { visitsNeeded, progressPercentage, cappedProgress, visitsRemaining, primaryUpcoming } = progressData;
 
   const handleRewardClick = (reward: RewardReady) => {
     setSelectedReward(reward);
@@ -87,19 +113,6 @@ const MyLoyalty: React.FC = () => {
     );
   }
 
-  const visits = data?.visits ?? 0;
-  const rewards = data?.rewards_ready ?? [];
-  const upcoming = data?.upcoming_rewards ?? [];
-  const userName = data?.name || user.firstName || 'User';
-
-  const nextMilestone = upcoming.length > 0 ? upcoming[0].milestone : visits + 5;
-  const visitsNeeded = upcoming.length > 0 ? upcoming[0].visits_needed : 5;
-  const currentProgress = Math.max(0, visits - (nextMilestone - visitsNeeded));
-  const progressPercentage = visitsNeeded > 0 ? Math.min(100, (currentProgress / visitsNeeded) * 100) : 0;
-  const cappedProgress = Math.min(currentProgress, visitsNeeded);
-  const visitsRemaining = Math.max(visitsNeeded - currentProgress, 0);
-  const primaryUpcoming = upcoming.length > 0 ? upcoming[0] : null;
-
   return (
     <div className="loyalty-page user-page user-page--wide">
       <section className="user-hero user-hero--compact">
@@ -145,7 +158,7 @@ const MyLoyalty: React.FC = () => {
           </div>
           <div className="progress-container">
             <div className="progress-bar-container">
-              <div className="progress-bar" style={{ width: `${progressPercentage}%` }} />
+              <div className="progress-bar" style={{ transform: `scaleX(${progressPercentage / 100})` }} />
             </div>
             <div className="progress-meta">
               <span className="progress-count">{cappedProgress} / {visitsNeeded} visits</span>
@@ -173,8 +186,9 @@ const MyLoyalty: React.FC = () => {
                   key={`${reward.milestone}-${index}`}
                   className="reward-card available"
                   onClick={() => handleRewardClick(reward)}
+                  aria-label={`${reward.reward}, earned at ${reward.milestone} visits. Click to view redemption details`}
                 >
-                  <span className="reward-badge">
+                  <span className="reward-badge" aria-hidden="true">
                     <FaGift className="reward-icon" />
                   </span>
                   <span className="reward-content">
@@ -194,7 +208,7 @@ const MyLoyalty: React.FC = () => {
             </div>
           ) : (
             <div className="no-rewards">
-              <FaGift className="no-rewards-icon" />
+              <FaGift className="no-rewards-icon" aria-hidden="true" />
               <p>You do not have any rewards available yet.</p>
               <p>Keep visiting us to earn rewards!</p>
               <button type="button" onClick={() => navigate('/order')} className="btn btn--primary">
@@ -212,7 +226,7 @@ const MyLoyalty: React.FC = () => {
             <div className="rewards-grid">
               {upcoming.map((reward: UpcomingReward, index: number) => (
                 <div key={`${reward.milestone}-${index}`} className="reward-card upcoming">
-                  <div className="reward-badge locked">
+                  <div className="reward-badge locked" aria-hidden="true">
                     <FaGift className="reward-icon" />
                   </div>
                   <div className="reward-content">

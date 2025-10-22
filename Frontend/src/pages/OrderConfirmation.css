@@ -5,8 +5,8 @@
 }
 
 .success-icon-large {
-  font-size: 4rem;
-  line-height: 1;
+  font-size: var(--text-5xl);
+  line-height: var(--leading-none);
   margin-bottom: 0.5rem;
 }
 
@@ -40,8 +40,9 @@
 
 .error-message {
   color: #b91c1c;
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 500;
+  line-height: var(--leading-normal);
 }
 
 /* Redemption Banner */
@@ -51,7 +52,7 @@
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(22, 163, 74, 0.12));
   border: 2px solid rgba(34, 197, 94, 0.3);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
   overflow-wrap: anywhere;
 }
@@ -63,17 +64,21 @@
 }
 
 .redemption-banner-title {
-  font-size: 1.15rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: #15803d;
   margin-bottom: 0.35rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-snug);
 }
 
 .redemption-banner-subtitle {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: #16a34a;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-normal);
 }
 
 /* Order Status Card */
@@ -88,9 +93,10 @@
   align-items: center;
   padding: 0.5rem 1.25rem;
   border-radius: 999px;
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-wider);
+  line-height: var(--leading-tight);
 }
 
 .status-badge--confirmed {
@@ -123,20 +129,23 @@
 }
 
 .payment-pin-label {
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-widest);
   color: var(--color-text-muted);
+  line-height: var(--leading-tight);
 }
 
 .payment-pin-value {
-  font-size: 2rem;
+  font-size: var(--text-4xl);
   font-weight: 700;
   font-family: 'Courier New', monospace;
   color: var(--color-primary);
   letter-spacing: 0.15em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-tight);
 }
 
 .amount-section {
@@ -152,16 +161,19 @@
 }
 
 .amount-label {
-  font-size: 0.95rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-muted);
+  line-height: var(--leading-snug);
 }
 
 .amount-value {
-  font-size: 1.35rem;
+  font-size: var(--text-2xl);
   font-weight: 700;
   color: var(--color-primary);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-tight);
 }
 
 /* QR Code Section */
@@ -177,10 +189,12 @@
 
 .qr-title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: var(--text-xl);
   font-weight: 600;
   color: var(--color-text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-snug);
 }
 
 .qr-code-container {
@@ -192,17 +206,20 @@
 
 .qr-error {
   color: #b91c1c;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   padding: 1rem;
+  line-height: var(--leading-normal);
 }
 
 .qr-instructions {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   text-align: center;
   max-width: 320px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-normal);
 }
 
 /* Order Summary Card */
@@ -224,9 +241,11 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
-  font-size: 0.95rem;
+  font-size: var(--text-sm);
   color: var(--color-text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-normal);
 }
 
 .loyalty-eligible-badge {
@@ -235,19 +254,23 @@
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.3);
   color: #15803d;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-snug);
 }
 
 .order-timestamp {
   padding: 0.75rem;
   border-top: 1px solid var(--color-border);
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: var(--leading-normal);
 }
 
 /* Loyalty Progress Card */
@@ -353,22 +376,29 @@
 
 .primary-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: 1rem;
 }
 
 .action-button {
   padding: 0.875rem 1.5rem;
   border-radius: var(--radius-lg);
-  font-size: 0.95rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   border: none;
   text-align: center;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
   min-height: 44px;
+  line-height: var(--leading-snug);
+}
+
+.action-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .action-button--primary {
@@ -418,7 +448,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);

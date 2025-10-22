@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import QRCode from "react-qr-code";
 import useFetch from "../hooks/useFetch";
 import { Order } from "../types";
@@ -80,9 +80,21 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder, onBookAgain }
   };
 
   return (
-    <article className="order-card surface-card surface-card--interactive" onClick={() => onViewOrder(order.id)}>
+    <article 
+      className="order-card surface-card surface-card--interactive" 
+      onClick={() => onViewOrder(order.id)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Order from ${formatOrderDate(order.created_at || '')}, ${getOrderSummary(order)}, ${formatCents(order.amount ?? 0)}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onViewOrder(order.id);
+        }
+      }}
+    >
       <div className="order-header">
-        <div className="service-icon">
+        <div className="service-icon" aria-hidden="true">
           <FaCar className="icon" />
         </div>
         <div className="order-info">
@@ -117,17 +129,25 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder, onBookAgain }
         )}
         
         <div className="loyalty-earned">
-          <FaStar className="loyalty-icon" />
+          <FaStar className="loyalty-icon" aria-hidden="true" />
           <span>+1 visit progress earned</span>
         </div>
       </div>
       
       <div className="order-actions">
-        <button className="action-button primary" onClick={(e) => { e.stopPropagation(); onViewOrder(order.id); }}>
-          <FaReceipt /> View Details
+        <button 
+          className="action-button primary" 
+          onClick={(e) => { e.stopPropagation(); onViewOrder(order.id); }}
+          aria-label="View order details"
+        >
+          <FaReceipt aria-hidden="true" /> View Details
         </button>
-        <button className="action-button secondary" onClick={(e) => { e.stopPropagation(); onBookAgain(); }}>
-          <FaRedo /> Book Again
+        <button 
+          className="action-button secondary" 
+          onClick={(e) => { e.stopPropagation(); onBookAgain(); }}
+          aria-label="Book this service again"
+        >
+          <FaRedo aria-hidden="true" /> Book Again
         </button>
       </div>
     </article>
@@ -137,12 +157,14 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder, onBookAgain }
 const PastOrders: React.FC = () => {
   const navigate = useNavigate();
   const { data: orderData, loading: dataLoading, error } = useFetch<Order[]>("/orders/my-past-orders");
-  const orders: Order[] = orderData ?? [];
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
   const [modalLoading, setModalLoading] = useState<boolean>(false);
   const [showAll, setShowAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [timeFilter, setTimeFilter] = useState("all");
+
+  // Memoize orders array to prevent unnecessary recalculations
+  const orders = useMemo(() => orderData ?? [], [orderData]);
 
   // fetch a single order on “View”
   type ExtraLike = string | { id?: number; name?: string; title?: string; price_map?: Record<string, number> };
@@ -296,17 +318,19 @@ const PastOrders: React.FC = () => {
     return groups;
   };
 
-  // Filter and group orders
-  const filteredOrders = orders.filter(order => {
-    const searchMatch = searchTerm === "" || 
-      getOrderSummary(order).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Time filter logic would go here
-    return searchMatch;
-  });
+  // Filter and group orders - memoized for performance
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      const searchMatch = searchTerm === "" || 
+        getOrderSummary(order).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Time filter logic would go here
+      return searchMatch;
+    });
+  }, [orders, searchTerm]);
 
-  const groupedOrders = groupOrdersByTime(filteredOrders);
+  const groupedOrders = useMemo(() => groupOrdersByTime(filteredOrders), [filteredOrders]);
   const handleBookAgain = () => navigate('/order');
 
   // Show skeleton loader while fetching past orders
@@ -408,7 +432,7 @@ const PastOrders: React.FC = () => {
         {!dataLoading && orders.length > 0 && (
           <div className="orders-timeline">
             {groupedOrders.today.length > 0 && (
-              <div className="time-section surface-card">
+              <div className="time-section">
                 <div className="time-section__header">
                   <h2 className="section-title">Today</h2>
                   <span className="count">{groupedOrders.today.length}</span>
@@ -422,7 +446,7 @@ const PastOrders: React.FC = () => {
             )}
 
             {groupedOrders.thisWeek.length > 0 && (
-              <div className="time-section surface-card">
+              <div className="time-section">
                 <div className="time-section__header">
                   <h2 className="section-title">This Week</h2>
                   <span className="count">{groupedOrders.thisWeek.length}</span>
@@ -436,7 +460,7 @@ const PastOrders: React.FC = () => {
             )}
 
             {groupedOrders.thisMonth.length > 0 && (
-              <div className="time-section surface-card">
+              <div className="time-section">
                 <div className="time-section__header">
                   <h2 className="section-title">This Month</h2>
                   <span className="count">{groupedOrders.thisMonth.length}</span>
@@ -450,7 +474,7 @@ const PastOrders: React.FC = () => {
             )}
 
             {groupedOrders.earlier.length > 0 && (
-              <div className="time-section surface-card">
+              <div className="time-section">
                 <div className="time-section__header">
                   <h2 className="section-title">Older</h2>
                   <span className="count">{groupedOrders.earlier.length}</span>

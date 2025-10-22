@@ -91,7 +91,7 @@
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
   border-radius: var(--radius-xxl);
   box-shadow: var(--shadow-hero);
-  padding: clamp(2rem, 3vw + 1.5rem, 3.5rem);
+  padding: clamp(1.75rem, 3vw + 1rem, 3.5rem) clamp(1.25rem, 3vw + 0.75rem, 3rem);
   color: var(--color-primary-contrast);
   text-align: center;
   display: grid;
@@ -488,7 +488,7 @@
 
   .user-hero {
     border-radius: var(--radius-xl);
-    padding: clamp(1.5rem, 6vw, 2.5rem);
+    padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1rem, 4vw, 1.75rem);
   }
 
   .user-hero__title {
@@ -528,5 +528,30 @@
   
   .section-title {
     font-size: var(--text-2xl);
+  }
+}
+
+/* Extra small mobile devices - more conservative padding */
+@media (max-width: 480px) {
+  .user-page {
+    padding: 1rem 0.75rem 6rem;
+  }
+
+  .user-hero {
+    padding: 1.5rem 1rem;
+  }
+
+  .user-hero__title {
+    font-size: var(--text-2xl);
+    hyphens: auto;
+  }
+
+  .user-hero__subtitle {
+    font-size: var(--text-sm);
+  }
+
+  .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: var(--text-sm);
   }
 }

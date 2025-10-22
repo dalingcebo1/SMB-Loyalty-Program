@@ -1,7 +1,19 @@
 /* Welcome page refinements layered on top of the shared user-app design system. */
 
 .welcome-page {
-	padding-bottom: clamp(6.5rem, 9vw, 7.5rem);
+	padding-bottom: 4.5rem;
+}
+
+@media (min-width: 640px) {
+	.welcome-page {
+		padding-bottom: 5rem;
+	}
+}
+
+@media (min-width: 1024px) {
+	.welcome-page {
+		padding-bottom: 6rem;
+	}
 }
 
 .welcome-actions {

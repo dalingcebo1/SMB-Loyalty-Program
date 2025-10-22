@@ -81,7 +81,7 @@ const NavTabs: React.FC = () => {
             to={isStaffOnly ? '/staff/dashboard' : '/'}
             className="brand-link"
           >
-            <span className="brand-text" style={{color: 'var(--brand-text)', fontWeight: 600}}>
+            <span className="brand-text">
               {getBrandName(branding) || 'SMB Loyalty'}
             </span>
           </NavLink>

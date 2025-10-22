@@ -89,17 +89,23 @@
 }
 
 .user-page--narrow {
-  width: min(960px, 100%);
+  max-width: 960px;
 }
 
 .user-page--wide {
-  width: min(1320px, 100%);
+  max-width: 1320px;
 }
 
 .user-page__section {
   display: flex;
   flex-direction: column;
-  gap: clamp(1.25rem, 2vw, 1.75rem);
+  gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .user-page__section {
+    gap: 1.75rem;
+  }
 }
 
 .user-hero {

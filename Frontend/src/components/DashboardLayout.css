@@ -1,44 +1,56 @@
-/* DashboardLayout.css - Layout styling with modern navigation support */
+/* DashboardLayout.css - App shell with responsive navigation support */
 
-/* Ensure proper spacing for the new navigation system */
 .dashboard-layout {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f9fafb;
+  background: var(--color-background);
+  color: var(--color-text);
 }
 
-/* Mobile: Account for bottom navigation */
 .dashboard-main {
   flex: 1;
-  max-width: 1536px;
-  margin: 0 auto;
-  padding: 1.5rem;
-  padding-top: 1rem;
-  padding-bottom: 5rem; /* Space for bottom nav on mobile */
+  width: 100%;
+  padding: 1.5rem 1rem calc(5rem + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
-/* Tablet and Desktop: Account for top navigation */
-@media (min-width: 768px) {
+.dashboard-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
   .dashboard-main {
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem; /* No bottom nav on larger screens */
+    padding: 2rem 1.5rem 3rem;
+  }
+
+  .dashboard-content {
+    gap: 2rem;
   }
 }
 
-/* Ensure content doesn't jump when navigation loads */
-.dashboard-content {
-  transition: padding 0.2s ease;
+@media (min-width: 1024px) {
+  .dashboard-main {
+    padding: 3rem 3rem 3.5rem;
+  }
+
+  .dashboard-content {
+    gap: 2.5rem;
+  }
 }
 
-/* Loading state styling */
 .dashboard-loading {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+  color: var(--color-primary-contrast);
   font-size: 1.1rem;
-  font-weight: 500;
+  font-weight: 600;
 }

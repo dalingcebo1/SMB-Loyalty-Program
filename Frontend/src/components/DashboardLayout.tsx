@@ -26,16 +26,11 @@ const DashboardLayout: React.FC = () => {
 
   // 3) Authenticated layout
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-gray-50">
-      {/* Top navigation bar - hidden on mobile, shown on tablet+ */}
+    <div className="dashboard-layout">
       <NavTabs />
-      
-      {/* Mobile bottom nav - shown on mobile, hidden on tablet+ */}
       <BottomNav />
-
-      {/* Main page content with proper spacing for navigation */}
-      <main className="flex-grow pb-20 md:pb-0">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+      <main className="dashboard-main">
+        <div className="dashboard-content">
           <Outlet />
         </div>
       </main>

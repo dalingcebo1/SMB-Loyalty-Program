@@ -4,6 +4,8 @@
   min-height: 100vh;
   background: var(--color-background);
   color: var(--color-text);
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .user-page {

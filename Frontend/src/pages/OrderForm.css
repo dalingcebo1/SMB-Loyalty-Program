@@ -1,7 +1,19 @@
 /* OrderForm.css - Aligned with shared user-app design system */
 
 .order-form-page {
-  gap: clamp(1.75rem, 2vw, 2.5rem);
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .order-form-page {
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .order-form-page {
+    gap: 2.5rem;
+  }
 }
 
 .order-step-indicator {
@@ -20,8 +32,20 @@
 
 .form-step {
   display: grid;
-  gap: clamp(1.5rem, 2.5vw, 2rem);
+  gap: 1.5rem;
   animation: fadeIn 0.3s ease;
+}
+
+@media (min-width: 640px) {
+  .form-step {
+    gap: 1.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .form-step {
+    gap: 2rem;
+  }
 }
 
 @keyframes fadeIn {
@@ -48,8 +72,8 @@
 /* Category Tabs */
 .category-tabs {
   display: flex;
-  gap: 0.75rem;
   flex-wrap: wrap;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
@@ -79,20 +103,34 @@
 /* Services Grid */
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: clamp(1.25rem, 2vw, 1.75rem);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Extras Grid */
 .extras-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.25rem;
   padding: 1.5rem;
   border-radius: var(--radius-xl);
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
+}
+
+@media (max-width: 600px) {
+  .extras-grid {
+    grid-template-columns: 1fr;
+    padding: 1.25rem;
+    gap: 1rem;
+  }
 }
 
 .extra-item {
@@ -178,7 +216,7 @@
 .order-summary {
   display: grid;
   gap: 0.75rem;
-  padding: 1.75rem;
+  padding: 1.5rem;
   border-radius: var(--radius-xl);
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
@@ -293,15 +331,6 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .services-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .extras-grid {
-    grid-template-columns: 1fr;
-    padding: 1.25rem;
-  }
-
   .category-tabs {
     gap: 0.5rem;
   }
@@ -326,10 +355,6 @@
 
   .action-button {
     width: 100%;
-  }
-
-  .order-summary {
-    padding: 1.25rem;
   }
 
   .summary-total .total-amount {

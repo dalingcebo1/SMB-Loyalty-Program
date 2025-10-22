@@ -1,7 +1,19 @@
 /* Past orders page refinements aligned with the shared user-app layout system. */
 
 .past-orders-page {
-  gap: clamp(1.75rem, 2vw, 2.5rem);
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .past-orders-page {
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .past-orders-page {
+    gap: 2.5rem;
+  }
 }
 
 .orders-filters {
@@ -16,7 +28,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  min-width: clamp(200px, 20vw, 280px);
+  min-width: 220px;
+  flex: 1 1 260px;
 }
 
 .orders-filters__label {
@@ -69,7 +82,19 @@
 
 .orders-container {
   display: grid;
-  gap: clamp(1.5rem, 2vw, 2rem);
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .orders-container {
+    gap: 1.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .orders-container {
+    gap: 2rem;
+  }
 }
 
 .orders-loading {
@@ -131,11 +156,17 @@
 
 .no-orders {
   text-align: center;
-  padding: clamp(2.5rem, 3vw, 3.5rem);
+  padding: 2.5rem;
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
+}
+
+@media (min-width: 640px) {
+  .no-orders {
+    padding: 3rem;
+  }
 }
 
 .no-orders h3 {
@@ -155,13 +186,13 @@
 
 .orders-timeline {
   display: grid;
-  gap: clamp(2.5rem, 3vw, 3rem);
+  gap: 2.5rem;
 }
 
 .time-section {
   display: grid;
-  gap: clamp(1rem, 1.5vw, 1.5rem);
-  padding-top: clamp(1.5rem, 2vw, 2rem);
+  gap: 1.25rem;
+  padding-top: 1.75rem;
   border-top: 1px solid var(--color-border-subtle);
 }
 
@@ -176,7 +207,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.5rem;
-  padding: clamp(0.75rem, 2vw, 1rem) clamp(0.5rem, 2vw, 0.75rem);
+  padding: 0.85rem 0.75rem;
   background: var(--gradient-header-subtle);
   border-radius: var(--radius-md);
   border-left: 3px solid rgba(79, 70, 229, 0.5);
@@ -204,8 +235,14 @@
 
 .orders-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: clamp(1.25rem, 2vw, 1.75rem);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+@media (max-width: 620px) {
+  .orders-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .orders-more {
@@ -451,7 +488,7 @@
   background: rgba(15, 23, 42, 0.55);
   display: grid;
   place-items: center;
-  padding: clamp(1.5rem, 5vw, 3rem);
+  padding: 1.75rem;
   z-index: 1000;
 }
 
@@ -461,9 +498,21 @@
   border-radius: var(--radius-xxl);
   box-shadow: 0 40px 80px rgba(15, 23, 42, 0.35);
   display: grid;
-  gap: clamp(1.5rem, 2vw, 2rem);
-  padding: clamp(1.75rem, 2.5vw, 2.5rem);
+  gap: 1.5rem;
+  padding: 2rem;
   position: relative;
+}
+
+@media (max-width: 640px) {
+  .order-modal {
+    padding: 1.25rem;
+  }
+
+  .modal-content {
+    gap: 1.25rem;
+    padding: 1.5rem;
+    border-radius: var(--radius-xl);
+  }
 }
 
 .modal-header {
@@ -503,13 +552,19 @@
 
 .modal-body {
   display: grid;
-  gap: clamp(1.5rem, 2vw, 2rem);
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .modal-body {
+    gap: 1.75rem;
+  }
 }
 
 .order-timeline {
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border-subtle);
-  padding: clamp(1.25rem, 2vw, 1.75rem);
+  padding: 1.5rem;
   background: var(--color-surface-muted);
 }
 
@@ -610,7 +665,7 @@
   border-radius: var(--radius-xl);
   border: 1px dashed rgba(79, 70, 229, 0.25);
   background: rgba(79, 70, 229, 0.06);
-  padding: clamp(1.5rem, 2vw, 2rem);
+  padding: 1.75rem;
   text-align: center;
   display: grid;
   gap: 0.75rem;
@@ -636,7 +691,7 @@
   border-radius: var(--radius-xl);
   border: 1px solid rgba(34, 197, 94, 0.2);
   background: rgba(34, 197, 94, 0.08);
-  padding: clamp(1.25rem, 2vw, 1.75rem);
+  padding: 1.5rem;
 }
 
 .loyalty-card .loyalty-icon {
@@ -751,7 +806,7 @@
   }
 
   .modal-content {
-    padding: clamp(1.25rem, 4vw, 1.75rem);
+    padding: 1.5rem;
   }
 
   .modal-actions {

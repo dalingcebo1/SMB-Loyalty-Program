@@ -50,13 +50,16 @@
 }
 
 .payment-status {
-  padding: 1rem 1.25rem;
+  padding: 1.25rem 1.5rem;
   border-radius: var(--radius-lg);
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
 }
 
 .payment-status--loading {
@@ -78,9 +81,10 @@
 }
 
 .payment-status--info {
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  border: 2px solid rgba(59, 130, 246, 0.4);
   color: #1e40af;
+  font-weight: 600;
 }
 
 .expiry-text {
@@ -134,14 +138,17 @@
 }
 
 .payment-button {
-  padding: 1rem 2rem;
+  padding: 1.125rem 2rem;
+  min-height: 48px;
   border-radius: var(--radius-lg);
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
   width: 100%;
+  word-break: keep-all;
+  white-space: nowrap;
 }
 
 .payment-button--primary {

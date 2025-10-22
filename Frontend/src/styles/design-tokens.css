@@ -246,11 +246,11 @@
    * COMPONENT-SPECIFIC TOKENS
    * =========================== */
   
-  /* Buttons */
-  --button-height-sm: 2rem;
-  --button-height-base: 2.5rem;
-  --button-height-lg: 3rem;
-  --button-height-xl: 3.5rem;
+  /* Buttons - ensuring minimum 44px touch targets */
+  --button-height-sm: 2.5rem;   /* 40px */
+  --button-height-base: 2.75rem; /* 44px */
+  --button-height-lg: 3rem;      /* 48px */
+  --button-height-xl: 3.5rem;    /* 56px */
   
   /* Input Fields */
   --input-height-sm: 2rem;

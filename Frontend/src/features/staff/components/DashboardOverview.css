@@ -116,11 +116,13 @@
 
 .metric-title {
   color: #64748b;
-  font-size: clamp(0.8rem, 2vw, 0.875rem);
+  font-size: clamp(0.8125rem, 2vw, 0.875rem);
   font-weight: 600;
   margin: 0 0 0.5rem 0;
   letter-spacing: 0.025em;
   text-transform: uppercase;
+  word-break: keep-all;
+  white-space: nowrap;
 }
 
 .metric-value {
@@ -143,6 +145,10 @@
   font-size: 0.875rem;
   margin: 0;
   flex: 1;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  line-height: 1.5;
 }
 
 .metric-trend {
@@ -196,15 +202,17 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 1.5rem;
+  min-height: 44px;
   border-radius: 12px;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   cursor: pointer;
   transition: all 0.3s ease;
   border: none;
   text-decoration: none;
   white-space: nowrap;
+  word-break: keep-all;
 }
 
 .action-btn.primary {

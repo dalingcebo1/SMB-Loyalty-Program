@@ -2,10 +2,10 @@
 /* Used across OrderForm, Payment, and OrderConfirmation pages */
 
 .action-button {
-  padding: 1rem 2rem;
+  padding: 1.125rem 2rem;
   border-radius: 12px;
   border: none;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -14,8 +14,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 3rem;
+  min-height: 48px;
   min-width: 150px;
+  word-break: keep-all;
+  white-space: nowrap;
 }
 
 .action-button.primary,
@@ -68,7 +70,8 @@
 /* Small action buttons for secondary actions */
 .download-button,
 .copy-button {
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 1.5rem;
+  min-height: 44px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   color: white;
@@ -77,10 +80,12 @@
   cursor: pointer;
   text-decoration: none;
   transition: all 0.2s ease;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  word-break: keep-all;
+  white-space: nowrap;
 }
 
 .download-button:hover,

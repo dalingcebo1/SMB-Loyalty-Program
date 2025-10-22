@@ -53,6 +53,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .redemption-banner:hover {
@@ -66,11 +67,13 @@
   font-weight: 700;
   color: #15803d;
   margin-bottom: 0.35rem;
+  overflow-wrap: anywhere;
 }
 
 .redemption-banner-subtitle {
   font-size: 0.9rem;
   color: #16a34a;
+  overflow-wrap: anywhere;
 }
 
 /* Order Status Card */
@@ -133,6 +136,7 @@
   font-family: 'Courier New', monospace;
   color: var(--color-primary);
   letter-spacing: 0.15em;
+  overflow-wrap: anywhere;
 }
 
 .amount-section {
@@ -143,6 +147,8 @@
   border-radius: var(--radius-lg);
   background: rgba(79, 70, 229, 0.08);
   border: 1px solid rgba(79, 70, 229, 0.2);
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .amount-label {
@@ -155,6 +161,7 @@
   font-size: 1.35rem;
   font-weight: 700;
   color: var(--color-primary);
+  overflow-wrap: anywhere;
 }
 
 /* QR Code Section */
@@ -173,6 +180,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .qr-code-container {
@@ -194,6 +202,7 @@
   color: var(--color-text-muted);
   text-align: center;
   max-width: 320px;
+  overflow-wrap: anywhere;
 }
 
 /* Order Summary Card */
@@ -217,6 +226,7 @@
   border: 1px solid var(--color-border-subtle);
   font-size: 0.95rem;
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .loyalty-eligible-badge {
@@ -228,6 +238,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .order-timestamp {
@@ -236,6 +247,7 @@
   font-size: 0.85rem;
   color: var(--color-text-muted);
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 /* Loyalty Progress Card */
@@ -252,6 +264,7 @@
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .loyalty-progress-rewards {
@@ -266,6 +279,7 @@
   border: 1px solid rgba(79, 70, 229, 0.2);
   color: var(--color-text);
   font-size: 0.95rem;
+  overflow-wrap: anywhere;
 }
 
 .visits-needed {
@@ -275,6 +289,7 @@
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-muted);
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 /* Next Steps Card */
@@ -290,6 +305,7 @@
   border: 1px solid rgba(59, 130, 246, 0.2);
   color: #1e40af;
   font-size: 0.95rem;
+  overflow-wrap: anywhere;
 }
 
 .next-steps-grid {
@@ -307,6 +323,7 @@
   border: 1px solid var(--color-border-subtle);
   font-size: 0.95rem;
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .step-icon {
@@ -325,6 +342,7 @@
   font-size: 0.95rem;
   color: var(--color-text);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 /* Action Buttons Card */
@@ -335,7 +353,7 @@
 
 .primary-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
 }
 
@@ -348,7 +366,9 @@
   transition: all 0.2s ease;
   border: none;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-height: 44px;
 }
 
 .action-button--primary {
@@ -406,6 +426,29 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .amount-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .primary-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .secondary-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .download-button,
+  .copy-button {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 .download-button:hover,

@@ -9,6 +9,7 @@
   flex-wrap: wrap;
   gap: 1.25rem;
   align-items: flex-end;
+  row-gap: 1.5rem;
 }
 
 .orders-filters__group {
@@ -201,11 +202,12 @@
 
 .order-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   padding: 1.5rem 1.5rem 1.25rem;
   background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(59, 130, 246, 0.05));
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  flex-wrap: wrap;
 }
 
 .service-icon {
@@ -220,16 +222,19 @@
 }
 
 .order-info {
-  flex: 1;
+  flex: 1 1 220px;
   display: grid;
   gap: 0.45rem;
+  min-width: 0;
 }
 
 .order-info h3 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: clamp(1.05rem, 1vw + 1rem, 1.25rem);
   font-weight: 600;
   color: var(--color-text);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .order-meta {
@@ -237,6 +242,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem;
+  font-size: 0.875rem;
+  min-width: 0;
 }
 
 .date {
@@ -280,6 +287,9 @@
   color: var(--color-text);
   display: grid;
   gap: 0.1rem;
+  justify-items: flex-end;
+  overflow-wrap: anywhere;
+  margin-left: auto;
 }
 
 .currency {
@@ -297,6 +307,7 @@
   border-top: 1px solid var(--color-border-subtle);
   display: grid;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .detail-row {
@@ -305,6 +316,8 @@
   justify-content: space-between;
   gap: 0.75rem;
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  flex-wrap: wrap;
 }
 
 .detail-row .label {
@@ -315,6 +328,8 @@
 .detail-row .value {
   color: var(--color-text);
   font-weight: 600;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .loyalty-earned {
@@ -339,6 +354,7 @@
   padding: 1.35rem 1.5rem 1.5rem;
   border-top: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
+  align-items: stretch;
 }
 
 .action-button {
@@ -354,6 +370,10 @@
   gap: 0.45rem;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease, background 0.2s ease;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-height: 44px;
 }
 
 .action-button.primary {
@@ -410,12 +430,15 @@
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-text);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .modal-order-id {
   font-size: 0.9rem;
   color: var(--color-text-muted);
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .modal-close {
@@ -514,6 +537,8 @@
   padding: 0.85rem 1.05rem;
   border-bottom: 1px solid var(--color-border-subtle);
   font-size: 0.9rem;
+  gap: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 .table-row:last-child {
@@ -528,6 +553,8 @@
 .table-row .value {
   color: var(--color-text);
   font-weight: 600;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .qr-container {
@@ -604,6 +631,9 @@
   gap: 0.5rem;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .modal-action-btn.primary {
@@ -645,6 +675,12 @@
 
   .order-price {
     text-align: left;
+    justify-items: flex-start;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .order-actions {

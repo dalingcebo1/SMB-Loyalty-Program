@@ -4,6 +4,7 @@ import useFetch from "../hooks/useFetch";
 import { Order } from "../types";
 import api from "../api/api";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import { 
   FaCar, 
   FaSearch, 
@@ -17,14 +18,16 @@ import {
   FaStar
 } from 'react-icons/fa';
 import './PastOrders.css';
+import { formatCents } from "../utils/format";
 
 // OrderCard component for enhanced order display
 interface OrderCardProps {
   order: Order;
   onViewOrder: (id: string) => void;
+  onBookAgain: () => void;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder }) => {
+const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder, onBookAgain }) => {
   const getOrderSummary = (order: Order) => {
     let summary = order.service_name || "Full wash";
     if (order.extras && order.extras.length > 0) {
@@ -92,7 +95,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder }) => {
           </div>
         </div>
         <div className="order-price">
-          <span className="currency">R</span>{((order.amount || 0) / 100).toFixed(0)}
+          <span className="currency">Total</span>
+          <span>{formatCents(order.amount ?? 0)}</span>
         </div>
       </div>
       
@@ -122,7 +126,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder }) => {
         <button className="action-button primary" onClick={(e) => { e.stopPropagation(); onViewOrder(order.id); }}>
           <FaReceipt /> View Details
         </button>
-        <button className="action-button secondary" onClick={(e) => { e.stopPropagation(); window.location.href = '/order'; }}>
+        <button className="action-button secondary" onClick={(e) => { e.stopPropagation(); onBookAgain(); }}>
           <FaRedo /> Book Again
         </button>
       </div>
@@ -131,6 +135,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder }) => {
 };
 
 const PastOrders: React.FC = () => {
+  const navigate = useNavigate();
   const { data: orderData, loading: dataLoading, error } = useFetch<Order[]>("/orders/my-past-orders");
   const orders: Order[] = orderData ?? [];
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
@@ -302,6 +307,7 @@ const PastOrders: React.FC = () => {
   });
 
   const groupedOrders = groupOrdersByTime(filteredOrders);
+  const handleBookAgain = () => navigate('/order');
 
   // Show skeleton loader while fetching past orders
   if (dataLoading) {
@@ -409,7 +415,7 @@ const PastOrders: React.FC = () => {
                 </div>
                 <div className="orders-grid">
                   {groupedOrders.today.map((order) => (
-                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} onBookAgain={handleBookAgain} />
                   ))}
                 </div>
               </div>
@@ -423,7 +429,7 @@ const PastOrders: React.FC = () => {
                 </div>
                 <div className="orders-grid">
                   {groupedOrders.thisWeek.map((order) => (
-                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} onBookAgain={handleBookAgain} />
                   ))}
                 </div>
               </div>
@@ -437,7 +443,7 @@ const PastOrders: React.FC = () => {
                 </div>
                 <div className="orders-grid">
                   {groupedOrders.thisMonth.map((order) => (
-                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} onBookAgain={handleBookAgain} />
                   ))}
                 </div>
               </div>
@@ -451,7 +457,7 @@ const PastOrders: React.FC = () => {
                 </div>
                 <div className="orders-grid">
                   {groupedOrders.earlier.slice(0, showAll ? undefined : 3).map((order) => (
-                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} />
+                    <OrderCard key={order.id} order={order} onViewOrder={loadOrderDetails} onBookAgain={handleBookAgain} />
                   ))}
                 </div>
                 {!showAll && groupedOrders.earlier.length > 3 && (
@@ -537,7 +543,7 @@ const PastOrders: React.FC = () => {
                     <div className="step-content">
                       <h4>Payment Processed</h4>
                       <p>Payment confirmed and receipt generated</p>
-                      <div className="step-time">R{((modalOrder.amount || 0) / 100).toFixed(2)} paid</div>
+                      <div className="step-time">{`${formatCents(modalOrder.amount ?? 0)} paid`}</div>
                     </div>
                   </div>
                 </div>
@@ -572,7 +578,7 @@ const PastOrders: React.FC = () => {
                   )}
                   <div className="table-row">
                     <span className="label">Total Paid</span>
-                    <span className="value">R{((modalOrder.amount || 0) / 100).toFixed(2)}</span>
+                    <span className="value">{formatCents(modalOrder.amount ?? 0)}</span>
                   </div>
                 </div>
               </div>
@@ -615,7 +621,7 @@ const PastOrders: React.FC = () => {
                 className="modal-action-btn primary" 
                 onClick={() => {
                   setModalOrder(null);
-                  window.location.href = '/order';
+                  handleBookAgain();
                 }}
               >
                 <FaRedo /> Book Again

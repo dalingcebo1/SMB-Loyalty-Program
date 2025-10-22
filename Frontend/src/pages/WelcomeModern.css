@@ -296,8 +296,20 @@
 
 .welcome-actions__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-4);
+}
+
+@media (min-width: 768px) {
+  .welcome-actions__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .welcome-actions__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .welcome-action-card__link,

@@ -147,8 +147,20 @@
 
 .vehicles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-4);
+}
+
+@media (min-width: 640px) {
+  .vehicles-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .vehicles-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .vehicle-card {
@@ -330,10 +342,6 @@
     grid-template-columns: 1fr;
   }
 
-  .vehicles-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  }
-
   .vehicle-modal__actions,
   .delete-confirm__actions {
     flex-wrap: wrap;
@@ -395,10 +403,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-3);
-  }
-
-  .vehicles-grid {
-    grid-template-columns: 1fr;
   }
 
   .vehicle-modal__actions {

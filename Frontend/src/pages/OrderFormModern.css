@@ -151,8 +151,20 @@
 /* Service Grid */
 .service-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-4);
+}
+
+@media (min-width: 640px) {
+  .service-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .service-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .service-card {
@@ -230,8 +242,20 @@
 /* Extras Grid */
 .extras-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-3);
+}
+
+@media (min-width: 640px) {
+  .extras-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .extras-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .extra-card {
@@ -280,9 +304,21 @@
 /* Vehicle Grid */
 .vehicle-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-4);
   margin-bottom: var(--spacing-6);
+}
+
+@media (min-width: 640px) {
+  .vehicle-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .vehicle-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .vehicle-card {
@@ -469,18 +505,6 @@
     font-size: var(--font-size-base);
   }
 
-  .service-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  }
-
-  .extras-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-
-  .vehicle-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  }
-
   .order-form-modern__navigation {
     flex-direction: column;
     align-items: stretch;
@@ -511,18 +535,6 @@
 
   .step-indicator__label {
     font-size: var(--font-size-xs);
-  }
-
-  .service-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .extras-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .vehicle-grid {
-    grid-template-columns: 1fr;
   }
 
   .scheduling-inputs {

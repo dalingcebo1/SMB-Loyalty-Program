@@ -166,8 +166,20 @@
 /* Rewards Grid */
 .rewards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-4);
+}
+
+@media (min-width: 640px) {
+  .rewards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .rewards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .reward-card {
@@ -432,10 +444,6 @@
     gap: var(--spacing-6);
   }
 
-  .rewards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  }
-
   .redeem-modal__actions {
     flex-wrap: wrap;
     justify-content: center;
@@ -472,10 +480,6 @@
   .progress-card__next-reward {
     flex-direction: column;
     text-align: center;
-  }
-
-  .rewards-grid {
-    grid-template-columns: 1fr;
   }
 
   .milestone-card__content {

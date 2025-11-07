@@ -24,7 +24,6 @@
   flex-direction: column;
   gap: 1.75rem;
   position: relative;
-  overflow: hidden;
 }
 
 .auth-card::before {
@@ -67,7 +66,9 @@
   line-height: var(--leading-normal);
   color: var(--color-text-soft);
   display: block;
-  max-width: 100%;
+  max-width: 32ch;
+  margin-inline: auto;
+  text-align: center;
   word-break: normal;
   overflow-wrap: anywhere;
   hyphens: auto;

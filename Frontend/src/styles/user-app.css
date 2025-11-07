@@ -155,6 +155,9 @@
   font-size: var(--text-sm);
   color: var(--color-text-soft);
   line-height: var(--leading-normal);
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .user-hero {
@@ -371,10 +374,10 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-  word-break: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
   line-height: var(--leading-normal);
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .card-header {
@@ -399,6 +402,9 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   line-height: var(--leading-normal);
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .status-banner {
@@ -508,6 +514,9 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   line-height: var(--leading-normal);
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .stat-grid {

@@ -78,6 +78,9 @@
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
   color: var(--color-text-soft);
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .auth-form {
@@ -197,6 +200,12 @@
 
 .auth-button--google:not(:disabled):hover {
   background: rgba(15, 23, 42, 0.04);
+}
+
+.google-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 .auth-divider {

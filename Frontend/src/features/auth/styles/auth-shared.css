@@ -2,7 +2,7 @@
 
 .auth-page {
   min-height: 100vh;
-  background: linear-gradient(145deg, rgba(79, 70, 229, 0.08), rgba(14, 165, 233, 0.04));
+  background: var(--color-background);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10,18 +10,12 @@
 }
 
 .auth-page::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.18), transparent 55%),
-              radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.14), transparent 50%);
-  pointer-events: none;
-  z-index: -1;
+  content: none;
 }
 
 .auth-card {
   width: min(100%, 440px);
-  background: var(--color-background-alt);
+  background: var(--color-surface);
   border-radius: var(--radius-xxl);
   border: 1px solid var(--color-border-subtle);
   box-shadow: var(--shadow-card);
@@ -34,13 +28,7 @@
 }
 
 .auth-card::before {
-  content: '';
-  position: absolute;
-  inset: -50% auto auto -35%;
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.12) 0%, transparent 70%);
-  z-index: 0;
+  content: none;
 }
 
 .auth-card__body {
@@ -78,6 +66,8 @@
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
   color: var(--color-text-soft);
+  display: block;
+  max-width: 100%;
   word-break: normal;
   overflow-wrap: anywhere;
   hyphens: auto;
@@ -115,8 +105,8 @@
 
 .auth-input:focus {
   outline: none;
-  border-color: rgba(79, 70, 229, 0.5);
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
 .auth-input::placeholder {
@@ -172,24 +162,25 @@
 }
 
 .auth-button--primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+  background: var(--color-primary);
   color: var(--color-primary-contrast);
-  box-shadow: var(--shadow-button);
+  box-shadow: var(--shadow-soft);
 }
 
 .auth-button--primary:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 26px 48px -24px rgba(79, 70, 229, 0.5);
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-card);
 }
 
 .auth-button--secondary {
-  background: var(--color-background);
+  background: transparent;
   color: var(--color-primary);
-  border: 1px solid rgba(79, 70, 229, 0.2);
+  border: 1px solid rgba(37, 99, 235, 0.4);
 }
 
 .auth-button--secondary:not(:disabled):hover {
-  background: rgba(79, 70, 229, 0.08);
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .auth-button--google {

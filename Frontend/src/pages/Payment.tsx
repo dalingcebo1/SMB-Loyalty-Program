@@ -1,13 +1,20 @@
 // src/pages/Payment.tsx
-import React, { useEffect, useState } from "react";
-import { formatCents } from '../utils/format';
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { track } from '../utils/analytics';
-import StepIndicator from "../components/StepIndicator";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import {
+  FaClock,
+  FaCreditCard,
+  FaGift,
+  FaShieldAlt,
+} from "react-icons/fa";
+import StepIndicator from "../components/StepIndicator";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
+import { UserCard, UserHero, UserPage, UserSection } from "../components/user";
+import { track } from "../utils/analytics";
+import { formatCents } from "../utils/format";
+import "react-toastify/dist/ReactToastify.css";
 import "./Payment.css";
 import "../styles/yoco-modal.css";
 
@@ -59,70 +66,70 @@ declare global {
   }
 }
 
-interface Service {
-  id: number;
-  name: string;
-  loyalty_eligible: boolean;
-  // ...other fields as needed
-}
-
 const Payment: React.FC = () => {
   const navigate = useNavigate();
-  const { state } = useLocation();
-  // Persist payment state so refresh retains it
-  useEffect(() => {
-    if (state) {
-      localStorage.setItem('pendingOrder', JSON.stringify(state));
-    }
-  }, [state]);
-  // On mount, resume pending payment or redirect to order if no state
-  useEffect(() => {
-    if (!state) {
-      const pending = localStorage.getItem('pendingOrder');
-      if (pending) {
-        const pendingState = JSON.parse(pending);
-        navigate('/order/payment', { state: pendingState, replace: true });
-      } else {
-        navigate('/order', { replace: true });
-      }
-    }
-  }, [state, navigate]);
-  const { orderId, total, summary = [], scheduledDate, scheduledTime } = (state as LocationState) || {};
+  const location = useLocation();
+  const { user, refreshUser, loading: authLoading } = useAuth();
 
+  const [initializing, setInitializing] = useState(true);
+  const [paymentState, setPaymentState] = useState<LocationState | null>(
+    (location.state as LocationState) ?? null,
+  );
   const [paying, setPaying] = useState(false);
   const [yocoLoaded, setYocoLoaded] = useState(false);
   const [rewardApplied, setRewardApplied] = useState(false);
   const [rewardDiscount, setRewardDiscount] = useState(0);
-  const [rewardInfo, setRewardInfo] = useState<{ reward: string; expiry?: string; milestone?: number } | null>(null);
-  const [, setService] = useState<Service | null>(null);
+  const [rewardInfo, setRewardInfo] = useState<RewardData | null>(null);
   const [canApplyLoyalty, setCanApplyLoyalty] = useState(false);
-  // loading states
   const [loadingEligibility, setLoadingEligibility] = useState(true);
   const [loadingReward, setLoadingReward] = useState(false);
 
-  const { refreshUser, user } = useAuth();
-
-  // Analytics: page view of Payment page
+  // Persist or resume pending payment state
   useEffect(() => {
-    track('page_view', { page: 'Payment' });
-  }, []);
+    if (location.state) {
+      const nextState = location.state as LocationState;
+      setPaymentState(nextState);
+      localStorage.setItem("pendingOrder", JSON.stringify(nextState));
+      setInitializing(false);
+      return;
+    }
+
+    const pending = localStorage.getItem("pendingOrder");
+    if (pending) {
+      try {
+        const stored = JSON.parse(pending) as LocationState;
+        setPaymentState(stored);
+      } catch {
+        localStorage.removeItem("pendingOrder");
+      }
+    } else {
+      navigate("/order", { replace: true });
+    }
+    setInitializing(false);
+  }, [location.state, navigate]);
 
   useEffect(() => {
-    // Validate all required state fields
-    if (!orderId || typeof total !== "number" || isNaN(total)) {
+    if (!paymentState) return;
+    const { orderId, total } = paymentState;
+    if (!orderId || typeof total !== "number" || Number.isNaN(total)) {
       toast.error("Missing payment details");
       navigate("/", { replace: true });
     }
-  }, [orderId, total, navigate]);
+  }, [paymentState, navigate]);
 
-  // Dynamically load Yoco SDK if not already loaded
+  useEffect(() => {
+    track("page_view", { page: "Payment" });
+  }, []);
+
   useEffect(() => {
     if (window.YocoSDK) {
       setYocoLoaded(true);
       return;
     }
+
     const scriptId = "yoco-sdk";
-    if (!document.getElementById(scriptId)) {
+    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (!existing) {
       const script = document.createElement("script");
       script.id = scriptId;
       script.src = "https://js.yoco.com/sdk/v1/yoco-sdk-web.js";
@@ -130,117 +137,175 @@ const Payment: React.FC = () => {
       script.onload = () => setYocoLoaded(true);
       script.onerror = () => {
         toast.error("Failed to load Yoco SDK. Showing fallback payment UI.");
-        // Proceed to render payment UI even if SDK fails to load
         setYocoLoaded(true);
       };
       document.body.appendChild(script);
     } else {
-      // If script exists but not loaded yet, wait for onload
-      const script = document.getElementById(scriptId) as HTMLScriptElement;
-      script.onload = () => setYocoLoaded(true);
+      existing.onload = () => setYocoLoaded(true);
     }
   }, []);
-  // Fallback: stop skeleton loader after timeout if SDK doesn’t load
+
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       if (!yocoLoaded) {
         toast.info("SDK load timeout, proceeding with payment UI.");
         setYocoLoaded(true);
       }
     }, 5000);
-    return () => clearTimeout(timer);
+
+    return () => window.clearTimeout(timeout);
   }, [yocoLoaded]);
 
-  const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY!;
+  const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY;
 
-  // Fetch the order's service to check loyalty_eligible
   useEffect(() => {
-    if (!orderId) return;
+    const orderId = paymentState?.orderId;
+    if (!orderId) {
+      setLoadingEligibility(false);
+      return;
+    }
+
+    let isActive = true;
     setLoadingEligibility(true);
-    api.get(`/orders/${orderId}`)
-      .then(res => {
-        if (typeof res.data.loyalty_eligible !== "undefined") {
-          setCanApplyLoyalty(!!res.data.loyalty_eligible);
-        } else {
-          const svcId = res.data.serviceId ?? res.data.service_id;
-          if (svcId) {
-            api.get(`/services/${svcId}`)
-              .then(svcRes => {
-                setService(svcRes.data);
-                setCanApplyLoyalty(!!svcRes.data.loyalty_eligible);
-              })
-              .catch(() => setCanApplyLoyalty(false));
-          } else {
-            setCanApplyLoyalty(false);
-          }
-        }
-      })
-      .catch(() => setCanApplyLoyalty(false))
-      .finally(() => setLoadingEligibility(false));
-  }, [orderId]);
 
-  // Check if user has a reward available for this order
+    api
+      .get(`/orders/${orderId}`)
+      .then((res) => {
+        if (!isActive) return;
+        if (typeof res.data.loyalty_eligible !== "undefined") {
+          setCanApplyLoyalty(Boolean(res.data.loyalty_eligible));
+          return;
+        }
+
+        const svcId = res.data.serviceId ?? res.data.service_id;
+        if (!svcId) {
+          setCanApplyLoyalty(false);
+          return;
+        }
+
+        api
+          .get(`/services/${svcId}`)
+          .then((svcRes) => {
+            if (!isActive) return;
+            setCanApplyLoyalty(Boolean(svcRes.data.loyalty_eligible));
+          })
+          .catch(() => {
+            if (!isActive) return;
+            setCanApplyLoyalty(false);
+          });
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setCanApplyLoyalty(false);
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setLoadingEligibility(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [paymentState?.orderId]);
+
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setRewardInfo(null);
+      setLoadingReward(false);
+      return;
+    }
+
+    let isActive = true;
     setLoadingReward(true);
-    api.get("/loyalty/me", { params: { phone: user.phone } })
-      .then(res => {
-        const reward = res.data.rewards_ready?.find(
-          (r: RewardData) =>
-            r.reward.toLowerCase().includes("full house") ||
-            r.reward.toLowerCase().includes("free wash")
-        );
+    api
+      .get("/loyalty/me", { params: { phone: user.phone } })
+      .then((res) => {
+        if (!isActive) return;
+        const reward = res.data.rewards_ready?.find((candidate: RewardData) => {
+          const normalized = candidate.reward.toLowerCase();
+          return normalized.includes("full house") || normalized.includes("free wash");
+        });
+
         if (reward) {
           setRewardInfo({
             reward: reward.reward,
             expiry: reward.expiry,
             milestone: reward.milestone,
           });
+        } else {
+          setRewardInfo(null);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoadingReward(false));
+      .catch(() => {
+        if (!isActive) return;
+        setRewardInfo(null);
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setLoadingReward(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [user]);
 
-  // Redirect anonymous users
-  if (!user) return <Navigate to="/login" replace />;
+  const summaryItems = useMemo(() => paymentState?.summary ?? [], [paymentState?.summary]);
+  const scheduledDate = paymentState?.scheduledDate;
+  const scheduledTime = paymentState?.scheduledTime;
+  const orderId = paymentState?.orderId ?? "";
+  const total = paymentState?.total ?? 0;
 
-  const handleApplyReward = async () => {
-    // Analytics: CTA click for applying reward
-    track('cta_click', { label: 'Apply Reward', page: 'Payment' });
+  const amountToPay = useMemo(() => Math.max(total - rewardDiscount, 0), [total, rewardDiscount]);
+  const hasRewardExpired = useMemo(() => {
+    if (!rewardInfo?.expiry) return false;
+    return new Date(rewardInfo.expiry) < new Date();
+  }, [rewardInfo?.expiry]);
+
+  const handleApplyReward = useCallback(async () => {
+    if (!orderId || !user?.phone) return;
+
+    track("cta_click", { label: "Apply Reward", page: "Payment" });
     setPaying(true);
+    setLoadingReward(true);
+
     try {
-      // Use the new /loyalty/reward/apply endpoint
-      const res = await api.post("/loyalty/reward/apply", { orderId, phone: user?.phone });
-      if (res.data && res.data.discount) {
-        setRewardDiscount(res.data.discount);
+      const response = await api.post("/loyalty/reward/apply", {
+        orderId,
+        phone: user.phone,
+      });
+
+      if (response.data?.discount) {
+        setRewardDiscount(response.data.discount);
         setRewardApplied(true);
-  // discount is integer cents
-  toast.success(`Reward applied! Discount: ${formatCents(res.data.discount)}`);
+        toast.success(`Reward applied! Discount: ${formatCents(response.data.discount)}`);
       } else {
         toast.error("No valid reward found.");
       }
-    } catch (e: unknown) {
-      const errorMessage = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Could not apply reward.";
-      toast.error(errorMessage);
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(message || "Could not apply reward.");
+    } finally {
+      setPaying(false);
+      setLoadingReward(false);
     }
-    setPaying(false);
-  };
+  }, [orderId, user?.phone]);
 
-  const handlePay = async () => {
-    // Analytics: CTA click for paying order
-    track('cta_click', { label: 'Pay', page: 'Payment' });
+  const handlePay = useCallback(async () => {
+    if (!orderId) return;
+
+    track("cta_click", { label: "Pay", page: "Payment" });
+
     if (amountToPay <= 0) {
       toast.success("No payment needed! Reward covers the full amount.");
-      // Mark order as redeemed if a reward was applied
       if (rewardApplied) {
         try {
           await api.post(`/orders/${orderId}/redeem`);
         } catch {
-          // Optionally handle error
+          /* redemption errors are handled server-side */
         }
       }
-      // Redirect to confirmation page
+
       navigate("/order/confirmation", {
         state: {
           orderId,
@@ -248,7 +313,7 @@ const Payment: React.FC = () => {
           qrCodeBase64: null,
           amount: 0,
           paymentPin: null,
-          summary,
+          summary: summaryItems,
           timestamp: Date.now(),
           scheduledDate,
           scheduledTime,
@@ -256,15 +321,23 @@ const Payment: React.FC = () => {
       });
       return;
     }
+
+    if (!publicKey) {
+      toast.error("Payment configuration missing. Please contact support.");
+      return;
+    }
+
     if (!window.YocoSDK) {
       toast.error("Yoco SDK not loaded. Please refresh the page.");
       return;
     }
+
     setPaying(true);
+
     try {
-      const yoco = new window.YocoSDK({ publicKey });
-      yoco.showPopup({
-        amountInCents: total - rewardDiscount,
+      const popup = new window.YocoSDK({ publicKey });
+      popup.showPopup({
+        amountInCents: amountToPay,
         currency: "ZAR",
         name: "SMB Loyalty Payment",
         description: `Order #${orderId}`,
@@ -272,111 +345,142 @@ const Payment: React.FC = () => {
           if (result.error) {
             setPaying(false);
             toast.error(result.error.message || "Payment failed. Please try again.");
-          } else {
-            // Remove the toast and make it instant
-            try {
-              await api.post("/payments/charge", {
-                token: result.id,
-                orderId,
-                amount: total - rewardDiscount,
-              });
-              // Mark order as redeemed if a reward was applied
-              if (rewardApplied) {
-                try {
-                  await api.post(`/orders/${orderId}/redeem`);
-                } catch {
-                  // Optionally handle error
-                }
+            return;
+          }
+
+          try {
+            await api.post("/payments/charge", {
+              token: result.id,
+              orderId,
+              amount: amountToPay,
+            });
+
+            if (rewardApplied) {
+              try {
+                await api.post(`/orders/${orderId}/redeem`);
+              } catch {
+                /* redemption errors are handled server-side */
               }
-              // Fetch QR data for this order
-              const qrResp = await api.get(`/payments/qr/${orderId}`);
-              const qrData = qrResp.data.reference || orderId;
-              const qrCodeBase64 = qrResp.data.qr_code_base64;
-              const paymentPin = qrResp.data.payment_pin;
-              const amount = qrResp.data.amount || total;
-
-              await refreshUser();
-
-              const confirmationData = {
-                orderId,
-                qrData,
-                qrCodeBase64,
-                amount,
-                paymentPin,
-                summary,
-                timestamp: Date.now(),
-                scheduledDate,
-                scheduledTime,
-              };
-              localStorage.setItem("lastOrderConfirmation", JSON.stringify(confirmationData));
-
-              // Show success toast only after navigating
-              toast.success("Payment successful!", { autoClose: 2000 });
-              navigate("/order/confirmation", { state: confirmationData });
-            } catch (err: unknown) {
-              setPaying(false);
-              const errorMessage = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 
-                "Payment could not be completed. Please contact support.";
-              toast.error(errorMessage);
             }
+
+            const qrResponse = await api.get(`/payments/qr/${orderId}`);
+            const qrData = qrResponse.data.reference || orderId;
+            const qrCodeBase64 = qrResponse.data.qr_code_base64;
+            const paymentPin = qrResponse.data.payment_pin;
+            const amount = qrResponse.data.amount ?? total;
+
+            await refreshUser();
+
+            const confirmationData = {
+              orderId,
+              qrData,
+              qrCodeBase64,
+              amount,
+              paymentPin,
+              summary: summaryItems,
+              timestamp: Date.now(),
+              scheduledDate,
+              scheduledTime,
+            };
+
+            localStorage.setItem("lastOrderConfirmation", JSON.stringify(confirmationData));
+            toast.success("Payment successful!", { autoClose: 2000 });
+            navigate("/order/confirmation", { state: confirmationData });
+          } catch (error: unknown) {
+            setPaying(false);
+            const message = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+            toast.error(message || "Payment could not be completed. Please contact support.");
           }
         },
       });
-    } catch (e: unknown) {
+    } catch (error: unknown) {
       setPaying(false);
-      const errorMessage = (e as Error)?.message || String(e);
-      toast.error("Unexpected error: " + errorMessage);
+      const message = (error as Error)?.message ?? String(error);
+      toast.error(`Unexpected error: ${message}`);
     }
-  };
+  }, [
+    orderId,
+    amountToPay,
+    rewardApplied,
+    navigate,
+    publicKey,
+    summaryItems,
+    scheduledDate,
+    scheduledTime,
+    refreshUser,
+    total,
+  ]);
 
-  const amountToPay = total - rewardDiscount;
-  // Determine if fetched reward has expired
-  const hasRewardExpired = rewardInfo?.expiry ? new Date(rewardInfo.expiry) < new Date() : false;
+  if (authLoading || initializing) {
+    return (
+      <UserPage className="payment-page" size="narrow">
+        <UserHero
+          eyebrow="Payment"
+          title="Preparing your checkout"
+          subtitle="Hang tight while we load your payment details."
+          variant="compact"
+          align="start"
+        />
+        <UserSection>
+          <UserCard muted>
+            <p>Loading payment information…</p>
+          </UserCard>
+        </UserSection>
+      </UserPage>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!paymentState || !orderId) {
+    return null;
+  }
 
   return (
-    <div className="payment-page user-page">
+    <UserPage className="payment-page" size="narrow">
       <ToastContainer position="top-right" />
-      
-      {/* Hero Section */}
-      <section className="user-hero user-hero--compact">
-        <span className="user-hero__eyebrow">Payment</span>
-        <h1 className="user-hero__title">Complete Your Payment</h1>
-        <p className="user-hero__subtitle">Review your booking and proceed with secure payment</p>
-      </section>
+      <UserHero
+        eyebrow="Payment"
+        title="Complete Your Payment"
+        subtitle="Review your booking details and finish checkout securely."
+        variant="compact"
+        align="start"
+        actions={
+          <div className="payment-step-indicator">
+            <StepIndicator currentStep={2} stepsCompleted={[1]} />
+          </div>
+        }
+      />
 
-      {/* Step Indicator */}
-      <section className="user-page__section">
-        <div className="payment-step-indicator">
-          <StepIndicator currentStep={2} stepsCompleted={[1]} />
-        </div>
-      </section>
-
-      {/* Payment Details */}
-      <section className="user-page__section">
-        <div className="surface-card payment-summary-card">
+      <UserSection>
+        <UserCard className="payment-summary-card" padding="loose">
           <div className="payment-amount-display">
-            <span className="payment-amount-label">Total Amount</span>
+            <span className="payment-amount-label">Amount due</span>
             <span className="payment-amount-value">{formatCents(amountToPay)}</span>
           </div>
-          {/* Loyalty section: show loading, eligibility or reward info */}
+
           {loadingEligibility ? (
-            <div className="payment-status payment-status--loading">Checking loyalty eligibility…</div>
+            <div className="payment-status payment-status--loading">
+              Checking loyalty eligibility…
+            </div>
           ) : rewardInfo ? (
             canApplyLoyalty ? (
               hasRewardExpired ? (
                 <div className="payment-status payment-status--error">
-                  Loyalty Reward Expired
+                  Loyalty reward expired
                 </div>
               ) : (
                 <div className="payment-status payment-status--success">
-                  <div>
-                    Loyalty Reward Available: {rewardInfo.reward}
-                  </div>
-                  {rewardInfo.expiry && (
+                  <span>
+                    <FaGift aria-hidden="true" /> Reward available: {rewardInfo.reward}
+                  </span>
+                  {rewardInfo.expiry ? (
                     <div className="expiry-text">
-                      Expires: {new Date(rewardInfo.expiry).toLocaleDateString()}
+                      Expires on {new Date(rewardInfo.expiry).toLocaleDateString()}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               )
             ) : (
@@ -385,66 +489,94 @@ const Payment: React.FC = () => {
               </div>
             )
           ) : null}
-        </div>
-      </section>
+        </UserCard>
+      </UserSection>
 
-      {/* Order Summary */}
-      {summary.length > 0 && (
-        <section className="user-page__section">
-          <div className="surface-card">
-            <div className="card-header">
-              <h3 className="section-title">Booking Summary</h3>
-            </div>
+      {summaryItems.length > 0 && (
+        <UserSection title="Booking summary" subtitle="A quick reminder of what you’re paying for.">
+          <UserCard>
             <ul className="order-summary-list">
-              {summary.map((item, idx) => (
-                <li key={idx} className="order-summary-item">{item}</li>
+              {summaryItems.map((item, index) => (
+                <li key={index} className="order-summary-item">
+                  {item}
+                </li>
               ))}
             </ul>
-          </div>
-        </section>
+          </UserCard>
+        </UserSection>
       )}
 
-      {/* Payment Actions */}
-      <section className="user-page__section">
-        <div className="surface-card payment-actions-card">
+      {(scheduledDate || scheduledTime) && (
+        <UserSection title="Scheduled appointment">
+          <UserCard>
+            <div className="payment-status payment-status--info">
+              <FaClock aria-hidden="true" />
+              <span>
+                {scheduledDate ? new Date(scheduledDate).toLocaleDateString() : "Date to be confirmed"}
+                {scheduledTime ? ` • ${scheduledTime}` : ""}
+              </span>
+            </div>
+          </UserCard>
+        </UserSection>
+      )}
+
+      <UserSection>
+        <UserCard className="payment-actions-card" padding="loose">
           <div className="payment-buttons">
             <button
+              type="button"
               onClick={handlePay}
               disabled={paying || !yocoLoaded}
               className={`payment-button payment-button--primary ${
                 paying || !yocoLoaded ? "payment-button--disabled" : ""
               }`}
             >
-              {!yocoLoaded ? "Loading payment..." : paying ? "Processing..." : "Pay with Card"}
+              {!yocoLoaded ? "Loading payment…" : paying ? "Processing…" : "Pay with card"}
             </button>
+
             {rewardInfo && canApplyLoyalty && !rewardApplied && !hasRewardExpired && (
               <button
+                type="button"
                 onClick={handleApplyReward}
                 disabled={paying || loadingReward}
                 className="payment-button payment-button--success"
               >
-                {loadingReward ? 'Checking reward…' : 'Apply Reward'}
+                {loadingReward ? "Checking reward…" : "Apply reward"}
               </button>
             )}
           </div>
-          {rewardInfo && hasRewardExpired && (
-            <div className="payment-status payment-status--error">
-              This reward has expired.
-            </div>
-          )}
-          {rewardApplied && (
+
+          {rewardInfo && hasRewardExpired ? (
+            <div className="payment-status payment-status--error">This reward has expired.</div>
+          ) : null}
+
+          {rewardApplied ? (
             <div className="reward-applied">
               Reward applied! New total: {formatCents(amountToPay)}
             </div>
-          )}
+          ) : null}
+
           <div className="payment-security">
-            Secured by <span className="payment-security-brand">YOCO</span>
+            <FaShieldAlt aria-hidden="true" />
+            <span>
+              Secured by <span className="payment-security-brand">YOCO</span>
+            </span>
           </div>
-        </div>
-      </section>
-    </div>
+        </UserCard>
+      </UserSection>
+
+      <UserSection>
+        <UserCard muted>
+          <div className="payment-status payment-status--info">
+            <FaCreditCard aria-hidden="true" />
+            <span>
+              Having trouble? Reach out to our support team and we’ll help you finish checkout.
+            </span>
+          </div>
+        </UserCard>
+      </UserSection>
+    </UserPage>
   );
 };
 
-// This page has been moved to src/features/order/pages/Payment.tsx
 export default Payment;

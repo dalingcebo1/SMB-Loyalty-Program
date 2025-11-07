@@ -11,6 +11,8 @@ import { useAuth } from "../auth/AuthProvider";
 import StepIndicator from "../components/StepIndicator";
 import ServiceCard from "../components/ServiceCard";
 import DateTimePicker from "../components/DateTimePicker";
+import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
+import { formatCurrency } from "../utils/format";
 import { track } from '../utils/analytics';
 import './OrderForm.css';
 import '../styles/shared-buttons.css';
@@ -289,91 +291,87 @@ const OrderForm: React.FC = () => {
   }
 
   return (
-    <div className="order-form-page user-page">
+    <UserPage className="order-form-page">
       <ToastContainer position="top-right" />
-      
-      {/* Hero Section */}
-      <section className="user-hero">
-        <span className="user-hero__eyebrow">Booking</span>
-        <h1 className="user-hero__title">Book Your Service</h1>
-        <p className="user-hero__subtitle">Select your service, choose a time, and we'll take care of the rest</p>
-      </section>
 
-      {/* Step Indicator */}
-      <section className="user-page__section">
+      <UserHero
+        align="start"
+        eyebrow="Booking"
+        title="Book Your Service"
+        subtitle="Select your service, choose a time, and we'll take care of the rest."
+      />
+
+      <UserSection className="order-step-indicator-section">
         <div className="order-step-indicator">
-          <StepIndicator 
+          <StepIndicator
             currentStep={currentStep}
             stepsCompleted={currentStep > 1 ? [1] : []}
           />
         </div>
-      </section>
+      </UserSection>
 
-      {/* Step Content */}
-      <section className="user-page__section">
+      <UserSection className="order-step-section">
         <AnimatePresence mode="wait">
-          {/* Step 1: Service Selection */}
           {currentStep === 1 && (
             <motion.div
               key="step1"
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className="form-step surface-card"
-                >
-                  <div className="card-header">
-                    <h2 className="section-title">Step 1: Select Your Service</h2>
-                  </div>
-                  
-                  {/* Category Selection */}
-                  <div className="category-tabs">
-                    {Object.keys(servicesByCategory).map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`category-tab ${
-                          selectedCategory === category ? 'active' : ''
-                        }`}
-                      >
-                        {category}
-                      </button>
+            >
+              <UserCard className="form-step" padding="loose">
+                <div className="card-header">
+                  <h2 className="section-title">Step 1: Select Your Service</h2>
+                </div>
+
+                <div className="category-tabs">
+                  {Object.keys(servicesByCategory).map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`category-tab ${selectedCategory === category ? 'active' : ''}`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+
+                {selectedCategory && (
+                  <div className="services-grid">
+                    {servicesByCategory[selectedCategory]?.map((service) => (
+                      <ServiceCard
+                        key={service.id}
+                        service={service}
+                        isSelected={selectedService?.id === service.id}
+                        onSelect={setSelectedService}
+                        quantity={selectedService?.id === service.id ? serviceQuantity : 1}
+                        onQuantityChange={setServiceQuantity}
+                      />
                     ))}
                   </div>
+                )}
 
-                  {/* Service Cards */}
-                  {selectedCategory && (
-                    <div className="services-grid">
-                      {servicesByCategory[selectedCategory]?.map((service) => (
-                        <ServiceCard
-                          key={service.id}
-                          service={service}
-                          isSelected={selectedService?.id === service.id}
-                          onSelect={setSelectedService}
-                          quantity={selectedService?.id === service.id ? serviceQuantity : 1}
-                          onQuantityChange={setServiceQuantity}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Extras */}
-                  {extras.length > 0 && selectedCategory && (
-                    <div className="extras-grid">
-                      {extras.map((extra) => (
+                {extras.length > 0 && selectedCategory && (
+                  <div className="extras-grid">
+                    {extras.map((extra) => {
+                      const extraPrice = extra.price_map[selectedCategory] ?? 0;
+                      return (
                         <div key={extra.id} className="extra-item">
                           <div className="extra-header">
                             <h4>{extra.name}</h4>
                             <span className="extra-price">
-                              +R{extra.price_map[selectedCategory] ?? 0}
+                              +{formatCurrency(extraPrice)}
                             </span>
                           </div>
                           <div className="extra-quantity">
                             <button
                               type="button"
-                              onClick={() => setExtraQuantities(prev => ({ 
-                                ...prev, 
-                                [extra.id]: Math.max(0, (prev[extra.id] || 0) - 1) 
-                              }))}
+                              onClick={() =>
+                                setExtraQuantities((prev) => ({
+                                  ...prev,
+                                  [extra.id]: Math.max(0, (prev[extra.id] || 0) - 1),
+                                }))
+                              }
                               className="quantity-button"
                               disabled={(extraQuantities[extra.id] || 0) === 0}
                             >
@@ -382,163 +380,162 @@ const OrderForm: React.FC = () => {
                             <span className="quantity-display">{extraQuantities[extra.id] || 0}</span>
                             <button
                               type="button"
-                              onClick={() => setExtraQuantities(prev => ({ 
-                                ...prev, 
-                                [extra.id]: (prev[extra.id] || 0) + 1 
-                              }))}
+                              onClick={() =>
+                                setExtraQuantities((prev) => ({
+                                  ...prev,
+                                  [extra.id]: (prev[extra.id] || 0) + 1,
+                                }))
+                              }
                               className="quantity-button"
                             >
                               +
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Step 1 Actions */}
-                  <div className="form-actions">
-                    <div className="total-amount">
-                      Total: R{total}
-                    </div>
-                    <button
-                      onClick={handleNextStep}
-                      disabled={!canProceedToStep2}
-                      className={`action-button ${canProceedToStep2 ? 'primary' : 'secondary'}`}
-                    >
-                      Choose Date & Time
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Step 2: Date & Time Selection */}
-              {currentStep === 2 && (
-                <motion.div
-                  key="step2"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  className="form-step surface-card"
-                >
-                  <div className="card-header">
-                    <h2 className="section-title">Step 2: Choose Date & Time</h2>
-                  </div>
-                  
-                  <DateTimePicker
-                    selectedDate={selectedDate}
-                    selectedTime={selectedTime}
-                    onDateTimeChange={handleDateTimeChange}
-                    className="datetime-section"
-                  />
-
-                  {/* Step 2 Actions */}
-                  <div className="form-actions">
-                    <button
-                      onClick={handlePrevStep}
-                      className="action-button secondary"
-                    >
-                      Back
-                    </button>
-                    <div className="total-amount">
-                      Total: R{total}
-                    </div>
-                    <button
-                      onClick={handleNextStep}
-                      disabled={!canProceedToStep3}
-                      className={`action-button ${canProceedToStep3 ? 'primary' : 'secondary'}`}
-                    >
-                      Review Booking
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Step 3: Review & Confirm */}
-              {currentStep === 3 && (
-                <motion.div
-                  key="step3"
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  className="form-step surface-card"
-                >
-                  <div className="card-header">
-                    <h2 className="section-title">Step 3: Review Your Booking</h2>
-                  </div>
-                  
-                  {/* Order Summary */}
-                  <div className="order-summary">
-                    <h3 className="summary-title">Booking Summary</h3>
-                    
-                    <div className="summary-item">
-                      <span>Service:</span>
-                      <span>{selectedService?.name}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span>Quantity:</span>
-                      <span>{serviceQuantity}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span>Date:</span>
-                      <span>{new Date(selectedDate).toLocaleDateString()}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span>Time:</span>
-                      <span>{selectedTime}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span>Duration:</span>
-                      <span>~{selectedService?.duration || 30} min</span>
-                    </div>
-                    
-                    {/* Price Breakdown */}
-                    <div className="summary-item">
-                      <span>{selectedService?.name} × {serviceQuantity}</span>
-                      <span>R{selectedService ? selectedService.base_price * serviceQuantity : 0}</span>
-                    </div>
-                    
-                    {extras.map(extra => {
-                      const qty = extraQuantities[extra.id] || 0;
-                      if (qty > 0) {
-                        const price = (extra.price_map[selectedCategory] ?? 0) * qty;
-                        return (
-                          <div key={extra.id} className="summary-item">
-                            <span>{extra.name} × {qty}</span>
-                            <span>R{price}</span>
-                          </div>
-                        );
-                      }
-                      return null;
+                      );
                     })}
-                    
-                    <div className="summary-total">
-                      <span>Total:</span>
-                      <span className="total-amount">R{total}</span>
-                    </div>
+                  </div>
+                )}
+
+                <div className="form-actions">
+                  <div className="total-amount">
+                    Total: {formatCurrency(total)}
+                  </div>
+                  <button
+                    onClick={handleNextStep}
+                    disabled={!canProceedToStep2}
+                    className={`action-button ${canProceedToStep2 ? 'primary' : 'secondary'}`}
+                  >
+                    Choose Date & Time
+                  </button>
+                </div>
+              </UserCard>
+            </motion.div>
+          )}
+
+          {currentStep === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+            >
+              <UserCard className="form-step" padding="loose">
+                <div className="card-header">
+                  <h2 className="section-title">Step 2: Choose Date & Time</h2>
+                </div>
+
+                <DateTimePicker
+                  selectedDate={selectedDate}
+                  selectedTime={selectedTime}
+                  onDateTimeChange={handleDateTimeChange}
+                  className="datetime-section"
+                />
+
+                <div className="form-actions">
+                  <button
+                    onClick={handlePrevStep}
+                    className="action-button secondary"
+                  >
+                    Back
+                  </button>
+                  <div className="total-amount">
+                    Total: {formatCurrency(total)}
+                  </div>
+                  <button
+                    onClick={handleNextStep}
+                    disabled={!canProceedToStep3}
+                    className={`action-button ${canProceedToStep3 ? 'primary' : 'secondary'}`}
+                  >
+                    Review Booking
+                  </button>
+                </div>
+              </UserCard>
+            </motion.div>
+          )}
+
+          {currentStep === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+            >
+              <UserCard className="form-step" padding="loose">
+                <div className="card-header">
+                  <h2 className="section-title">Step 3: Review Your Booking</h2>
+                </div>
+
+                <div className="order-summary">
+                  <h3 className="summary-title">Booking Summary</h3>
+
+                  <div className="summary-item">
+                    <span>Service:</span>
+                    <span>{selectedService?.name}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span>Quantity:</span>
+                    <span>{serviceQuantity}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span>Date:</span>
+                    <span>{new Date(selectedDate).toLocaleDateString()}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span>Time:</span>
+                    <span>{selectedTime}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span>Duration:</span>
+                    <span>~{selectedService?.duration || 30} min</span>
                   </div>
 
-                  {/* Step 3 Actions */}
-                  <div className="form-actions">
-                    <button
-                      onClick={handlePrevStep}
-                      className="action-button secondary"
-                    >
-                      Back
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                      className={`action-button ${isSubmitting ? 'secondary' : 'primary'}`}
-                    >
-                      {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
-                    </button>
+                  <div className="summary-item">
+                    <span>{selectedService?.name} × {serviceQuantity}</span>
+                    <span>{formatCurrency(selectedService ? selectedService.base_price * serviceQuantity : 0)}</span>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-      </section>
-    </div>
+
+                  {extras.map((extra) => {
+                    const qty = extraQuantities[extra.id] || 0;
+                    if (qty > 0) {
+                      const price = (extra.price_map[selectedCategory] ?? 0) * qty;
+                      return (
+                        <div key={extra.id} className="summary-item">
+                          <span>{extra.name} × {qty}</span>
+                          <span>{formatCurrency(price)}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  <div className="summary-total">
+                    <span>Total:</span>
+                    <span className="total-amount">{formatCurrency(total)}</span>
+                  </div>
+                </div>
+
+                <div className="form-actions">
+                  <button
+                    onClick={handlePrevStep}
+                    className="action-button secondary"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className={`action-button ${isSubmitting ? 'secondary' : 'primary'}`}
+                  >
+                    {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
+                  </button>
+                </div>
+              </UserCard>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </UserSection>
+    </UserPage>
   );
 };
 

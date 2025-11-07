@@ -1,11 +1,29 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FaUser, FaEnvelope, FaPhone, FaEdit, FaSave, FaTimes, FaCar, FaPlus, FaTrash, FaShoppingCart, FaGift, FaHistory } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  FaCar,
+  FaEdit,
+  FaEnvelope,
+  FaGift,
+  FaHistory,
+  FaPhone,
+  FaPlus,
+  FaSave,
+  FaTimes,
+  FaTrash,
+  FaUser,
+  FaShoppingCart,
+} from 'react-icons/fa';
 import { HiOutlineRefresh } from 'react-icons/hi';
 import api from '../api/api';
 import { useAuth } from '../auth/AuthProvider';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { UserCard, UserHero, UserPage, UserSection } from '../components/user';
 import { toast } from 'react-toastify';
+import { formatCents } from '../utils/format';
+import { track } from '../utils/analytics';
+import './EnhancedProfile.css';
 
 interface UserProfile {
   id: number;
@@ -67,112 +85,151 @@ interface VehicleForm {
   color: string;
 }
 
+const getOrderStatusClass = (status: string | undefined): string => {
+  const normalized = status?.toLowerCase();
+  switch (normalized) {
+    case 'completed':
+      return 'enhanced-profile__status enhanced-profile__status--completed';
+    case 'pending':
+      return 'enhanced-profile__status enhanced-profile__status--pending';
+    case 'cancelled':
+    case 'canceled':
+      return 'enhanced-profile__status enhanced-profile__status--cancelled';
+    default:
+      return 'enhanced-profile__status enhanced-profile__status--default';
+  }
+};
+
+const formatStatusLabel = (status: string | undefined): string => {
+  if (!status) return 'Unknown';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
 const EnhancedProfile: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showVehicleForm, setShowVehicleForm] = useState(false);
-  
   const [profileForm, setProfileForm] = useState({
     first_name: '',
     last_name: '',
     phone: '',
   });
-  
+  const currentYear = new Date().getFullYear();
   const [vehicleForm, setVehicleForm] = useState<VehicleForm>({
     make: '',
     model: '',
-    year: new Date().getFullYear(),
+    year: currentYear,
     license_plate: '',
     color: '',
   });
 
-  // Fetch complete profile data
+  useEffect(() => {
+    track('page_view', { page: 'EnhancedProfile' });
+  }, []);
+
   const { data: profileData, isLoading, error } = useQuery<ProfileData>({
     queryKey: ['user-profile', user?.id],
     queryFn: async () => {
       const response = await api.get('/profile');
       return response.data;
     },
-    enabled: !!user,
+    enabled: Boolean(user),
   });
 
-  // Initialize forms when data loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (profileData && !isEditingProfile) {
       setProfileForm({
-        first_name: profileData.profile.first_name,
-        last_name: profileData.profile.last_name,
-        phone: profileData.profile.phone,
+        first_name: profileData.profile.first_name || '',
+        last_name: profileData.profile.last_name || '',
+        phone: profileData.profile.phone || '',
       });
     }
   }, [profileData, isEditingProfile]);
 
-  // Update profile mutation
+  const handleCancelEdit = () => {
+    if (profileData) {
+      setProfileForm({
+        first_name: profileData.profile.first_name || '',
+        last_name: profileData.profile.last_name || '',
+        phone: profileData.profile.phone || '',
+      });
+    }
+    setIsEditingProfile(false);
+  };
+
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<UserProfile>) => {
       const response = await api.patch('/profile', updates);
       return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-      refreshUser();
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      await refreshUser();
       setIsEditingProfile(false);
       toast.success('Profile updated successfully');
     },
-    onError: (error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
-      toast.error(errorMessage);
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      toast.error(message);
     },
   });
 
-  // Add vehicle mutation
   const addVehicleMutation = useMutation({
     mutationFn: async (vehicle: VehicleForm) => {
       const response = await api.post('/profile/vehicles', vehicle);
       return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       setShowVehicleForm(false);
       setVehicleForm({
         make: '',
         model: '',
-        year: new Date().getFullYear(),
+        year: currentYear,
         license_plate: '',
         color: '',
       });
       toast.success('Vehicle added successfully');
     },
-    onError: (error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add vehicle';
-      toast.error(errorMessage);
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : 'Failed to add vehicle';
+      toast.error(message);
     },
   });
 
-  // Delete vehicle mutation
   const deleteVehicleMutation = useMutation({
     mutationFn: async (vehicleId: number) => {
       await api.delete(`/profile/vehicles/${vehicleId}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       toast.success('Vehicle deleted successfully');
     },
-    onError: (error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete vehicle';
-      toast.error(errorMessage);
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : 'Failed to delete vehicle';
+      toast.error(message);
     },
   });
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateProfileMutation.mutate(profileForm);
+  const handleUpdateProfile = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    updateProfileMutation.mutate({
+      first_name: profileForm.first_name.trim(),
+      last_name: profileForm.last_name.trim(),
+      phone: profileForm.phone.trim(),
+    });
   };
 
-  const handleAddVehicle = (e: React.FormEvent) => {
-    e.preventDefault();
-    addVehicleMutation.mutate(vehicleForm);
+  const handleAddVehicle = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    addVehicleMutation.mutate({
+      make: vehicleForm.make.trim(),
+      model: vehicleForm.model.trim(),
+      year: Number(vehicleForm.year),
+      license_plate: vehicleForm.license_plate.trim(),
+      color: vehicleForm.color.trim(),
+    });
   };
 
   const handleDeleteVehicle = (vehicleId: number) => {
@@ -181,409 +238,441 @@ const EnhancedProfile: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
+  const handleRefresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+  };
+
+  const loadingView = (
+    <UserPage className="enhanced-profile-page" size="wide">
+      <UserHero
+        eyebrow="Account"
+        title="My Profile"
+        subtitle="We are loading your latest profile details."
+        variant="compact"
+        align="start"
+      />
+      <UserSection>
+        <UserCard muted className="enhanced-profile__loading-card">
           <LoadingSpinner />
-        </div>
-      </div>
-    );
+          <p>Loading your profile. Please wait.</p>
+        </UserCard>
+      </UserSection>
+    </UserPage>
+  );
+
+  if (authLoading) {
+    return loadingView;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isLoading) {
+    return loadingView;
   }
 
   if (error || !profileData) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">Failed to load profile data. Please try again.</p>
-          <button
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['user-profile'] })}
-            className="mt-2 text-blue-600 hover:text-blue-800"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
+      <UserPage className="enhanced-profile-page" size="wide">
+        <UserHero
+          eyebrow="Account"
+          title="My Profile"
+          subtitle="We could not load your profile information."
+          variant="compact"
+          align="start"
+        />
+        <UserSection>
+          <UserCard className="enhanced-profile__error-card">
+            <p>Something went wrong while fetching your profile. Please try again.</p>
+            <button type="button" className="btn btn--primary" onClick={handleRefresh}>
+              Try again
+            </button>
+          </UserCard>
+        </UserSection>
+      </UserPage>
     );
   }
 
+  const { profile, vehicles, recent_orders: recentOrders, recent_redemptions: recentRedemptions, loyalty_summary: loyalty } = profileData;
+  const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Not provided';
+  const phoneNumber = profile.phone || 'Not provided';
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600">Manage your account information and preferences</p>
-        </div>
-        <button
-          onClick={() => queryClient.invalidateQueries({ queryKey: ['user-profile'] })}
-          className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <HiOutlineRefresh className="w-4 h-4" />
-        </button>
-      </div>
+    <UserPage className="enhanced-profile-page" size="wide">
+      <UserHero
+        eyebrow="Account"
+        title="My Profile"
+        subtitle="Manage your personal information, saved vehicles, and loyalty history."
+        variant="compact"
+        align="start"
+        actions={
+          <button type="button" className="btn btn--ghost" onClick={handleRefresh}>
+            <HiOutlineRefresh aria-hidden="true" /> Refresh
+          </button>
+        }
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Personal Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <FaUser className="w-5 h-5" />
-                Personal Information
+      <UserSection
+        title="Profile overview"
+        subtitle="Review your personal details and loyalty standing."
+        className="enhanced-profile__layout"
+      >
+        <UserCard className="enhanced-profile__card" padding="loose">
+          <header className="enhanced-profile__card-header">
+            <div>
+              <h2 className="surface-card__title">
+                <FaUser aria-hidden="true" /> Personal information
               </h2>
-              {!isEditingProfile ? (
-                <button
-                  onClick={() => setIsEditingProfile(true)}
-                  className="flex items-center gap-2 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <FaEdit className="w-4 h-4" />
-                  Edit
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleUpdateProfile}
-                    disabled={updateProfileMutation.isPending}
-                    className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                  >
-                    <FaSave className="w-4 h-4" />
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setIsEditingProfile(false)}
-                    disabled={updateProfileMutation.isPending}
-                    className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-                  >
-                    <FaTimes className="w-4 h-4" />
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileForm.first_name}
-                    onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                ) : (
-                  <p className="text-gray-900">{profileData.profile.first_name}</p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileForm.last_name}
-                    onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                ) : (
-                  <p className="text-gray-900">{profileData.profile.last_name}</p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <div className="flex items-center gap-2">
-                  <FaEnvelope className="w-4 h-4 text-gray-400" />
-                  <p className="text-gray-900">{profileData.profile.email}</p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                {isEditingProfile ? (
-                  <input
-                    type="tel"
-                    value={profileForm.phone}
-                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <FaPhone className="w-4 h-4 text-gray-400" />
-                    <p className="text-gray-900">{profileData.profile.phone || 'Not provided'}</p>
-                  </div>
-                )}
-              </div>
-            </form>
-          </div>
-
-          {/* Vehicles */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <FaCar className="w-5 h-5" />
-                My Vehicles
-              </h2>
-              <button
-                onClick={() => setShowVehicleForm(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <FaPlus className="w-4 h-4" />
-                Add Vehicle
-              </button>
-            </div>
-
-            {profileData.vehicles.length === 0 ? (
-              <div className="text-center py-8">
-                <FaCar className="mx-auto w-12 h-12 text-gray-400 mb-4" />
-                <p className="text-gray-600">No vehicles added yet</p>
-                <p className="text-sm text-gray-500 mt-2">Add your vehicles to make booking easier</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {profileData.vehicles.map((vehicle) => (
-                  <div key={vehicle.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          {vehicle.year} {vehicle.make} {vehicle.model}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          License: {vehicle.license_plate} • Color: {vehicle.color}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Added: {new Date(vehicle.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleDeleteVehicle(vehicle.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <FaTrash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Order History */}
-          {profileData.recent_orders.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <FaShoppingCart className="w-5 h-5" />
-                Recent Orders
-              </h2>
-              <div className="space-y-4">
-                {profileData.recent_orders.map((order) => (
-                  <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{order.service_name}</h3>
-                        <p className="text-sm text-gray-600">
-                          Order #{order.id} • {new Date(order.created_at).toLocaleDateString()}
-                        </p>
-                        {order.vehicle_info && (
-                          <p className="text-sm text-gray-500">{order.vehicle_info}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">${order.total_amount.toFixed(2)}</p>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Loyalty Summary */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FaGift className="w-5 h-5" />
-              Loyalty Program
-            </h2>
-            <div className="text-center mb-4">
-              <p className="text-3xl font-bold text-blue-600">
-                {profileData.loyalty_summary.current_points}
+              <p className="surface-card__subtitle">
+                Keep your contact details accurate so we can stay in touch.
               </p>
-              <p className="text-sm text-gray-600">Current Points</p>
             </div>
-            <div className="space-y-3 border-t pt-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Tier</span>
-                <span className="font-semibold text-gray-900">
-                  {profileData.loyalty_summary.tier_name}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Earned</span>
-                <span className="font-semibold text-gray-900">
-                  {profileData.loyalty_summary.total_earned} pts
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Redeemed</span>
-                <span className="font-semibold text-gray-900">
-                  {profileData.loyalty_summary.total_redeemed} pts
-                </span>
-              </div>
-              {profileData.loyalty_summary.next_tier_points && (
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Next Tier</span>
-                  <span className="font-semibold text-gray-900">
-                    {profileData.loyalty_summary.next_tier_points} pts
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Redemptions */}
-          {profileData.recent_redemptions.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <FaHistory className="w-5 h-5" />
-                Recent Redemptions
-              </h2>
-              <div className="space-y-3">
-                {profileData.recent_redemptions.map((redemption) => (
-                  <div key={redemption.id} className="border border-gray-200 rounded-lg p-3">
-                    <h3 className="font-medium text-gray-900">{redemption.reward_name}</h3>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-sm text-gray-600">
-                        {new Date(redemption.created_at).toLocaleDateString()}
-                      </span>
-                      <span className="font-medium text-red-600">
-                        -{redemption.points_used} pts
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Add Vehicle Modal */}
-      {showVehicleForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Add Vehicle</h2>
+            {!isEditingProfile && (
               <button
-                onClick={() => setShowVehicleForm(false)}
-                className="text-gray-400 hover:text-gray-600"
+                type="button"
+                className="btn btn--ghost btn--dense"
+                onClick={() => setIsEditingProfile(true)}
               >
-                <FaTimes className="w-5 h-5" />
+                <FaEdit aria-hidden="true" /> Edit
               </button>
-            </div>
-            
-            <form onSubmit={handleAddVehicle} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+            )}
+          </header>
+
+          {isEditingProfile ? (
+            <form onSubmit={handleUpdateProfile} className="enhanced-profile__form">
+              <div className="enhanced-profile__form-grid">
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">First name</span>
                   <input
-                    type="text"
-                    value={vehicleForm.make}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Toyota"
+                    className="enhanced-profile__input"
+                    value={profileForm.first_name}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, first_name: event.target.value }))}
                     required
+                    placeholder="First name"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                </label>
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">Last name</span>
                   <input
-                    type="text"
-                    value={vehicleForm.model}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Camry"
+                    className="enhanced-profile__input"
+                    value={profileForm.last_name}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, last_name: event.target.value }))}
                     required
+                    placeholder="Last name"
                   />
-                </div>
+                </label>
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">Phone</span>
+                  <input
+                    className="enhanced-profile__input"
+                    value={profileForm.phone}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
+                    placeholder="Phone number"
+                  />
+                </label>
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">Email</span>
+                  <input className="enhanced-profile__input" value={profile.email} disabled />
+                </label>
               </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                  <input
-                    type="number"
-                    value={vehicleForm.year}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, year: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="1900"
-                    max={new Date().getFullYear() + 1}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                  <input
-                    type="text"
-                    value={vehicleForm.color}
-                    onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="White"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">License Plate</label>
-                <input
-                  type="text"
-                  value={vehicleForm.license_plate}
-                  onChange={(e) => setVehicleForm({ ...vehicleForm, license_plate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="ABC123"
-                  required
-                />
-              </div>
-              
-              <div className="flex gap-3 pt-4">
+              <div className="enhanced-profile__form-actions">
                 <button
                   type="submit"
-                  disabled={addVehicleMutation.isPending}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="btn btn--primary"
+                  disabled={updateProfileMutation.isPending}
                 >
-                  <FaPlus className="w-4 h-4" />
-                  Add Vehicle
+                  <FaSave aria-hidden="true" /> Save changes
                 </button>
                 <button
                   type="button"
+                  className="btn btn--ghost"
+                  onClick={handleCancelEdit}
+                  disabled={updateProfileMutation.isPending}
+                >
+                  <FaTimes aria-hidden="true" /> Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <dl className="enhanced-profile__details">
+              <div className="enhanced-profile__detail-row">
+                <dt className="enhanced-profile__detail-label">
+                  <FaUser aria-hidden="true" /> Full name
+                </dt>
+                <dd className="enhanced-profile__detail-value">{fullName}</dd>
+              </div>
+              <div className="enhanced-profile__detail-row">
+                <dt className="enhanced-profile__detail-label">
+                  <FaEnvelope aria-hidden="true" /> Email address
+                </dt>
+                <dd className="enhanced-profile__detail-value">{profile.email}</dd>
+              </div>
+              <div className="enhanced-profile__detail-row">
+                <dt className="enhanced-profile__detail-label">
+                  <FaPhone aria-hidden="true" /> Phone number
+                </dt>
+                <dd className="enhanced-profile__detail-value">{phoneNumber}</dd>
+              </div>
+              <div className="enhanced-profile__detail-row">
+                <dt className="enhanced-profile__detail-label">Member since</dt>
+                <dd className="enhanced-profile__detail-value">
+                  {new Date(profile.created_at).toLocaleDateString()}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </UserCard>
+
+        <UserCard className="enhanced-profile__card enhanced-profile__loyalty-card" padding="loose" muted>
+          <h2 className="surface-card__title">
+            <FaGift aria-hidden="true" /> Loyalty summary
+          </h2>
+          <p className="surface-card__subtitle">
+            Track your points and tier progress at a glance.
+          </p>
+          <div className="enhanced-profile__loyalty-score">
+            <span className="enhanced-profile__loyalty-score-value">{loyalty.current_points}</span>
+            <span className="enhanced-profile__loyalty-score-label">Current points</span>
+          </div>
+          <div className="enhanced-profile__loyalty-grid">
+            <div className="enhanced-profile__loyalty-row">
+              <span>Tier</span>
+              <span>{loyalty.tier_name}</span>
+            </div>
+            <div className="enhanced-profile__loyalty-row">
+              <span>Total earned</span>
+              <span>{loyalty.total_earned} pts</span>
+            </div>
+            <div className="enhanced-profile__loyalty-row">
+              <span>Total redeemed</span>
+              <span>{loyalty.total_redeemed} pts</span>
+            </div>
+            {loyalty.next_tier_points !== null && (
+              <div className="enhanced-profile__loyalty-row">
+                <span>Next tier at</span>
+                <span>{loyalty.next_tier_points} pts</span>
+              </div>
+            )}
+          </div>
+        </UserCard>
+      </UserSection>
+
+      <UserSection
+        title="Vehicle garage"
+        subtitle="Store your vehicles for a faster checkout experience."
+      >
+        <UserCard className="enhanced-profile__card enhanced-profile__vehicles-card" padding="loose">
+          <header className="enhanced-profile__card-header">
+            <div>
+              <h2 className="surface-card__title">
+                <FaCar aria-hidden="true" /> My vehicles
+              </h2>
+              <p className="surface-card__subtitle">
+                Add vehicles to simplify repeat bookings and keep details on file.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => setShowVehicleForm(true)}
+            >
+              <FaPlus aria-hidden="true" /> Add vehicle
+            </button>
+          </header>
+
+          {vehicles.length === 0 ? (
+            <div className="enhanced-profile__empty">
+              <FaCar aria-hidden="true" className="enhanced-profile__empty-icon" />
+              <p>No vehicles added yet.</p>
+              <p>Add your vehicles to speed through future bookings.</p>
+            </div>
+          ) : (
+            <div className="enhanced-profile__vehicle-list">
+              {vehicles.map((vehicle) => (
+                <article key={vehicle.id} className="enhanced-profile__vehicle">
+                  <div>
+                    <h3>{vehicle.year} {vehicle.make} {vehicle.model}</h3>
+                    <p className="enhanced-profile__vehicle-meta">
+                      License: {vehicle.license_plate} - Color: {vehicle.color}
+                    </p>
+                    <p className="enhanced-profile__vehicle-date">
+                      Added on {new Date(vehicle.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="enhanced-profile__icon-button"
+                    onClick={() => handleDeleteVehicle(vehicle.id)}
+                    disabled={deleteVehicleMutation.isPending}
+                    aria-label="Remove vehicle"
+                  >
+                    <FaTrash aria-hidden="true" />
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+        </UserCard>
+      </UserSection>
+
+      <UserSection
+        title="Recent activity"
+        subtitle="A snapshot of your latest orders and reward redemptions."
+      >
+        <div className="enhanced-profile__activity-grid">
+          {recentOrders.length > 0 ? (
+            <UserCard className="enhanced-profile__card enhanced-profile__orders-card" padding="loose">
+              <h2 className="surface-card__title">
+                <FaShoppingCart aria-hidden="true" /> Recent orders
+              </h2>
+              <div className="enhanced-profile__order-list">
+                {recentOrders.map((order) => (
+                  <article key={order.id} className="enhanced-profile__order">
+                    <div>
+                      <h3>{order.service_name}</h3>
+                      <p className="enhanced-profile__order-meta">
+                        Order #{order.id} - {new Date(order.created_at).toLocaleDateString()}
+                      </p>
+                      {order.vehicle_info && (
+                        <p className="enhanced-profile__order-info">{order.vehicle_info}</p>
+                      )}
+                    </div>
+                    <div className="enhanced-profile__order-summary">
+                      <p className="enhanced-profile__order-amount">{formatCents(order.total_amount)}</p>
+                      <span className={getOrderStatusClass(order.status)}>
+                        {formatStatusLabel(order.status)}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </UserCard>
+          ) : null}
+
+          {recentRedemptions.length > 0 ? (
+            <UserCard className="enhanced-profile__card enhanced-profile__redemptions-card" padding="loose">
+              <h2 className="surface-card__title">
+                <FaHistory aria-hidden="true" /> Recent redemptions
+              </h2>
+              <div className="enhanced-profile__redemption-list">
+                {recentRedemptions.map((redemption) => (
+                  <article key={redemption.id} className="enhanced-profile__redemption">
+                    <div>
+                      <h3>{redemption.reward_name}</h3>
+                      <p className="enhanced-profile__redemption-date">
+                        {new Date(redemption.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="enhanced-profile__points-change">
+                      -{redemption.points_used} pts
+                    </span>
+                  </article>
+                ))}
+              </div>
+            </UserCard>
+          ) : null}
+
+          {recentOrders.length === 0 && recentRedemptions.length === 0 ? (
+            <UserCard className="enhanced-profile__card enhanced-profile__empty-card" muted>
+              <p>No recent activity yet.</p>
+              <p>Place an order or redeem a reward to see it appear here.</p>
+            </UserCard>
+          ) : null}
+        </div>
+      </UserSection>
+
+      {showVehicleForm && (
+        <div className="enhanced-profile__modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-vehicle-title">
+          <UserCard className="enhanced-profile__modal" padding="loose">
+            <div className="enhanced-profile__modal-header">
+              <h2 id="add-vehicle-title" className="surface-card__title">Add vehicle</h2>
+              <button
+                type="button"
+                className="enhanced-profile__icon-button"
+                onClick={() => setShowVehicleForm(false)}
+                aria-label="Close add vehicle form"
+              >
+                <FaTimes aria-hidden="true" />
+              </button>
+            </div>
+            <form onSubmit={handleAddVehicle} className="enhanced-profile__form">
+              <div className="enhanced-profile__form-grid">
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">Make</span>
+                  <input
+                    className="enhanced-profile__input"
+                    value={vehicleForm.make}
+                    onChange={(event) => setVehicleForm((prev) => ({ ...prev, make: event.target.value }))}
+                    required
+                    placeholder="Toyota"
+                  />
+                </label>
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">Model</span>
+                  <input
+                    className="enhanced-profile__input"
+                    value={vehicleForm.model}
+                    onChange={(event) => setVehicleForm((prev) => ({ ...prev, model: event.target.value }))}
+                    required
+                    placeholder="Corolla"
+                  />
+                </label>
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">Year</span>
+                  <input
+                    className="enhanced-profile__input"
+                    type="number"
+                    value={vehicleForm.year}
+                    onChange={(event) => setVehicleForm((prev) => ({ ...prev, year: Number(event.target.value) }))}
+                    min="1900"
+                    max={currentYear + 1}
+                    required
+                  />
+                </label>
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">Color</span>
+                  <input
+                    className="enhanced-profile__input"
+                    value={vehicleForm.color}
+                    onChange={(event) => setVehicleForm((prev) => ({ ...prev, color: event.target.value }))}
+                    required
+                    placeholder="White"
+                  />
+                </label>
+                <label className="enhanced-profile__field">
+                  <span className="enhanced-profile__label">License plate</span>
+                  <input
+                    className="enhanced-profile__input"
+                    value={vehicleForm.license_plate}
+                    onChange={(event) => setVehicleForm((prev) => ({ ...prev, license_plate: event.target.value }))}
+                    required
+                    placeholder="ABC123"
+                  />
+                </label>
+              </div>
+              <div className="enhanced-profile__form-actions">
+                <button
+                  type="submit"
+                  className="btn btn--primary"
+                  disabled={addVehicleMutation.isPending}
+                >
+                  <FaPlus aria-hidden="true" /> Save vehicle
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
                   onClick={() => setShowVehicleForm(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  disabled={addVehicleMutation.isPending}
                 >
                   Cancel
                 </button>
               </div>
             </form>
-          </div>
+          </UserCard>
         </div>
       )}
-    </div>
+    </UserPage>
   );
 };
 

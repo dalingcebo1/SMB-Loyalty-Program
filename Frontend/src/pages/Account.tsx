@@ -1,9 +1,19 @@
 import React, { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { FaEdit, FaEnvelope, FaExclamationTriangle, FaPhone, FaSave, FaSignOutAlt, FaTimes, FaUser } from "react-icons/fa";
+import {
+  FaEdit,
+  FaEnvelope,
+  FaExclamationTriangle,
+  FaPhone,
+  FaSave,
+  FaSignOutAlt,
+  FaTimes,
+  FaUser,
+} from "react-icons/fa";
 import { toast } from "react-toastify";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
+import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
 import "./Account.css";
 
 const Account: React.FC = () => {
@@ -16,23 +26,20 @@ const Account: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="user-page user-page--narrow account-page">
-        <section className="user-hero user-hero--compact">
-          <span className="user-hero__eyebrow">Account</span>
-          <h1 className="user-hero__title">Account Details</h1>
-          <p className="user-hero__subtitle">
-            Loading your account information...
-          </p>
-        </section>
-
-        <section className="user-page__section">
-          <div className="surface-card surface-card--muted account-card">
-            <p className="account-loading">
-              Please wait while we prepare your profile.
-            </p>
-          </div>
-        </section>
-      </div>
+      <UserPage className="account-page" size="narrow">
+        <UserHero
+          eyebrow="Account"
+          title="Account Details"
+          subtitle="Loading your account information..."
+          variant="compact"
+          align="start"
+        />
+        <UserSection>
+          <UserCard muted className="account-card">
+            <p className="account-loading">Please wait while we prepare your profile.</p>
+          </UserCard>
+        </UserSection>
+      </UserPage>
     );
   }
 
@@ -86,17 +93,17 @@ const Account: React.FC = () => {
   const phoneNumber = user.phone?.trim() || "Not provided";
 
   return (
-    <div className="user-page user-page--narrow account-page">
-      <section className="user-hero user-hero--compact">
-        <span className="user-hero__eyebrow">Account</span>
-        <h1 className="user-hero__title">Account Details</h1>
-        <p className="user-hero__subtitle">
-          Manage your personal information and preferences.
-        </p>
-      </section>
+    <UserPage className="account-page" size="narrow">
+      <UserHero
+        eyebrow="Account"
+        title="Account Details"
+        subtitle="Manage your personal information and preferences."
+        variant="compact"
+        align="start"
+      />
 
-      <section className="user-page__section">
-        <div className="surface-card surface-card--interactive account-card">
+      <UserSection>
+        <UserCard className="account-card" interactive>
           <header className="account-card__header">
             <div>
               <h2 className="surface-card__title">Profile information</h2>
@@ -152,11 +159,7 @@ const Account: React.FC = () => {
                   <FaSave aria-hidden="true" />
                   Save changes
                 </button>
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={handleCancel}
-                >
+                <button type="button" className="btn btn--ghost" onClick={handleCancel}>
                   <FaTimes aria-hidden="true" />
                   Cancel
                 </button>
@@ -191,11 +194,11 @@ const Account: React.FC = () => {
           )}
 
           <p className="account-card__footnote">API Version: v1.0.0</p>
-        </div>
-      </section>
+        </UserCard>
+      </UserSection>
 
-      <section className="user-page__section">
-        <div className="surface-card surface-card--muted account-actions">
+      <UserSection>
+        <UserCard className="account-actions" muted>
           <h2 className="surface-card__title">Session controls</h2>
           <p className="surface-card__subtitle">
             Sign out when you’re done, especially on a shared device.
@@ -204,18 +207,14 @@ const Account: React.FC = () => {
             <p className="account-actions__copy">
               Logging out will return you to the login screen and clear your session.
             </p>
-            <button
-              type="button"
-              className="btn account-logout"
-              onClick={handleLogout}
-            >
+            <button type="button" className="btn account-logout" onClick={handleLogout}>
               <FaSignOutAlt aria-hidden="true" />
               Logout
             </button>
           </div>
-        </div>
-      </section>
-    </div>
+        </UserCard>
+      </UserSection>
+    </UserPage>
   );
 };
 

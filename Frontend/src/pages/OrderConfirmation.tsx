@@ -13,6 +13,7 @@ import axios from "axios";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import Loading from "../components/Loading";
+import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
 import "./OrderConfirmation.css";
 import '../styles/shared-buttons.css';
 
@@ -226,21 +227,21 @@ const OrderConfirmation: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="confirmation-page user-page">
-        <section className="user-page__section">
-          <div className="surface-card">
+      <UserPage className="confirmation-page">
+        <UserSection>
+          <UserCard className="confirmation-loading" muted>
             <Loading text="Loading your order…" />
-          </div>
-        </section>
-      </div>
+          </UserCard>
+        </UserSection>
+      </UserPage>
     );
   }
 
   if (error) {
     return (
-      <div className="confirmation-page user-page">
-        <section className="user-page__section">
-          <div className="surface-card confirmation-error">
+      <UserPage className="confirmation-page">
+        <UserSection>
+          <UserCard className="confirmation-error" muted>
             <div className="error-content">
               <div className="error-message">{error}</div>
               <button
@@ -250,37 +251,38 @@ const OrderConfirmation: React.FC = () => {
                 Go Home
               </button>
             </div>
-          </div>
-        </section>
-      </div>
+          </UserCard>
+        </UserSection>
+      </UserPage>
     );
   }
 
   return (
-    <div className="confirmation-page user-page">
+    <UserPage className="confirmation-page">
       <ToastContainer position="top-right" />
-      
-      {/* Hero Section */}
-      <section className="user-hero user-hero--compact">
-        <div className="success-icon-large">✅</div>
-        <h1 className="user-hero__title">Order Confirmed!</h1>
-        <p className="user-hero__subtitle">Your booking has been successfully processed</p>
-      </section>
 
-      {/* Step Indicator */}
-      <section className="user-page__section">
+      <UserHero
+        className="confirmation-hero"
+        variant="compact"
+        title="Order Confirmed!"
+        subtitle="Your booking has been successfully processed."
+      >
+        <span className="success-icon-large" aria-hidden="true">✅</span>
+      </UserHero>
+
+      <UserSection className="confirmation-steps">
         <div className="confirmation-step-indicator">
           <StepIndicator currentStep={3} stepsCompleted={[1, 2]} />
         </div>
-      </section>
+      </UserSection>
 
-      {/* Persistent redemption banner */}
       {nextActionUrl && (
-        <section className="user-page__section">
+        <UserSection>
           <div
             className="surface-card redemption-banner"
             role="button"
             aria-live="polite"
+            tabIndex={0}
             onClick={async () => {
               try {
                 await api.post(nextActionUrl);
@@ -290,14 +292,20 @@ const OrderConfirmation: React.FC = () => {
                 toast.error('Could not redeem wash. Please try again.');
               }
             }}
-            onMouseDown={(e) => {
-              e.currentTarget.style.transform = 'scale(0.98)';
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.currentTarget.click();
+              }
             }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
+            onMouseDown={(event) => {
+              event.currentTarget.style.transform = 'scale(0.98)';
             }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
+            onMouseUp={(event) => {
+              event.currentTarget.style.transform = 'scale(1)';
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.transform = 'scale(1)';
             }}
           >
             <div className="redemption-banner-title">
@@ -307,44 +315,39 @@ const OrderConfirmation: React.FC = () => {
               Complete your wash and earn rewards
             </div>
           </div>
-        </section>
+        </UserSection>
       )}
 
-      {/* Order Status */}
       {orderStatus && (
-        <section className="user-page__section">
-          <div className="surface-card order-status-card">
+        <UserSection>
+          <UserCard className="order-status-card" muted>
             <span className={`status-badge status-badge--${orderStatus === "paid" || orderStatus === "completed" ? "confirmed" : "processing"}`}>
               Status: {orderStatus.replace(/_/g, ' ').toUpperCase()}
             </span>
-          </div>
-        </section>
+          </UserCard>
+        </UserSection>
       )}
 
-      {/* Payment Details Card */}
-      <section className="user-page__section">
-        <div className="surface-card payment-details-card">
+      <UserSection>
+        <UserCard className="payment-details-card" padding="loose">
           <div className="card-header">
             <h3 className="section-title">Payment Details</h3>
           </div>
-          
-          {/* Payment PIN */}
+
           {paymentPin && (
             <div className="payment-pin-section">
               <div className="payment-pin-label">Payment PIN</div>
               <div className="payment-pin-value">{paymentPin}</div>
             </div>
           )}
-          
-          {/* Amount */}
+
           {amount > 0 && (
             <div className="amount-section">
               <span className="amount-label">Amount Paid:</span>
               <span className="amount-value">{formatCents(amount)}</span>
             </div>
           )}
-          
-          {/* QR Code Section */}
+
           <div className="qr-section">
             <h4 className="qr-title">Payment QR Code</h4>
             <div className="qr-code-container">
@@ -357,201 +360,189 @@ const OrderConfirmation: React.FC = () => {
               ) : qrData ? (
                 <QRCode value={qrData} size={200} />
               ) : (
-                <div className="qr-error">
-                  No QR code available.
-                </div>
+                <div className="qr-error">No QR code available.</div>
               )}
             </div>
             <p className="qr-instructions">
               Show this QR code at the car wash station to complete your payment
             </p>
           </div>
-        </div>
-      </section>
+        </UserCard>
+      </UserSection>
 
-      {/* Order Summary Card */}
       {summary.length > 0 && (
-        <section className="user-page__section">
-          <div className="surface-card order-summary-card">
+        <UserSection>
+          <UserCard className="order-summary-card" padding="loose">
             <div className="card-header">
               <h3 className="section-title">Order Summary</h3>
             </div>
             <ul className="order-summary-list">
-              {summary.map((item, idx) => <li key={idx} className="order-summary-item">{item}</li>)}
+              {summary.map((item, idx) => (
+                <li key={idx} className="order-summary-item">{item}</li>
+              ))}
             </ul>
             {loyaltyEligible && (
               <div className="loyalty-eligible-badge">
                 ✓ This order is eligible for loyalty points!
               </div>
             )}
-            {/* Timestamp */}
             {timestamp && (
               <div className="order-timestamp">
                 Ordered on: {new Date(timestamp).toLocaleString()}
               </div>
             )}
-          </div>
-        </section>
+          </UserCard>
+        </UserSection>
       )}
-        
-        {/* Loyalty Progress Card */}
-        {loyaltyProgress && enableLoyalty && (
-          <section className="user-page__section">
-            <div className="surface-card loyalty-progress-card">
-              <div className="card-header">
-                <h3 className="section-title">Loyalty Progress</h3>
-              </div>
-              <div className="loyalty-progress-visits">
-                Total visits: <strong>{loyaltyProgress.visits}</strong>
-              </div>
-              {loyaltyProgress.upcomingRewards.length > 0 && (
-                <div className="loyalty-progress-rewards">
-                  <div className="next-reward">
-                    🎁 Next reward at <strong>{loyaltyProgress.nextMilestone}</strong> visits
-                  </div>
-                  <div className="visits-needed">
-                    {loyaltyProgress.upcomingRewards[0].visits_needed} more visits to earn: {loyaltyProgress.upcomingRewards[0].reward}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
 
-        {/* Next Steps Card */}
-        {(estimatedWashTime !== null || notificationMessage || bayNumber !== null) && (
-          <section className="user-page__section">
-            <div className="surface-card next-steps-card">
-              <div className="card-header">
-                <h3 className="section-title">🚗 Next Steps</h3>
-              </div>
-              {notificationMessage && (
-                <div className="notification-message">
-                  {notificationMessage}
-                </div>
-              )}
-              <div className="next-steps-grid">
-                {estimatedWashTime !== null && (
-                  <div className="step-item">
-                    <span className="step-icon">⏱️</span>
-                    <span>Estimated wash time: <strong>{estimatedWashTime} minutes</strong></span>
-                  </div>
-                )}
-                {bayNumber !== null && (
-                  <div className="step-item">
-                    <span className="step-icon">🅿️</span>
-                    <span>Your bay number: <strong>{bayNumber}</strong></span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Add to Calendar Card */}
-        <section className="user-page__section">
-          <div className="surface-card calendar-card">
+      {loyaltyProgress && enableLoyalty && (
+        <UserSection>
+          <UserCard className="loyalty-progress-card" padding="loose">
             <div className="card-header">
-              <h3 className="section-title">📅 Add to Your Calendar</h3>
+              <h3 className="section-title">Loyalty Progress</h3>
             </div>
-            {scheduledDate && scheduledTime ? (
-              <p className="calendar-text">
-                Your service is scheduled for <strong>{new Date(scheduledDate).toLocaleDateString()}</strong> at <strong>{scheduledTime}</strong>.
-              </p>
-            ) : (
-              <p className="calendar-text">
-                Save your booking details to your calendar for easy reference.
-              </p>
+            <div className="loyalty-progress-visits">
+              Total visits: <strong>{loyaltyProgress.visits}</strong>
+            </div>
+            {loyaltyProgress.upcomingRewards.length > 0 && (
+              <div className="loyalty-progress-rewards">
+                <div className="next-reward">
+                  🎁 Next reward at <strong>{loyaltyProgress.nextMilestone}</strong> visits
+                </div>
+                <div className="visits-needed">
+                  {loyaltyProgress.upcomingRewards[0].visits_needed} more visits to earn: {loyaltyProgress.upcomingRewards[0].reward}
+                </div>
+              </div>
             )}
-            <button
-              className="action-button action-button--primary"
-              onClick={() => {
-                setShowCalendarModal(true);
-                track('cta_click', { label: 'Add to Calendar', page: 'OrderConfirmation' });
-              }}
-            >
-              ➕ Add to Calendar
-            </button>
-          </div>
-        </section>
-        
-        {/* Action Buttons */}
-        <section className="user-page__section">
-          <div className="surface-card action-buttons-card">
-            {/* Primary Actions */}
-            <div className="primary-actions">
-              <button
-                onClick={() => navigate("/")}
-                className="action-button action-button--primary"
-              >
-                🏠 Home
-              </button>
-              {enableOrders && (
-                <button
-                  onClick={() => {
-                    track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
-                    navigate("/past-orders");
-                  }}
-                  className="action-button action-button--secondary"
-                >
-                  📋 View Orders
-                </button>
-              )}
-              {enableLoyalty && (
-                <button
-                  onClick={() => navigate("/myloyalty")}
-                  className="action-button action-button--success"
-                >
-                  🎁 My Loyalty
-                </button>
-              )}
-            </div>
-            
-            {/* Secondary Actions */}
-            <div className="secondary-actions">
-              {qrCodeBase64 && (
-                <a
-                  href={`data:image/png;base64,${qrCodeBase64}`} 
-                  download={`order-${orderId}.png`}
-                  className="download-button"
-                >
-                  💾 Download QR
-                </a>
-              )}
-              {paymentPin && (
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(paymentPin);
-                    track('cta_click', { label: 'Copy PIN', page: 'OrderConfirmation' });
-                    toast.success('PIN copied to clipboard');
-                  }}
-                  className="copy-button"
-                >
-                  📋 Copy PIN
-                </button>
-              )}
-            </div>
-            
-            {/* Footer */}
-            <div className="security-footer">
-              Secured by <span className="yoco-brand">YOCO</span>
-            </div>
-          </div>
-        </section>
+          </UserCard>
+        </UserSection>
+      )}
 
-        {/* Calendar Modal */}
-        <CalendarModal
-          isVisible={showCalendarModal}
-          onClose={() => setShowCalendarModal(false)}
-          orderDetails={{
-            orderId,
-            serviceName: summary[0] || 'Car Wash Service',
-            scheduledDate: scheduledDate || undefined,
-            scheduledTime: scheduledTime || undefined,
-            estimatedDuration: estimatedWashTime || undefined
-          }}
-        />
-    </div>
+      {(estimatedWashTime !== null || notificationMessage || bayNumber !== null) && (
+        <UserSection>
+          <UserCard className="next-steps-card" padding="loose">
+            <div className="card-header">
+              <h3 className="section-title">🚗 Next Steps</h3>
+            </div>
+            {notificationMessage && (
+              <div className="notification-message">{notificationMessage}</div>
+            )}
+            <div className="next-steps-grid">
+              {estimatedWashTime !== null && (
+                <div className="step-item">
+                  <span className="step-icon">⏱️</span>
+                  <span>Estimated wash time: <strong>{estimatedWashTime} minutes</strong></span>
+                </div>
+              )}
+              {bayNumber !== null && (
+                <div className="step-item">
+                  <span className="step-icon">🅿️</span>
+                  <span>Your bay number: <strong>{bayNumber}</strong></span>
+                </div>
+              )}
+            </div>
+          </UserCard>
+        </UserSection>
+      )}
+
+      <UserSection>
+        <UserCard className="calendar-card" padding="loose">
+          <div className="card-header">
+            <h3 className="section-title">📅 Add to Your Calendar</h3>
+          </div>
+          {scheduledDate && scheduledTime ? (
+            <p className="calendar-text">
+              Your service is scheduled for <strong>{new Date(scheduledDate).toLocaleDateString()}</strong> at <strong>{scheduledTime}</strong>.
+            </p>
+          ) : (
+            <p className="calendar-text">
+              Save your booking details to your calendar for easy reference.
+            </p>
+          )}
+          <button
+            className="action-button action-button--primary"
+            onClick={() => {
+              setShowCalendarModal(true);
+              track('cta_click', { label: 'Add to Calendar', page: 'OrderConfirmation' });
+            }}
+          >
+            ➕ Add to Calendar
+          </button>
+        </UserCard>
+      </UserSection>
+
+      <UserSection>
+        <UserCard className="action-buttons-card" padding="loose">
+          <div className="primary-actions">
+            <button
+              onClick={() => navigate("/")}
+              className="action-button action-button--primary"
+            >
+              🏠 Home
+            </button>
+            {enableOrders && (
+              <button
+                onClick={() => {
+                  track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
+                  navigate("/past-orders");
+                }}
+                className="action-button action-button--secondary"
+              >
+                📋 View Orders
+              </button>
+            )}
+            {enableLoyalty && (
+              <button
+                onClick={() => navigate("/myloyalty")}
+                className="action-button action-button--success"
+              >
+                🎁 My Loyalty
+              </button>
+            )}
+          </div>
+
+          <div className="secondary-actions">
+            {qrCodeBase64 && (
+              <a
+                href={`data:image/png;base64,${qrCodeBase64}`}
+                download={`order-${orderId}.png`}
+                className="download-button"
+              >
+                💾 Download QR
+              </a>
+            )}
+            {paymentPin && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(paymentPin);
+                  track('cta_click', { label: 'Copy PIN', page: 'OrderConfirmation' });
+                  toast.success('PIN copied to clipboard');
+                }}
+                className="copy-button"
+              >
+                📋 Copy PIN
+              </button>
+            )}
+          </div>
+
+          <div className="security-footer">
+            Secured by <span className="yoco-brand">YOCO</span>
+          </div>
+        </UserCard>
+      </UserSection>
+
+      <CalendarModal
+        isVisible={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        orderDetails={{
+          orderId,
+          serviceName: summary[0] || 'Car Wash Service',
+          scheduledDate: scheduledDate || undefined,
+          scheduledTime: scheduledTime || undefined,
+          estimatedDuration: estimatedWashTime || undefined,
+        }}
+      />
+    </UserPage>
   );
 };
 

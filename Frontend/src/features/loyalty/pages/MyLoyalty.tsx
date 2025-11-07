@@ -1,11 +1,13 @@
 // src/features/loyalty/pages/MyLoyalty.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowRight, FaGift, FaHistory, FaTrophy } from 'react-icons/fa';
 import { CgSpinner } from 'react-icons/cg';
+import { UserCard, UserHero, UserPage, UserSection } from '../../../components/user';
 import { useAuth } from '../../../auth/AuthProvider';
 import { useLoyalty } from '../hooks/useLoyalty';
 import type { RewardReady, UpcomingReward } from '../hooks/useLoyalty';
+import { track } from '../../../utils/analytics';
 import './MyLoyalty.css';
 
 const MyLoyalty: React.FC = () => {
@@ -16,7 +18,10 @@ const MyLoyalty: React.FC = () => {
   const [selectedReward, setSelectedReward] = useState<RewardReady | null>(null);
   const [showRewardModal, setShowRewardModal] = useState(false);
 
-  // Memoize progress calculations for performance (must be before early returns)
+  useEffect(() => {
+    track('page_view', { page: 'MyLoyalty' });
+  }, []);
+
   const visits = data?.visits ?? 0;
   const rewards = data?.rewards_ready ?? [];
   const upcoming = useMemo(() => data?.upcoming_rewards ?? [], [data?.upcoming_rewards]);
@@ -36,7 +41,7 @@ const MyLoyalty: React.FC = () => {
       progressPercentage,
       cappedProgress,
       visitsRemaining,
-      primaryUpcoming
+      primaryUpcoming,
     };
   }, [visits, upcoming]);
 
@@ -64,90 +69,108 @@ const MyLoyalty: React.FC = () => {
 
   if (loading || isLoading) {
     return (
-      <div className="loyalty-page user-page user-page--narrow">
-        <section className="user-hero user-hero--compact">
-          <span className="user-hero__eyebrow">Loyalty</span>
-          <h1 className="user-hero__title">My Loyalty Rewards</h1>
-          <p className="user-hero__subtitle">We are fetching the latest rewards for you.</p>
-        </section>
-        <section className="user-page__section">
-          <div className="surface-card surface-card--muted loyalty-state loyalty-state--loading" role="status" aria-live="polite">
+      <UserPage className="loyalty-page" size="narrow">
+        <UserHero
+          eyebrow="Loyalty"
+          title="My Loyalty Rewards"
+          subtitle="We are fetching the latest rewards for you."
+          variant="compact"
+          align="start"
+        />
+        <UserSection>
+          <UserCard muted className="loyalty-state loyalty-state--loading" role="status" aria-live="polite">
             <CgSpinner className="loyalty-spinner" />
-            <p>Fetching your loyalty progress…</p>
-          </div>
-        </section>
-      </div>
+            <p>Fetching your loyalty progress...</p>
+          </UserCard>
+        </UserSection>
+      </UserPage>
     );
   }
 
   if (isError) {
     return (
-      <div className="loyalty-page user-page user-page--narrow">
-        <section className="user-hero user-hero--compact">
-          <span className="user-hero__eyebrow">Loyalty</span>
-          <h1 className="user-hero__title">My Loyalty Rewards</h1>
-          <p className="user-hero__subtitle">We could not load your loyalty information.</p>
-        </section>
-        <section className="user-page__section">
-          <div className="surface-card loyalty-state loyalty-state--error">
+      <UserPage className="loyalty-page" size="narrow">
+        <UserHero
+          eyebrow="Loyalty"
+          title="My Loyalty Rewards"
+          subtitle="We could not load your loyalty information."
+          variant="compact"
+          align="start"
+        />
+        <UserSection>
+          <UserCard className="loyalty-state loyalty-state--error">
             <h2>Unable to load your loyalty information</h2>
             <p className="error-message">Please try again later.</p>
             <button type="button" onClick={() => window.location.reload()} className="btn btn--primary">
               Try again
             </button>
-          </div>
-        </section>
-      </div>
+          </UserCard>
+        </UserSection>
+      </UserPage>
     );
   }
 
   if (!user) {
     return (
-      <div className="loyalty-page user-page user-page--narrow">
-        <section className="user-hero user-hero--compact">
-          <span className="user-hero__eyebrow">Loyalty</span>
-          <h1 className="user-hero__title">My Loyalty Rewards</h1>
-          <p className="user-hero__subtitle">Please log in to view your loyalty status.</p>
-        </section>
-      </div>
+      <UserPage className="loyalty-page" size="narrow">
+        <UserHero
+          eyebrow="Loyalty"
+          title="My Loyalty Rewards"
+          subtitle="Please log in to view your loyalty status."
+          variant="compact"
+          align="start"
+        />
+      </UserPage>
     );
   }
 
-  return (
-    <div className="loyalty-page user-page user-page--wide">
-      <section className="user-hero user-hero--compact">
-        <span className="user-hero__eyebrow">Loyalty</span>
-        <h1 className="user-hero__title">My Loyalty Rewards</h1>
-        <p className="user-hero__subtitle">Welcome back, {userName}! Earn rewards with every visit.</p>
-        <div className="user-hero__actions">
-          <button type="button" className="btn btn--primary" onClick={() => navigate('/order')}>
-            Book a service
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate('/past-orders')}>
-            View order history
-          </button>
-        </div>
-      </section>
+  const handleBookService = () => {
+    navigate('/order');
+  };
 
-      <section className="user-page__section">
-        <div className="surface-card loyalty-stats-card">
+  const handleViewOrders = () => {
+    navigate('/past-orders');
+  };
+
+  return (
+    <UserPage className="loyalty-page" size="wide">
+      <UserHero
+        eyebrow="Loyalty"
+        title="My Loyalty Rewards"
+        subtitle={`Welcome back, ${userName}! Earn rewards with every visit.`}
+        variant="compact"
+        align="start"
+        actions={
+          <>
+            <button type="button" className="btn btn--primary" onClick={handleBookService}>
+              Book a service
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={handleViewOrders}>
+              View order history
+            </button>
+          </>
+        }
+      />
+
+      <UserSection>
+        <UserCard className="loyalty-stats-card">
           <div className="loyalty-stats">
             <div className="loyalty-stat-item visits">
-              <FaHistory className="stat-icon" />
+              <FaHistory className="stat-icon" aria-hidden="true" />
               <div className="stat-value">{visits}</div>
               <div className="stat-label">Total visits</div>
             </div>
             <div className="loyalty-stat-item rewards">
-              <FaTrophy className="stat-icon" />
+              <FaTrophy className="stat-icon" aria-hidden="true" />
               <div className="stat-value">{rewards.length}</div>
               <div className="stat-label">Rewards ready</div>
             </div>
           </div>
-        </div>
-      </section>
+        </UserCard>
+      </UserSection>
 
-      <section className="user-page__section">
-        <div className="surface-card loyalty-progress-card">
+      <UserSection>
+        <UserCard className="loyalty-progress-card">
           <div className="card-header">
             <h2 className="section-title">Progress to next reward</h2>
             {primaryUpcoming && (
@@ -158,7 +181,11 @@ const MyLoyalty: React.FC = () => {
           </div>
           <div className="progress-container">
             <div className="progress-bar-container">
-              <div className="progress-bar" style={{ transform: `scaleX(${progressPercentage / 100})` }} />
+              <div
+                className="progress-bar"
+                style={{ transform: `scaleX(${progressPercentage / 100})` }}
+                aria-hidden="true"
+              />
             </div>
             <div className="progress-meta">
               <span className="progress-count">{cappedProgress} / {visitsNeeded} visits</span>
@@ -169,11 +196,11 @@ const MyLoyalty: React.FC = () => {
               </span>
             </div>
           </div>
-        </div>
-      </section>
+        </UserCard>
+      </UserSection>
 
-      <section className="user-page__section">
-        <div className="surface-card loyalty-rewards-card">
+      <UserSection>
+        <UserCard className="loyalty-rewards-card">
           <header className="card-header">
             <h2 className="section-title">Available rewards</h2>
             <p className="section-subtitle">Tap a reward to view redemption details.</p>
@@ -186,7 +213,7 @@ const MyLoyalty: React.FC = () => {
                   key={`${reward.milestone}-${index}`}
                   className="reward-card available"
                   onClick={() => handleRewardClick(reward)}
-                  aria-label={`${reward.reward}, earned at ${reward.milestone} visits. Click to view redemption details`}
+                  aria-label={`${reward.reward}, earned at ${reward.milestone} visits. Click to view redemption details.`}
                 >
                   <span className="reward-badge" aria-hidden="true">
                     <FaGift className="reward-icon" />
@@ -211,17 +238,17 @@ const MyLoyalty: React.FC = () => {
               <FaGift className="no-rewards-icon" aria-hidden="true" />
               <p>You do not have any rewards available yet.</p>
               <p>Keep visiting us to earn rewards!</p>
-              <button type="button" onClick={() => navigate('/order')} className="btn btn--primary">
+              <button type="button" onClick={handleBookService} className="btn btn--primary">
                 Book a service
               </button>
             </div>
           )}
-        </div>
-      </section>
+        </UserCard>
+      </UserSection>
 
       {upcoming.length > 0 && (
-        <section className="user-page__section">
-          <div className="surface-card loyalty-upcoming-card">
+        <UserSection>
+          <UserCard className="loyalty-upcoming-card">
             <h2 className="section-title">Coming soon</h2>
             <div className="rewards-grid">
               {upcoming.map((reward: UpcomingReward, index: number) => (
@@ -239,17 +266,23 @@ const MyLoyalty: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </UserCard>
+        </UserSection>
       )}
 
       {showRewardModal && selectedReward && (
-        <div className="reward-modal-overlay" onClick={closeModal}>
-          <div className="reward-modal" onClick={event => event.stopPropagation()}>
+        <div
+          className="reward-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reward-modal-title"
+          onClick={closeModal}
+        >
+          <div className="reward-modal" onClick={(event) => event.stopPropagation()}>
             <button type="button" className="close-modal" onClick={closeModal} aria-label="Close">
               &times;
             </button>
-            <h2>{selectedReward.reward}</h2>
+            <h2 id="reward-modal-title">{selectedReward.reward}</h2>
             <div className="reward-details">
               <div className="detail-item">
                 <span className="detail-label">Milestone:</span>
@@ -285,7 +318,7 @@ const MyLoyalty: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </UserPage>
   );
 };
 

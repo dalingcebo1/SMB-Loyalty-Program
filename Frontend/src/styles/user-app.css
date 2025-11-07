@@ -64,6 +64,16 @@
   line-height: var(--leading-normal);
 }
 
+.user-page {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: clamp(2rem, 4vw, 3rem) clamp(1.25rem, 5vw, 2.5rem) clamp(5rem, 6vw, 6rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+}
+
 @media (min-width: 1024px) {
   .user-page {
     padding: 3rem 3rem 6rem;
@@ -192,7 +202,8 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  align-items: center;
+  align-items: stretch;
+  text-align: inherit;
 }
 
 .user-hero__content {
@@ -225,17 +236,23 @@
   word-break: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
+  width: 100%;
+  max-width: 52ch;
+  margin-inline: auto;
 }
 
 .user-hero__subtitle {
   margin: 0;
-  max-width: 48ch;
   color: var(--color-text-soft);
   font-size: var(--text-lg);
   line-height: var(--leading-relaxed);
   word-break: break-word;
   overflow-wrap: break-word;
   text-align: inherit;
+  width: 100%;
+  max-width: 52ch;
+  margin-inline: auto;
+  white-space: normal;
 }
 
 .user-hero__eyebrow {
@@ -254,6 +271,15 @@
   align-items: center;
   gap: 0.75rem;
   width: 100%;
+}
+
+.user-hero--start .user-hero__title,
+.user-hero--start .user-hero__subtitle {
+  margin-inline: 0;
+}
+
+.user-hero--start .user-hero__actions {
+  justify-content: flex-start;
 }
 
 .btn {

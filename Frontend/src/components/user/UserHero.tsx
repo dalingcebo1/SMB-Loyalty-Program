@@ -37,11 +37,15 @@ const UserHero: React.FC<UserHeroProps> = ({
 
   return (
     <section className={classes} id={id}>
-      {eyebrow ? <span className="user-hero__eyebrow">{eyebrow}</span> : null}
-      <h1 className="user-hero__title">{title}</h1>
-      {subtitle ? <p className="user-hero__subtitle">{subtitle}</p> : null}
-      {children}
-      {actions ? <div className="user-hero__actions">{actions}</div> : null}
+      <div className="user-hero__body">
+        {eyebrow ? <span className="user-hero__eyebrow">{eyebrow}</span> : null}
+        <div className="user-hero__text">
+          <h1 className="user-hero__title">{title}</h1>
+          {subtitle ? <p className="user-hero__subtitle">{subtitle}</p> : null}
+        </div>
+        {children ? <div className="user-hero__content">{children}</div> : null}
+        {actions ? <div className="user-hero__actions">{actions}</div> : null}
+      </div>
     </section>
   );
 };

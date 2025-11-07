@@ -1,29 +1,30 @@
 import React from 'react';
 
-type UserCardElement = keyof JSX.IntrinsicElements;
+type UserCardElement = keyof HTMLElementTagNameMap;
 type UserCardPadding = 'default' | 'tight' | 'loose';
 
-interface UserCardProps {
+type PolymorphicProps<E extends UserCardElement> = {
+  as?: E;
+} & React.ComponentPropsWithoutRef<E>;
+
+type UserCardProps<E extends UserCardElement = 'div'> = {
   children: React.ReactNode;
   className?: string;
   interactive?: boolean;
   muted?: boolean;
-  as?: UserCardElement;
   padding?: UserCardPadding;
-  id?: string;
-  role?: string;
-}
+} & PolymorphicProps<E>;
 
-const UserCard: React.FC<UserCardProps> = ({
+const UserCard = <E extends UserCardElement = 'div'>({
   children,
   className = '',
   interactive = false,
   muted = false,
-  as: Component = 'div',
+  as,
   padding = 'default',
-  id,
-  role,
-}) => {
+  ...rest
+}: UserCardProps<E>) => {
+  const Component = as || 'div';
   const classes = [
     'user-card',
     'surface-card',
@@ -35,11 +36,7 @@ const UserCard: React.FC<UserCardProps> = ({
     .filter(Boolean)
     .join(' ');
 
-  return (
-    <Component className={classes} id={id} role={role}>
-      {children}
-    </Component>
-  );
+  return React.createElement(Component, { className: classes, ...rest }, children);
 };
 
 export default UserCard;

@@ -7,6 +7,7 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import WelcomeModal from '../components/WelcomeModal';
 import { Link, Navigate } from 'react-router-dom';
+import { UserPage, UserHero, UserSection, UserCard } from '../components/user';
 import { track } from '../utils/analytics';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -49,20 +50,28 @@ const Welcome: React.FC = () => {
 
   // All useEffect hooks must be called before any conditional returns
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
+
     const fetchAll = async () => {
       try {
         const [visitsRes, washRes] = await Promise.all([
           api.get("/loyalty/me"),
           api.get("/payments/user-wash-status"),
         ]);
-        setVisits(visitsRes.data.visits || 0);
-        localStorage.setItem("visits", String(visitsRes.data.visits || 0));
+
+        const visitCount = visitsRes.data.visits || 0;
+        setVisits(visitCount);
+        localStorage.setItem("visits", String(visitCount));
+
         const ready = visitsRes.data.rewards_ready || [];
         setRewardsReady(ready);
-  const upcoming = Array.isArray(visitsRes.data.upcoming_rewards) ? visitsRes.data.upcoming_rewards : [];
-  setUpcomingReward(upcoming[0] || null);
+
+        const upcoming = Array.isArray(visitsRes.data.upcoming_rewards)
+          ? visitsRes.data.upcoming_rewards
+          : [];
+        setUpcomingReward(upcoming[0] || null);
+
         if (washRes.data.status === "active") {
           setActiveWashes([washRes.data]);
           setRecentlyEnded(null);
@@ -97,12 +106,16 @@ const Welcome: React.FC = () => {
         }
       }
     };
+
     if (user) {
-      fetchAll();
+      void fetchAll();
     }
+
     return () => {
       isMounted = false;
-      clearTimeout(timer);
+      if (timer) {
+        clearTimeout(timer);
+      }
     };
   }, [user]);
 
@@ -128,8 +141,9 @@ const Welcome: React.FC = () => {
       : user?.firstName || "";
 
   const milestoneSize = VISIT_MILESTONE;
-  const progress = visits % milestoneSize;
   const nextMilestone = milestoneSize;
+  const progress = visits % milestoneSize;
+  const progressValue = progress === 0 && visits > 0 ? nextMilestone : progress;
 
   if (!user) return null;
 
@@ -145,7 +159,7 @@ const Welcome: React.FC = () => {
         variant: 'info' as const,
         title: 'Wash in Progress',
         description: 'Your vehicles are currently being washed. You will be notified when ready for collection.',
-        icon: <FaClock />,
+  icon: <FaClock aria-hidden="true" />,
       };
     }
     if (recentlyEnded) {
@@ -153,7 +167,7 @@ const Welcome: React.FC = () => {
         variant: 'success' as const,
         title: 'Ready for Collection',
         description: 'Your car is ready for collection.',
-        icon: <FaCheckCircle />,
+  icon: <FaCheckCircle aria-hidden="true" />,
       };
     }
     return null;
@@ -172,100 +186,120 @@ const Welcome: React.FC = () => {
   };
 
   return (
-    <div className="user-page user-page--welcome">
-      <section className="user-hero">
-        <span className="user-hero__eyebrow">Welcome back</span>
-        <h1 className="user-hero__title">Welcome {name || 'there'}!</h1>
-        <p className="user-hero__subtitle">
-          Your car wash companion for loyalty rewards and effortless service bookings.
-        </p>
-        <div className="user-hero__actions">
-          <Link
-            to="/myloyalty"
-            className="btn btn--primary"
-            onClick={() => track('cta_click', { label: 'View Rewards', page: 'Welcome' })}
-          >
-            <FaGift /> View Rewards
-          </Link>
-          <Link
-            to="/order"
-            className="btn btn--secondary"
-            onClick={() => track('cta_click', { label: 'Book a Service', page: 'Welcome' })}
-          >
-            <FaCar /> Book a Service
-          </Link>
-        </div>
-      </section>
+    <UserPage className="welcome-page" size="wide">
+      <UserHero
+        eyebrow="Welcome back"
+        title={<>Welcome {name || 'there'}!</>}
+        subtitle="Your car wash companion for loyalty rewards and effortless service bookings."
+        actions={(
+          <>
+            <Link
+              to="/myloyalty"
+              className="btn btn--primary"
+              onClick={() => track('cta_click', { label: 'View Rewards', page: 'Welcome' })}
+            >
+              <FaGift aria-hidden="true" /> View Rewards
+            </Link>
+            <Link
+              to="/order"
+              className="btn btn--secondary"
+              onClick={() => track('cta_click', { label: 'Book a Service', page: 'Welcome' })}
+            >
+              <FaCar aria-hidden="true" /> Book a Service
+            </Link>
+          </>
+        )}
+      />
 
       {statusBanner && (
-        <div className={`status-banner status-banner--${statusBanner.variant}`}>
-          <span className="status-banner__icon">{statusBanner.icon}</span>
-          <div className="status-banner__body">
+        <UserCard
+          className={`status-banner status-banner--${statusBanner.variant}`}
+          muted
+          role="status"
+          aria-live="polite"
+        >
+          <span className="status-banner__icon" aria-hidden="true">
+            {statusBanner.icon}
+          </span>
+          <div className="status-banner__content">
             <h3 className="status-banner__title">{statusBanner.title}</h3>
             <p className="status-banner__description">{statusBanner.description}</p>
           </div>
-        </div>
+        </UserCard>
       )}
 
-      <section className="insights-grid">
-        <article className="surface-card surface-card--interactive insight-card">
-          <span className="insight-card__icon insight-card__icon--wash">
-            <HiOutlineRefresh />
-          </span>
-          <div className="surface-card__header">
-            <h3 className="surface-card__title">Wash Status</h3>
-            <span className="badge badge--info">Live</span>
-          </div>
-          <p className="surface-card__subtitle">
-            {activeWashes.length > 0
-              ? 'Your wash is currently in progress.'
-              : recentlyEnded
-              ? 'Your car is ready for collection.'
-              : 'No active washes at the moment.'}
-          </p>
-        </article>
+      <UserSection
+        title="Real-time insights"
+        subtitle="Monitor your wash progress and keep your rewards on track."
+        className="welcome-insights"
+      >
+        <div className="insights-grid">
+          <UserCard className="insight-card" interactive>
+            <span className="insight-card__icon insight-card__icon--wash" aria-hidden="true">
+              <HiOutlineRefresh />
+            </span>
+            <div className="surface-card__header">
+              <h3 className="surface-card__title">Wash Status</h3>
+              <span className="badge badge--info">Live</span>
+            </div>
+            <p className="surface-card__subtitle">
+              {activeWashes.length > 0
+                ? 'Your wash is currently in progress.'
+                : recentlyEnded
+                ? 'Your car is ready for collection.'
+                : 'No active washes at the moment.'}
+            </p>
+          </UserCard>
 
-        <article className="surface-card surface-card--interactive insight-card">
-          <span className="insight-card__icon insight-card__icon--loyalty">
-            <HiOutlineGift />
-          </span>
-          <div className="surface-card__header">
-            <h3 className="surface-card__title">Loyalty Progress</h3>
-            <span className="badge badge--success">Rewards</span>
-          </div>
-          <div className="insight-card__progress">
-            <CircularProgressbar
-              value={progress === 0 && visits > 0 ? nextMilestone : progress}
-              maxValue={nextMilestone}
-              text={`${progress === 0 && visits > 0 ? nextMilestone : progress}/${nextMilestone}`}
-              styles={buildStyles({
-                textSize: '16px',
-                pathColor: '#22c55e',
-                textColor: '#0f172a',
-                trailColor: '#e2e8f0',
-              })}
-            />
-          </div>
-          <div className="insight-card__footer">
-            {rewardsReady.length > 0 ? (
-              <div>
-                <p className="insight-card__text">You have a reward ready to claim!</p>
-                <button onClick={handleClaimReward} className="btn btn--primary btn--dense">
-                  Claim reward
-                </button>
-              </div>
-            ) : upcomingReward ? (
-              <div>
-                <p className="insight-card__text">Next reward: {upcomingReward.reward}</p>
-                <p className="insight-card__meta">Unlocked at {upcomingReward.milestone} visits</p>
-              </div>
-            ) : (
-              <p className="insight-card__text">Keep visiting to earn your next reward.</p>
-            )}
-          </div>
-        </article>
-      </section>
-    </div>
+          <UserCard className="insight-card" interactive>
+            <span className="insight-card__icon insight-card__icon--loyalty" aria-hidden="true">
+              <HiOutlineGift />
+            </span>
+            <div className="surface-card__header">
+              <h3 className="surface-card__title">Loyalty Progress</h3>
+              <span className="badge badge--success">Rewards</span>
+            </div>
+            <div className="insight-card__progress">
+              <CircularProgressbar
+                value={progressValue}
+                maxValue={nextMilestone}
+                text={`${progressValue}/${nextMilestone}`}
+                styles={buildStyles({
+                  textSize: '16px',
+                  pathColor: '#22c55e',
+                  textColor: '#0f172a',
+                  trailColor: '#e2e8f0',
+                })}
+              />
+              <p className="sr-only">
+                You have completed {progressValue} of {nextMilestone} visits toward your next loyalty reward.
+              </p>
+            </div>
+            <div className="insight-card__footer">
+              {rewardsReady.length > 0 ? (
+                <div className="insight-card__cta">
+                  <p className="insight-card__text">You have a reward ready to claim!</p>
+                  <button
+                    onClick={handleClaimReward}
+                    className="btn btn--primary btn--dense"
+                    type="button"
+                  >
+                    Claim reward
+                  </button>
+                </div>
+              ) : upcomingReward ? (
+                <div>
+                  <p className="insight-card__text">Next reward: {upcomingReward.reward}</p>
+                  <p className="insight-card__meta">Unlocked at {upcomingReward.milestone} visits</p>
+                </div>
+              ) : (
+                <p className="insight-card__text">Keep visiting to earn your next reward.</p>
+              )}
+            </div>
+          </UserCard>
+        </div>
+      </UserSection>
+    </UserPage>
   );
 };
 

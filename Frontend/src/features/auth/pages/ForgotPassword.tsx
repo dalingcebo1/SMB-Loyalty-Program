@@ -1,8 +1,10 @@
 // src/features/auth/pages/ForgotPassword.tsx
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../../../api/api";
 import { toast } from "react-toastify";
 import PageLayout from "../../../components/PageLayout";
+import "../styles/auth-shared.css";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -31,25 +33,50 @@ export default function ForgotPassword() {
       onRetry={() => window.location.reload()}
       loadingText="Sending reset..."
     >
-      <div className="max-w-sm mx-auto mt-10 p-6 bg-white rounded shadow">
-        <h1 className="text-xl font-semibold mb-4">Forgot Password</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            required
-            placeholder="Your email"
-            className="w-full mb-4 px-3 py-2 border rounded"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-          />
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {submitting ? "Sending..." : "Send Reset Link"}
-          </button>
-        </form>
+      <div className="auth-page auth-page--stack">
+        <div className="auth-card auth-card--narrow">
+          <div className="auth-card__body">
+            <header className="auth-header">
+              <span className="auth-eyebrow">Password assistance</span>
+              <h1 className="auth-title">Reset your password</h1>
+              <p className="auth-subtitle">
+                Enter the email linked to your ChaosX account and we’ll send you a secure reset link.
+              </p>
+            </header>
+
+            <form onSubmit={handleSubmit} className="auth-form">
+              <div className="auth-field">
+                <label htmlFor="reset-email" className="auth-label">Email address</label>
+                <input
+                  id="reset-email"
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  className="auth-input"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="auth-button auth-button--primary"
+              >
+                {submitting && <span className="auth-loading-spinner" aria-hidden="true"></span>}
+                {submitting ? "Sending…" : "Send reset link"}
+              </button>
+            </form>
+
+            <footer className="auth-footer">
+              <span>
+                Remember your password?{' '}
+                <Link to="/login" className="auth-link">Return to sign in</Link>
+              </span>
+            </footer>
+          </div>
+        </div>
       </div>
     </PageLayout>
   );

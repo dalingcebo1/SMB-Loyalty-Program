@@ -1,9 +1,10 @@
 // src/features/auth/pages/ResetPassword.tsx
 import React, { useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import api from "../../../api/api";
 import { toast } from "react-toastify";
 import PageLayout from "../../../components/PageLayout";
+import "../styles/auth-shared.css";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -39,25 +40,47 @@ export default function ResetPassword() {
       onRetry={() => window.location.reload()}
       loadingText="Resetting password..."
     >
-      <div className="max-w-sm mx-auto mt-10 p-6 bg-white rounded shadow">
-        <h1 className="text-xl font-semibold mb-4">Reset Password</h1>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="password"
-            required
-            placeholder="New password"
-            className="w-full mb-4 px-3 py-2 border rounded"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {submitting ? "Resetting..." : "Reset Password"}
-          </button>
-        </form>
+      <div className="auth-page auth-page--stack">
+        <div className="auth-card auth-card--narrow">
+          <div className="auth-card__body">
+            <header className="auth-header">
+              <span className="auth-eyebrow">Secure update</span>
+              <h1 className="auth-title">Choose a new password</h1>
+              <p className="auth-subtitle">
+                Pick a strong password to protect your account. You’ll be redirected to sign in once we confirm the change.
+              </p>
+            </header>
+
+            <form onSubmit={handleSubmit} className="auth-form">
+              <div className="auth-field">
+                <label htmlFor="new-password" className="auth-label">New password</label>
+                <input
+                  id="new-password"
+                  type="password"
+                  required
+                  placeholder="Enter a new password"
+                  className="auth-input"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="auth-button auth-button--primary"
+              >
+                {submitting && <span className="auth-loading-spinner" aria-hidden="true"></span>}
+                {submitting ? "Resetting…" : "Reset password"}
+              </button>
+            </form>
+
+            <footer className="auth-footer">
+              <Link to="/login" className="auth-link">Back to login</Link>
+            </footer>
+          </div>
+        </div>
       </div>
     </PageLayout>
   );

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../../api/api";
-import './Signup.css';
+import "../styles/auth-shared.css";
 
 type FormData = {
   email: string;
@@ -31,55 +31,69 @@ const Signup: React.FC = () => {
   };
 
   return (
-    <div className="signup-container">
-      <div className="signup-card">
-        <div className="signup-header">
-          <h1 className="signup-title">Create Account</h1>
-          <p className="signup-subtitle">Join us to get started with your car wash experience</p>
-        </div>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-card__body">
+          <header className="auth-header">
+            <span className="auth-eyebrow">Create account</span>
+            <h1 className="auth-title">Join ChaosX Loyalty</h1>
+            <p className="auth-subtitle">
+              Book car wash services, earn rewards, and keep your vehicle spotless with a personalised dashboard.
+            </p>
+          </header>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="signup-form">
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">Email</label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              className="form-input"
-              data-cy="signup-email"
-              {...register("email", { required: "Email is required" })}
-            />
-            <div className="form-helper">We'll never share your email.</div>
-          </div>
+          {signUpError && (
+            <div className="auth-alert auth-alert--error" role="alert">
+              {signUpError}
+            </div>
+          )}
 
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">Password</label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Create a password"
-              className="form-input"
-              data-cy="signup-password"
-              {...register("password", { required: "Password is required" })}
-            />
-            <div className="form-helper">At least 8 characters.</div>
-          </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="email" className="auth-label">Email</label>
+              <input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                className="auth-input"
+                data-cy="signup-email"
+                autoComplete="email"
+                {...register("email", { required: "Email is required" })}
+              />
+              <p className="auth-helper">We’ll never share your email with anyone else.</p>
+            </div>
 
-          <button type="submit" disabled={isSubmitting} className="signup-button" data-cy="signup-submit">
-            {isSubmitting && <span className="loading-spinner"></span>}
-            {isSubmitting ? "Creating account..." : "Create Account"}
-          </button>
-        </form>
+            <div className="auth-field">
+              <label htmlFor="password" className="auth-label">Password</label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Choose a secure password"
+                className="auth-input"
+                data-cy="signup-password"
+                autoComplete="new-password"
+                {...register("password", { required: "Password is required" })}
+              />
+              <p className="auth-helper">Use at least 8 characters with a mix of letters and numbers.</p>
+            </div>
 
-        {signUpError && (
-          <div className="error-message">
-            {signUpError}
-          </div>
-        )}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="auth-button auth-button--primary"
+              data-cy="signup-submit"
+            >
+              {isSubmitting && <span className="auth-loading-spinner" aria-hidden="true"></span>}
+              {isSubmitting ? "Creating account..." : "Create account"}
+            </button>
+          </form>
 
-        <div className="login-link">
-          Already have an account?{' '}
-          <Link to="/login">Sign in</Link>
+          <footer className="auth-footer">
+            <span>
+              Already have an account?{' '}
+              <Link to="/login" className="auth-link">Sign in</Link>
+            </span>
+          </footer>
         </div>
       </div>
     </div>

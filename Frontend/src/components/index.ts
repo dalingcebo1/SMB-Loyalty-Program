@@ -10,3 +10,4 @@ export { default as Spinner } from './Spinner';
 export { default as Pagination } from './Pagination';
 export { default as PageLayout } from './PageLayout';
 export { default as StatusBanner } from './StatusBanner';
+export { UserPage, UserHero, UserSection, UserCard } from './user';

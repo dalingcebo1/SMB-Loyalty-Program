@@ -25,7 +25,6 @@ const MyLoyalty: React.FC = () => {
   const visits = data?.visits ?? 0;
   const rewards = data?.rewards_ready ?? [];
   const upcoming = useMemo(() => data?.upcoming_rewards ?? [], [data?.upcoming_rewards]);
-  const userName = data?.name || user?.firstName || 'User';
 
   const progressData = useMemo(() => {
     const nextMilestone = upcoming.length > 0 ? upcoming[0].milestone : visits + 5;
@@ -73,7 +72,6 @@ const MyLoyalty: React.FC = () => {
         <UserHero
           eyebrow="Loyalty"
           title="My Loyalty Rewards"
-          subtitle="We are fetching the latest rewards for you."
           variant="compact"
           align="start"
         />
@@ -93,7 +91,6 @@ const MyLoyalty: React.FC = () => {
         <UserHero
           eyebrow="Loyalty"
           title="My Loyalty Rewards"
-          subtitle="We could not load your loyalty information."
           variant="compact"
           align="start"
         />
@@ -116,7 +113,6 @@ const MyLoyalty: React.FC = () => {
         <UserHero
           eyebrow="Loyalty"
           title="My Loyalty Rewards"
-          subtitle="Please log in to view your loyalty status."
           variant="compact"
           align="start"
         />
@@ -137,7 +133,6 @@ const MyLoyalty: React.FC = () => {
       <UserHero
         eyebrow="Loyalty"
         title="My Loyalty Rewards"
-        subtitle={`Welcome back, ${userName}! Earn rewards with every visit.`}
         variant="compact"
         align="start"
         actions={

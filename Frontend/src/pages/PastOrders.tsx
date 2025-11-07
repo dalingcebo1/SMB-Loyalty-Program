@@ -337,7 +337,6 @@ const PastOrders: React.FC = () => {
           className="past-orders-hero"
           eyebrow="Orders"
           title="Past Orders"
-          subtitle="View your car wash history and reorder your favorites."
           variant="compact"
           align="start"
         />
@@ -374,7 +373,6 @@ const PastOrders: React.FC = () => {
         className="past-orders-hero"
         eyebrow="Orders"
         title="Order History"
-        subtitle="Track your car wash orders and service history."
         variant="compact"
         align="start"
       />

@@ -298,7 +298,6 @@ const OrderForm: React.FC = () => {
         align="start"
         eyebrow="Booking"
         title="Book Your Service"
-        subtitle="Select your service, choose a time, and we'll take care of the rest."
       />
 
       <UserSection className="order-step-indicator-section">

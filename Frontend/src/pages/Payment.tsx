@@ -417,7 +417,6 @@ const Payment: React.FC = () => {
         <UserHero
           eyebrow="Payment"
           title="Preparing your checkout"
-          subtitle="Hang tight while we load your payment details."
           variant="compact"
           align="start"
         />
@@ -444,7 +443,6 @@ const Payment: React.FC = () => {
       <UserHero
         eyebrow="Payment"
         title="Complete Your Payment"
-        subtitle="Review your booking details and finish checkout securely."
         variant="compact"
         align="start"
         actions={
@@ -493,7 +491,7 @@ const Payment: React.FC = () => {
       </UserSection>
 
       {summaryItems.length > 0 && (
-        <UserSection title="Booking summary" subtitle="A quick reminder of what you’re paying for.">
+        <UserSection title="Booking summary">
           <UserCard>
             <ul className="order-summary-list">
               {summaryItems.map((item, index) => (

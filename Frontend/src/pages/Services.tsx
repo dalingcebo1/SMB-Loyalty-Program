@@ -82,7 +82,6 @@ const Services: React.FC = () => {
         <UserHero
           eyebrow="Services"
           title="Browse our service menu"
-          subtitle="We are fetching the most recent catalogue."
           variant="compact"
           align="start"
         />
@@ -101,7 +100,6 @@ const Services: React.FC = () => {
         <UserHero
           eyebrow="Services"
           title="Browse our service menu"
-          subtitle="We could not load the catalogue right now."
           variant="compact"
           align="start"
         />
@@ -122,12 +120,11 @@ const Services: React.FC = () => {
       <UserHero
         eyebrow="Services"
         title="Browse our service menu"
-        subtitle="Choose a category to see what is available and plan your next visit."
         variant="compact"
         align="start"
       />
 
-      <UserSection title="Choose a category" subtitle="Pick the service family you are interested in.">
+      <UserSection title="Choose a category">
         <UserCard className="services-card" padding="loose">
           <label className="services-field">
             <span className="services-label">Service category</span>
@@ -143,15 +140,11 @@ const Services: React.FC = () => {
               ))}
             </select>
           </label>
-          <p className="services-helper">
-            Categories group similar services together so you can compare pricing easily.
-          </p>
         </UserCard>
       </UserSection>
 
       <UserSection
         title="Available services"
-        subtitle={services.length ? "Select a service to see pricing details." : "No services found in this category."}
       >
         <UserCard className="services-card" padding="loose">
           {services.length > 0 ? (
@@ -179,9 +172,6 @@ const Services: React.FC = () => {
         <UserCard muted className="services-cta" padding="loose">
           <div>
             <h2 className="surface-card__title">Ready to book?</h2>
-            <p className="surface-card__subtitle">
-              Head to the booking flow to choose a date and confirm your order.
-            </p>
           </div>
           <a className="btn btn--primary" href="/order">
             Start booking

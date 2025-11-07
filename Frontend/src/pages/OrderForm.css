@@ -291,14 +291,14 @@
 }
 
 .action-button {
-  padding: 0.875rem 2rem;
+  padding: 0.7rem 1.5rem;
   border-radius: var(--radius-lg);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   border: none;
-  min-width: 140px;
+  min-width: 120px;
 }
 
 .action-button.primary {

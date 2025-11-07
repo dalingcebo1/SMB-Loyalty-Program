@@ -287,8 +287,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  padding: 0.85rem 1.5rem;
-  min-height: 44px;
+  padding: 0.7rem 1.25rem;
+  min-height: 40px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   font-weight: 600;
@@ -315,8 +315,8 @@
 }
 
 .btn--dense {
-  padding: 0.75rem 1.5rem;
-  min-height: 40px;
+  padding: 0.6rem 1.1rem;
+  min-height: 36px;
   font-size: var(--text-sm);
 }
 

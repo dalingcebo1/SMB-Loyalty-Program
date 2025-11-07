@@ -30,7 +30,6 @@ const Account: React.FC = () => {
         <UserHero
           eyebrow="Account"
           title="Account Details"
-          subtitle="Loading your account information..."
           variant="compact"
           align="start"
         />
@@ -97,7 +96,6 @@ const Account: React.FC = () => {
       <UserHero
         eyebrow="Account"
         title="Account Details"
-        subtitle="Manage your personal information and preferences."
         variant="compact"
         align="start"
       />
@@ -107,9 +105,6 @@ const Account: React.FC = () => {
           <header className="account-card__header">
             <div>
               <h2 className="surface-card__title">Profile information</h2>
-              <p className="surface-card__subtitle">
-                Keep your details current so we can tailor your experience.
-              </p>
             </div>
             {!editing && (
               <button
@@ -200,13 +195,7 @@ const Account: React.FC = () => {
       <UserSection>
         <UserCard className="account-actions" muted>
           <h2 className="surface-card__title">Session controls</h2>
-          <p className="surface-card__subtitle">
-            Sign out when you’re done, especially on a shared device.
-          </p>
           <div className="account-actions__body">
-            <p className="account-actions__copy">
-              Logging out will return you to the login screen and clear your session.
-            </p>
             <button type="button" className="btn account-logout" onClick={handleLogout}>
               <FaSignOutAlt aria-hidden="true" />
               Logout

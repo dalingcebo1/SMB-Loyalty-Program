@@ -190,7 +190,6 @@ const Welcome: React.FC = () => {
       <UserHero
         eyebrow="Welcome back"
         title={<>Welcome {name || 'there'}!</>}
-        subtitle="Your car wash companion for loyalty rewards and effortless service bookings."
         actions={(
           <>
             <Link
@@ -230,7 +229,6 @@ const Welcome: React.FC = () => {
 
       <UserSection
         title="Real-time insights"
-        subtitle="Monitor your wash progress and keep your rewards on track."
         className="welcome-insights"
       >
         <div className="insights-grid">

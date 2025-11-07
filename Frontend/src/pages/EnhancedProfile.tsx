@@ -247,7 +247,6 @@ const EnhancedProfile: React.FC = () => {
       <UserHero
         eyebrow="Account"
         title="My Profile"
-        subtitle="We are loading your latest profile details."
         variant="compact"
         align="start"
       />
@@ -278,7 +277,6 @@ const EnhancedProfile: React.FC = () => {
         <UserHero
           eyebrow="Account"
           title="My Profile"
-          subtitle="We could not load your profile information."
           variant="compact"
           align="start"
         />
@@ -303,7 +301,6 @@ const EnhancedProfile: React.FC = () => {
       <UserHero
         eyebrow="Account"
         title="My Profile"
-        subtitle="Manage your personal information, saved vehicles, and loyalty history."
         variant="compact"
         align="start"
         actions={
@@ -315,7 +312,6 @@ const EnhancedProfile: React.FC = () => {
 
       <UserSection
         title="Profile overview"
-        subtitle="Review your personal details and loyalty standing."
         className="enhanced-profile__layout"
       >
         <UserCard className="enhanced-profile__card" padding="loose">
@@ -324,9 +320,6 @@ const EnhancedProfile: React.FC = () => {
               <h2 className="surface-card__title">
                 <FaUser aria-hidden="true" /> Personal information
               </h2>
-              <p className="surface-card__subtitle">
-                Keep your contact details accurate so we can stay in touch.
-              </p>
             </div>
             {!isEditingProfile && (
               <button
@@ -428,9 +421,6 @@ const EnhancedProfile: React.FC = () => {
           <h2 className="surface-card__title">
             <FaGift aria-hidden="true" /> Loyalty summary
           </h2>
-          <p className="surface-card__subtitle">
-            Track your points and tier progress at a glance.
-          </p>
           <div className="enhanced-profile__loyalty-score">
             <span className="enhanced-profile__loyalty-score-value">{loyalty.current_points}</span>
             <span className="enhanced-profile__loyalty-score-label">Current points</span>
@@ -460,7 +450,6 @@ const EnhancedProfile: React.FC = () => {
 
       <UserSection
         title="Vehicle garage"
-        subtitle="Store your vehicles for a faster checkout experience."
       >
         <UserCard className="enhanced-profile__card enhanced-profile__vehicles-card" padding="loose">
           <header className="enhanced-profile__card-header">
@@ -468,9 +457,6 @@ const EnhancedProfile: React.FC = () => {
               <h2 className="surface-card__title">
                 <FaCar aria-hidden="true" /> My vehicles
               </h2>
-              <p className="surface-card__subtitle">
-                Add vehicles to simplify repeat bookings and keep details on file.
-              </p>
             </div>
             <button
               type="button"
@@ -485,7 +471,6 @@ const EnhancedProfile: React.FC = () => {
             <div className="enhanced-profile__empty">
               <FaCar aria-hidden="true" className="enhanced-profile__empty-icon" />
               <p>No vehicles added yet.</p>
-              <p>Add your vehicles to speed through future bookings.</p>
             </div>
           ) : (
             <div className="enhanced-profile__vehicle-list">
@@ -518,7 +503,6 @@ const EnhancedProfile: React.FC = () => {
 
       <UserSection
         title="Recent activity"
-        subtitle="A snapshot of your latest orders and reward redemptions."
       >
         <div className="enhanced-profile__activity-grid">
           {recentOrders.length > 0 ? (

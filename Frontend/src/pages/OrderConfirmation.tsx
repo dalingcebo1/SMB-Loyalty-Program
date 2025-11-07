@@ -265,7 +265,6 @@ const OrderConfirmation: React.FC = () => {
         className="confirmation-hero"
         variant="compact"
         title="Order Confirmed!"
-        subtitle="Your booking has been successfully processed."
       >
         <span className="success-icon-large" aria-hidden="true">✅</span>
       </UserHero>

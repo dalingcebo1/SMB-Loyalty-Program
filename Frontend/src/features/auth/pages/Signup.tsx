@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../../api/api";
 import "../styles/auth-shared.css";
+import HeroText from "../../../components/HeroText";
 
 type FormData = {
   email: string;
@@ -34,13 +35,12 @@ const Signup: React.FC = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-card__body">
-          <header className="auth-header">
-            <span className="auth-eyebrow">Create account</span>
-            <h1 className="auth-title">Join ChaosX Loyalty</h1>
-            <p className="auth-subtitle">
-              Book car wash services, earn rewards, and keep your vehicle spotless with a personalised dashboard.
-            </p>
-          </header>
+          <HeroText
+            eyebrow="Create account"
+            title="Join ChaosX Loyalty"
+            subtitle="Book car wash services, earn rewards, and keep your vehicle spotless with a personalised dashboard."
+            align="center"
+          />
 
           {signUpError && (
             <div className="auth-alert auth-alert--error" role="alert">

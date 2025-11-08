@@ -1,0 +1,62 @@
+/* HeroText component styles: responsive, balanced wrapping, theming-compatible */
+
+.hero-text {
+  display: grid;
+  gap: 0.65rem;
+  text-align: left;
+}
+
+.hero-text--center {
+  text-align: center;
+}
+
+.hero-text__eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.hero-text__title {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+}
+
+.hero-text__subtitle {
+  margin: 0;
+  font-size: clamp(var(--text-sm), 0.9rem + 0.25vw, var(--text-md));
+  line-height: var(--leading-normal);
+  color: var(--color-text-soft);
+  display: block;
+  max-width: var(--hero-subtitle-max, 42ch);
+  word-break: normal;
+  overflow-wrap: break-word; /* gentler than anywhere */
+  hyphens: auto;
+}
+
+@supports (text-wrap: balance) {
+  .hero-text__subtitle {
+    text-wrap: balance;
+  }
+}
+
+.hero-text--center .hero-text__subtitle {
+  margin-inline: auto;
+}
+
+@media (max-width: 640px) {
+  .hero-text__title {
+    font-size: var(--text-2xl);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-text__subtitle {
+    transition: none;
+  }
+}

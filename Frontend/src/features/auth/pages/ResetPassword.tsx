@@ -5,6 +5,7 @@ import api from "../../../api/api";
 import { toast } from "react-toastify";
 import PageLayout from "../../../components/PageLayout";
 import "../styles/auth-shared.css";
+import HeroText from "../../../components/HeroText";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -43,13 +44,13 @@ export default function ResetPassword() {
       <div className="auth-page auth-page--stack">
         <div className="auth-card auth-card--narrow">
           <div className="auth-card__body">
-            <header className="auth-header">
-              <span className="auth-eyebrow">Secure update</span>
-              <h1 className="auth-title">Choose a new password</h1>
-              <p className="auth-subtitle">
-                Pick a strong password to protect your account. You’ll be redirected to sign in once we confirm the change.
-              </p>
-            </header>
+            <HeroText
+              eyebrow="Secure update"
+              title="Choose a new password"
+              subtitle="Pick a strong password to protect your account. You’ll be redirected to sign in once we confirm the change."
+              as="h1"
+              align="left"
+            />
 
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="auth-field">

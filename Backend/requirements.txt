@@ -1,5 +1,6 @@
 alembic==1.16.5
-fastapi==0.116.1
+fastapi==0.121.0  # Upgrade to widen allowed Starlette range (<0.50.0) and pick patched transitive
+starlette==0.49.3  # Explicit pin (>=0.49.1,<0.50.0) fixes GHSA-7f5h-v6xp-fcq8
 itsdangerous==2.2.0
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2

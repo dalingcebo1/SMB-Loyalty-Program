@@ -5,6 +5,7 @@ import api from "../../../api/api";
 import { toast } from "react-toastify";
 import PageLayout from "../../../components/PageLayout";
 import "../styles/auth-shared.css";
+import HeroText from "../../../components/HeroText";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -36,13 +37,13 @@ export default function ForgotPassword() {
       <div className="auth-page auth-page--stack">
         <div className="auth-card auth-card--narrow">
           <div className="auth-card__body">
-            <header className="auth-header">
-              <span className="auth-eyebrow">Password assistance</span>
-              <h1 className="auth-title">Reset your password</h1>
-              <p className="auth-subtitle">
-                Enter the email linked to your ChaosX account and we’ll send you a secure reset link.
-              </p>
-            </header>
+            <HeroText
+              eyebrow="Password assistance"
+              title="Reset your password"
+              subtitle="Enter the email linked to your ChaosX account and we’ll send you a secure reset link."
+              as="h1"
+              align="left"
+            />
 
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="auth-field">

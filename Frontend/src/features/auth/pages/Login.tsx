@@ -7,6 +7,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthProvider";
 import { isFirebaseEnabled } from "../../../firebase";
 import "../styles/auth-shared.css";
+import HeroText from "../../../components/HeroText";
 
 interface FormData {
   email: string;
@@ -82,13 +83,12 @@ const Login: React.FC = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-card__body">
-          <header className="auth-header">
-            <span className="auth-eyebrow">Welcome back</span>
-            <h1 className="auth-title">Sign in to continue</h1>
-            <p className="auth-subtitle">
-              Access your bookings, loyalty rewards, and personalised offers in one place.
-            </p>
-          </header>
+          <HeroText
+            eyebrow="Welcome back"
+            title="Sign in to continue"
+            subtitle="Access your bookings, loyalty rewards, and personalised offers in one place."
+            align="center"
+          />
 
           {authError && (
             <div className="auth-alert auth-alert--error" role="alert">

@@ -264,9 +264,10 @@ const Welcome: React.FC = () => {
                 text={`${progressValue}/${nextMilestone}`}
                 styles={buildStyles({
                   textSize: '16px',
-                  pathColor: '#22c55e',
+                  pathColor: '#2563eb',
                   textColor: '#0f172a',
-                  trailColor: '#e2e8f0',
+                  trailColor: '#e5e7eb',
+                  pathTransitionDuration: 0.5,
                 })}
               />
               <p className="sr-only">

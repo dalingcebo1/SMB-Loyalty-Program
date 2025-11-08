@@ -1,10 +1,8 @@
 // src/features/loyalty/hooks/useLoyalty.ts
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../api/api';
-import { normalizeLoyaltyResponse, NormalizedLoyalty } from '../../../utils/loyalty';
 
-// Legacy interfaces retained for now (can be removed after migration)
-export interface RewardReadyLegacy {
+export interface RewardReady {
   milestone: number;
   reward: string;
   qr_reference?: string;
@@ -12,28 +10,30 @@ export interface RewardReadyLegacy {
   status?: string;
   expiry_at?: string;
 }
-export interface UpcomingRewardLegacy {
+
+export interface UpcomingReward {
   milestone: number;
   visits_needed: number;
   reward: string;
 }
-export interface LoyaltyResponseLegacy {
+
+export interface LoyaltyResponse {
   name: string;
   phone: string;
   visits: number;
-  rewards_ready: RewardReadyLegacy[];
-  upcoming_rewards: UpcomingRewardLegacy[];
+  rewards_ready: RewardReady[];
+  upcoming_rewards: UpcomingReward[];
 }
 
 /**
  * Fetches the loyalty data for a given phone number.
  */
 export function useLoyalty(phone: string) {
-  return useQuery<NormalizedLoyalty>({
+  return useQuery<LoyaltyResponse>({
     queryKey: ['loyalty', phone],
     queryFn: async () => {
-      const { data } = await api.get('/loyalty/me', { params: { phone } });
-      return normalizeLoyaltyResponse(data);
+      const { data } = await api.get<LoyaltyResponse>('/loyalty/me', { params: { phone } });
+      return data;
     },
     staleTime: 1000 * 60 * 5,
   });

@@ -15,7 +15,6 @@ from app.core.tenant_context import get_tenant_context, TenantContext
 from app.models import Tenant, User, VisitCount, Reward, Redemption, Order, Service, Extra, OrderItem
 from app.utils.qr import generate_qr_code
 from app.plugins.auth.routes import get_current_user
-from app.utils.casing import add_camelcase_aliases
 from .constants import REWARD_INTERVAL
 
 SECRET_KEY = settings.loyalty_secret
@@ -157,13 +156,8 @@ def loyalty_me(
 
     base = get_base_reward(db, current_user.tenant_id)
     if not base:
-        return add_camelcase_aliases({
-            "name": current_user.first_name,
-            "phone": current_user.phone,
-            "visits": visits,
-            "rewards_ready": [],
-            "upcoming_rewards": []
-        })
+        return {"name": current_user.first_name, "phone": current_user.phone,
+                "visits": visits, "rewards_ready": [], "upcoming_rewards": []}
 
     num_earned = visits // REWARD_INTERVAL
     redemptions = db.query(Redemption).filter_by(user_id=current_user.id).all()
@@ -203,13 +197,9 @@ def loyalty_me(
             "reward": base.title
         })
 
-    return add_camelcase_aliases({
-        "name": current_user.first_name,
-        "phone": current_user.phone,
-        "visits": visits,
-        "rewards_ready": rewards_ready,
-        "upcoming_rewards": upcoming
-    })
+    return {"name": current_user.first_name, "phone": current_user.phone,
+            "visits": visits, "rewards_ready": rewards_ready,
+            "upcoming_rewards": upcoming}
 
 @router.post(
     "/register",

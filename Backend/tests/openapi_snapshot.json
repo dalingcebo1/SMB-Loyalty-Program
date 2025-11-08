@@ -14295,6 +14295,62 @@
           "tenants"
         ]
       },
+      "patch": {
+        "description": "Partial update for branding settings (white-labeling convenience).\n\nAllows updating a subset of fields without sending the full object. Mirrors PUT\nsemantics but without overwriting unspecified values. Creates the branding row\nif it does not yet exist. Capability guard enforced by router dependencies.",
+        "operationId": "patch_branding_api_tenants__tenant_id__branding_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Patch Branding",
+        "tags": [
+          "tenants"
+        ]
+      },
       "put": {
         "operationId": "update_branding_api_tenants__tenant_id__branding_put",
         "parameters": [

@@ -1,8 +1,9 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { useNavigate } from "react-router-dom";
-// Removed toast usage; will use inline StatusBanner for error messaging.
+import { toast } from "react-toastify";
 import {
+  FaCar,
   FaSearch,
   FaReceipt,
   FaRedo,
@@ -11,14 +12,12 @@ import {
   FaSprayCan,
   FaCreditCard,
   FaTrophy,
+  FaStar,
 } from "react-icons/fa";
 import useFetch from "../hooks/useFetch";
 import { Order, Extra } from "../types";
 import api from "../api/api";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
-import OrderCard from '../components/user/OrderCard';
-import StatusBanner from '../components/ui/StatusBanner';
-import useFocusTrap from '../components/ui/useFocusTrap';
 import { formatCents } from "../utils/format";
 import "./PastOrders.css";
 
@@ -118,6 +117,93 @@ const groupOrdersByTime = (orders: Order[]): GroupedOrders => {
   return groups;
 };
 
+interface OrderCardProps {
+  order: Order;
+  onViewOrder: (id: string) => void;
+  onBookAgain: () => void;
+}
+
+const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder, onBookAgain }) => (
+  <UserCard
+    as="article"
+    className="order-card"
+    interactive
+    onClick={() => onViewOrder(order.id)}
+    role="button"
+    tabIndex={0}
+    aria-label={`Order from ${formatOrderDate(order.created_at)}, ${getOrderSummary(order)}, ${formatCents(order.amount ?? 0)}`}
+    onKeyDown={(event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onViewOrder(order.id);
+      }
+    }}
+  >
+    <div className="order-header">
+      <div className="service-icon" aria-hidden="true">
+        <FaCar className="icon" />
+      </div>
+      <div className="order-info">
+        <h3>{getOrderSummary(order)}</h3>
+        <div className="order-meta">
+          <span className="date">{formatOrderDate(order.created_at)}</span>
+          <span className={`badge ${getStatusBadge(order.status)}`}>
+            {(order.status || "pending").toUpperCase()}
+          </span>
+        </div>
+      </div>
+      <div className="order-price">
+        <span className="currency">Total</span>
+        <span>{formatCents(order.amount ?? 0)}</span>
+      </div>
+    </div>
+
+    <div className="order-details">
+      <div className="detail-row">
+        <span className="label">Order ID</span>
+        <span className="value">#{order.id}</span>
+      </div>
+      <div className="detail-row">
+        <span className="label">Payment Method</span>
+        <span className="value">Credit Card</span>
+      </div>
+      {order.payment_pin && (
+        <div className="detail-row">
+          <span className="label">PIN</span>
+          <span className="value">{order.payment_pin}</span>
+        </div>
+      )}
+
+      <div className="loyalty-earned">
+        <FaStar className="loyalty-icon" aria-hidden="true" />
+        <span>+1 visit progress earned</span>
+      </div>
+    </div>
+
+    <div className="order-actions">
+      <button
+        className="action-button primary"
+        onClick={(event) => {
+          event.stopPropagation();
+          onViewOrder(order.id);
+        }}
+        aria-label="View order details"
+      >
+        <FaReceipt aria-hidden="true" /> View Details
+      </button>
+      <button
+        className="action-button secondary"
+        onClick={(event) => {
+          event.stopPropagation();
+          onBookAgain();
+        }}
+        aria-label="Book this service again"
+      >
+        <FaRedo aria-hidden="true" /> Book Again
+      </button>
+    </div>
+  </UserCard>
+);
 
 type ExtraLike =
   | string
@@ -211,11 +297,6 @@ const PastOrders: React.FC = () => {
 
   const groupedOrders = useMemo(() => groupOrdersByTime(filteredOrders), [filteredOrders]);
 
-  const [banner, setBanner] = useState<{ type: 'error'; message: string } | null>(null);
-
-  const drawerRef = useRef<HTMLElement | null>(null);
-  const drawerInitialFocusRef = useRef<HTMLButtonElement | null>(null);
-
   const loadOrderDetails = async (id: string) => {
     setModalLoading(true);
     try {
@@ -238,7 +319,7 @@ const PastOrders: React.FC = () => {
       setModalOrder(normalized);
     } catch (err) {
       console.error("[PastOrders] loadOrderDetails error", err);
-      setBanner({ type: 'error', message: 'Failed to load order details' });
+      toast.error("Failed to load order details");
     } finally {
       setModalLoading(false);
     }
@@ -260,17 +341,26 @@ const PastOrders: React.FC = () => {
           align="start"
         />
         <UserSection>
-          <UserCard className="orders-loading" muted aria-busy="true">
-            <div className="u-grid u-grid--cols-2" aria-hidden="true">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="skeleton-lines">
-                  <div className="skeleton skeleton-text" style={{ width: '70%', height: '1rem' }} />
-                  <div className="skeleton skeleton-text" style={{ width: '55%', height: '0.85rem' }} />
-                  <div className="skeleton skeleton-text" style={{ width: '60%', height: '0.85rem' }} />
+          <UserCard className="orders-loading" muted>
+            {[1, 2, 3].map((index) => (
+              <div key={index} className="skeleton-card">
+                <div className="skeleton-header">
+                  <div className="skeleton-circle" />
+                  <div className="skeleton-lines">
+                    <div className="skeleton-line-short" />
+                    <div className="skeleton-line-long" />
+                  </div>
                 </div>
-              ))}
-            </div>
-            <p className="visually-hidden">Loading past orders, please wait.</p>
+                <div className="skeleton-body">
+                  <div className="skeleton-line-full" />
+                  <div className="skeleton-line-full" />
+                </div>
+                <div className="skeleton-actions">
+                  <div className="skeleton-button" />
+                  <div className="skeleton-button" />
+                </div>
+              </div>
+            ))}
           </UserCard>
         </UserSection>
       </UserPage>
@@ -287,20 +377,8 @@ const PastOrders: React.FC = () => {
         align="start"
       />
 
-      {banner && (
-        <StatusBanner
-          variant="error"
-          title="Error"
-          description={banner.message}
-          dismissible
-          onDismiss={() => setBanner(null)}
-          role="alert"
-          ariaLive="assertive"
-        />
-      )}
       <UserSection>
-        <div className="orders-filters-wrapper">
-        <UserCard className="orders-filters orders-filters--sticky" padding="loose">
+        <UserCard className="orders-filters" padding="loose">
           <div className="orders-filters__group">
             <label className="orders-filters__label" htmlFor="order-time-filter">
               Timeframe
@@ -331,7 +409,6 @@ const PastOrders: React.FC = () => {
             <FaSearch className="search-icon" />
           </div>
         </UserCard>
-        </div>
       </UserSection>
 
       <UserSection>
@@ -372,9 +449,6 @@ const PastOrders: React.FC = () => {
                         order={order}
                         onViewOrder={loadOrderDetails}
                         onBookAgain={handleBookAgain}
-                        getOrderSummary={getOrderSummary}
-                        formatOrderDate={formatOrderDate}
-                        getStatusBadge={getStatusBadge}
                       />
                     ))}
                   </div>
@@ -394,9 +468,6 @@ const PastOrders: React.FC = () => {
                         order={order}
                         onViewOrder={loadOrderDetails}
                         onBookAgain={handleBookAgain}
-                        getOrderSummary={getOrderSummary}
-                        formatOrderDate={formatOrderDate}
-                        getStatusBadge={getStatusBadge}
                       />
                     ))}
                   </div>
@@ -416,9 +487,6 @@ const PastOrders: React.FC = () => {
                         order={order}
                         onViewOrder={loadOrderDetails}
                         onBookAgain={handleBookAgain}
-                        getOrderSummary={getOrderSummary}
-                        formatOrderDate={formatOrderDate}
-                        getStatusBadge={getStatusBadge}
                       />
                     ))}
                   </div>
@@ -438,9 +506,6 @@ const PastOrders: React.FC = () => {
                         order={order}
                         onViewOrder={loadOrderDetails}
                         onBookAgain={handleBookAgain}
-                        getOrderSummary={getOrderSummary}
-                        formatOrderDate={formatOrderDate}
-                        getStatusBadge={getStatusBadge}
                       />
                     ))}
                   </div>
@@ -458,26 +523,22 @@ const PastOrders: React.FC = () => {
         </div>
       </UserSection>
 
-      {(modalLoading || modalOrder) && (
-        <div className="order-drawer__backdrop" aria-hidden="true" onClick={() => !modalLoading && setModalOrder(null)} />
-      )}
-
       {modalLoading && (
-        <aside ref={drawerRef} className="order-drawer" role="dialog" aria-modal="true" aria-label="Loading order details">
-          <div className="drawer-content" aria-busy="true">
+        <div className="order-modal">
+          <div className="modal-content">
             <div className="loading">
               <div className="loading-spinner" />
               <p>Loading order details...</p>
             </div>
           </div>
-        </aside>
+        </div>
       )}
 
       {modalOrder && !modalLoading && (
-        <aside ref={drawerRef} className="order-drawer" role="dialog" aria-modal="true" aria-label={`Order details for ${getOrderSummary(modalOrder)}`}>          
-          <div className="drawer-content" onClick={(event) => event.stopPropagation()}>
+        <div className="order-modal" onClick={() => setModalOrder(null)}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
-              <button ref={drawerInitialFocusRef} className="modal-close" onClick={() => setModalOrder(null)} aria-label="Close dialog">
+              <button className="modal-close" onClick={() => setModalOrder(null)} aria-label="Close dialog">
                 ×
               </button>
               <h2 className="modal-title">{getOrderSummary(modalOrder)}</h2>
@@ -613,25 +674,10 @@ const PastOrders: React.FC = () => {
               </button>
             </div>
           </div>
-        </aside>
+        </div>
       )}
-      {/* Focus trap activation side-effect */}
-      <FocusTrapActivator active={Boolean(modalOrder) || modalLoading} drawerRef={drawerRef} initialFocusRef={drawerInitialFocusRef} onDeactivate={() => setModalOrder(null)} />
     </UserPage>
   );
-};
-
-// Helper component to invoke focus trap without rendering output
-const FocusTrapActivator: React.FC<{ active: boolean; drawerRef: React.RefObject<HTMLElement | null>; initialFocusRef: React.RefObject<HTMLButtonElement | null>; onDeactivate: () => void; }> = ({ active, drawerRef, initialFocusRef, onDeactivate }) => {
-  useFocusTrap({
-    active,
-    containerRef: drawerRef,
-    initialFocus: initialFocusRef,
-    onDeactivate,
-    escapeDeactivates: true,
-    clickOutsideDeactivates: true,
-  });
-  return null;
 };
 
 export default PastOrders;

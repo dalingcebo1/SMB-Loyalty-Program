@@ -3,9 +3,8 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../../api/api";
 import { toast } from "react-toastify";
+import PageLayout from "../../../components/PageLayout";
 import "../styles/auth-shared.css";
-import AuthLayout from "../components/AuthLayout";
-import AuthField from "../components/AuthField";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -28,37 +27,57 @@ export default function ForgotPassword() {
     }
   };
   return (
-    <AuthLayout
-      eyebrow="Password assistance"
-      title="Reset your password"
-      subtitle="Enter the email linked to your ChaosX account and we’ll send you a secure reset link."
+    <PageLayout
+      loading={submitting}
       error={error}
-      footer={<span>Remember your password? <Link to="/login" className="auth-link">Return to sign in</Link></span>}
+      onRetry={() => window.location.reload()}
+      loadingText="Sending reset..."
     >
-      <form onSubmit={handleSubmit} className="auth-form">
-        <AuthField
-          id="reset-email"
-          label="Email address"
-          type="email"
-          placeholder="you@example.com"
-          error={undefined}
-          inputProps={{
-            required: true,
-            value: email,
-            onChange: e => setEmail(e.target.value),
-            autoComplete: 'email',
-            autoFocus: true
-          }}
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="auth-button auth-button--primary"
-        >
-          {submitting && <span className="auth-loading-spinner" aria-hidden="true"></span>}
-          {submitting ? "Sending…" : "Send reset link"}
-        </button>
-      </form>
-    </AuthLayout>
+      <div className="auth-page auth-page--stack">
+        <div className="auth-card auth-card--narrow">
+          <div className="auth-card__body">
+            <header className="auth-header">
+              <span className="auth-eyebrow">Password assistance</span>
+              <h1 className="auth-title">Reset your password</h1>
+              <p className="auth-subtitle">
+                Enter the email linked to your ChaosX account and we’ll send you a secure reset link.
+              </p>
+            </header>
+
+            <form onSubmit={handleSubmit} className="auth-form">
+              <div className="auth-field">
+                <label htmlFor="reset-email" className="auth-label">Email address</label>
+                <input
+                  id="reset-email"
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  className="auth-input"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="auth-button auth-button--primary"
+              >
+                {submitting && <span className="auth-loading-spinner" aria-hidden="true"></span>}
+                {submitting ? "Sending…" : "Send reset link"}
+              </button>
+            </form>
+
+            <footer className="auth-footer">
+              <span>
+                Remember your password?{' '}
+                <Link to="/login" className="auth-link">Return to sign in</Link>
+              </span>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </PageLayout>
   );
 }

@@ -5,8 +5,6 @@ import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../../api/api";
 import "../styles/auth-shared.css";
-import AuthLayout from "../components/AuthLayout";
-import AuthField from "../components/AuthField";
 
 type FormData = {
   email: string;
@@ -33,54 +31,72 @@ const Signup: React.FC = () => {
   };
 
   return (
-    <AuthLayout
-      eyebrow="Create account"
-      title="Join ChaosX Loyalty"
-      subtitle="Book car wash services, earn rewards, and keep your vehicle spotless with a personalised dashboard."
-      error={signUpError || null}
-      footer={<span>Already have an account? <Link to="/login" className="auth-link">Sign in</Link></span>}
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
-        <AuthField
-          id="email"
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
-          helper="We’ll never share your email with anyone else."
-          error={undefined}
-          inputProps={{
-            ...register("email", { required: "Email is required" }),
-            autoComplete: 'email',
-            autoFocus: true,
-            // @ts-expect-error custom data attr
-            'data-cy': 'signup-email'
-          }}
-        />
-        <AuthField
-          id="password"
-          label="Password"
-          type="password"
-          placeholder="Choose a secure password"
-          helper="Use at least 8 characters with a mix of letters and numbers."
-          error={undefined}
-          inputProps={{
-            ...register("password", { required: "Password is required" }),
-            autoComplete: 'new-password',
-            // @ts-expect-error custom data attr
-            'data-cy': 'signup-password'
-          }}
-        />
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="auth-button auth-button--primary"
-          data-cy="signup-submit"
-        >
-          {isSubmitting && <span className="auth-loading-spinner" aria-hidden="true"></span>}
-          {isSubmitting ? "Creating account..." : "Create account"}
-        </button>
-      </form>
-    </AuthLayout>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-card__body">
+          <header className="auth-header">
+            <span className="auth-eyebrow">Create account</span>
+            <h1 className="auth-title">Join ChaosX Loyalty</h1>
+            <p className="auth-subtitle">
+              Book car wash services, earn rewards, and keep your vehicle spotless with a personalised dashboard.
+            </p>
+          </header>
+
+          {signUpError && (
+            <div className="auth-alert auth-alert--error" role="alert">
+              {signUpError}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="email" className="auth-label">Email</label>
+              <input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                className="auth-input"
+                data-cy="signup-email"
+                autoComplete="email"
+                {...register("email", { required: "Email is required" })}
+              />
+              <p className="auth-helper">We’ll never share your email with anyone else.</p>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="password" className="auth-label">Password</label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Choose a secure password"
+                className="auth-input"
+                data-cy="signup-password"
+                autoComplete="new-password"
+                {...register("password", { required: "Password is required" })}
+              />
+              <p className="auth-helper">Use at least 8 characters with a mix of letters and numbers.</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="auth-button auth-button--primary"
+              data-cy="signup-submit"
+            >
+              {isSubmitting && <span className="auth-loading-spinner" aria-hidden="true"></span>}
+              {isSubmitting ? "Creating account..." : "Create account"}
+            </button>
+          </form>
+
+          <footer className="auth-footer">
+            <span>
+              Already have an account?{' '}
+              <Link to="/login" className="auth-link">Sign in</Link>
+            </span>
+          </footer>
+        </div>
+      </div>
+    </div>
   );
 };
 

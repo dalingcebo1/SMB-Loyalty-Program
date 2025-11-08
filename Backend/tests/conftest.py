@@ -29,7 +29,7 @@ def initialize_db():
     # Ensure tables exist (do not drop to preserve module-level seed data)
     Base.metadata.create_all(bind=engine)
     # Seed default tenant and a default user for tests
-    from app.models import Tenant, User
+    from app.models import Tenant, User, TenantBranding
     # Also import loyalty-related tables to ensure a clean slate per test
     from app.models import VisitCount, Reward, Redemption, Vehicle, OrderVehicle
     from config import settings
@@ -44,6 +44,8 @@ def initialize_db():
         # Delete child rows first to satisfy FK constraints
         session.query(OrderVehicle).delete()
         session.query(Vehicle).delete()
+        # Ensure branding resets between parameterized test cases
+        session.query(TenantBranding).delete()
     except Exception:
         # Best effort; if tables don't exist yet they will be created below
         session.rollback()
@@ -140,14 +142,15 @@ def client(db_session, monkeypatch):
 
     app.dependency_overrides[get_db] = override_get_db
     # Override auth dependencies for tests
-    from app.plugins.auth.routes import require_staff, get_current_user
+    from app.plugins.auth.routes import require_staff, require_admin, get_current_user
     from app.models import User
     from config import settings
     from fastapi import Request
     from jose import jwt, JWTError
 
-    # Bypass staff requirement
+    # Bypass staff & admin requirements for test convenience (role-specific tests should remove these overrides locally)
     app.dependency_overrides[require_staff] = lambda: None
+    app.dependency_overrides[require_admin] = lambda: None
 
     # Provide a default current_user from the test DB
     def override_get_current_user(request: Request):

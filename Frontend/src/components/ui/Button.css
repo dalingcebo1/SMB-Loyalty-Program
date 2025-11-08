@@ -91,21 +91,20 @@
 
 /* Primary - Main call to action */
 .btn--primary {
-  background: var(--color-primary-600);
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
   color: var(--color-on-primary);
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.35);
+  box-shadow: var(--shadow-primary);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--color-primary-700);
-  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));
+  box-shadow: var(--shadow-lg);
   transform: translateY(-1px);
 }
 
 .btn--primary:active:not(:disabled) {
-  background: var(--color-primary-800);
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+  box-shadow: var(--shadow-base);
 }
 
 /* Secondary - Supporting actions */
@@ -123,21 +122,15 @@
 
 /* Success - Positive actions */
 .btn--success {
-  background: var(--color-success-600);
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.35);
+  background: linear-gradient(135deg, var(--color-success-400), var(--color-success-600));
+  color: white;
+  box-shadow: var(--shadow-success);
 }
 
 .btn--success:hover:not(:disabled) {
-  background: var(--color-success-700);
-  box-shadow: 0 4px 8px rgba(22, 163, 74, 0.4);
+  background: linear-gradient(135deg, var(--color-success-500), var(--color-success-700));
+  box-shadow: var(--shadow-lg);
   transform: translateY(-1px);
-}
-
-.btn--success:active:not(:disabled) {
-  background: var(--color-success-800);
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);
 }
 
 /* Danger - Destructive actions */

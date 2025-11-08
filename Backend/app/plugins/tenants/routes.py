@@ -156,6 +156,9 @@ def get_branding(tenant_id: str, db: Session = Depends(get_db)):
 
 @router.put('/{tenant_id}/branding', response_model=BrandingOut)
 def update_branding(tenant_id: str, payload: BrandingUpdate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    # Require tenant existence for branding upsert
+    if not db.query(Tenant).filter_by(id=tenant_id).first():
+        raise HTTPException(status_code=404, detail='Tenant not found')
     b = db.query(TenantBranding).filter_by(tenant_id=tenant_id).first()
     created = False
     if not b:
@@ -167,6 +170,41 @@ def update_branding(tenant_id: str, payload: BrandingUpdate, db: Session = Depen
         setattr(b, k, v)
     db.commit(); db.refresh(b)
     record('tenant.branding.create' if created else 'tenant.branding.update', tenant_id=tenant_id, user_id=current.id, details={'fields': list(data.keys())})
+    flush(db)
+    return BrandingOut(
+        public_name=b.public_name,
+        short_name=b.short_name,
+        primary_color=b.primary_color,
+        secondary_color=b.secondary_color,
+        accent_color=b.accent_color,
+        logo_light_url=b.logo_light_url,
+        logo_dark_url=b.logo_dark_url,
+        favicon_url=b.favicon_url,
+        app_icon_url=b.app_icon_url,
+        support_email=b.support_email,
+        support_phone=b.support_phone,
+        extra=b.extra or {},
+    )
+
+@router.patch('/{tenant_id}/branding', response_model=BrandingOut)
+def patch_branding(tenant_id: str, payload: BrandingUpdate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """Partial update for branding settings.
+
+    Only fields provided are modified; unspecified values remain unchanged. Creates
+    the branding row if it doesn't exist. Enforces tenant existence and audit trail.
+    """
+    if not db.query(Tenant).filter_by(id=tenant_id).first():
+        raise HTTPException(status_code=404, detail='Tenant not found')
+    b = db.query(TenantBranding).filter_by(tenant_id=tenant_id).first()
+    created = False
+    if not b:
+        b = TenantBranding(tenant_id=tenant_id)
+        db.add(b); created = True
+    data = payload.dict(exclude_unset=True)
+    for k,v in data.items():
+        setattr(b, k, v)
+    db.commit(); db.refresh(b)
+    record('tenant.branding.create' if created else 'tenant.branding.patch', tenant_id=tenant_id, user_id=current.id, details={'fields': list(data.keys())})
     flush(db)
     return BrandingOut(
         public_name=b.public_name,

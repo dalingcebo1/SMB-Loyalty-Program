@@ -18,9 +18,9 @@ import {
 import { HiOutlineRefresh } from 'react-icons/hi';
 import api from '../api/api';
 import { useAuth } from '../auth/AuthProvider';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { UserCard, UserHero, UserPage, UserSection } from '../components/user';
-import StatusBanner from '../components/ui/StatusBanner';
-// Inline banner replaces toast notifications for mutations
+import { toast } from 'react-toastify';
 import { formatCents } from '../utils/format';
 import { track } from '../utils/analytics';
 import './EnhancedProfile.css';
@@ -158,8 +158,6 @@ const EnhancedProfile: React.FC = () => {
     setIsEditingProfile(false);
   };
 
-  const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<UserProfile>) => {
       const response = await api.patch('/profile', updates);
@@ -169,11 +167,11 @@ const EnhancedProfile: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       await refreshUser();
       setIsEditingProfile(false);
-      setBanner({ type: 'success', message: 'Profile updated successfully' });
+      toast.success('Profile updated successfully');
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : 'Failed to update profile';
-      setBanner({ type: 'error', message });
+      toast.error(message);
     },
   });
 
@@ -192,11 +190,11 @@ const EnhancedProfile: React.FC = () => {
         license_plate: '',
         color: '',
       });
-      setBanner({ type: 'success', message: 'Vehicle added successfully' });
+      toast.success('Vehicle added successfully');
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : 'Failed to add vehicle';
-      setBanner({ type: 'error', message });
+      toast.error(message);
     },
   });
 
@@ -206,11 +204,11 @@ const EnhancedProfile: React.FC = () => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-      setBanner({ type: 'success', message: 'Vehicle deleted successfully' });
+      toast.success('Vehicle deleted successfully');
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : 'Failed to delete vehicle';
-      setBanner({ type: 'error', message });
+      toast.error(message);
     },
   });
 
@@ -245,32 +243,17 @@ const EnhancedProfile: React.FC = () => {
   };
 
   const loadingView = (
-    <UserPage className="enhanced-profile-page" size="wide" layout="split" aside={
-      <UserCard className="enhanced-profile__skeleton-card" muted aria-label="Loading loyalty summary">
-        <div className="skeleton skeleton-text" aria-hidden="true" style={{ width: '60%' }} />
-        <div className="skeleton-circle skeleton" aria-hidden="true" style={{ margin: '1.25rem auto', width: '96px', height: '96px' }} />
-        <div className="u-stack-xs">
-          <div className="skeleton skeleton-text" aria-hidden="true" />
-          <div className="skeleton skeleton-text skeleton-text--short" aria-hidden="true" />
-        </div>
-      </UserCard>
-    }>
-      <UserHero eyebrow="Account" title="My Profile" variant="compact" align="start" />
-      <div className="status-zone" aria-hidden="true" />
-      <UserSection title="Profile overview">
-        <UserCard className="enhanced-profile__skeleton-card" muted aria-label="Loading profile information">
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div className="skeleton-avatar skeleton" aria-hidden="true" />
-            <div style={{ flex: 1 }}>
-              <div className="skeleton skeleton-text" aria-hidden="true" />
-              <div className="skeleton skeleton-text skeleton-text--short" aria-hidden="true" style={{ marginTop: '0.5rem' }} />
-            </div>
-          </div>
-          <div className="u-stack-xs" style={{ marginTop: '1rem' }}>
-            <div className="skeleton skeleton-text" aria-hidden="true" />
-            <div className="skeleton skeleton-text" aria-hidden="true" />
-            <div className="skeleton skeleton-text skeleton-text--short" aria-hidden="true" />
-          </div>
+    <UserPage className="enhanced-profile-page" size="wide">
+      <UserHero
+        eyebrow="Account"
+        title="My Profile"
+        variant="compact"
+        align="start"
+      />
+      <UserSection>
+        <UserCard muted className="enhanced-profile__loading-card">
+          <LoadingSpinner />
+          <p>Loading your profile. Please wait.</p>
         </UserCard>
       </UserSection>
     </UserPage>
@@ -314,37 +297,7 @@ const EnhancedProfile: React.FC = () => {
   const phoneNumber = profile.phone || 'Not provided';
 
   return (
-    <UserPage className="enhanced-profile-page" size="wide" layout="split" aside={
-      <UserCard className="enhanced-profile__card enhanced-profile__loyalty-card" padding="loose" muted>
-        <h2 className="surface-card__title">
-          <FaGift aria-hidden="true" /> Loyalty summary
-        </h2>
-        <div className="enhanced-profile__loyalty-score">
-          <span className="enhanced-profile__loyalty-score-value">{loyalty.current_points}</span>
-          <span className="enhanced-profile__loyalty-score-label">Current points</span>
-        </div>
-        <div className="enhanced-profile__loyalty-grid">
-          <div className="enhanced-profile__loyalty-row">
-            <span>Tier</span>
-            <span>{loyalty.tier_name}</span>
-          </div>
-          <div className="enhanced-profile__loyalty-row">
-            <span>Total earned</span>
-            <span>{loyalty.total_earned} pts</span>
-          </div>
-          <div className="enhanced-profile__loyalty-row">
-            <span>Total redeemed</span>
-            <span>{loyalty.total_redeemed} pts</span>
-          </div>
-          {loyalty.next_tier_points !== null && (
-            <div className="enhanced-profile__loyalty-row">
-              <span>Next tier at</span>
-              <span>{loyalty.next_tier_points} pts</span>
-            </div>
-          )}
-        </div>
-      </UserCard>
-    }>
+    <UserPage className="enhanced-profile-page" size="wide">
       <UserHero
         eyebrow="Account"
         title="My Profile"
@@ -356,21 +309,11 @@ const EnhancedProfile: React.FC = () => {
           </button>
         }
       />
-      <div className="status-zone u-stack-sm">
-        {banner && (
-          <StatusBanner
-            variant={banner.type === 'success' ? 'success' : 'error'}
-            title={banner.type === 'success' ? 'Success' : 'Error'}
-            description={banner.message}
-            dismissible
-            onDismiss={() => setBanner(null)}
-            role="alert"
-            ariaLive="assertive"
-          />
-        )}
-      </div>
 
-      <UserSection title="Profile overview">
+      <UserSection
+        title="Profile overview"
+        className="enhanced-profile__layout"
+      >
         <UserCard className="enhanced-profile__card" padding="loose">
           <header className="enhanced-profile__card-header">
             <div>
@@ -473,6 +416,36 @@ const EnhancedProfile: React.FC = () => {
             </dl>
           )}
         </UserCard>
+
+        <UserCard className="enhanced-profile__card enhanced-profile__loyalty-card" padding="loose" muted>
+          <h2 className="surface-card__title">
+            <FaGift aria-hidden="true" /> Loyalty summary
+          </h2>
+          <div className="enhanced-profile__loyalty-score">
+            <span className="enhanced-profile__loyalty-score-value">{loyalty.current_points}</span>
+            <span className="enhanced-profile__loyalty-score-label">Current points</span>
+          </div>
+          <div className="enhanced-profile__loyalty-grid">
+            <div className="enhanced-profile__loyalty-row">
+              <span>Tier</span>
+              <span>{loyalty.tier_name}</span>
+            </div>
+            <div className="enhanced-profile__loyalty-row">
+              <span>Total earned</span>
+              <span>{loyalty.total_earned} pts</span>
+            </div>
+            <div className="enhanced-profile__loyalty-row">
+              <span>Total redeemed</span>
+              <span>{loyalty.total_redeemed} pts</span>
+            </div>
+            {loyalty.next_tier_points !== null && (
+              <div className="enhanced-profile__loyalty-row">
+                <span>Next tier at</span>
+                <span>{loyalty.next_tier_points} pts</span>
+              </div>
+            )}
+          </div>
+        </UserCard>
       </UserSection>
 
       <UserSection
@@ -528,8 +501,10 @@ const EnhancedProfile: React.FC = () => {
         </UserCard>
       </UserSection>
 
-      <UserSection title="Recent activity">
-        <div className="enhanced-profile__activity-grid u-grid u-grid--cols-2">
+      <UserSection
+        title="Recent activity"
+      >
+        <div className="enhanced-profile__activity-grid">
           {recentOrders.length > 0 ? (
             <UserCard className="enhanced-profile__card enhanced-profile__orders-card" padding="loose">
               <h2 className="surface-card__title">

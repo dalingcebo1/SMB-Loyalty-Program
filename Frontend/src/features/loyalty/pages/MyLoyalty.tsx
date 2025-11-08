@@ -6,7 +6,7 @@ import { CgSpinner } from 'react-icons/cg';
 import { UserCard, UserHero, UserPage, UserSection } from '../../../components/user';
 import { useAuth } from '../../../auth/AuthProvider';
 import { useLoyalty } from '../hooks/useLoyalty';
-import type { NormalizedReward, NormalizedUpcomingReward } from '../../../utils/loyalty';
+import type { RewardReady, UpcomingReward } from '../hooks/useLoyalty';
 import { track } from '../../../utils/analytics';
 import './MyLoyalty.css';
 
@@ -15,7 +15,7 @@ const MyLoyalty: React.FC = () => {
   const { user, loading } = useAuth();
   const phoneNumber = user?.phone ?? '';
   const { data, isLoading, isError } = useLoyalty(phoneNumber);
-  const [selectedReward, setSelectedReward] = useState<NormalizedReward | null>(null);
+  const [selectedReward, setSelectedReward] = useState<RewardReady | null>(null);
   const [showRewardModal, setShowRewardModal] = useState(false);
 
   useEffect(() => {
@@ -23,21 +23,16 @@ const MyLoyalty: React.FC = () => {
   }, []);
 
   const visits = data?.visits ?? 0;
-  // Support both legacy snake_case and new camelCase keys.
-  const rewards = (data?.rewardsReady || data?.rewards_ready || []) as NormalizedReward[];
-  const upcoming = useMemo(
-    () => (data?.upcomingRewards || data?.upcoming_rewards || []) as NormalizedUpcomingReward[],
-    [data?.upcomingRewards, data?.upcoming_rewards]
-  );
+  const rewards = data?.rewards_ready ?? [];
+  const upcoming = useMemo(() => data?.upcoming_rewards ?? [], [data?.upcoming_rewards]);
 
   const progressData = useMemo(() => {
-  const nextMilestone = upcoming.length > 0 ? upcoming[0].milestone : visits + 5;
-  const rawVisitsNeeded = upcoming.length > 0 ? (upcoming[0].visits_needed ?? upcoming[0].visitsNeeded ?? 5) : 5;
-  const visitsNeeded = rawVisitsNeeded || 0;
-  const currentProgress = Math.max(0, visits - (nextMilestone - visitsNeeded));
-  const progressPercentage = visitsNeeded > 0 ? Math.min(100, (currentProgress / visitsNeeded) * 100) : 0;
-  const cappedProgress = Math.min(currentProgress, visitsNeeded);
-  const visitsRemaining = Math.max(visitsNeeded - currentProgress, 0);
+    const nextMilestone = upcoming.length > 0 ? upcoming[0].milestone : visits + 5;
+    const visitsNeeded = upcoming.length > 0 ? upcoming[0].visits_needed : 5;
+    const currentProgress = Math.max(0, visits - (nextMilestone - visitsNeeded));
+    const progressPercentage = visitsNeeded > 0 ? Math.min(100, (currentProgress / visitsNeeded) * 100) : 0;
+    const cappedProgress = Math.min(currentProgress, visitsNeeded);
+    const visitsRemaining = Math.max(visitsNeeded - currentProgress, 0);
     const primaryUpcoming = upcoming.length > 0 ? upcoming[0] : null;
 
     return {
@@ -51,7 +46,7 @@ const MyLoyalty: React.FC = () => {
 
   const { visitsNeeded, progressPercentage, cappedProgress, visitsRemaining, primaryUpcoming } = progressData;
 
-  const handleRewardClick = (reward: NormalizedReward) => {
+  const handleRewardClick = (reward: RewardReady) => {
     setSelectedReward(reward);
     setShowRewardModal(true);
   };
@@ -221,7 +216,11 @@ const MyLoyalty: React.FC = () => {
                   <span className="reward-content">
                     <h3>{reward.reward}</h3>
                     <div className="reward-milestone">Earned at {reward.milestone} visits</div>
-                    {/* status removed from NormalizedReward; legacy status ignored */}
+                    {reward.status && (
+                      <span className={`reward-status ${reward.status}`}>
+                        {reward.status.toUpperCase()}
+                      </span>
+                    )}
                     <span className="reward-cta">
                       View reward <FaArrowRight aria-hidden="true" />
                     </span>
@@ -247,7 +246,7 @@ const MyLoyalty: React.FC = () => {
           <UserCard className="loyalty-upcoming-card">
             <h2 className="section-title">Coming soon</h2>
             <div className="rewards-grid">
-              {upcoming.map((reward: NormalizedUpcomingReward, index: number) => (
+              {upcoming.map((reward: UpcomingReward, index: number) => (
                 <div key={`${reward.milestone}-${index}`} className="reward-card upcoming">
                   <div className="reward-badge locked" aria-hidden="true">
                     <FaGift className="reward-icon" />
@@ -256,7 +255,7 @@ const MyLoyalty: React.FC = () => {
                     <h3>{reward.reward}</h3>
                     <div className="reward-milestone">At {reward.milestone} visits</div>
                     <div className="visits-needed">
-                      {(reward.visits_needed ?? reward.visitsNeeded ?? 0)} more visit{(reward.visits_needed ?? reward.visitsNeeded ?? 0) !== 1 ? 's' : ''} needed
+                      {reward.visits_needed} more visit{reward.visits_needed !== 1 ? 's' : ''} needed
                     </div>
                   </div>
                 </div>
@@ -296,7 +295,14 @@ const MyLoyalty: React.FC = () => {
                   <span className="detail-value">{formatDate(selectedReward.expiry_at)}</span>
                 </div>
               )}
-              {/* status field deprecated in normalized rewards */}
+              {selectedReward.status && (
+                <div className="detail-item">
+                  <span className="detail-label">Status:</span>
+                  <span className={`detail-value status-${selectedReward.status}`}>
+                    {selectedReward.status.toUpperCase()}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <p className="redemption-instructions">Show this PIN to staff when redeeming your reward.</p>

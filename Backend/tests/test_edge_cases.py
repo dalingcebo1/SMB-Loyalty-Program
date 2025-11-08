@@ -80,11 +80,6 @@ def test_loyalty_no_reward(client: TestClient, db_session: Session):
     assert data["visits"] == 3
     assert data["rewards_ready"] == []
     assert data["upcoming_rewards"] == []
-    # Aliases present even when empty
-    assert "rewardsReady" in data
-    assert "upcomingRewards" in data
-    assert data["rewardsReady"] == data["rewards_ready"]
-    assert data["upcomingRewards"] == data["upcoming_rewards"]
 
 @pytest.mark.usefixtures("db_session")
 def test_verify_loyalty_invalid(client: TestClient):

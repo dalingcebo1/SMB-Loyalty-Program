@@ -78,17 +78,6 @@ def test_full_order_payment_loyalty_flow(client: TestClient, db_session: Session
     # Should have one ready reward
     assert len(loy_data["rewards_ready"]) == 1
     assert loy_data["rewards_ready"][0]["milestone"] == REWARD_INTERVAL
-    # CamelCase top-level keys present & equivalent
-    assert "rewardsReady" in loy_data
-    assert "upcomingRewards" in loy_data
-    assert loy_data["rewardsReady"] == loy_data["rewards_ready"]
-    assert loy_data["upcomingRewards"] == loy_data["upcoming_rewards"]
-    # Nested alias fields
-    reward_nested = loy_data["rewards_ready"][0]
-    if reward_nested.get("qr_reference"):
-        assert reward_nested["qr_reference"] == reward_nested["qrReference"]
-    if reward_nested.get("expiry_at"):
-        assert reward_nested["expiry_at"] == reward_nested["expiryAt"]
 
     # Verify loyalty via PIN
     pin = loy_data["rewards_ready"][0]["pin"]

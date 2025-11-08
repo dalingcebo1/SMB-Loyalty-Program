@@ -24,19 +24,6 @@
   row-gap: 1.5rem;
 }
 
-.orders-filters-wrapper {
-  position: relative;
-}
-
-.orders-filters--sticky {
-  position: sticky;
-  top: 0.75rem;
-  z-index: 20;
-  backdrop-filter: blur(4px);
-  background: var(--color-surface);
-  box-shadow: 0 4px 12px rgba(15,23,42,0.08);
-}
-
 .orders-filters__group {
   display: flex;
   flex-direction: column;
@@ -495,46 +482,36 @@
   box-shadow: var(--shadow-soft);
 }
 
-/* Drawer-based order detail panel */
-.order-drawer__backdrop {
+.order-modal {
   position: fixed;
   inset: 0;
-  background: rgba(15,23,42,0.55);
+  background: rgba(15, 23, 42, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 1.75rem;
   z-index: 1000;
 }
 
-.order-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100vh;
-  width: min(860px, 100%);
+.modal-content {
+  width: min(840px, 100%);
   background: var(--color-surface);
-  box-shadow: -8px 0 24px rgba(15,23,42,0.25), 0 0 0 1px var(--color-border-subtle);
-  z-index: 1010;
-  display: flex;
-  flex-direction: column;
-  animation: drawer-slide 240ms cubic-bezier(.33,.7,.3,1);
-}
-
-@keyframes drawer-slide {
-  from { transform: translateX(40px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-.drawer-content {
-  overflow-y: auto;
-  padding: 2rem;
+  border-radius: var(--radius-xxl);
+  box-shadow: 0 40px 80px rgba(15, 23, 42, 0.35);
   display: grid;
   gap: 1.5rem;
+  padding: 2rem;
+  position: relative;
 }
 
 @media (max-width: 640px) {
-  .order-drawer {
-    width: 100%;
+  .order-modal {
+    padding: 1.25rem;
   }
-  .drawer-content {
+
+  .modal-content {
+    gap: 1.25rem;
     padding: 1.5rem;
+    border-radius: var(--radius-xl);
   }
 }
 

@@ -5,7 +5,6 @@ import { UserCard, UserHero, UserPage, UserSection } from "../components/user";
 import { formatCents } from "../utils/format";
 import { track } from "../utils/analytics";
 import "./Services.css";
-// TODO: migrate styling to design tokens once centralized (design tokens harmonization task)
 
 interface Service {
   id: number;
@@ -20,7 +19,6 @@ const Services: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSwitching, setIsSwitching] = useState(false); // subtle skeleton during category switch
 
   useEffect(() => {
     track("page_view", { page: "Services" });
@@ -49,13 +47,7 @@ const Services: React.FC = () => {
 
   useEffect(() => {
     if (selectedCategory) {
-      setIsSwitching(true);
-      // simulate small delay for skeleton visibility (UX polish)
-      const timer = setTimeout(() => {
-        setServices(byCategory[selectedCategory] || []);
-        setIsSwitching(false);
-      }, 120);
-      return () => clearTimeout(timer);
+      setServices(byCategory[selectedCategory] || []);
     }
   }, [selectedCategory, byCategory]);
 
@@ -94,12 +86,8 @@ const Services: React.FC = () => {
           align="start"
         />
         <UserSection>
-          <UserCard muted className="services-state" aria-busy="true">
-            <div className="skeleton-lines" aria-hidden="true">
-              <p className="skeleton skeleton-text" style={{ width: '60%' }}>Loading services…</p>
-              <p className="skeleton skeleton-text" style={{ width: '45%' }}>Fetching catalog…</p>
-            </div>
-            <p className="visually-hidden">Loading services, please wait.</p>
+          <UserCard muted className="services-state">
+            <p>Loading services, please wait.</p>
           </UserCard>
         </UserSection>
       </UserPage>
@@ -144,7 +132,6 @@ const Services: React.FC = () => {
               className="services-select"
               value={selectedCategory}
               onChange={(event) => setSelectedCategory(event.target.value)}
-              aria-label="Select a service category"
             >
               {categories.map((category) => (
                 <option key={category} value={category}>
@@ -156,44 +143,26 @@ const Services: React.FC = () => {
         </UserCard>
       </UserSection>
 
-      <UserSection title="Available services">
+      <UserSection
+        title="Available services"
+      >
         <UserCard className="services-card" padding="loose">
-          {isSwitching && (
-            <div className="u-grid u-grid--cols-2" aria-hidden="true">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="service-skeleton">
-                  <div className="skeleton skeleton-text" style={{ width: '70%', height: '1rem' }} />
-                  <div className="skeleton skeleton-text" style={{ width: '40%', height: '0.875rem', marginTop: '0.4rem' }} />
-                  <div className="skeleton skeleton-text" style={{ width: '50%', height: '0.875rem', marginTop: '0.6rem' }} />
-                </div>
-              ))}
-            </div>
-          )}
-          {!isSwitching && services.length > 0 ? (
-            <div className="u-grid u-grid--cols-2 services-grid" data-count={services.length}>
+          {services.length > 0 ? (
+            <ul className="services-list">
               {services.map((svc) => (
-                <div key={svc.id} className="service-card" role="group" aria-label={`${svc.name} service`}>
-                  <div className="service-card__header">
-                    <h3 className="service-card__title">{svc.name}</h3>
-                    <span className="badge badge--neutral">Base price</span>
+                <li key={svc.id} className="services-item">
+                  <div className="services-item__meta">
+                    <h3>{svc.name}</h3>
+                    <p>Base price</p>
                   </div>
-                  <p className="service-card__price" aria-label="Base price">{formatCents(svc.base_price)}</p>
-                  <div className="service-card__actions u-actions">
-                    <a
-                      href="/order"
-                      className="btn btn--secondary btn--sm"
-                      onClick={() => track('cta_click', { label: 'Select Service', page: 'Services', service: svc.name })}
-                    >
-                      Select
-                    </a>
-                  </div>
-                </div>
+                  <span className="services-item__price">{formatCents(svc.base_price)}</span>
+                </li>
               ))}
-            </div>
-          ) : !isSwitching && (
-            <div className="services-state services-state--empty" role="status">
-              <p>No services in this category yet.</p>
-              <p>Try another category or check back soon.</p>
+            </ul>
+          ) : (
+            <div className="services-state services-state--empty">
+              <p>We do not have services listed under this category yet.</p>
+              <p>Please select another category or check back soon.</p>
             </div>
           )}
         </UserCard>

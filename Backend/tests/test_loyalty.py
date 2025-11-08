@@ -14,8 +14,14 @@ def test_loyalty_me_empty(client: TestClient):
     assert resp.status_code == 200
     data = resp.json()
     assert data["visits"] == 0
+    # Snake case lists
     assert data["rewards_ready"] == []
     assert data["upcoming_rewards"] == []
+    # Camel case aliases exist and are equivalent
+    assert "rewardsReady" in data
+    assert "upcomingRewards" in data
+    assert data["rewardsReady"] == data["rewards_ready"]
+    assert data["upcomingRewards"] == data["upcoming_rewards"]
 
 
 def test_loyalty_me_with_rewards(client: TestClient, db_session: Session):
@@ -58,3 +64,15 @@ def test_loyalty_me_with_rewards(client: TestClient, db_session: Session):
     assert ready["milestone"] == REWARD_INTERVAL
     # Upcoming rewards list should include next interval
     assert data["upcoming_rewards"][0]["milestone"] == REWARD_INTERVAL * 2
+    # Camel case top-level keys
+    assert "rewardsReady" in data
+    assert "upcomingRewards" in data
+    assert data["rewardsReady"] == data["rewards_ready"]
+    assert data["upcomingRewards"] == data["upcoming_rewards"]
+    # Nested reward object aliases
+    if ready.get("qr_reference"):
+        assert ready["qr_reference"] == ready["qrReference"]
+    if ready.get("expiry_at"):
+        assert ready["expiry_at"] == ready["expiryAt"]
+    # No alias for fields without underscore
+    assert "pin" in ready and "Pin" not in ready

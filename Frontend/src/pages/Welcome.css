@@ -120,21 +120,79 @@
 
 /* Ensure status banner variants are distinct */
 .status-banner--info {
-	background: rgba(14, 165, 233, 0.08);
-	border-color: rgba(14, 165, 233, 0.2);
+	background: color-mix(in srgb, var(--color-info) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--color-info) 35%, transparent);
 }
 
 .status-banner--info .status-banner__icon {
-	color: #0284c7;
+	color: var(--color-info);
 }
 
 .status-banner--success {
-	background: rgba(34, 197, 94, 0.08);
-	border-color: rgba(34, 197, 94, 0.2);
+	background: color-mix(in srgb, var(--color-success) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
 }
 
 .status-banner--success .status-banner__icon {
-	color: #16a34a;
+	color: var(--color-success);
+}
+
+/* Card surface polish (consistent with design tokens) */
+.insight-card {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: 1.25rem;
+	box-shadow: var(--shadow-card);
+}
+
+.insight-card:hover {
+	box-shadow: var(--shadow-card-hover);
+}
+
+.insight-card__icon {
+	background: var(--color-primary-50);
+	color: var(--color-primary);
+	border: 1px solid var(--color-border-subtle);
+}
+
+.insight-card__progress {
+	width: 130px;
+	margin: 0.5rem auto 0.75rem;
+}
+
+.insight-card__footer {
+	margin-top: 0.25rem;
+}
+
+.insight-card__cta .btn--primary {
+	/* Ensure primary button uses shared brand blue (avoid tenant lime overrides) */
+	background: var(--color-primary);
+}
+
+/* Skeleton utilities */
+.skeleton {
+	position: relative;
+	overflow: hidden;
+	background: var(--color-surface-muted);
+	border-radius: 8px;
+	min-height: 0.75rem;
+}
+
+.skeleton::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+	animation: shimmer 1.4s infinite;
+}
+
+.skeleton-text { height: 1rem; width: 70%; }
+.skeleton-circle { width: 130px; height: 130px; border-radius: 50%; }
+
+@keyframes shimmer {
+	0% { transform: translateX(-100%); }
+	100% { transform: translateX(100%); }
 }
 
 @media (max-width: 768px) {

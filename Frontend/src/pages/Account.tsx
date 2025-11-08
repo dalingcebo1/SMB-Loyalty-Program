@@ -1,19 +1,12 @@
 import React, { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import {
-  FaEdit,
-  FaEnvelope,
-  FaExclamationTriangle,
-  FaPhone,
-  FaSave,
-  FaSignOutAlt,
-  FaTimes,
-  FaUser,
-} from "react-icons/fa";
-import { toast } from "react-toastify";
+import { FaSignOutAlt } from "react-icons/fa";
+// Removed toast notifications; using inline StatusBanner instead.
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
+import ProfileForm from '../components/user/ProfileForm';
+import StatusBanner from '../components/ui/StatusBanner';
 import "./Account.css";
 
 const Account: React.FC = () => {
@@ -23,6 +16,7 @@ const Account: React.FC = () => {
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
   const [lastName, setLastName] = useState(user?.lastName ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   if (loading) {
     return (
@@ -71,7 +65,7 @@ const Account: React.FC = () => {
       });
       await refreshUser();
       setEditing(false);
-      toast.success("Profile updated successfully");
+  setBanner({ type: 'success', message: 'Profile updated successfully' });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update profile");
     }
@@ -80,10 +74,10 @@ const Account: React.FC = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      toast.success("Successfully logged out");
+  setBanner({ type: 'success', message: 'Successfully logged out' });
       navigate("/login");
     } catch (err) {
-      toast.error("Error logging out");
+  setBanner({ type: 'error', message: 'Error logging out' });
       console.error("Logout error:", err);
     }
   };
@@ -91,108 +85,12 @@ const Account: React.FC = () => {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "Not provided";
   const phoneNumber = user.phone?.trim() || "Not provided";
 
+  // Derive initials for avatar placeholder
+  const initials = [user.firstName?.[0], user.lastName?.[0]].filter(Boolean).join('').toUpperCase() || user.email[0].toUpperCase();
+
   return (
-    <UserPage className="account-page" size="narrow">
-      <UserHero
-        eyebrow="Account"
-        title="Account Details"
-        variant="compact"
-        align="start"
-      />
-
-      <UserSection>
-        <UserCard className="account-card" interactive>
-          <header className="account-card__header">
-            <div>
-              <h2 className="surface-card__title">Profile information</h2>
-            </div>
-            {!editing && (
-              <button
-                type="button"
-                className="btn btn--ghost btn--dense account-card__edit"
-                onClick={handleEdit}
-              >
-                <FaEdit aria-hidden="true" />
-                Edit
-              </button>
-            )}
-          </header>
-
-          {editing ? (
-            <form onSubmit={handleSave} className="account-form">
-              <div className="account-form__grid">
-                <label className="account-form__field">
-                  <span className="account-form__label">First name</span>
-                  <input
-                    className="account-form__input"
-                    value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
-                    required
-                    placeholder="First name"
-                  />
-                </label>
-                <label className="account-form__field">
-                  <span className="account-form__label">Last name</span>
-                  <input
-                    className="account-form__input"
-                    value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
-                    placeholder="Last name"
-                  />
-                </label>
-              </div>
-
-              {error && (
-                <div className="account-error" role="alert">
-                  <FaExclamationTriangle aria-hidden="true" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="account-form__actions">
-                <button type="submit" className="btn btn--primary">
-                  <FaSave aria-hidden="true" />
-                  Save changes
-                </button>
-                <button type="button" className="btn btn--ghost" onClick={handleCancel}>
-                  <FaTimes aria-hidden="true" />
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <dl className="account-details">
-              <div className="account-details__row">
-                <dt className="account-details__label">
-                  <FaUser aria-hidden="true" />
-                  Full name
-                </dt>
-                <dd className="account-details__value">{fullName}</dd>
-              </div>
-
-              <div className="account-details__row">
-                <dt className="account-details__label">
-                  <FaEnvelope aria-hidden="true" />
-                  Email address
-                </dt>
-                <dd className="account-details__value">{user.email}</dd>
-              </div>
-
-              <div className="account-details__row">
-                <dt className="account-details__label">
-                  <FaPhone aria-hidden="true" />
-                  Phone number
-                </dt>
-                <dd className="account-details__value">{phoneNumber}</dd>
-              </div>
-            </dl>
-          )}
-
-          <p className="account-card__footnote">API Version: v1.0.0</p>
-        </UserCard>
-      </UserSection>
-
-      <UserSection>
+    <UserPage className="account-page" size="narrow" layout="split" aside={
+      <div className="account-aside" aria-label="Session controls">
         <UserCard className="account-actions" muted>
           <h2 className="surface-card__title">Session controls</h2>
           <div className="account-actions__body">
@@ -201,6 +99,44 @@ const Account: React.FC = () => {
               Logout
             </button>
           </div>
+        </UserCard>
+      </div>
+    }>
+      <UserHero
+        eyebrow="Account"
+        title="Account Details"
+        variant="compact"
+        align="start"
+      />
+      {banner && (
+        <StatusBanner
+          variant={banner.type === 'success' ? 'success' : 'error'}
+          title={banner.type === 'success' ? 'Success' : 'Error'}
+          description={banner.message}
+          dismissible
+          onDismiss={() => setBanner(null)}
+          role={banner.type === 'error' ? 'alert' : 'status'}
+          ariaLive={banner.type === 'error' ? 'assertive' : 'polite'}
+        />
+      )}
+      <UserSection>
+        <UserCard className="account-card" interactive>
+          <div className="account-avatar" aria-hidden="true">{initials}</div>
+          <ProfileForm
+            editing={editing}
+            firstName={firstName}
+            lastName={lastName}
+            error={error}
+            onEdit={handleEdit}
+            onCancel={handleCancel}
+            onSave={handleSave}
+            onChangeFirst={setFirstName}
+            onChangeLast={setLastName}
+            fullName={fullName}
+            email={user.email}
+            phoneNumber={phoneNumber}
+          />
+          <p className="account-card__footnote">API Version: v1.0.0</p>
         </UserCard>
       </UserSection>
     </UserPage>

@@ -37,6 +37,30 @@ export interface Upcoming {
   reward: string;
 }
 
+// New camelCase normalized variants (non-breaking; existing code may adopt gradually)
+export interface ReadyRewardCamel {
+  milestone: number;
+  reward?: string;
+  pin?: string;
+  qrReference?: string;
+  expiryAt?: string;
+}
+
+export interface UpcomingCamel {
+  milestone: number;
+  reward?: string;
+  visitsNeeded?: number;
+}
+
+export interface LoyaltyProgress {
+  visits: number;
+  rewardsReady: ReadyRewardCamel[];
+  upcomingRewards: UpcomingCamel[];
+  // legacy passthrough fields for backward compatibility until full migration
+  rewards_ready?: ReadyRewardCamel[];
+  upcoming_rewards?: UpcomingCamel[];
+}
+
 export interface Profile {
   name: string;
   phone: string;

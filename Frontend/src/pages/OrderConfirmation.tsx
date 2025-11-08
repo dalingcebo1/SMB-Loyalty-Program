@@ -14,6 +14,8 @@ import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import Loading from "../components/Loading";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
+import LoyaltyPanel from '../components/user/LoyaltyPanel';
+import StatusBanner from '../components/ui/StatusBanner';
 import "./OrderConfirmation.css";
 import '../styles/shared-buttons.css';
 
@@ -227,7 +229,16 @@ const OrderConfirmation: React.FC = () => {
 
   if (isLoading) {
     return (
-      <UserPage className="confirmation-page">
+      <UserPage className="confirmation-page" layout="split" aside={<div className="confirmation-aside" aria-label="Order summary loading">
+        <UserCard muted className="confirmation-summary-card" aria-busy="true">
+          <div className="skeleton-lines" aria-hidden="true">
+            <div className="skeleton skeleton-text" style={{ width: '70%' }} />
+            <div className="skeleton skeleton-text" style={{ width: '55%' }} />
+            <div className="skeleton skeleton-text" style={{ width: '60%' }} />
+          </div>
+          <p className="visually-hidden">Loading confirmation details, please wait.</p>
+        </UserCard>
+      </div>}>
         <UserSection>
           <UserCard className="confirmation-loading" muted>
             <Loading text="Loading your order…" />
@@ -257,8 +268,56 @@ const OrderConfirmation: React.FC = () => {
     );
   }
 
+  const asideSummary = (
+    <div className="confirmation-aside" aria-label="Order summary and actions">
+      <UserCard className="confirmation-summary-card" padding="loose" muted>
+        <h3 className="surface-card__title" style={{ marginTop: 0 }}>Summary</h3>
+        <ul className="confirmation-summary-lines" aria-label="Order items">
+          {summary.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+        <div className="summary-divider" />
+        {amount > 0 && (
+          <div className="summary-total" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+            <span>Total Paid</span>
+            <span>{formatCents(amount)}</span>
+          </div>
+        )}
+        {timestamp && (
+          <p className="summary-timestamp">Ordered {new Date(timestamp).toLocaleString()}</p>
+        )}
+        {scheduledDate && scheduledTime && (
+          <p className="summary-schedule">Scheduled {new Date(scheduledDate).toLocaleDateString()} • {scheduledTime}</p>
+        )}
+      </UserCard>
+      {loyaltyProgress && enableLoyalty && (
+        <LoyaltyPanel
+          loading={false}
+          progressValue={loyaltyProgress.visits % loyaltyProgress.nextMilestone}
+          nextMilestone={loyaltyProgress.nextMilestone}
+          rewardsReady={[]}
+          upcomingReward={loyaltyProgress.upcomingRewards.length ? { reward: loyaltyProgress.upcomingRewards[0].reward, milestone: loyaltyProgress.nextMilestone, visitsNeeded: loyaltyProgress.upcomingRewards[0].visits_needed } : null}
+          onClaimReward={() => navigate('/myloyalty')}
+          ariaProgressLabel="Progress towards next loyalty reward"
+        />
+      )}
+    </div>
+  );
+
+  const successBanner = (
+    <StatusBanner
+      variant="success"
+      title="Order Confirmed"
+      description="Your booking has been successfully processed. Next steps and payment details are below."
+      icon={<span aria-hidden="true">✅</span>}
+      ariaLive="polite"
+      role="status"
+    />
+  );
+
   return (
-    <UserPage className="confirmation-page">
+    <UserPage className="confirmation-page" layout="split" aside={asideSummary}>
       <ToastContainer position="top-right" />
 
       <UserHero
@@ -268,6 +327,7 @@ const OrderConfirmation: React.FC = () => {
       >
         <span className="success-icon-large" aria-hidden="true">✅</span>
       </UserHero>
+      {successBanner}
 
       <UserSection className="confirmation-steps">
         <div className="confirmation-step-indicator">
@@ -369,53 +429,20 @@ const OrderConfirmation: React.FC = () => {
         </UserCard>
       </UserSection>
 
-      {summary.length > 0 && (
+      {loyaltyEligible && (
         <UserSection>
-          <UserCard className="order-summary-card" padding="loose">
-            <div className="card-header">
-              <h3 className="section-title">Order Summary</h3>
-            </div>
-            <ul className="order-summary-list">
-              {summary.map((item, idx) => (
-                <li key={idx} className="order-summary-item">{item}</li>
-              ))}
-            </ul>
-            {loyaltyEligible && (
-              <div className="loyalty-eligible-badge">
-                ✓ This order is eligible for loyalty points!
-              </div>
-            )}
-            {timestamp && (
-              <div className="order-timestamp">
-                Ordered on: {new Date(timestamp).toLocaleString()}
-              </div>
-            )}
-          </UserCard>
+          <StatusBanner
+            variant="info"
+            title="Loyalty Eligible"
+            description="This order counts towards your next reward."
+            icon={<span aria-hidden="true">🎁</span>}
+            ariaLive="polite"
+            role="status"
+          />
         </UserSection>
       )}
 
-      {loyaltyProgress && enableLoyalty && (
-        <UserSection>
-          <UserCard className="loyalty-progress-card" padding="loose">
-            <div className="card-header">
-              <h3 className="section-title">Loyalty Progress</h3>
-            </div>
-            <div className="loyalty-progress-visits">
-              Total visits: <strong>{loyaltyProgress.visits}</strong>
-            </div>
-            {loyaltyProgress.upcomingRewards.length > 0 && (
-              <div className="loyalty-progress-rewards">
-                <div className="next-reward">
-                  🎁 Next reward at <strong>{loyaltyProgress.nextMilestone}</strong> visits
-                </div>
-                <div className="visits-needed">
-                  {loyaltyProgress.upcomingRewards[0].visits_needed} more visits to earn: {loyaltyProgress.upcomingRewards[0].reward}
-                </div>
-              </div>
-            )}
-          </UserCard>
-        </UserSection>
-      )}
+      {/* Loyalty progress now displayed in aside via LoyaltyPanel */}
 
       {(estimatedWashTime !== null || notificationMessage || bayNumber !== null) && (
         <UserSection>

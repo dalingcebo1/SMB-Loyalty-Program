@@ -2,16 +2,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
-import {
-  FaClock,
-  FaCreditCard,
-  FaGift,
-  FaShieldAlt,
-} from "react-icons/fa";
+import { FaCreditCard, FaShieldAlt } from "react-icons/fa";
+import { normalizeLoyaltyResponse } from '../utils/loyalty';
 import StepIndicator from "../components/StepIndicator";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import { UserCard, UserHero, UserPage, UserSection } from "../components/user";
+import PaymentSummary from '../components/user/PaymentSummary';
 import { track } from "../utils/analytics";
 import { formatCents } from "../utils/format";
 import "react-toastify/dist/ReactToastify.css";
@@ -81,7 +78,7 @@ const Payment: React.FC = () => {
   const [rewardDiscount, setRewardDiscount] = useState(0);
   const [rewardInfo, setRewardInfo] = useState<RewardData | null>(null);
   const [canApplyLoyalty, setCanApplyLoyalty] = useState(false);
-  const [loadingEligibility, setLoadingEligibility] = useState(true);
+  // Removed loadingEligibility state after refactor; summary aside no longer shows intermediate eligibility message.
   const [loadingReward, setLoadingReward] = useState(false);
 
   // Persist or resume pending payment state
@@ -161,12 +158,10 @@ const Payment: React.FC = () => {
   useEffect(() => {
     const orderId = paymentState?.orderId;
     if (!orderId) {
-      setLoadingEligibility(false);
       return;
     }
 
     let isActive = true;
-    setLoadingEligibility(true);
 
     api
       .get(`/orders/${orderId}`)
@@ -197,10 +192,6 @@ const Payment: React.FC = () => {
       .catch(() => {
         if (!isActive) return;
         setCanApplyLoyalty(false);
-      })
-      .finally(() => {
-        if (!isActive) return;
-        setLoadingEligibility(false);
       });
 
     return () => {
@@ -221,15 +212,16 @@ const Payment: React.FC = () => {
       .get("/loyalty/me", { params: { phone: user.phone } })
       .then((res) => {
         if (!isActive) return;
-        const reward = res.data.rewards_ready?.find((candidate: RewardData) => {
-          const normalized = candidate.reward.toLowerCase();
-          return normalized.includes("full house") || normalized.includes("free wash");
+        const loyalty = normalizeLoyaltyResponse(res.data);
+        const reward = loyalty.rewardsReady.find((candidate) => {
+          const normalized = (candidate.reward || '').toLowerCase();
+          return normalized.includes('full house') || normalized.includes('free wash');
         });
-
         if (reward) {
+          const expiryVal = reward.expiryAt || reward.expiry_at;
           setRewardInfo({
-            reward: reward.reward,
-            expiry: reward.expiry,
+            reward: reward.reward || '',
+            expiry: expiryVal, // maintain existing type (string | undefined)
             milestone: reward.milestone,
           });
         } else {
@@ -421,8 +413,13 @@ const Payment: React.FC = () => {
           align="start"
         />
         <UserSection>
-          <UserCard muted>
-            <p>Loading payment information…</p>
+          <UserCard muted aria-busy="true">
+            <div className="skeleton-lines" aria-hidden="true">
+              <p className="skeleton skeleton-text" style={{ width: '55%' }}>Loading payment…</p>
+              <p className="skeleton skeleton-text" style={{ width: '40%' }}>Fetching order data…</p>
+              <p className="skeleton skeleton-text" style={{ width: '30%' }}>Checking rewards…</p>
+            </div>
+            <p className="visually-hidden">Loading payment information, please wait.</p>
           </UserCard>
         </UserSection>
       </UserPage>
@@ -438,7 +435,25 @@ const Payment: React.FC = () => {
   }
 
   return (
-    <UserPage className="payment-page" size="narrow">
+    <UserPage className="payment-page" size="narrow" layout="split" aside={
+      <div className="payment-aside" aria-label="Summary and rewards">
+        <UserCard className="payment-summary-card" padding="loose" muted>
+          <PaymentSummary
+            total={total}
+            discount={rewardDiscount}
+            items={summaryItems}
+            scheduledDate={scheduledDate}
+            scheduledTime={scheduledTime}
+            rewardApplied={rewardApplied}
+            loadingReward={loadingReward}
+            canApplyLoyalty={canApplyLoyalty}
+            hasRewardExpired={hasRewardExpired}
+            onApplyReward={handleApplyReward}
+            rewardInfo={rewardInfo}
+          />
+        </UserCard>
+      </div>
+    }>
       <ToastContainer position="top-right" />
       <UserHero
         eyebrow="Payment"
@@ -451,72 +466,6 @@ const Payment: React.FC = () => {
           </div>
         }
       />
-
-      <UserSection>
-        <UserCard className="payment-summary-card" padding="loose">
-          <div className="payment-amount-display">
-            <span className="payment-amount-label">Amount due</span>
-            <span className="payment-amount-value">{formatCents(amountToPay)}</span>
-          </div>
-
-          {loadingEligibility ? (
-            <div className="payment-status payment-status--loading">
-              Checking loyalty eligibility…
-            </div>
-          ) : rewardInfo ? (
-            canApplyLoyalty ? (
-              hasRewardExpired ? (
-                <div className="payment-status payment-status--error">
-                  Loyalty reward expired
-                </div>
-              ) : (
-                <div className="payment-status payment-status--success">
-                  <span>
-                    <FaGift aria-hidden="true" /> Reward available: {rewardInfo.reward}
-                  </span>
-                  {rewardInfo.expiry ? (
-                    <div className="expiry-text">
-                      Expires on {new Date(rewardInfo.expiry).toLocaleDateString()}
-                    </div>
-                  ) : null}
-                </div>
-              )
-            ) : (
-              <div className="payment-status payment-status--info">
-                Loyalty rewards cannot be applied to this service.
-              </div>
-            )
-          ) : null}
-        </UserCard>
-      </UserSection>
-
-      {summaryItems.length > 0 && (
-        <UserSection title="Booking summary">
-          <UserCard>
-            <ul className="order-summary-list">
-              {summaryItems.map((item, index) => (
-                <li key={index} className="order-summary-item">
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </UserCard>
-        </UserSection>
-      )}
-
-      {(scheduledDate || scheduledTime) && (
-        <UserSection title="Scheduled appointment">
-          <UserCard>
-            <div className="payment-status payment-status--info">
-              <FaClock aria-hidden="true" />
-              <span>
-                {scheduledDate ? new Date(scheduledDate).toLocaleDateString() : "Date to be confirmed"}
-                {scheduledTime ? ` • ${scheduledTime}` : ""}
-              </span>
-            </div>
-          </UserCard>
-        </UserSection>
-      )}
 
       <UserSection>
         <UserCard className="payment-actions-card" padding="loose">
@@ -532,27 +481,8 @@ const Payment: React.FC = () => {
               {!yocoLoaded ? "Loading payment…" : paying ? "Processing…" : "Pay with card"}
             </button>
 
-            {rewardInfo && canApplyLoyalty && !rewardApplied && !hasRewardExpired && (
-              <button
-                type="button"
-                onClick={handleApplyReward}
-                disabled={paying || loadingReward}
-                className="payment-button payment-button--success"
-              >
-                {loadingReward ? "Checking reward…" : "Apply reward"}
-              </button>
-            )}
+            {/* Reward apply button moved into PaymentSummary aside for consistent layout */}
           </div>
-
-          {rewardInfo && hasRewardExpired ? (
-            <div className="payment-status payment-status--error">This reward has expired.</div>
-          ) : null}
-
-          {rewardApplied ? (
-            <div className="reward-applied">
-              Reward applied! New total: {formatCents(amountToPay)}
-            </div>
-          ) : null}
 
           <div className="payment-security">
             <FaShieldAlt aria-hidden="true" />

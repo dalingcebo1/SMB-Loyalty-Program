@@ -290,8 +290,58 @@ const OrderForm: React.FC = () => {
     );
   }
 
+  const asideSummary = (
+    <div className="order-form-aside" aria-label="Current booking summary">
+      <UserCard className="order-form-summary" padding="loose" muted>
+        <h3 className="surface-card__title" style={{ marginTop: 0 }}>Summary</h3>
+        {servicesQuery.isLoading || extrasQuery.isLoading ? (
+          <div className="skeleton-lines" aria-hidden="true">
+            <div className="skeleton skeleton-text" style={{ width: '70%' }} />
+            <div className="skeleton skeleton-text" style={{ width: '55%' }} />
+            <div className="skeleton skeleton-text" style={{ width: '60%' }} />
+          </div>
+        ) : !selectedService ? (
+          <p className="surface-card__subtitle">Select a service to begin.</p>
+        ) : (
+          <div className="order-form-summary__content">
+            <ul className="summary-lines" aria-label="Selected items">
+              <li>
+                <span>{selectedService.name} × {serviceQuantity}</span>
+                <span>{formatCurrency(selectedService.base_price * serviceQuantity)}</span>
+              </li>
+              {extras.filter(e => (extraQuantities[e.id]||0) > 0).map(extra => {
+                const qty = extraQuantities[extra.id];
+                const price = (extra.price_map[selectedCategory] ?? 0) * qty;
+                return (
+                  <li key={extra.id}>
+                    <span>{extra.name} × {qty}</span>
+                    <span>{formatCurrency(price)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="summary-divider" />
+            <div className="summary-meta" style={{ display: 'grid', gap: '0.25rem' }}>
+              {selectedDate && selectedTime && (
+                <div className="summary-schedule" aria-label="Scheduled time">{new Date(selectedDate).toLocaleDateString()} • {selectedTime}</div>
+              )}
+              {selectedService?.duration && (
+                <div className="summary-duration" aria-label="Estimated duration">Approx. {selectedService.duration} min</div>
+              )}
+            </div>
+            <div className="summary-total" style={{ marginTop: '0.75rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Total</span>
+              <span>{formatCurrency(total)}</span>
+            </div>
+            <p className="sr-only">Current total {formatCurrency(total)}</p>
+          </div>
+        )}
+      </UserCard>
+    </div>
+  );
+
   return (
-    <UserPage className="order-form-page">
+    <UserPage className="order-form-page" layout="split" aside={asideSummary}>
       <ToastContainer position="top-right" />
 
       <UserHero
@@ -309,7 +359,7 @@ const OrderForm: React.FC = () => {
         </div>
       </UserSection>
 
-      <UserSection className="order-step-section">
+  <UserSection className="order-step-section" aria-label="Booking steps">
         <AnimatePresence mode="wait">
           {currentStep === 1 && (
             <motion.div

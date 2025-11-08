@@ -10,6 +10,8 @@ import Loading from "../../../components/Loading";
 import api from "../../../api/api";
 import { confirmationRef } from "../../../utils/confirmationRef";
 import "./UnifiedOnboarding.css";
+import AuthLayout from "../components/AuthLayout";
+import OnboardingChecklist from "../components/OnboardingChecklist";
 
 interface OnboardingLocationState {
   email?: string;
@@ -263,61 +265,37 @@ const UnifiedOnboarding: React.FC = () => {
   if (loading) return <Loading text="Processing…" />;
 
   return (
-    <div className="onboarding-container">
+    <AuthLayout
+      eyebrow="Onboarding"
+      title={currentStep === 'profile' ? 'Complete Your Profile' : 'Verify Your Phone'}
+      subtitle={currentStep === 'profile' ? 'Help us personalize your experience' : 'We\'ll send you a verification code'}
+      error={error || null}
+      noCard
+      containerClassName="onboarding-container"
+      alertRole="alert"
+    >
       {(sending || loading) && (
-        <div className="loading-overlay">
-          <div className="loading-spinner"></div>
+        <div className="loading-overlay" aria-live="polite" aria-busy="true">
+          <div className="loading-spinner" />
         </div>
       )}
-      
-      <div className="onboarding-card">
-        <div className="onboarding-header">
-          <h1 className="onboarding-title">
-            {currentStep === 'profile' ? 'Complete Your Profile' : 'Verify Your Phone'}
-          </h1>
-          <p className="onboarding-subtitle">
-            {currentStep === 'profile' 
-              ? 'Help us personalize your experience' 
-              : 'We\'ll send you a verification code'
-            }
-          </p>
+      <OnboardingChecklist currentStep={currentStep} completedProfile={!needsProfile && currentStep === 'phone'} />
+      {currentStep === 'profile' ? (
+        <div className="progress-section" role="region" aria-label="Profile information intro">
+          <h2 className="progress-title">Tell us about yourself</h2>
+          <p className="progress-description">This information helps us provide you with a personalized experience.</p>
         </div>
-
-        {/* Step Indicator */}
-        <div className="step-indicator">
-          <div className={`step-dot ${currentStep === 'profile' ? 'active' : 'completed'}`}></div>
-          <div className={`step-dot ${currentStep === 'phone' ? 'active' : ''}`}></div>
+      ) : (
+        <div className="progress-section" role="region" aria-label="Phone verification intro">
+          <h2 className="progress-title">Phone verification</h2>
+          <p className="progress-description">We'll send a verification code to your phone number to complete setup.</p>
+          <div className="info-card" role="note">
+            <div className="info-card-title">Why do we need your phone?</div>
+            <div className="info-card-text">Your phone number helps us send important updates and adds security.</div>
+          </div>
         </div>
-        
-        {error && <div className="error-message">{error}</div>}
-
-        {currentStep === 'profile' ? (
-          // Profile completion form
-          <div className="progress-section">
-            <h2 className="progress-title">Tell us about yourself</h2>
-            <p className="progress-description">
-              This information helps us provide you with a personalized experience.
-            </p>
-          </div>
-        ) : (
-          // Phone verification intro
-          <div className="progress-section">
-            <h2 className="progress-title">Phone verification</h2>
-            <p className="progress-description">
-              We'll send a verification code to your phone number to complete setup.
-            </p>
-            
-            <div className="info-card">
-              <div className="info-card-title">Why do we need your phone?</div>
-              <div className="info-card-text">
-                Your phone number helps us send important updates about your orders and loyalty rewards. 
-                It also adds an extra layer of security to your account.
-              </div>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={currentStep === 'profile' ? handleProfileSubmit : handlePhoneSubmit} className="onboarding-form">
+      )}
+      <form onSubmit={currentStep === 'profile' ? handleProfileSubmit : handlePhoneSubmit} className="onboarding-form" role="form" aria-describedby={error ? 'onboarding-error' : undefined}>
           {currentStep === 'profile' ? (
             // Profile completion form
             <>
@@ -387,21 +365,21 @@ const UnifiedOnboarding: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Phone Number *</label>
+                <label className="form-label" htmlFor="phone-input">Phone Number *</label>
                 <div className="phone-input-group">
-                  <span className="phone-flag">🇿🇦</span>
+                  <span className="phone-flag" aria-hidden="true">🇿🇦</span>
                   <input
+                    id="phone-input"
                     type="tel"
                     value={phone}
                     onChange={e => setPhone(e.target.value.replace(/[^\d+\s()-]/g, ''))}
                     placeholder="e.g., 0731234567 or +27831234567"
                     className="form-input phone-input"
                     required
+                    aria-describedby="phone-help"
                   />
                 </div>
-                <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                  We accept local numbers (073…) and full international format (+27…)
-                </small>
+                <small id="phone-help" className="form-helper">We accept local numbers (073…) and full international format (+27…)</small>
               </div>
 
               <div className="checkbox-group">
@@ -423,6 +401,7 @@ const UnifiedOnboarding: React.FC = () => {
                 type="submit"
                 disabled={sending || !recaptchaReady}
                 className="onboarding-button"
+                aria-busy={sending}
               >
                 {sending ? "Sending…" : !recaptchaReady ? 'Preparing Security Check…' : "Send Verification Code"}
               </button>
@@ -435,10 +414,8 @@ const UnifiedOnboarding: React.FC = () => {
             </>
           )}
         </form>
-      </div>
-      
       {import.meta.env.DEV && (
-        <div className="debug-panel">
+        <div className="debug-panel" role="region" aria-label="Debug information">
           <div className="debug-title">[Development Debug Info]</div>
           <div className="debug-item">recaptchaReady: {String(recaptchaReady)}</div>
           <div className="debug-item">hasVerifier: {String(!!verifier)}</div>
@@ -448,7 +425,7 @@ const UnifiedOnboarding: React.FC = () => {
           <div className="debug-item">lastPhoneError: {lastPhoneError || 'none'}</div>
         </div>
       )}
-    </div>
+    </AuthLayout>
   );
 };
 

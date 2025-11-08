@@ -26,12 +26,13 @@ import Account from '../pages/Account';
 import EnhancedProfile from '../pages/EnhancedProfile';
 
 // Auth pages (using unified onboarding flow)
-const Signup = lazy(() => import('../features/auth/pages/Signup'));
-const Login = lazy(() => import('../features/auth/pages/Login'));
-const UnifiedOnboarding = lazy(() => import('../features/auth/pages/UnifiedOnboarding'));
-const OTPVerify = lazy(() => import('../pages/OTPVerify'));
-const ForgotPassword = lazy(() => import('../features/auth/pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('../features/auth/pages/ResetPassword'));  
+// Group dynamic imports into a shared chunk hint for improved parallel loading
+const Signup = lazy(() => import(/* webpackChunkName: "auth" */ '../features/auth/pages/Signup'));
+const Login = lazy(() => import(/* webpackChunkName: "auth" */ '../features/auth/pages/Login'));
+const UnifiedOnboarding = lazy(() => import(/* webpackChunkName: "auth" */ '../features/auth/pages/UnifiedOnboarding'));
+const OTPVerify = lazy(() => import(/* webpackChunkName: "auth" */ '../pages/OTPVerify'));
+const ForgotPassword = lazy(() => import(/* webpackChunkName: "auth" */ '../features/auth/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import(/* webpackChunkName: "auth" */ '../features/auth/pages/ResetPassword'));  
 
 // Debug pages
 const FirebaseTest = lazy(() => import('../debug/FirebaseTest'));  

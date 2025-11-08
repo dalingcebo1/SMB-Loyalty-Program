@@ -51,6 +51,7 @@ const Signup: React.FC = () => {
           inputProps={{
             ...register("email", { required: "Email is required" }),
             autoComplete: 'email',
+            autoFocus: true,
             // @ts-expect-error custom data attr
             'data-cy': 'signup-email'
           }}

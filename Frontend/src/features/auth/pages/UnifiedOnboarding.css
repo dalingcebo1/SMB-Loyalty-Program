@@ -2,12 +2,14 @@
 
 .onboarding-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* Tokenized gradient fallback to design tokens */
+  background: var(--onboarding-gradient, linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%));
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  padding: clamp(1rem, 3vw, 2rem) 1rem;
+  overflow-x: hidden;
 }
 
 .onboarding-container::before {
@@ -25,16 +27,17 @@
 }
 
 .onboarding-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 24px;
-  padding: 3rem 2.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  background: var(--color-surface, rgba(255,255,255,0.95));
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border-subtle, rgba(255,255,255,0.3));
+  border-radius: var(--radius-xxl, 24px);
+  padding: clamp(2rem, 4vw, 3rem) clamp(1.5rem, 3vw, 2.5rem);
+  box-shadow: var(--shadow-elevated, 0 20px 60px rgba(0,0,0,0.1));
   width: 100%;
-  max-width: 500px;
+  max-width: 520px;
   position: relative;
   z-index: 10;
+  overflow-wrap: anywhere;
 }
 
 .onboarding-header {
@@ -43,20 +46,25 @@
 }
 
 .onboarding-title {
-  font-size: 2rem;
+  font-size: clamp(1.75rem, 5vw, 2.1rem);
   font-weight: 700;
-  color: #1a202c;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: 0 0 0.5rem;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  max-width: 24ch;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .onboarding-subtitle {
-  color: #6b7280;
+  color: var(--color-text-soft,#6b7280);
   font-size: 0.95rem;
   margin: 0;
+  max-width: 48ch;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .step-indicator {
@@ -103,11 +111,12 @@
 
 .form-input {
   padding: 0.875rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  border: 2px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
   font-size: 1rem;
-  transition: all 0.2s ease;
-  background: white;
+  transition: border-color var(--transition-base, .2s ease), box-shadow var(--transition-base, .2s ease);
+  background: var(--color-surface-alt, #ffffff);
+  min-width: 0;
 }
 
 .form-input:focus {
@@ -147,16 +156,17 @@
 }
 
 .onboarding-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  color: var(--color-primary-contrast, #fff);
   border: none;
   padding: 1rem 1.5rem;
-  border-radius: 12px;
+  border-radius: var(--radius-lg, 12px);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
+  transition: transform var(--transition-base, .2s ease), box-shadow var(--transition-base, .2s ease);
+  box-shadow: var(--shadow-soft, 0 4px 14px rgba(102,126,234,0.3));
+  min-width: 0;
 }
 
 .onboarding-button:hover {
@@ -172,14 +182,15 @@
 }
 
 .error-message {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
+  background: var(--color-error-bg, #fef2f2);
+  border: 1px solid var(--color-error-border, #fecaca);
+  border-radius: var(--radius-md, 8px);
   padding: 0.75rem 1rem;
-  color: #dc2626;
+  color: var(--color-error-text, #dc2626);
   font-size: 0.875rem;
   margin-bottom: 1rem;
-  border-left: 4px solid #dc2626;
+  border-left: 4px solid var(--color-error-text, #dc2626);
+  word-break: break-word;
 }
 
 .progress-section {
@@ -200,11 +211,12 @@
 }
 
 .info-card {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 8px;
+  background: var(--color-info-bg, #f0f9ff);
+  border: 1px solid var(--color-info-border, #bae6fd);
+  border-radius: var(--radius-md, 8px);
   padding: 1rem;
   margin-bottom: 1.5rem;
+  overflow-wrap: anywhere;
 }
 
 .info-card-title {
@@ -267,14 +279,13 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .onboarding-container { align-items: stretch; }
   .onboarding-card {
-    padding: 2rem 1.5rem;
-    margin: 1rem;
+    padding: 2rem 1.25rem;
+    margin: 0.5rem;
   }
-  
-  .onboarding-title {
-    font-size: 1.75rem;
-  }
+  .onboarding-title { font-size: 1.6rem; max-width: 100%; }
+  .onboarding-subtitle { max-width: 100%; }
 }
 
 /* Loading overlay */

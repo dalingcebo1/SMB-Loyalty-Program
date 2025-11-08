@@ -46,7 +46,8 @@ export default function ForgotPassword() {
             required: true,
             value: email,
             onChange: e => setEmail(e.target.value),
-            autoComplete: 'email'
+            autoComplete: 'email',
+            autoFocus: true
           }}
         />
         <button

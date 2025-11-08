@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import '../styles/auth-shared.css';
 
 interface AuthLayoutProps {
@@ -12,6 +12,7 @@ interface AuthLayoutProps {
   alertRole?: 'alert' | 'status';
   noCard?: boolean; // Render inner body without card wrapper (for complex multi-step flows)
   containerClassName?: string; // allow custom outer container classes
+  mainRole?: 'main' | 'region'; // allow overriding landmark role for page body
 }
 
 /**
@@ -36,16 +37,35 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   alertRole = 'alert',
   noCard = false,
   containerClassName,
+  mainRole = 'main',
 }) => {
+  const errorRef = useRef<HTMLDivElement | null>(null);
+  // Focus the error banner when a new error appears for better screen reader context
+  useEffect(() => {
+    if (error && errorRef.current) {
+      // Defer focus to next tick to ensure rendering complete
+      setTimeout(() => {
+        errorRef.current?.focus();
+      }, 0);
+    }
+  }, [error]);
+
   const body = (
-    <div className="auth-card__body">
+    <div className="auth-card__body" role={mainRole}>
       <header className="auth-header">
         {eyebrow && <span className="auth-eyebrow">{eyebrow}</span>}
         <h1 className="auth-title">{title}</h1>
         {subtitle && <p className="auth-subtitle">{subtitle}</p>}
       </header>
       {error && (
-        <div className="auth-alert auth-alert--error" role={alertRole}>
+        <div
+          className="auth-alert auth-alert--error"
+          role={alertRole}
+          aria-live={alertRole === 'alert' ? 'assertive' : 'polite'}
+          id="auth-error-banner"
+          tabIndex={-1}
+          ref={errorRef}
+        >
           <div>{error}</div>
           {errorAction}
         </div>

@@ -161,7 +161,7 @@ const OTPVerify: React.FC = () => {
     >
       {loading && <div className="loading-overlay"><div className="loading-spinner" /></div>}
       <div className="phone-display">📱 {onboardingData?.phone}</div>
-      <div className="otp-inputs" role="group" aria-label="Verification code">
+  <div className="otp-inputs" role="group" aria-label="Verification code" aria-describedby={error ? 'auth-error-banner' : undefined}>
         {otp.map((digit, i) => (
           <input
             key={i}
@@ -175,6 +175,7 @@ const OTPVerify: React.FC = () => {
             className={`otp-input ${digit ? 'filled' : ''}`}
             disabled={loading}
             aria-label={`Digit ${i + 1}`}
+            aria-invalid={Boolean(error)}
           />
         ))}
       </div>

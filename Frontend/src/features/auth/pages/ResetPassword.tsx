@@ -53,7 +53,8 @@ export default function ResetPassword() {
               required: true,
               value: password,
               onChange: e => setPassword(e.target.value),
-              autoComplete: 'new-password'
+              autoComplete: 'new-password',
+              autoFocus: true
             }}
         />
         <button

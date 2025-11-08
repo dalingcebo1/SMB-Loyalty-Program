@@ -58,6 +58,9 @@
   font-weight: 700;
   line-height: var(--leading-tight);
   color: var(--color-text);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 22ch;
 }
 
 .auth-subtitle {
@@ -66,11 +69,10 @@
   line-height: var(--leading-normal);
   color: var(--color-text-soft);
   display: block;
-  max-width: 32ch;
-  margin-inline: auto;
-  text-align: center;
-  word-break: normal;
+  max-width: 42ch;
+  text-align: left;
   overflow-wrap: anywhere;
+  word-break: break-word;
   hyphens: auto;
 }
 
@@ -274,6 +276,19 @@
   gap: 0.4rem;
 }
 
+/* Utility: visually hidden (SR-only) text */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .auth-link {
   color: var(--color-primary);
   font-weight: 600;
@@ -316,7 +331,9 @@
 
   .auth-title {
     font-size: var(--text-2xl);
+    max-width: 100%;
   }
+  .auth-subtitle { max-width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

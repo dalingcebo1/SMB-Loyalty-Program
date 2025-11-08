@@ -111,6 +111,7 @@ const Login: React.FC = () => {
           inputProps={{
             ...register("email", { required: "Email is required" }),
             autoComplete: 'email',
+            autoFocus: true,
             // @ts-expect-error custom data attribute allowed
             'data-cy': 'login-email'
           }}
@@ -177,12 +178,7 @@ const Login: React.FC = () => {
             <div className="auth-button-skeleton" aria-hidden="true">
               <div className="skeleton skeleton-text skeleton--w-60" />
             </div>
-            {/* Provide an accessible name for the disabled button so tests & screen readers can announce purpose */}
-            <span
-              style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 }}
-            >
-              Continue with Google
-            </span>
+            <span className="visually-hidden">Continue with Google</span>
           </>
         )}
       </button>

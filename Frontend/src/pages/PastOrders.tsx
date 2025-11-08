@@ -3,7 +3,6 @@ import QRCode from "react-qr-code";
 import { useNavigate } from "react-router-dom";
 // Removed toast usage; will use inline StatusBanner for error messaging.
 import {
-  FaCar,
   FaSearch,
   FaReceipt,
   FaRedo,
@@ -12,7 +11,6 @@ import {
   FaSprayCan,
   FaCreditCard,
   FaTrophy,
-  FaStar,
 } from "react-icons/fa";
 import useFetch from "../hooks/useFetch";
 import { Order, Extra } from "../types";

@@ -14,12 +14,24 @@ export interface HeroTextProps {
   /** Optional id for anchoring */
   id?: string;
   className?: string;
+  /** Visual tone for contrasting backgrounds */
+  tone?: "default" | "inverted" | "subtle" | "brand";
+  /** Layout mode: stack or inline with aside */
+  layout?: "stack" | "inline";
+  /** Optional aside content (badge / controls) */
+  aside?: React.ReactNode;
+  /** Stepped responsive sizing */
+  stepped?: boolean;
+  /** Compact tracking and tighter leading */
+  compact?: boolean;
 }
 
 /**
  * HeroText consolidates eyebrow, title and subtitle with balanced wrapping & responsive sizing.
  * It intentionally mirrors existing auth header styling while enabling reuse & future localization length tuning.
  */
+let warnedDuplicateH1 = false; // module-level to avoid reinitializing across renders
+
 export const HeroText: React.FC<HeroTextProps> = ({
   eyebrow,
   title,
@@ -27,6 +39,11 @@ export const HeroText: React.FC<HeroTextProps> = ({
   as = "h1",
   align = "left",
   subtitleMaxWidth,
+  tone = "default",
+  layout = "stack",
+  aside,
+  stepped = false,
+  compact = false,
   id,
   className = ""
 }) => {
@@ -36,12 +53,35 @@ export const HeroText: React.FC<HeroTextProps> = ({
     ? ({ "--hero-subtitle-max": subtitleMaxWidth } as React.CSSProperties)
     : {};
 
+  // Dev-only duplicate h1 warning logic
+  if (process.env.NODE_ENV !== 'production' && as === 'h1' && typeof document !== 'undefined') {
+    // defer to next microtask to allow second heading to mount
+    queueMicrotask(() => {
+      if (warnedDuplicateH1) return;
+      const existingH1 = document.querySelectorAll('h1').length;
+      if (existingH1 > 1) {
+        // eslint-disable-next-line no-console
+        console.warn('[HeroText] Multiple h1 headings detected; ensure unique page-level heading semantics.');
+        warnedDuplicateH1 = true;
+      }
+    });
+  }
+
+  const variantClasses = [
+    'hero-text--v2',
+    stepped ? 'hero-text--stepped' : '',
+    layout === 'inline' ? 'hero-text--inline' : '',
+    compact ? 'hero-text--compact' : '',
+    align === 'center' ? 'hero-text--center' : ''
+  ].filter(Boolean).join(' ');
+
   return (
     <header
       id={id}
-      className={`hero-text hero-text--${align} ${className}`.trim()}
+      className={`hero-text hero-text--${align} ${variantClasses} ${className}`.trim()}
       style={style}
       data-component="HeroText"
+      data-tone={tone}
     >
       {eyebrow && (
         <span className="hero-text__eyebrow" data-part="eyebrow">
@@ -55,6 +95,9 @@ export const HeroText: React.FC<HeroTextProps> = ({
         <p className="hero-text__subtitle" data-part="subtitle">
           {subtitle}
         </p>
+      )}
+      {aside && layout === 'inline' && (
+        <div className="hero-text__aside" data-part="aside">{aside}</div>
       )}
     </header>
   );

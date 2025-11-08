@@ -19,23 +19,26 @@
   margin: 0;
 }
 
+/* Title base styles (v1) */
 .hero-text__title {
   margin: 0;
   font-size: var(--text-3xl);
   font-weight: 700;
   line-height: var(--leading-tight);
-  color: var(--color-text);
+  color: var(--hero-title-color, var(--color-text));
+  letter-spacing: var(--hero-title-tracking, normal);
 }
 
+/* Subtitle base styles (v1) */
 .hero-text__subtitle {
   margin: 0;
   font-size: clamp(var(--text-sm), 0.9rem + 0.25vw, var(--text-md));
   line-height: var(--leading-normal);
-  color: var(--color-text-soft);
+  color: var(--hero-subtitle-color, var(--color-text-soft));
   display: block;
   max-width: var(--hero-subtitle-max, 42ch);
   word-break: normal;
-  overflow-wrap: break-word; /* gentler than anywhere */
+  overflow-wrap: break-word; /* fallback – may be relaxed in v2 variant */
   hyphens: auto;
 }
 
@@ -54,6 +57,55 @@
     font-size: var(--text-2xl);
   }
 }
+
+/* ---------------- v2 Enhancements ---------------- */
+/* Responsive stepped sizing */
+.hero-text--v2.hero-text--stepped .hero-text__title {
+  font-size: var(--hero-title-mobile, var(--text-2xl));
+}
+@media (min-width: 640px) {
+  .hero-text--v2.hero-text--stepped .hero-text__title { font-size: var(--hero-title-sm, var(--text-3xl)); }
+  .hero-text--v2.hero-text--stepped .hero-text__subtitle { font-size: var(--hero-subtitle-sm, var(--text-base)); }
+}
+@media (min-width: 1024px) {
+  .hero-text--v2.hero-text--stepped .hero-text__title { font-size: var(--hero-title-lg, var(--text-4xl)); }
+}
+
+/* Tone color mappings */
+.hero-text--v2[data-tone="default"] { --hero-title-color: var(--color-text); --hero-subtitle-color: var(--color-text-soft); }
+.hero-text--v2[data-tone="inverted"] { --hero-title-color: #fff; --hero-subtitle-color: #eef2ff; }
+.hero-text--v2[data-tone="subtle"] { --hero-title-color: var(--color-text-muted); --hero-subtitle-color: var(--color-text-soft); }
+.hero-text--v2[data-tone="brand"] { --hero-title-color: var(--color-primary); --hero-subtitle-color: var(--color-primary-contrast); }
+
+/* Compact tracking/leading */
+.hero-text--v2.hero-text--compact .hero-text__title {
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+/* Layout inline with aside */
+.hero-text--v2.hero-text--inline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+@media (min-width: 768px) {
+  .hero-text--v2.hero-text--inline { flex-direction: row; align-items: center; justify-content: space-between; }
+  .hero-text--v2.hero-text--inline .hero-text__aside { flex-shrink: 0; }
+}
+
+/* Wrapping refinements: relax aggressive breaks */
+.hero-text--v2 .hero-text__subtitle {
+  overflow-wrap: normal;
+  hyphens: manual;
+}
+@supports (text-wrap: balance) {
+  .hero-text--v2 .hero-text__subtitle { text-wrap: balance; }
+}
+
+/* Container-based measure (optional) */
+.hero-text--v2 { max-width: var(--hero-container-max, 52rem); }
+.hero-text--v2.hero-text--center { margin-inline: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-text__subtitle {

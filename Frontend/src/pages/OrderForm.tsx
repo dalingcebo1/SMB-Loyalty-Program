@@ -306,7 +306,7 @@ const OrderForm: React.FC = () => {
             currentStep={currentStep}
             stepsCompleted={currentStep > 1 ? [1] : []}
             stepsOverride={[
-              { label: 'Book Your Service', ariaLabel: 'Step 1: Book Your Service' },
+              { label: 'Book', ariaLabel: 'Step 1: Book' },
               { label: 'Choose Time', ariaLabel: 'Step 2: Choose Time' },
               { label: 'Finish', ariaLabel: 'Step 3: Finish Booking' }
             ]}

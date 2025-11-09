@@ -1,4 +1,4 @@
-import { FC, useEffect } from 'react';
+import { FC, useEffect, CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { trackStepView } from '../utils/analytics';
@@ -39,10 +39,11 @@ const StepIndicator: FC<StepIndicatorProps> = ({ currentStep, stepsCompleted = [
 
   const steps = stepsOverride && stepsOverride.length ? stepsOverride : defaultSteps;
   return (
-    <nav 
-      className="step-indicator" 
-      role="navigation" 
+    <nav
+      className="step-indicator"
+      role="navigation"
       aria-label="Progress through booking steps"
+      style={{ '--step-count': steps.length } as CSSProperties}
     >
       {steps.map((step, idx) => {
         const stepNum = idx + 1;

@@ -150,8 +150,8 @@
 }
 
 .payment-button {
-  padding: 1.125rem 2rem;
-  min-height: 48px;
+  padding: 0.55rem 1.6rem;
+  min-height: 38.37px;
   border-radius: var(--radius-lg);
   font-size: 1.0625rem;
   font-weight: 600;
@@ -159,8 +159,13 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   border: none;
   width: 100%;
-  word-break: keep-all;
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  word-break: normal;
+  white-space: normal;
+  line-height: 1.25;
 }
 
 .payment-button--primary {

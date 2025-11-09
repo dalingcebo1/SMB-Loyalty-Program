@@ -2,7 +2,7 @@
 /* Used across OrderForm, Payment, and OrderConfirmation pages */
 
 .action-button {
-  padding: 0.7rem 1.5rem;
+  padding: 0.45rem 1.35rem;
   border-radius: var(--radius-md, 8px);
   border: none;
   font-size: 0.9375rem;
@@ -14,7 +14,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 40px;
+  min-height: 38.37px;
+  line-height: 1.25;
   word-break: normal;
   overflow-wrap: break-word;
 }

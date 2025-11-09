@@ -21,7 +21,9 @@
   /* Typography */
   font-weight: var(--font-weight-semibold);
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
   line-height: var(--line-height-tight);
   
   /* Interaction */

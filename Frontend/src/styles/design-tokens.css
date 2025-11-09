@@ -260,11 +260,11 @@
    * COMPONENT-SPECIFIC TOKENS
    * =========================== */
   
-  /* Buttons - ensuring minimum 44px touch targets */
-  --button-height-sm: 2.5rem;   /* 40px */
-  --button-height-base: 2.75rem; /* 44px */
-  --button-height-lg: 3rem;      /* 48px */
-  --button-height-xl: 3.5rem;    /* 56px */
+  /* Buttons - calibrated to 38.37px maximum height */
+  --button-height-sm: 34px;
+  --button-height-base: 38.37px;
+  --button-height-lg: 38.37px;
+  --button-height-xl: 38.37px;
   
   /* Input Fields */
   --input-height-sm: 2rem;
@@ -283,8 +283,8 @@
   --container-xl: 1280px;
   --container-2xl: 1536px;
   
-  /* Touch Targets (44x44px minimum for accessibility) */
-  --touch-target-min: 44px;
+  /* Touch Targets */
+  --touch-target-min: 38.37px;
 }
 
 /* Dark Mode Support (Future Enhancement) */

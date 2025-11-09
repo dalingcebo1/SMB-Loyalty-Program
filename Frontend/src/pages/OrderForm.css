@@ -293,7 +293,11 @@
 }
 
 .action-button {
-  padding: 0.6rem 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1.15rem;
   border-radius: var(--radius-md);
   font-size: 0.95rem;
   font-weight: 600;
@@ -301,6 +305,8 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   border: none;
   min-width: 112px;
+  min-height: 38.37px;
+  line-height: 1.25;
 }
 
 .action-button.primary {
@@ -335,7 +341,7 @@
   box-shadow: none !important;
   background-image: none !important;
   padding: 0.45rem 1.15rem;
-  min-height: 40px;
+  min-height: 38.37px;
 }
 
 .action-button.flat:hover:not(:disabled) {

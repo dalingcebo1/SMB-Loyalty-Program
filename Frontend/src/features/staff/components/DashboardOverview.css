@@ -199,11 +199,11 @@
 }
 
 .action-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.875rem 1.5rem;
-  min-height: 44px;
+  padding: 0.45rem 1.2rem;
+  min-height: 38.37px;
   border-radius: 12px;
   font-weight: 600;
   font-size: 0.9375rem;
@@ -211,8 +211,9 @@
   transition: all 0.3s ease;
   border: none;
   text-decoration: none;
-  white-space: nowrap;
-  word-break: keep-all;
+  white-space: normal;
+  word-break: normal;
+  line-height: 1.25;
 }
 
 .action-btn.primary {

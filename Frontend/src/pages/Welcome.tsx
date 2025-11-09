@@ -189,7 +189,12 @@ const Welcome: React.FC = () => {
     <UserPage className="welcome-page" size="wide">
       <UserHero
         eyebrow="Welcome back"
-        title={<>Welcome {name || 'there'}!</>}
+        title={(
+          <span className="user-hero__title-lines">
+            <span className="user-hero__title-greeting">Welcome</span>
+            <span className="user-hero__title-name">{name || 'there'}!</span>
+          </span>
+        )}
         actions={(
           <>
             <Link

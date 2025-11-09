@@ -246,10 +246,36 @@
   letter-spacing: -0.02em;
   line-height: 1.2;
   word-break: normal;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  hyphens: auto;
+  text-align: inherit;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+.user-hero__title-lines {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: inherit;
+}
+
+.user-hero__title-greeting,
+.user-hero__title-name {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.user-hero__title-name {
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 640px) {
@@ -319,13 +345,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  padding: 0.7rem 1.25rem;
-  min-height: 40px;
+  padding: 0.45rem 1.15rem;
+  min-height: 38.37px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   font-weight: 600;
   font-size: var(--text-md);
-  line-height: var(--leading-snug);
+  line-height: 1.25;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border 0.2s ease;
   max-width: 100%;
@@ -347,8 +373,8 @@
 }
 
 .btn--dense {
-  padding: 0.6rem 1.1rem;
-  min-height: 36px;
+  padding: 0.4rem 1rem;
+  min-height: 34px;
   font-size: var(--text-sm);
 }
 

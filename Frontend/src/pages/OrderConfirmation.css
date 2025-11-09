@@ -418,7 +418,11 @@
 }
 
 .action-button {
-  padding: 0.875rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.35rem;
   border-radius: var(--radius-lg);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -429,8 +433,8 @@
   white-space: normal;
   overflow-wrap: break-word;
   word-break: normal;
-  min-height: 44px;
-  line-height: var(--leading-snug);
+  min-height: 38.37px;
+  line-height: 1.25;
 }
 
 .action-button:focus-visible {

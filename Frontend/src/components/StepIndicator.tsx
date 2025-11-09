@@ -68,29 +68,17 @@ const StepIndicator: FC<StepIndicatorProps> = ({ currentStep, stepsCompleted = [
               aria-disabled={!isClickable}
               title={isClickable ? `Go to ${step.label}` : step.label}
             >
-              <div className="step-number-container">
-                <motion.div
-                  className="step-number"
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: isActive ? 1 : 1 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                  aria-hidden="true"
-                >
-                  {isCompleted && stepNum !== currentStep ? '✓' : stepNum}
-                </motion.div>
-              </div>
-              <span className="step-label" aria-hidden="true">{step.label}</span>
-            </div>
-            {idx < steps.length - 1 && (
               <motion.div
-                className={`step-connector ${isCompleted ? 'completed' : ''}`}
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: isCompleted ? 1 : 0 }}
-                style={{ transformOrigin: 'left' }}
-                transition={{ duration: 0.3 }}
+                className="step-number"
+                initial={{ scale: 0.9 }}
+                animate={{ scale: isActive ? 1 : 1 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 18 }}
                 aria-hidden="true"
-              />
-            )}
+              >
+                {isCompleted && stepNum !== currentStep ? '✓' : stepNum}
+              </motion.div>
+              <span className="step-label">{step.label}</span>
+            </div>
           </div>
         );
       })}

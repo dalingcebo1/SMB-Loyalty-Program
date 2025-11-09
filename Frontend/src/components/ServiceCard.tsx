@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatCurrency } from '../utils/format';
 import './ServiceCard.css';
 
 interface Service {
@@ -37,23 +38,20 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       className={`service-card ${isSelected ? 'selected' : ''}`}
       onClick={() => onSelect(service)}
     >
-      {/* Service Header */}
       <div className="service-card-header">
-        <h3 className="service-title">{service.name}</h3>
+        <h3>{service.name}</h3>
         <div className="service-radio" />
       </div>
 
-      {/* Service Description */}
       {service.description && (
         <p className="service-description" data-testid="service-description">
           {service.description}
         </p>
       )}
 
-      {/* Service Details stacked vertically */}
       <div className="service-details">
         <div className="service-price" data-testid="service-price">
-          <span className="price-value">R {service.base_price}</span>
+          {formatCurrency(service.base_price)}
         </div>
         {service.duration && (
           <div className="service-duration" data-testid="service-duration">
@@ -62,14 +60,12 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
         )}
       </div>
 
-      {/* Loyalty Points */}
       {service.loyalty_points && (
         <div className="service-loyalty">
           ⭐ +{service.loyalty_points} points
         </div>
       )}
 
-      {/* Quantity Selection */}
       {isSelected && (
         <AnimatePresence>
           <motion.div

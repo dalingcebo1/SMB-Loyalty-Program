@@ -361,11 +361,9 @@ const OrderForm: React.FC = () => {
                       const extraPrice = extra.price_map[selectedCategory] ?? 0;
                       return (
                         <div key={extra.id} className="extra-item">
-                          <div className="extra-header">
+                          <div className="extra-details">
                             <h4>{extra.name}</h4>
-                            <span className="extra-price">
-                              +{formatCurrency(extraPrice)}
-                            </span>
+                            <span className="extra-price">+{formatCurrency(extraPrice)}</span>
                           </div>
                           <div className="extra-quantity">
                             <button

@@ -21,17 +21,9 @@
 }
 
 .order-step-indicator {
-  display: flex;
-  justify-content: center;
+  width: 100%;
   padding: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.order-step-indicator::-webkit-scrollbar {
-  display: none;
+  box-sizing: border-box;
 }
 
 .form-step {
@@ -107,7 +99,7 @@
 /* Services Grid */
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.5rem;
   margin-bottom: 1.5rem;
   max-width: 100%;
@@ -141,73 +133,71 @@
 
 .extra-item {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.25rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  box-sizing: border-box;
 }
 
-.extra-header {
+.extra-details {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
 }
 
-.extra-header h4 {
+.extra-details h4 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-text);
+  word-break: break-word;
 }
 
 .extra-price {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--color-primary);
 }
 
 .extra-quantity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.extra-item .quantity-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-primary, #2563eb);
+  background: transparent;
+  color: var(--color-primary, #2563eb);
+  font-size: 1rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-.quantity-button {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 1.25rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
-  display: grid;
-  place-items: center;
+.extra-item .quantity-button:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.12);
 }
 
-.quantity-button:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  background: rgba(79, 70, 229, 0.08);
-  color: var(--color-primary);
-}
-
-.quantity-button:disabled {
+.extra-item .quantity-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.quantity-display {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--color-text);
-  min-width: 2ch;
+.extra-item .quantity-display {
+  min-width: 1.75rem;
   text-align: center;
+  font-weight: 600;
 }
 
 /* Date Time Section */
@@ -288,24 +278,29 @@
   width: 100%;
 }
 
+
 .form-actions .total-amount {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 0.65rem 1rem;
+  flex: 1 1 auto;
   text-align: center;
-  min-width: max-content;
+  min-width: 180px;
 }
 
 .action-button {
-  padding: 0.7rem 1.5rem;
-  border-radius: var(--radius-lg);
-  font-size: 1rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   border: none;
-  min-width: 120px;
+  min-width: 112px;
 }
 
 .action-button.primary {
@@ -314,35 +309,38 @@
 }
 
 .action-button.primary:hover:not(:disabled) {
-  background: var(--color-primary-strong);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-button);
+  background: var(--color-primary-hover);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
 }
 
 .action-button.secondary {
-  background: var(--color-surface-muted);
+  background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
 
 .action-button.secondary:hover:not(:disabled) {
-  background: var(--color-surface);
-  border-color: var(--color-primary);
+  background: var(--color-surface-muted);
 }
 
 .action-button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 /* Flat variant for CTA buttons */
 .action-button.flat {
   box-shadow: none !important;
   background-image: none !important;
-  padding: 0.55rem 1.25rem;
+  padding: 0.45rem 1.15rem;
+  min-height: 40px;
 }
-.action-button.flat:hover:not(:disabled) { transform: none; }
+
+.action-button.flat:hover:not(:disabled) {
+  transform: none;
+}
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -362,9 +360,6 @@
 
   .form-actions .total-amount {
     order: -1;
-    padding: 0.75rem;
-    background: rgba(79, 70, 229, 0.08);
-    border-radius: var(--radius-lg);
     width: 100%;
   }
 

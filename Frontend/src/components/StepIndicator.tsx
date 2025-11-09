@@ -8,15 +8,17 @@ interface StepIndicatorProps {
   currentStep: number; // 1-based index
   // list of completed step numbers
   stepsCompleted?: number[];
+  /** Optional override of step labels/aria labels for contextual flows */
+  stepsOverride?: { label: string; ariaLabel: string }[];
 }
 
-const steps = [
+const defaultSteps = [
   { label: 'Select Service', ariaLabel: 'Step 1: Select Service' },
   { label: 'Choose Time', ariaLabel: 'Step 2: Choose Time' },
   { label: 'Review & Confirm', ariaLabel: 'Step 3: Review and Confirm' }
 ];
 
-const StepIndicator: FC<StepIndicatorProps> = ({ currentStep, stepsCompleted = [] }) => {
+const StepIndicator: FC<StepIndicatorProps> = ({ currentStep, stepsCompleted = [], stepsOverride }) => {
   const navigate = useNavigate();
   // Track analytics when the current step is rendered
   useEffect(() => {
@@ -35,6 +37,7 @@ const StepIndicator: FC<StepIndicatorProps> = ({ currentStep, stepsCompleted = [
     }
   };
 
+  const steps = stepsOverride && stepsOverride.length ? stepsOverride : defaultSteps;
   return (
     <nav 
       className="step-indicator" 

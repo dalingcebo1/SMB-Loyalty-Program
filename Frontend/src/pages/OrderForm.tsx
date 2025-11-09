@@ -305,6 +305,11 @@ const OrderForm: React.FC = () => {
           <StepIndicator
             currentStep={currentStep}
             stepsCompleted={currentStep > 1 ? [1] : []}
+            stepsOverride={[
+              { label: 'Book Your Service', ariaLabel: 'Step 1: Book Your Service' },
+              { label: 'Choose Time', ariaLabel: 'Step 2: Choose Time' },
+              { label: 'Finish', ariaLabel: 'Step 3: Finish Booking' }
+            ]}
           />
         </div>
       </UserSection>
@@ -403,7 +408,7 @@ const OrderForm: React.FC = () => {
                   <button
                     onClick={handleNextStep}
                     disabled={!canProceedToStep2}
-                    className={`action-button ${canProceedToStep2 ? 'primary' : 'secondary'}`}
+                    className={`action-button ${canProceedToStep2 ? 'primary flat' : 'secondary flat'}`}
                   >
                     Choose Date & Time
                   </button>

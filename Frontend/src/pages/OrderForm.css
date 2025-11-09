@@ -2,6 +2,10 @@
 
 .order-form-page {
   gap: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 @media (min-width: 640px) {
@@ -106,6 +110,7 @@
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+  max-width: 100%;
 }
 
 @media (max-width: 600px) {
@@ -123,6 +128,7 @@
   border-radius: var(--radius-xl);
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
+  max-width: 100%;
 }
 
 @media (max-width: 600px) {
@@ -166,7 +172,7 @@
 .extra-quantity {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 1rem;
 }
 
@@ -279,6 +285,7 @@
   margin-top: 1rem;
   border-top: 1px solid var(--color-border);
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .form-actions .total-amount {
@@ -328,6 +335,14 @@
   cursor: not-allowed;
   transform: none;
 }
+
+/* Flat variant for CTA buttons */
+.action-button.flat {
+  box-shadow: none !important;
+  background-image: none !important;
+  padding: 0.55rem 1.25rem;
+}
+.action-button.flat:hover:not(:disabled) { transform: none; }
 
 /* Responsive Design */
 @media (max-width: 768px) {

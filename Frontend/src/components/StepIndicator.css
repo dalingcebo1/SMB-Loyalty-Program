@@ -8,19 +8,13 @@
   margin-bottom: 1rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  flex-wrap: nowrap;
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  /* Ensure adequate padding for focus rings */
+  flex-wrap: wrap; /* allow wrapping to eliminate horizontal scroll */
   padding: 0.25rem 0;
+  box-sizing: border-box;
 }
 
-.step-indicator::-webkit-scrollbar {
-  display: none;
-}
+/* Remove previous horizontal scroll approach; ensure no accidental overflow */
+.step-indicator-item { flex-shrink: 0; }
 
 .step-indicator-item {
   display: flex;

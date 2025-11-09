@@ -39,25 +39,24 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
     >
       {/* Service Header */}
       <div className="service-card-header">
-        <h3>{service.name}</h3>
+        <h3 className="service-title">{service.name}</h3>
         <div className="service-radio" />
       </div>
 
       {/* Service Description */}
       {service.description && (
-        <p className="service-description">
+        <p className="service-description" data-testid="service-description">
           {service.description}
         </p>
       )}
 
-      {/* Service Details */}
+      {/* Service Details stacked vertically */}
       <div className="service-details">
-        <div className="service-price">
-          <span className="currency">R</span>
-          <span className="amount">{service.base_price}</span>
+        <div className="service-price" data-testid="service-price">
+          <span className="price-value">R {service.base_price}</span>
         </div>
         {service.duration && (
-          <div className="service-duration">
+          <div className="service-duration" data-testid="service-duration">
             ~{service.duration} min
           </div>
         )}

@@ -433,53 +433,9 @@
   align-items: stretch;
 }
 
-.action-button {
+.order-actions .action-button {
   flex: 1 1 180px;
-  padding: 0.45rem 1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  font-weight: 600;
-  font-size: var(--text-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease, background 0.2s ease;
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: normal;
-  min-height: 38.37px;
-  line-height: 1.25;
-}
-
-.action-button:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.action-button.primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
-  color: #ffffff;
-  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.28);
-}
-
-.action-button.primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 22px 44px rgba(79, 70, 229, 0.36);
-}
-
-.action-button.secondary {
-  background: var(--color-surface-muted);
-  color: var(--color-text);
-  border-color: var(--color-border);
-}
-
-.action-button.secondary:hover {
-  transform: translateY(-2px);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-soft);
+  min-width: 0;
 }
 
 .order-modal {
@@ -504,9 +460,6 @@
 }
 
 @media (max-width: 640px) {
-  .order-modal {
-    padding: 1.25rem;
-  }
 
   .modal-content {
     gap: 1.25rem;
@@ -520,52 +473,11 @@
   gap: 0.5rem;
 }
 
-.modal-title {
-  margin: 0;
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  color: var(--color-text);
-  line-height: var(--leading-snug);
-  overflow-wrap: break-word;
-  word-break: break-word;
-  hyphens: auto;
-}
-
-.modal-order-id {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  font-weight: 500;
-  overflow-wrap: break-word;
-  line-height: var(--leading-normal);
-}
-
-.modal-close {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  background: transparent;
-  border: none;
-  font-size: 1.75rem;
-  cursor: pointer;
-  color: var(--color-text-muted);
-}
-
-.modal-body {
-  display: grid;
-  gap: 1.5rem;
-}
-
-@media (min-width: 640px) {
-  .modal-body {
-    gap: 1.75rem;
-  }
-}
-
-.order-timeline {
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-border-subtle);
-  padding: 1.5rem;
-  background: var(--color-surface-muted);
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
 }
 
 .timeline-container {
@@ -725,37 +637,6 @@
   justify-content: flex-end;
 }
 
-.modal-action-btn {
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.modal-action-btn.primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
-  color: #ffffff;
-}
-
-.modal-action-btn.secondary {
-  background: var(--color-surface-muted);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-}
-
-.modal-action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-soft);
-}
-
 @media (max-width: 768px) {
   .orders-filters {
     flex-direction: column;
@@ -801,7 +682,7 @@
     flex-direction: column;
   }
 
-  .action-button {
+  .order-actions .action-button {
     width: 100%;
   }
 
@@ -813,7 +694,7 @@
     justify-content: stretch;
   }
 
-  .modal-action-btn {
+  .modal-actions .action-button {
     flex: 1 1 100%;
     justify-content: center;
   }

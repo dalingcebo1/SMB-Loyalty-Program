@@ -72,10 +72,14 @@
 /* Category Tabs */
 .category-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(56px, auto);
   gap: clamp(0.6rem, 1vw, 0.9rem);
   margin-bottom: clamp(1.25rem, 1.5vw, 1.75rem);
   align-items: stretch;
+  width: min(100%, 520px);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .category-tab {
@@ -126,7 +130,7 @@
 /* Extras Grid */
 .extras-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: clamp(1rem, 1.25vw, 1.5rem);
   padding: clamp(1.35rem, 1.5vw, 1.65rem);
   border-radius: var(--radius-xl);
@@ -306,62 +310,6 @@
   min-width: 180px;
 }
 
-.action-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.45rem 1.15rem;
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  border: none;
-  min-width: 112px;
-  min-height: 38.37px;
-  line-height: 1.25;
-}
-
-.action-button.primary {
-  background: var(--color-primary);
-  color: #ffffff;
-}
-
-.action-button.primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
-}
-
-.action-button.secondary {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-}
-
-.action-button.secondary:hover:not(:disabled) {
-  background: var(--color-surface-muted);
-}
-
-.action-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Flat variant for CTA buttons */
-.action-button.flat {
-  box-shadow: none !important;
-  background-image: none !important;
-  padding: 0.45rem 1.15rem;
-  min-height: 38.37px;
-}
-
-.action-button.flat:hover:not(:disabled) {
-  transform: none;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .category-tabs {
@@ -384,7 +332,7 @@
     width: 100%;
   }
 
-  .action-button {
+  .form-actions .action-button {
     width: 100%;
   }
 

@@ -246,7 +246,7 @@ const OrderConfirmation: React.FC = () => {
               <div className="error-message">{error}</div>
               <button
                 onClick={() => navigate("/")}
-                className="action-button action-button--secondary"
+                className="action-button secondary"
               >
                 Go Home
               </button>
@@ -459,7 +459,7 @@ const OrderConfirmation: React.FC = () => {
             </p>
           )}
           <button
-            className="action-button action-button--primary"
+            className="action-button primary"
             onClick={() => {
               setShowCalendarModal(true);
               track('cta_click', { label: 'Add to Calendar', page: 'OrderConfirmation' });
@@ -475,7 +475,7 @@ const OrderConfirmation: React.FC = () => {
           <div className="primary-actions">
             <button
               onClick={() => navigate("/")}
-              className="action-button action-button--primary"
+              className="action-button primary"
             >
               🏠 Home
             </button>
@@ -485,7 +485,7 @@ const OrderConfirmation: React.FC = () => {
                   track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
                   navigate("/past-orders");
                 }}
-                className="action-button action-button--secondary"
+                className="action-button secondary"
               >
                 📋 View Orders
               </button>
@@ -493,7 +493,7 @@ const OrderConfirmation: React.FC = () => {
             {enableLoyalty && (
               <button
                 onClick={() => navigate("/myloyalty")}
-                className="action-button action-button--success"
+                className="action-button success"
               >
                 🎁 My Loyalty
               </button>

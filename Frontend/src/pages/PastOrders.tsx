@@ -19,6 +19,7 @@ import { Order, Extra } from "../types";
 import api from "../api/api";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
 import { formatCents } from "../utils/format";
+import "../styles/shared-buttons.css";
 import "./PastOrders.css";
 
 type StatusBadgeVariant = "completed" | "pending" | "cancelled";
@@ -660,11 +661,11 @@ const PastOrders: React.FC = () => {
             </div>
 
             <div className="modal-actions">
-              <button className="modal-action-btn secondary">
+              <button className="action-button secondary">
                 <FaReceipt /> Download Receipt
               </button>
               <button
-                className="modal-action-btn primary"
+                className="action-button primary"
                 onClick={() => {
                   setModalOrder(null);
                   handleBookAgain();

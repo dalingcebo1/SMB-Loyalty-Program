@@ -20,6 +20,14 @@
   overflow-wrap: break-word;
 }
 
+.action-button:focus-visible,
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.success-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .action-button.primary,
 .primary-button {
   background: var(--color-primary);

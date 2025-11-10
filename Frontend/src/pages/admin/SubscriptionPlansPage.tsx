@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchPlans, createPlan, updatePlan, archivePlan, listAllPlans, restorePlan } from '../../api/subscriptionAdmin';
 import api from '../../api/api';
-import { toast } from 'react-toastify';
+import { notifySuccessKey, notifyErrorKey } from '../../utils/notifications';
 import { useAuth } from '../../auth/AuthProvider';
 import { formatCurrency } from '../../utils/currency';
 import { usePersistedState } from '../../features/core/hooks/usePersistedState';
@@ -34,17 +34,12 @@ export const SubscriptionPlansPage: React.FC = () => {
       await api.post(`/subscriptions/tenants/${tenantId}/assign-plan`, { plan_id: planId }, { headers: { 'X-Tenant-ID': tenantId }});
     },
     onSuccess: ()=> { 
-      toast.success('Plan updated'); 
+      notifySuccessKey('notifications.plan.updated'); 
       queryClient.invalidateQueries({queryKey:['plans']});
       queryClient.invalidateQueries({queryKey:['tenantSub', tenantId]});
     },
-    onError: (e:unknown)=> {
-      interface ErrorData { detail?: string }
-      interface ErrorResp { data?: ErrorData }
-      interface MaybeAxiosError { response?: ErrorResp }
-      const maybe = e as MaybeAxiosError;
-      const msg = maybe?.response?.data?.detail || 'Failed to assign plan';
-      toast.error(msg);
+    onError: ()=> {
+      notifyErrorKey('notifications.generic.error'); // Handle error
     }
   });
 
@@ -57,11 +52,15 @@ export const SubscriptionPlansPage: React.FC = () => {
       }
     },
     onSuccess: ()=> {
-      toast.success(editing? 'Plan updated':'Plan created');
+        if (editing) {
+          notifySuccessKey('notifications.plan.updated');
+        } else {
+          notifySuccessKey('notifications.plan.created');
+        }
       setShowEditor(false); setEditing(null);
       queryClient.invalidateQueries({queryKey:['plans']});
     },
-    onError: ()=> toast.error('Failed to save plan')
+    onError: ()=> notifyErrorKey('notifications.generic.error')
   });
 
   function openCreate(){
@@ -278,10 +277,10 @@ export const SubscriptionPlansPage: React.FC = () => {
             </div>
             <div className="flex justify-end gap-3 pt-2">
               {editing && (form.active ?? true) && (
-                <button type="button" onClick={async ()=> { if(window.confirm('Archive (deactivate) this plan? Tenants currently assigned remain on it but it will no longer appear in pricing.')) { await archivePlan(editing.id); toast.success('Plan archived'); setShowEditor(false); setEditing(null); queryClient.invalidateQueries({queryKey:['plans', true]}); queryClient.invalidateQueries({queryKey:['plans', false]}); }} } className="px-4 py-2 text-sm rounded border bg-white text-red-600 hover:bg-red-50">Archive</button>
+                <button type="button" onClick={async ()=> { if(window.confirm('Archive (deactivate) this plan? Tenants currently assigned remain on it but it will no longer appear in pricing.')) { await archivePlan(editing.id); notifySuccessKey('notifications.plan.archived'); setShowEditor(false); setEditing(null); queryClient.invalidateQueries({queryKey:['plans', true]}); queryClient.invalidateQueries({queryKey:['plans', false]}); }} } className="px-4 py-2 text-sm rounded border bg-white text-red-600 hover:bg-red-50">Archive</button>
               )}
               {editing && (form.active === false) && (
-                <button type="button" onClick={async ()=> { await restorePlan(editing.id); toast.success('Plan restored'); setShowEditor(false); setEditing(null); queryClient.invalidateQueries({queryKey:['plans', true]}); queryClient.invalidateQueries({queryKey:['plans', false]}); }} className="px-4 py-2 text-sm rounded border bg-white text-green-600 hover:bg-green-50">Restore</button>
+                <button type="button" onClick={async ()=> { await restorePlan(editing.id); notifySuccessKey('notifications.plan.restored'); setShowEditor(false); setEditing(null); queryClient.invalidateQueries({queryKey:['plans', true]}); queryClient.invalidateQueries({queryKey:['plans', false]}); }} className="px-4 py-2 text-sm rounded border bg-white text-green-600 hover:bg-green-50">Restore</button>
               )}
                <button type="button" onClick={()=> { setShowEditor(false); setEditing(null); }} className="px-4 py-2 text-sm rounded border bg-white hover:bg-gray-50">Cancel</button>
                <button type="submit" disabled={planCreateMutation.isPending} className="px-4 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">{planCreateMutation.isPending? 'Saving...' : editing? 'Update Plan':'Create Plan'}</button>

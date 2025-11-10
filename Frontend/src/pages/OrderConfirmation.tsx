@@ -4,15 +4,17 @@ import StepIndicator from "../components/StepIndicator";
 import CalendarModal from "../components/CalendarModal";
 import { track } from '../utils/analytics';
 import { formatCents } from '../utils/format';
-import { toast, ToastContainer } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { moduleFlags } from '../config/modules';
+import { notifyOrderConfirmed, notifyRedeemSuccess, notifyRedeemError, notifyClipboard } from '../utils/notifications';
 import { useLocation, useNavigate, useParams, Navigate } from "react-router-dom";
 import QRCode from "react-qr-code";
 import axios from "axios";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import Loading from "../components/Loading";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
 import "./OrderConfirmation.css";
 import '../styles/shared-buttons.css';
@@ -180,14 +182,7 @@ const OrderConfirmation: React.FC = () => {
       const hasShownToast = sessionStorage.getItem(`orderConfirmationToast_${orderId}`);
       if (!hasShownToast) {
         setTimeout(() => {
-          toast.success('🎉 Order confirmed successfully!', {
-            position: 'top-center',
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-          });
+          notifyOrderConfirmed(orderId);
           sessionStorage.setItem(`orderConfirmationToast_${orderId}`, 'true');
         }, 800);
       }
@@ -230,7 +225,7 @@ const OrderConfirmation: React.FC = () => {
       <UserPage className="confirmation-page">
         <UserSection>
           <UserCard className="confirmation-loading" muted>
-            <Loading text="Loading your order…" />
+            <LoadingOverlay inline message="Loading your order…" />
           </UserCard>
         </UserSection>
       </UserPage>
@@ -285,10 +280,10 @@ const OrderConfirmation: React.FC = () => {
             onClick={async () => {
               try {
                 await api.post(nextActionUrl);
-                toast.success('Wash redeemed for loyalty points!');
+                notifyRedeemSuccess();
                 navigate('/myloyalty');
               } catch {
-                toast.error('Could not redeem wash. Please try again.');
+                notifyRedeemError();
               }
             }}
             onKeyDown={(event) => {
@@ -320,8 +315,14 @@ const OrderConfirmation: React.FC = () => {
       {orderStatus && (
         <UserSection>
           <UserCard className="order-status-card" muted>
-            <span className={`status-badge status-badge--${orderStatus === "paid" || orderStatus === "completed" ? "confirmed" : "processing"}`}>
-              Status: {orderStatus.replace(/_/g, ' ').toUpperCase()}
+            <span
+              className={`status-badge status-badge--${orderStatus === "paid" || orderStatus === "completed" ? "confirmed" : "processing"}`}
+              role="status"
+              aria-label={`Order status: ${orderStatus.replace(/_/g, ' ')}`}
+              data-testid="order-confirmation-status"
+            >
+              <span className="sr-only">Order status: {orderStatus.replace(/_/g, ' ')}</span>
+              {orderStatus.replace(/_/g, ' ').toUpperCase()}
             </span>
           </UserCard>
         </UserSection>
@@ -334,14 +335,14 @@ const OrderConfirmation: React.FC = () => {
           </div>
 
           {paymentPin && (
-            <div className="payment-pin-section">
+            <div className="payment-pin-section" aria-label="Payment PIN" data-testid="payment-pin-block">
               <div className="payment-pin-label">Payment PIN</div>
-              <div className="payment-pin-value">{paymentPin}</div>
+              <div className="payment-pin-value" data-testid="payment-pin">{paymentPin}</div>
             </div>
           )}
 
           {amount > 0 && (
-            <div className="amount-section">
+            <div className="amount-section" aria-label="Amount paid" data-testid="amount-paid">
               <span className="amount-label">Amount Paid:</span>
               <span className="amount-value">{formatCents(amount)}</span>
             </div>
@@ -349,7 +350,7 @@ const OrderConfirmation: React.FC = () => {
 
           <div className="qr-section">
             <h4 className="qr-title">Payment QR Code</h4>
-            <div className="qr-code-container">
+            <div className="qr-code-container" aria-label="Payment QR code" data-testid="payment-qr">
               {qrCodeBase64 ? (
                 <img
                   src={`data:image/png;base64,${qrCodeBase64}`}
@@ -506,6 +507,8 @@ const OrderConfirmation: React.FC = () => {
                 href={`data:image/png;base64,${qrCodeBase64}`}
                 download={`order-${orderId}.png`}
                 className="download-button"
+                data-testid="download-qr-button"
+                aria-label="Download QR code image"
               >
                 💾 Download QR
               </a>
@@ -515,9 +518,11 @@ const OrderConfirmation: React.FC = () => {
                 onClick={() => {
                   navigator.clipboard.writeText(paymentPin);
                   track('cta_click', { label: 'Copy PIN', page: 'OrderConfirmation' });
-                  toast.success('PIN copied to clipboard');
+                  notifyClipboard('PIN copied to clipboard');
                 }}
                 className="copy-button"
+                data-testid="copy-pin-button"
+                aria-label="Copy payment PIN to clipboard"
               >
                 📋 Copy PIN
               </button>

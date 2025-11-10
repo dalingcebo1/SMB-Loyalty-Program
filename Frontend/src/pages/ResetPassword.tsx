@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../api/api";
-import { toast } from "react-toastify";
+import { notifySuccess, notifyError } from '../utils/notifications';
 import PageLayout from "../components/PageLayout";
 
 export default function ResetPassword() {
@@ -20,12 +20,12 @@ export default function ResetPassword() {
     setError(null);
     try {
       await api.post("/auth/reset-password-confirm", { token, new_password: password });
-      toast.success("Password reset successful! You can now log in.");
+  notifySuccess("Password reset successful! You can now log in.");
       setTimeout(() => navigate("/login", { replace: true }), 1500);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       const msg = error.response?.data?.detail || "Reset failed.";
-      toast.error(msg);
+  notifyError(msg);
       setError(msg);
     } finally {
       setSubmitting(false);

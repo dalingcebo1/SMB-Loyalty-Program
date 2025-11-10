@@ -9,7 +9,7 @@ import WelcomeModal from '../components/WelcomeModal';
 import { Link, Navigate } from 'react-router-dom';
 import { UserPage, UserHero, UserSection, UserCard } from '../components/user';
 import { track } from '../utils/analytics';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../utils/notifications';
 import 'react-toastify/dist/ReactToastify.css';
 import { Wash } from '../types';
 import { readJsonStorage } from '../utils/storage';
@@ -177,11 +177,11 @@ const Welcome: React.FC = () => {
     if (!user) return;
     try {
       const res = await api.post('/loyalty/reward', { phone: user.phone });
-      toast.success(`Reward issued: ${res.data.reward}`);
+  notifySuccess(`Reward issued: ${res.data.reward}`);
       setUpcomingReward(null);
     } catch (e: unknown) {
       const error = e as { response?: { data?: { detail?: string } } };
-      toast.error(error.response?.data?.detail || 'Could not claim reward');
+  notifyError(error.response?.data?.detail || 'Could not claim reward');
     }
   };
 

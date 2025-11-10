@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/api';
-import { toast } from 'react-toastify';
+import { notifyErrorKey } from '../../../utils/notifications';
 import TopCustomersPanel from '../components/TopCustomersPanel';
 import LoyaltyOverviewPanel from '../components/LoyaltyOverviewPanel';
 import useAnalyticsSnapshot from '../hooks/useAnalyticsSnapshot';
@@ -44,9 +44,9 @@ const CustomerAnalyticsContent: React.FC = () => {
     } catch (error: unknown) {
       const status = (error as ApiErrorLike).response?.status;
       if (status === 403) {
-        toast.error('Not authorized to refresh metrics');
+  notifyErrorKey('notifications.analytics.refresh.unauthorized');
       } else {
-        toast.error('Failed to refresh metrics');
+  notifyErrorKey('notifications.analytics.refresh.failed');
       }
     } finally {
       setRefreshing(false);

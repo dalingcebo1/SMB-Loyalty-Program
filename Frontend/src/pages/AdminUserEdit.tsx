@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/api';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../utils/notifications';
 import PageLayout from '../components/PageLayout';
 import TextField from '../components/ui/TextField';
 import { useForm } from 'react-hook-form';
@@ -41,7 +41,7 @@ const AdminUserEdit: React.FC = () => {
         });
       })
       .catch(() => {
-        toast.error('Cannot load user');
+  notifyError('Cannot load user');
   navigate('/admin/users-admin');
       })
       .finally(() => setLoading(false));
@@ -51,10 +51,10 @@ const AdminUserEdit: React.FC = () => {
   const onSubmit = handleSubmit(async data => {
     try {
       await api.patch<ApiUser>(`/users/${userId}`, data);
-      toast.success('User updated');
+  notifySuccess('User updated');
   navigate('/admin/users-admin');
     } catch {
-      toast.error('Update failed');
+  notifyError('Update failed');
     }
   });
 

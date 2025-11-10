@@ -149,56 +149,19 @@
   gap: 1rem;
 }
 
-.payment-button {
-  padding: 0.55rem 1.6rem;
-  min-height: 38.37px;
-  border-radius: var(--radius-lg);
-  font-size: 1.0625rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  border: none;
+/* Adapt shared action-button within payment context */
+.payment-buttons .action-button {
   width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  word-break: normal;
-  white-space: normal;
-  line-height: 1.25;
+  font-size: 1.0625rem; /* elevate size slightly for primary CTAs */
+  border-radius: var(--radius-lg);
 }
 
-.payment-button--primary {
-  background: var(--color-primary);
-  color: #ffffff;
-}
-
-.payment-button--primary:hover:not(.payment-button--disabled) {
-  background: var(--color-primary-strong);
-  transform: translateY(-1px);
+.payment-buttons .action-button.primary:hover:not(:disabled) {
   box-shadow: var(--shadow-button);
 }
 
-.payment-button--success {
-  background: #22c55e;
-  color: #ffffff;
-}
-
-.payment-button--success:hover:not(:disabled) {
-  background: #16a34a;
-  transform: translateY(-1px);
+.payment-buttons .action-button.success:hover:not(:disabled) {
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-}
-
-.payment-button--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.payment-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .reward-applied {

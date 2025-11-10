@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { timeDerivation } from '../../staff/perf/counters';
 import { useActiveWashes, useEndWash } from '../hooks';
 import { useWashHistory } from '../hooks';
-import { toast } from 'react-toastify';
+import { notifySuccessKey, notifyErrorKey } from '../../../utils/notifications';
 import LoadingFallback from '../../../components/LoadingFallback';
 import ConfirmDialog from '../../../components/ConfirmDialog';
 import FilterBar, { Filters } from '../../../components/FilterBar';
@@ -62,10 +62,10 @@ const CarWashDashboardContent: React.FC = () => {
     if (!confirmWash) return;
     endWashMutation.mutate(confirmWash, {
       onSuccess: () => {
-        toast.success('Wash ended!');
+  notifySuccessKey('notifications.wash.ended');
         refetch();
       },
-      onError: () => toast.error('Could not end wash.'),
+  onError: () => notifyErrorKey('notifications.wash.end.failed'),
       onSettled: () => setConfirmWash(null),
     });
   };

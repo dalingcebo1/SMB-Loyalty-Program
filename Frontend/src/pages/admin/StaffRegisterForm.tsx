@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import api from "../../api/api";
 import { useAuth } from "../../auth/AuthProvider";
-import { toast } from "react-toastify";
+import { notifySuccessKey, notifyErrorKey } from "../../utils/notifications";
 import PageLayout from '../../components/PageLayout';
 import { Navigate } from "react-router-dom";
 
@@ -39,7 +39,7 @@ const StaffRegisterForm: React.FC = () => {
           tenant_id: form.tenantId,
         }
       );
-      toast.success("Staff registered successfully!");
+  notifySuccessKey('notifications.staff.created');
       setForm({
         email: "",
         password: "",
@@ -48,11 +48,8 @@ const StaffRegisterForm: React.FC = () => {
         phone: "",
         tenantId: "default",
       });
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      toast.error(
-        error.response?.data?.detail || "Failed to register staff"
-      );
+    } catch {
+      notifyErrorKey('notifications.staff.create.failed'); // Handle error
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/api';
-import { toast } from 'react-toastify';
+import { notifySuccessKey, notifyErrorKey, notifyWarningKey } from '../../utils/notifications';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
@@ -30,10 +30,10 @@ const PlanSelector: React.FC<{ tenantId: string; currentPlanName?: string }>=({ 
       await api.post(`/subscriptions/tenants/${tenantId}/assign-plan`, { plan_id: planId }, { headers: { 'X-Tenant-ID': tenantId }});
     },
     onSuccess: ()=>{
-      toast.success('Plan updated successfully');
+  notifySuccessKey('notifications.plan.updated');
       queryClient.invalidateQueries({ queryKey:['tenantSub', tenantId]});
     },
-    onError: ()=> toast.error('Failed to assign plan'),
+  onError: ()=> notifyErrorKey('notifications.plan.assign.failed'),
   });
 
   if (isLoading) {
@@ -248,20 +248,20 @@ const SubscriptionManagePage: React.FC = () => {
   const openPortal = async () => {
     try {
       const { data } = await api.post<{ url:string }>('/billing/portal', {});
-      if (data?.url) window.location.href = data.url; else toast.error('Portal URL unavailable');
+  if (data?.url) window.location.href = data.url; else notifyErrorKey('notifications.portal.unavailable');
     } catch {
-      toast.warn('Billing portal not configured in this environment.');
+  notifyWarningKey('notifications.portal.unconfigured');
     }
   };
 
   // Trial and pause controls (best-effort graceful calls)
   const startTrial = async (days=14) => {
-    try { await api.post('/billing/start-trial', { days }); toast.success(`Trial started for ${days} days`); }
-    catch { toast.warn('Start trial not available.'); }
+  try { await api.post('/billing/start-trial', { days }); notifySuccessKey('notifications.trial.started', { days }); }
+  catch { notifyWarningKey('notifications.trial.start.unavailable'); }
   };
   const resumeSub = async () => {
-    try { await api.post('/billing/resume', {}); toast.success('Subscription resumed'); }
-    catch { toast.warn('Resume not available.'); }
+  try { await api.post('/billing/resume', {}); notifySuccessKey('notifications.subscription.resumed'); }
+  catch { notifyWarningKey('notifications.subscription.resume.unavailable'); }
   };
 
   const planName = tenantSub?.plan?.name ?? 'No plan';
@@ -473,15 +473,15 @@ const SubscriptionManagePage: React.FC = () => {
             try {
               if (confirmState.type === 'pause') {
                 await api.post('/billing/pause', {});
-                toast.success('Subscription paused');
+                notifySuccessKey('notifications.subscription.paused');
               } else {
                 await api.post('/billing/cancel-trial', {});
-                toast.success('Trial canceled');
+                notifySuccessKey('notifications.trial.canceled');
               }
               // Refresh subscription state if available
               queryClient.invalidateQueries({ queryKey: ['tenantSub', tenantId] });
             } catch {
-              toast.warn(confirmState.type === 'pause' ? 'Pause not available.' : 'Cancel trial not available.');
+              notifyWarningKey(confirmState.type === 'pause' ? 'notifications.subscription.pause.unavailable' : 'notifications.trial.cancel.unavailable');
             } finally {
               setConfirmState({ type: null, loading: false });
             }

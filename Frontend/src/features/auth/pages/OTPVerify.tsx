@@ -7,7 +7,7 @@ import { auth, getGlobalRecaptcha } from '../../../firebase';
 import { signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 import { confirmationRef } from "../../../utils/confirmationRef";
 import { useAuth } from '../../../auth/AuthProvider';
-import { toast } from "react-toastify";
+import { notifySuccessKey, notifyErrorKey, notifyWarningKey } from "../../../utils/notifications";
 import "./OTPVerify.css";
 
 // Extend the Window interface to include recaptchaVerifier
@@ -159,7 +159,7 @@ const OTPVerify: React.FC = () => {
       } catch (registrationError: unknown) {
         // Log but don't fail the entire process for registration errors
         console.warn("Registration warnings:", registrationError);
-        toast.warn("Account created but some features may need setup. Please contact support if issues persist.");
+  notifyWarningKey('notifications.onboarding.account.partial');
       }
       
       localStorage.setItem("justOnboarded", "true");
@@ -170,20 +170,20 @@ const OTPVerify: React.FC = () => {
       // Enhanced error handling for different types of failures
       if (err instanceof Error) {
         if (!err.message && (err.name === 'AxiosError' || err.message?.includes('Network Error'))) {
-          toast.error("Network error. Please check your connection and try again.");
+          notifyErrorKey('notifications.onboarding.network.error');
           setError("Network connection failed. Please check your internet connection and try again.");
           return;
         }
         
         if (err.message.includes('auth/invalid-verification-code')) {
           setError("Invalid verification code. Please check the code and try again.");
-          toast.error("Invalid verification code. Please check the code and try again.");
+          notifyErrorKey('notifications.onboarding.code.invalid');
           return;
         }
         
         if (err.message.includes('auth/code-expired')) {
           setError("Verification code has expired. Please request a new code.");
-          toast.error("Verification code has expired. Please request a new code.");
+          notifyErrorKey('notifications.onboarding.code.expired');
           return;
         }
       }
@@ -191,7 +191,7 @@ const OTPVerify: React.FC = () => {
       const msg = (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ?? 
                   (err as Error)?.message ?? 
                   "Verification failed. Please try again.";
-      toast.error(msg); 
+  notifyErrorKey('notifications.onboarding.code.verify.failed'); 
       setError(msg);
     } finally { 
       setLoading(false); 
@@ -208,23 +208,23 @@ const OTPVerify: React.FC = () => {
   const verifier = window.recaptchaVerifier || await getGlobalRecaptcha();
   const newConf: ConfirmationResult = await signInWithPhoneNumber(auth, onboardingData!.phone, verifier);
       confirmationRef.current = newConf;
-      toast.success("Verification code sent!");
+  notifySuccessKey('notifications.onboarding.code.sent');
     } catch (error: unknown) {
       console.error("Resend failed:", error);
       setTimer(0); // Reset timer on failure
       
       if (error instanceof Error) {
         if (error.message.includes('quota-exceeded')) {
-          toast.error("SMS quota exceeded. Please try again later.");
+          notifyErrorKey('notifications.onboarding.sms.quota');
         } else if (error.message.includes('invalid-phone-number')) {
-          toast.error("Invalid phone number. Please restart onboarding.");
+          notifyErrorKey('notifications.onboarding.phone.invalid');
         } else if (error.message.includes('too-many-requests')) {
-          toast.error("Too many requests. Please wait before requesting another code.");
+          notifyErrorKey('notifications.onboarding.rate.limit');
         } else {
-          toast.error("Failed to resend verification code. Please try again.");
+          notifyErrorKey('notifications.onboarding.resend.failed');
         }
       } else {
-        toast.error("Failed to resend verification code. Please try again.");
+  notifyErrorKey('notifications.onboarding.resend.failed');
       }
     }
   };

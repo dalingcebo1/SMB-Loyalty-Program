@@ -1,7 +1,7 @@
 // src/pages/ForgotPassword.tsx
 import React, { useState } from "react";
 import api from "../api/api";
-import { toast } from "react-toastify";
+import { notifySuccess, notifyError } from '../utils/notifications';
 import PageLayout from "../components/PageLayout";
 
 export default function ForgotPassword() {
@@ -15,10 +15,10 @@ export default function ForgotPassword() {
     setError(null);
     try {
       await api.post("/auth/request-password-reset", { email });
-      toast.success("If the email exists, a reset link will be sent.");
+  notifySuccess("If the email exists, a reset link will be sent.");
     } catch {
       const msg = "Unable to process request. Try again later.";
-      toast.error(msg);
+  notifyError(msg);
       setError(msg);
     } finally {
       setSubmitting(false);

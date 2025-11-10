@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../../api/api";
-import { toast } from "react-toastify";
+import { notifySuccessKey, notifyErrorKey } from "../../../utils/notifications";
 import PageLayout from "../../../components/PageLayout";
 import "../styles/auth-shared.css";
 import HeroText from "../../../components/HeroText";
@@ -17,12 +17,12 @@ export default function ForgotPassword() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post("/auth/request-password-reset", { email });
-      toast.success("If the email exists, a reset link will be sent.");
+  await api.post("/auth/request-password-reset", { email });
+  notifySuccessKey('notifications.password.reset.requested');
     } catch {
-      const msg = "Unable to process request. Try again later.";
-      toast.error(msg);
-      setError(msg);
+  const msg = "Unable to process request. Try again later.";
+  notifyErrorKey('notifications.generic.error');
+  setError(msg);
     } finally {
       setSubmitting(false);
     }

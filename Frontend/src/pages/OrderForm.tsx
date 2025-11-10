@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../api/api";
@@ -16,6 +16,7 @@ import { formatCurrency } from "../utils/format";
 import { track } from '../utils/analytics';
 import './OrderForm.css';
 import '../styles/shared-buttons.css';
+import { notifyError, notifySuccess, notifyWarning } from '../utils/notifications';
 
 interface Service {
   id: number;
@@ -110,9 +111,9 @@ const OrderForm: React.FC = () => {
   });
 
   // Error toast helpers
-  useEffect(() => { if (servicesQuery.error) toast.error("Failed to load services"); },
+  useEffect(() => { if (servicesQuery.error) notifyError("Failed to load services"); },
     [servicesQuery.error]);
-  useEffect(() => { if (extrasQuery.error) toast.error("Failed to load extras"); },
+  useEffect(() => { if (extrasQuery.error) notifyError("Failed to load extras"); },
     [extrasQuery.error]);
 
   // Type-safe fall-backs with useMemo for dependency optimization
@@ -222,7 +223,7 @@ const OrderForm: React.FC = () => {
   // Submit order
   const handleSubmit = async () => {
     if (!selectedService || !selectedDate || !selectedTime) {
-      toast.warning("Please complete all steps before booking");
+  notifyWarning("Please complete all steps before booking");
       return;
     }
 
@@ -257,11 +258,11 @@ const OrderForm: React.FC = () => {
       };
 
       localStorage.setItem('pendingOrder', JSON.stringify(paymentState));
-      toast.success("Booking confirmed! Redirecting to payment...");
+  notifySuccess("Booking confirmed! Redirecting to payment...");
       navigate('/order/payment', { state: paymentState });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      toast.error(error.response?.data?.detail || "Failed to place order");
+  notifyError(error.response?.data?.detail || "Failed to place order");
     } finally {
       setIsSubmitting(false);
     }

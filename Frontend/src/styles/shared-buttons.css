@@ -2,19 +2,20 @@
 /* Used across OrderForm, Payment, and OrderConfirmation pages */
 
 .action-button {
-  padding: 0.45rem 1.35rem;
+  /* Use tokenized heights & spacing */
+  min-height: var(--button-height-base);
+  padding: 0.45rem 1rem; /* vertical tuned for 38.37px target */
   border-radius: var(--radius-md, 8px);
   border: none;
-  font-size: 0.9375rem;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
   text-decoration: none;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 38.37px;
   line-height: 1.25;
   word-break: normal;
   overflow-wrap: break-word;
@@ -91,8 +92,9 @@
 /* Small action buttons for secondary actions */
 .download-button,
 .copy-button {
-  padding: 0.625rem 1.25rem;
-  min-height: 36px;
+  /* Tokenize sizing to align with action-button small variant */
+  padding: 0.5rem 1rem;
+  min-height: var(--button-height-sm);
   border-radius: var(--radius-md, 8px);
   background: rgba(255, 255, 255, 0.1);
   color: white;
@@ -100,13 +102,15 @@
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.2s ease;
-  font-size: 0.875rem;
-  display: flex;
+  transition: background var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+  font-size: var(--font-size-xs);
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   word-break: normal;
   overflow-wrap: break-word;
+  line-height: 1.25;
 }
 
 .download-button:hover,
@@ -126,13 +130,15 @@
 /* Responsive button adjustments */
 @media (max-width: 768px) {
   .action-button {
-    padding: 0.625rem 1.25rem;
-    font-size: 0.875rem;
+    min-height: var(--button-height-sm); /* dense size on small screens */
+    padding: 0.4rem 0.85rem;
+    font-size: var(--font-size-xs);
   }
   
   .download-button,
   .copy-button {
-    padding: 0.5rem 1rem;
-    font-size: 0.8125rem;
+    padding: 0.45rem 0.875rem;
+    font-size: var(--font-size-xs);
+    min-height: var(--button-height-sm);
   }
 }

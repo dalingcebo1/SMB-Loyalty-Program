@@ -10,7 +10,8 @@ import { useAuth } from '../../auth/AuthProvider';
 import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
 import ContentLoader from 'react-content-loader';
 import Modal from 'react-modal';
-import { toast, ToastContainer } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
+import { notifySuccessKey, notifyErrorKey } from '../../utils/notifications';
 import 'react-toastify/dist/ReactToastify.css';
 
 // API user shape
@@ -91,9 +92,9 @@ const UsersList: React.FC = () => {
     mutationFn: (id: number) => api.delete(`/users/${id}`).then(() => {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
-      toast.success('User deleted');
+  notifySuccessKey('notifications.user.deleted');
     },
-    onError: () => toast.error('Delete failed'),
+  onError: () => notifyErrorKey('notifications.user.delete.failed'),
   });
   
   const updateMutation = useMutation<ApiUser, Error, { id: number; data: Partial<ApiUser> }>({
@@ -112,10 +113,10 @@ const UsersList: React.FC = () => {
       if (typedContext?.previous) {
         queryClient.setQueryData(['adminUsers', currentPage, debouncedSearch, sortKey, sortOrder], typedContext.previous);
       }
-      toast.error('Update failed');
+  notifyErrorKey('notifications.user.update.failed');
     },
     onSuccess: () => {
-      toast.success('User updated');
+  notifySuccessKey('notifications.user.updated');
       setEditUser(null);
     },
     onSettled: () => {

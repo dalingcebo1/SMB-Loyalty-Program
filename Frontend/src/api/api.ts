@@ -50,7 +50,7 @@ api.interceptors.request.use((req) => {
   return req;
 });
 
-import { toast } from 'react-toastify';
+import { notifyErrorKey } from '../utils/notifications';
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -61,7 +61,7 @@ api.interceptors.response.use(
       const url = err.config.url || '';
       if (url.includes('/auth/')) {
         localStorage.removeItem('token');
-        toast.error('Session expired. Please log in again.');
+  notifyErrorKey('notifications.session.expired');
         window.location.href = '/login';
       }
       return Promise.reject(err);

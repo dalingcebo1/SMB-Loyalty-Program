@@ -20,7 +20,7 @@ import api from '../api/api';
 import { useAuth } from '../auth/AuthProvider';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { UserCard, UserHero, UserPage, UserSection } from '../components/user';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../utils/notifications';
 import { formatCents } from '../utils/format';
 import { track } from '../utils/analytics';
 import './EnhancedProfile.css';
@@ -167,11 +167,11 @@ const EnhancedProfile: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       await refreshUser();
       setIsEditingProfile(false);
-      toast.success('Profile updated successfully');
+  notifySuccess('Profile updated successfully');
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : 'Failed to update profile';
-      toast.error(message);
+  notifyError(message);
     },
   });
 
@@ -190,11 +190,11 @@ const EnhancedProfile: React.FC = () => {
         license_plate: '',
         color: '',
       });
-      toast.success('Vehicle added successfully');
+  notifySuccess('Vehicle added successfully');
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : 'Failed to add vehicle';
-      toast.error(message);
+  notifyError(message);
     },
   });
 
@@ -204,11 +204,11 @@ const EnhancedProfile: React.FC = () => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-      toast.success('Vehicle deleted successfully');
+  notifySuccess('Vehicle deleted successfully');
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : 'Failed to delete vehicle';
-      toast.error(message);
+  notifyError(message);
     },
   });
 

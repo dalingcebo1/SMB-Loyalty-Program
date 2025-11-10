@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'react-toastify';
+import { notifySuccessKey, notifyErrorKey } from '../../utils/notifications';
 import api from '../../api/api';
 import { HiCog, HiInformationCircle, HiSparkles, HiCheckCircle, HiXCircle } from 'react-icons/hi';
 
@@ -110,12 +110,12 @@ const ModulesAdmin: React.FC = () => {
       }, { headers: { 'X-Tenant-ID': tenantId }});
     },
     onSuccess: (_, { moduleKey, enabled }) => {
-      toast.success(`${moduleKey} ${enabled ? 'enabled' : 'disabled'}`);
+  notifySuccessKey('notifications.module.toggled', { module: moduleKey, state: enabled ? 'enabled' : 'disabled' });
       queryClient.invalidateQueries({ queryKey: ['overrides', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['tenantSub', tenantId] });
     },
     onError: () => {
-      toast.error('Failed to update module');
+  notifyErrorKey('notifications.module.toggle.failed');
     }
   });
 

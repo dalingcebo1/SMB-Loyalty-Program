@@ -1,7 +1,7 @@
 // src/pages/Payment.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import {
   FaClock,
   FaCreditCard,
@@ -17,6 +17,8 @@ import { formatCents } from "../utils/format";
 import "react-toastify/dist/ReactToastify.css";
 import "./Payment.css";
 import "../styles/yoco-modal.css";
+import "../styles/shared-buttons.css"; // ensure tokenized button styles available
+import { notifyError, notifyInfo, notifySuccess } from '../utils/notifications';
 
 interface LocationState {
   orderId: string;
@@ -112,7 +114,7 @@ const Payment: React.FC = () => {
     if (!paymentState) return;
     const { orderId, total } = paymentState;
     if (!orderId || typeof total !== "number" || Number.isNaN(total)) {
-      toast.error("Missing payment details");
+  notifyError("Missing payment details");
       navigate("/", { replace: true });
     }
   }, [paymentState, navigate]);
@@ -136,7 +138,7 @@ const Payment: React.FC = () => {
       script.async = true;
       script.onload = () => setYocoLoaded(true);
       script.onerror = () => {
-        toast.error("Failed to load Yoco SDK. Showing fallback payment UI.");
+  notifyError("Failed to load Yoco SDK. Showing fallback payment UI.");
         setYocoLoaded(true);
       };
       document.body.appendChild(script);
@@ -148,7 +150,7 @@ const Payment: React.FC = () => {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       if (!yocoLoaded) {
-        toast.info("SDK load timeout, proceeding with payment UI.");
+  notifyInfo("SDK load timeout, proceeding with payment UI.");
         setYocoLoaded(true);
       }
     }, 5000);
@@ -278,13 +280,13 @@ const Payment: React.FC = () => {
       if (response.data?.discount) {
         setRewardDiscount(response.data.discount);
         setRewardApplied(true);
-        toast.success(`Reward applied! Discount: ${formatCents(response.data.discount)}`);
+  notifySuccess(`Reward applied! Discount: ${formatCents(response.data.discount)}`);
       } else {
-        toast.error("No valid reward found.");
+  notifyError("No valid reward found.");
       }
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      toast.error(message || "Could not apply reward.");
+  notifyError(message || "Could not apply reward.");
     } finally {
       setPaying(false);
       setLoadingReward(false);
@@ -297,7 +299,7 @@ const Payment: React.FC = () => {
     track("cta_click", { label: "Pay", page: "Payment" });
 
     if (amountToPay <= 0) {
-      toast.success("No payment needed! Reward covers the full amount.");
+  notifySuccess("No payment needed! Reward covers the full amount.");
       if (rewardApplied) {
         try {
           await api.post(`/orders/${orderId}/redeem`);
@@ -323,12 +325,12 @@ const Payment: React.FC = () => {
     }
 
     if (!publicKey) {
-      toast.error("Payment configuration missing. Please contact support.");
+  notifyError("Payment configuration missing. Please contact support.");
       return;
     }
 
     if (!window.YocoSDK) {
-      toast.error("Yoco SDK not loaded. Please refresh the page.");
+  notifyError("Yoco SDK not loaded. Please refresh the page.");
       return;
     }
 
@@ -344,7 +346,7 @@ const Payment: React.FC = () => {
         callback: async (result: YocoResult) => {
           if (result.error) {
             setPaying(false);
-            toast.error(result.error.message || "Payment failed. Please try again.");
+            notifyError(result.error.message || "Payment failed. Please try again.");
             return;
           }
 
@@ -384,19 +386,19 @@ const Payment: React.FC = () => {
             };
 
             localStorage.setItem("lastOrderConfirmation", JSON.stringify(confirmationData));
-            toast.success("Payment successful!", { autoClose: 2000 });
+            notifySuccess("Payment successful!");
             navigate("/order/confirmation", { state: confirmationData });
           } catch (error: unknown) {
             setPaying(false);
             const message = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-            toast.error(message || "Payment could not be completed. Please contact support.");
+            notifyError(message || "Payment could not be completed. Please contact support.");
           }
         },
       });
     } catch (error: unknown) {
       setPaying(false);
       const message = (error as Error)?.message ?? String(error);
-      toast.error(`Unexpected error: ${message}`);
+  notifyError(`Unexpected error: ${message}`);
     }
   }, [
     orderId,
@@ -525,9 +527,9 @@ const Payment: React.FC = () => {
               type="button"
               onClick={handlePay}
               disabled={paying || !yocoLoaded}
-              className={`payment-button payment-button--primary ${
-                paying || !yocoLoaded ? "payment-button--disabled" : ""
-              }`}
+              data-testid="pay-button"
+              className={`action-button primary ${paying || !yocoLoaded ? 'flat' : ''}`}
+              aria-label={paying ? 'Processing payment' : 'Pay now with card'}
             >
               {!yocoLoaded ? "Loading payment…" : paying ? "Processing…" : "Pay with card"}
             </button>
@@ -537,7 +539,9 @@ const Payment: React.FC = () => {
                 type="button"
                 onClick={handleApplyReward}
                 disabled={paying || loadingReward}
-                className="payment-button payment-button--success"
+                data-testid="apply-reward-button"
+                className="action-button success"
+                aria-label={loadingReward ? 'Checking reward eligibility' : 'Apply loyalty reward'}
               >
                 {loadingReward ? "Checking reward…" : "Apply reward"}
               </button>

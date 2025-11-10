@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "../../../api/api";
-import { toast } from 'react-toastify';
+import { notifySuccessKey } from '../../../utils/notifications';
 import StaffPageContainer from '../components/StaffPageContainer';
 import StaffEligibilityGate from '../components/StaffEligibilityGate';
 
@@ -67,7 +67,7 @@ const ManualVisitLoggerContent: React.FC = () => {
         ...prev.slice(0, 4)
       ]);
       setCell("");
-      toast.success("Visit logged! You can now start a wash for this client.");
+  notifySuccessKey('notifications.visit.logged');
     } catch (err: unknown) {
       setLastVisit(null);
       const error = err as ApiError;
@@ -101,7 +101,7 @@ const ManualVisitLoggerContent: React.FC = () => {
     setStatus(null);
     try {
       await api.post("/payments/start-manual-wash", { phone: normalizePhone(lastVisit?.phone || "") });
-      toast.success("Wash started for POS client!");
+  notifySuccessKey('notifications.wash.started');
       setStatus(null);
     } catch {
       setStatus("Could not start wash for POS client.");

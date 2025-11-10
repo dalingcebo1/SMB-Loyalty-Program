@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import api from "../../../api/api";
-import { toast } from "react-toastify";
+import { notifySuccessKey, notifyErrorKey } from "../../../utils/notifications";
 import PageLayout from "../../../components/PageLayout";
 import "../styles/auth-shared.css";
 import HeroText from "../../../components/HeroText";
@@ -21,13 +21,13 @@ export default function ResetPassword() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post("/auth/reset-password-confirm", { token, new_password: password });
-      toast.success("Password reset successful! You can now log in.");
+  await api.post("/auth/reset-password-confirm", { token, new_password: password });
+  notifySuccessKey('notifications.password.reset.success');
       setTimeout(() => navigate("/login", { replace: true }), 1500);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      const msg = error.response?.data?.detail || "Reset failed.";
-      toast.error(msg);
+  const msg = error.response?.data?.detail || "Reset failed.";
+  notifyErrorKey('notifications.password.reset.failed');
       setError(msg);
     } finally {
       setSubmitting(false);

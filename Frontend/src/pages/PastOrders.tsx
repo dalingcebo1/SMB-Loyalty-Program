@@ -1,18 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import {
-  FaCar,
-  FaReceipt,
-  FaRedo,
-  FaCheckCircle,
-  FaCarSide,
-  FaSprayCan,
-  FaCreditCard,
-  FaTrophy,
-  FaStar,
-} from "react-icons/fa";
+import { notifyError } from '../utils/notifications';
+import { FaReceipt, FaRedo } from "react-icons/fa";
 import useFetch from "../hooks/useFetch";
 import { Order, Extra } from "../types";
 import api from "../api/api";
@@ -78,92 +69,49 @@ const formatOrderDate = (dateString: string | undefined): string => {
   });
 };
 
-interface OrderCardProps {
+interface OrderRowProps {
   order: Order;
   onViewOrder: (id: string) => void;
-  onBookAgain: () => void;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, onViewOrder, onBookAgain }) => (
-  <UserCard
-    as="article"
-    className="order-card"
-    interactive
-    onClick={() => onViewOrder(order.id)}
+const OrderRow: React.FC<OrderRowProps> = ({ order, onViewOrder }) => (
+  <li
+    className="order-row"
+    data-testid="order-row"
     role="button"
     tabIndex={0}
-    aria-label={`Order from ${formatOrderDate(order.created_at)}, ${getOrderSummary(order)}, ${formatCents(order.amount ?? 0)}`}
+    onClick={() => onViewOrder(order.id)}
     onKeyDown={(event: React.KeyboardEvent<HTMLElement>) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         onViewOrder(order.id);
       }
     }}
+    aria-label={`Order ${order.id} placed ${formatOrderDate(order.created_at)} total ${formatCents(order.amount ?? 0)}`}
   >
-    <div className="order-header">
-      <div className="service-icon" aria-hidden="true">
-        <FaCar className="icon" />
-      </div>
-      <div className="order-info">
-        <h3>{getOrderSummary(order)}</h3>
-        <div className="order-meta">
-          <span className="date">{formatOrderDate(order.created_at)}</span>
-          <span className={`badge ${getStatusBadge(order.status)}`}>
-            {(order.status || "pending").toUpperCase()}
-          </span>
-        </div>
-      </div>
-      <div className="order-price">
-        <span className="currency">Total</span>
-        <span>{formatCents(order.amount ?? 0)}</span>
+    <div className="order-row__main">
+      <div className="order-row__title">{getOrderSummary(order)}</div>
+      <div className="order-row__meta">
+        <span className="order-row__date">{formatOrderDate(order.created_at)}</span>
+        <span className={`badge ${getStatusBadge(order.status)}`} aria-label={`Order status: ${order.status || 'pending'}`}>
+          {(order.status || "pending").toUpperCase()}
+        </span>
       </div>
     </div>
-
-    <div className="order-details">
-      <div className="detail-row">
-        <span className="label">Order ID</span>
-        <span className="value">#{order.id}</span>
-      </div>
-      <div className="detail-row">
-        <span className="label">Payment Method</span>
-        <span className="value">Credit Card</span>
-      </div>
-      {order.payment_pin && (
-        <div className="detail-row">
-          <span className="label">PIN</span>
-          <span className="value">{order.payment_pin}</span>
-        </div>
-      )}
-
-      <div className="loyalty-earned">
-        <FaStar className="loyalty-icon" aria-hidden="true" />
-        <span>+1 visit progress earned</span>
-      </div>
+    <div className="order-row__amount" aria-label="Total paid">
+      {formatCents(order.amount ?? 0)}
     </div>
-
-    <div className="order-actions">
-      <button
-        className="action-button primary"
-        onClick={(event) => {
-          event.stopPropagation();
-          onViewOrder(order.id);
-        }}
-        aria-label="View order details"
-      >
-        <FaReceipt aria-hidden="true" /> View Details
-      </button>
-      <button
-        className="action-button secondary"
-        onClick={(event) => {
-          event.stopPropagation();
-          onBookAgain();
-        }}
-        aria-label="Book this service again"
-      >
-        <FaRedo aria-hidden="true" /> Book Again
-      </button>
-    </div>
-  </UserCard>
+    <button
+      className="order-row__view"
+      aria-label="View order details"
+      onClick={(e) => {
+        e.stopPropagation();
+        onViewOrder(order.id);
+      }}
+    >
+      <FaReceipt aria-hidden="true" />
+    </button>
+  </li>
 );
 
 type ExtraLike =
@@ -247,13 +195,13 @@ const PastOrders: React.FC = () => {
       setModalOrder(normalized);
     } catch (err) {
       console.error("[PastOrders] loadOrderDetails error", err);
-      toast.error("Failed to load order details");
+      notifyError("Failed to load order details");
     } finally {
       setModalLoading(false);
     }
   };
 
-  const handleBookAgain = () => navigate("/order");
+  const handleBookAgain = () => navigate("/order"); // retained for modal action only
 
   const hasOrders = sortedOrders.length > 0;
   const modalTitleId = modalOrder ? `order-modal-title-${modalOrder.id}` : undefined;
@@ -301,7 +249,6 @@ const PastOrders: React.FC = () => {
                 <div className="skeleton-header">
                   <div className="skeleton-circle" />
                   <div className="skeleton-lines">
-                    <div className="skeleton-line-short" />
                     <div className="skeleton-line-long" />
                   </div>
                 </div>
@@ -347,16 +294,11 @@ const PastOrders: React.FC = () => {
           )}
 
           {hasOrders && (
-            <div className="orders-list">
+            <ul className="orders-list orders-list--compact" role="list">
               {sortedOrders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  onViewOrder={loadOrderDetails}
-                  onBookAgain={handleBookAgain}
-                />
+                <OrderRow key={order.id} order={order} onViewOrder={loadOrderDetails} />
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </UserSection>
@@ -364,10 +306,7 @@ const PastOrders: React.FC = () => {
       {modalLoading && (
         <div className="order-modal" role="dialog" aria-modal="true" aria-live="polite">
           <div className="modal-content">
-            <div className="loading">
-              <div className="loading-spinner" />
-              <p>Loading order details...</p>
-            </div>
+            <LoadingOverlay inline message="Loading order details..." />
           </div>
         </div>
       )}
@@ -389,133 +328,58 @@ const PastOrders: React.FC = () => {
               <h2 className="modal-title" id={modalTitleId}>{getOrderSummary(modalOrder)}</h2>
               <div className="modal-order-id" id={modalDescriptionId}>Order #{modalOrder.id}</div>
             </div>
-
-            <div className="modal-body">
-              <div className="order-timeline">
-                <div className="timeline-container">
-                  <div className="timeline-step completed">
-                    <div className="step-icon">
-                      <FaCheckCircle />
-                    </div>
-                    <div className="step-content">
-                      <h4>Order Placed</h4>
-                      <p>Your order was received and confirmed</p>
-                      <div className="step-time">{formatOrderDate(modalOrder.created_at)}</div>
-                    </div>
-                  </div>
-                  <div className="timeline-connector completed" />
-
-                  <div className="timeline-step completed">
-                    <div className="step-icon">
-                      <FaCarSide />
-                    </div>
-                    <div className="step-content">
-                      <h4>Service Assigned</h4>
-                      <p>Wash bay assigned and service preparation started</p>
-                      <div className="step-time">Ready for service</div>
-                    </div>
-                  </div>
-                  <div className="timeline-connector completed" />
-
-                  <div className="timeline-step completed">
-                    <div className="step-icon">
-                      <FaSprayCan />
-                    </div>
-                    <div className="step-content">
-                      <h4>Service Completed</h4>
-                      <p>Car wash service has been finished successfully</p>
-                      <div className="step-time">Service complete</div>
-                    </div>
-                  </div>
-                  <div className="timeline-connector completed" />
-
-                  <div className="timeline-step completed">
-                    <div className="step-icon">
-                      <FaCreditCard />
-                    </div>
-                    <div className="step-content">
-                      <h4>Payment Processed</h4>
-                      <p>Payment confirmed and receipt generated</p>
-                      <div className="step-time">{`${formatCents(modalOrder.amount ?? 0)} paid`}</div>
-                    </div>
-                  </div>
+            <div className="modal-body minimal">
+              <div className="detail-table" data-testid="order-detail-table">
+                <div className="table-row">
+                  <span className="label">Service</span>
+                  <span className="value">{modalOrder.service_name || "Full Wash"}</span>
                 </div>
-              </div>
-
-              <div className="service-details">
-                <h3>Service Information</h3>
-                <div className="detail-table">
-                  <div className="table-row">
-                    <span className="label">Service</span>
-                    <span className="value">{modalOrder.service_name || "Full Wash"}</span>
-                  </div>
-                  <div className="table-row">
-                    <span className="label">Order ID</span>
-                    <span className="value">#{modalOrder.id}</span>
-                  </div>
-                  <div className="table-row">
-                    <span className="label">Status</span>
-                    <span className="value">
-                      <span className={`badge ${getStatusBadge(modalOrder.status)}`}>
-                        {(modalOrder.status || "").toUpperCase()}
-                      </span>
+                <div className="table-row">
+                  <span className="label">Order ID</span>
+                  <span className="value">#{modalOrder.id}</span>
+                </div>
+                <div className="table-row">
+                  <span className="label">Status</span>
+                  <span className="value">
+                    <span className={`badge ${getStatusBadge(modalOrder.status)}`} aria-label={`Order status: ${modalOrder.status || 'unknown'}`}>
+                      {(modalOrder.status || "").toUpperCase()}
                     </span>
-                  </div>
-                  {modalOrder.extras && modalOrder.extras.length > 0 && (
-                    <div className="table-row">
-                      <span className="label">Extras</span>
-                      <span className="value">{modalOrder.extras.map((extra) => extra.name).join(", ")}</span>
-                    </div>
-                  )}
+                  </span>
+                </div>
+                {modalOrder.extras && modalOrder.extras.length > 0 && (
                   <div className="table-row">
-                    <span className="label">Total Paid</span>
-                    <span className="value">{formatCents(modalOrder.amount ?? 0)}</span>
+                    <span className="label">Extras</span>
+                    <span className="value">{modalOrder.extras.map((extra) => extra.name).join(", ")}</span>
                   </div>
+                )}
+                <div className="table-row">
+                  <span className="label">Total Paid</span>
+                  <span className="value">{formatCents(modalOrder.amount ?? 0)}</span>
+                </div>
+                <div className="table-row">
+                  <span className="label">PIN</span>
+                  <span className="value">{modalOrder.payment_pin || "N/A"}</span>
                 </div>
               </div>
 
-              <div className="qr-section">
-                <div className="qr-container">
-                  <div className="qr-code">
-                    <QRCode value={modalOrder.id || "unknown"} size={160} />
-                  </div>
-                  <h4 className="qr-title">Payment Verification</h4>
-                  <p className="qr-description">
-                    PIN: <strong>{modalOrder.payment_pin || "N/A"}</strong>
-                  </p>
-                  <p className="qr-description">
-                    Show this QR code or PIN to staff for verification
-                  </p>
-                </div>
-              </div>
-
-              <div className="loyalty-section">
-                <div className="loyalty-card">
-                  <FaTrophy className="loyalty-icon" />
-                  <div className="loyalty-info">
-                    <h4>Loyalty Progress</h4>
-                    <p>You earned loyalty points from this order!</p>
-                    <div className="progress-container">
-                      <div className="progress-bar" style={{ width: "70%" }} />
-                    </div>
-                    <p className="progress-text">7 out of 10 visits to unlock free wash</p>
-                  </div>
-                </div>
+              <div className="qr-container compact">
+                <QRCode value={modalOrder.id || "unknown"} size={120} />
+                <p className="qr-description">Show this QR or PIN for verification</p>
               </div>
             </div>
 
-            <div className="modal-actions">
-              <button className="action-button secondary">
-                <FaReceipt /> Download Receipt
-              </button>
+            <div className="modal-actions minimal">
               <button
-                className="action-button primary"
+                className="action-button primary flat"
                 onClick={() => {
                   setModalOrder(null);
                   handleBookAgain();
                 }}
               >
                 <FaRedo /> Book Again
+              </button>
+              <button className="action-button secondary" onClick={() => setModalOrder(null)}>
+                Close
               </button>
             </div>
           </div>

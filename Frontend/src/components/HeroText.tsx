@@ -60,7 +60,6 @@ export const HeroText: React.FC<HeroTextProps> = ({
       if (warnedDuplicateH1) return;
       const existingH1 = document.querySelectorAll('h1').length;
       if (existingH1 > 1) {
-        // eslint-disable-next-line no-console
         console.warn('[HeroText] Multiple h1 headings detected; ensure unique page-level heading semantics.');
         warnedDuplicateH1 = true;
       }

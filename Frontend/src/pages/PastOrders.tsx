@@ -1,10 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   FaCar,
-  FaSearch,
   FaReceipt,
   FaRedo,
   FaCheckCircle,
@@ -23,13 +22,6 @@ import "../styles/shared-buttons.css";
 import "./PastOrders.css";
 
 type StatusBadgeVariant = "completed" | "pending" | "cancelled";
-
-type GroupedOrders = {
-  today: Order[];
-  thisWeek: Order[];
-  thisMonth: Order[];
-  earlier: Order[];
-};
 
 const getOrderSummary = (order: Order): string => {
   let summary = order.service_name || "Full wash";
@@ -84,38 +76,6 @@ const formatOrderDate = (dateString: string | undefined): string => {
     hour: "2-digit",
     minute: "2-digit",
   });
-};
-
-const groupOrdersByTime = (orders: Order[]): GroupedOrders => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  const groups: GroupedOrders = {
-    today: [],
-    thisWeek: [],
-    thisMonth: [],
-    earlier: [],
-  };
-
-  orders.forEach((order) => {
-    if (!order.created_at) return;
-    const orderDate = new Date(order.created_at);
-    const orderDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
-
-    if (orderDay.getTime() === today.getTime()) {
-      groups.today.push(order);
-    } else if (orderDate >= weekAgo) {
-      groups.thisWeek.push(order);
-    } else if (orderDate >= monthAgo) {
-      groups.thisMonth.push(order);
-    } else {
-      groups.earlier.push(order);
-    }
-  });
-
-  return groups;
 };
 
 interface OrderCardProps {
@@ -251,52 +211,19 @@ const PastOrders: React.FC = () => {
   const { data: orderData, loading: dataLoading, error } = useFetch<Order[]>("/orders/my-past-orders");
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
-  const [showAll, setShowAll] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [timeFilter, setTimeFilter] = useState("all");
 
   const orders = useMemo(() => orderData ?? [], [orderData]);
+  const sortedOrders = useMemo(() => {
+    if (orders.length === 0) {
+      return [] as Order[];
+    }
 
-  const filteredOrders = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-
-    return orders.filter((order) => {
-      const matchesSearch =
-        searchLower.length === 0 ||
-        getOrderSummary(order).toLowerCase().includes(searchLower) ||
-        String(order.id).toLowerCase().includes(searchLower);
-
-      if (!matchesSearch) {
-        return false;
-      }
-
-      if (!order.created_at) {
-        return true;
-      }
-
-      const createdAt = new Date(order.created_at);
-      if (Number.isNaN(createdAt.getTime())) {
-        return true;
-      }
-
-      switch (timeFilter) {
-        case "week":
-          return createdAt >= weekAgo;
-        case "month":
-          return createdAt >= monthAgo;
-        case "quarter":
-          return createdAt >= quarterAgo;
-        default:
-          return true;
-      }
+    return [...orders].sort((a, b) => {
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bTime - aTime;
     });
-  }, [orders, searchTerm, timeFilter]);
-
-  const groupedOrders = useMemo(() => groupOrdersByTime(filteredOrders), [filteredOrders]);
+  }, [orders]);
 
   const loadOrderDetails = async (id: string) => {
     setModalLoading(true);
@@ -328,8 +255,34 @@ const PastOrders: React.FC = () => {
 
   const handleBookAgain = () => navigate("/order");
 
-  const hasAnyOrders = orders.length > 0;
-  const hasFilteredOrders = filteredOrders.length > 0;
+  const hasOrders = sortedOrders.length > 0;
+  const modalTitleId = modalOrder ? `order-modal-title-${modalOrder.id}` : undefined;
+  const modalDescriptionId = modalOrder ? `order-modal-description-${modalOrder.id}` : undefined;
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setModalOrder(null);
+      }
+    };
+
+    const shouldLockScroll = modalLoading || Boolean(modalOrder);
+    if (shouldLockScroll) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.dataset.prevOverflow = previousOverflow;
+      document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = document.body.dataset.prevOverflow || "";
+        delete document.body.dataset.prevOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [modalOrder, modalLoading]);
 
   if (dataLoading) {
     return (
@@ -377,41 +330,6 @@ const PastOrders: React.FC = () => {
         variant="compact"
         align="start"
       />
-
-      <UserSection>
-        <UserCard className="orders-filters" padding="loose">
-          <div className="orders-filters__group">
-            <label className="orders-filters__label" htmlFor="order-time-filter">
-              Timeframe
-            </label>
-            <select
-              id="order-time-filter"
-              className="filter-dropdown"
-              value={timeFilter}
-              onChange={(event) => setTimeFilter(event.target.value)}
-            >
-              <option value="all">All Time</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="quarter">Last 3 Months</option>
-            </select>
-          </div>
-          <div className="orders-filters__group search-container">
-            <label className="orders-filters__label" htmlFor="order-search">
-              Search
-            </label>
-            <input
-              id="order-search"
-              type="text"
-              placeholder="Search orders..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
-            <FaSearch className="search-icon" />
-          </div>
-        </UserCard>
-      </UserSection>
-
       <UserSection>
         <div className="orders-container">
           {error && (
@@ -421,111 +339,30 @@ const PastOrders: React.FC = () => {
             </UserCard>
           )}
 
-          {!error && !hasAnyOrders && (
+          {!error && !hasOrders && (
             <UserCard className="no-orders" muted>
               <h3>No Orders Yet</h3>
               <p>Your past orders will appear here once you've made a purchase.</p>
             </UserCard>
           )}
 
-          {hasAnyOrders && !hasFilteredOrders && (
-            <UserCard className="no-orders" muted>
-              <h3>No matching orders</h3>
-              <p>Try adjusting your filters or search to find a specific order.</p>
-            </UserCard>
-          )}
-
-          {hasFilteredOrders && (
-            <div className="orders-timeline">
-              {groupedOrders.today.length > 0 && (
-                <div className="time-section">
-                  <div className="time-section__header">
-                    <h2 className="section-title">Today</h2>
-                    <span className="count">{groupedOrders.today.length}</span>
-                  </div>
-                  <div className="orders-grid">
-                    {groupedOrders.today.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        onViewOrder={loadOrderDetails}
-                        onBookAgain={handleBookAgain}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {groupedOrders.thisWeek.length > 0 && (
-                <div className="time-section">
-                  <div className="time-section__header">
-                    <h2 className="section-title">This Week</h2>
-                    <span className="count">{groupedOrders.thisWeek.length}</span>
-                  </div>
-                  <div className="orders-grid">
-                    {groupedOrders.thisWeek.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        onViewOrder={loadOrderDetails}
-                        onBookAgain={handleBookAgain}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {groupedOrders.thisMonth.length > 0 && (
-                <div className="time-section">
-                  <div className="time-section__header">
-                    <h2 className="section-title">This Month</h2>
-                    <span className="count">{groupedOrders.thisMonth.length}</span>
-                  </div>
-                  <div className="orders-grid">
-                    {groupedOrders.thisMonth.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        onViewOrder={loadOrderDetails}
-                        onBookAgain={handleBookAgain}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {groupedOrders.earlier.length > 0 && (
-                <div className="time-section">
-                  <div className="time-section__header">
-                    <h2 className="section-title">Older</h2>
-                    <span className="count">{groupedOrders.earlier.length}</span>
-                  </div>
-                  <div className="orders-grid">
-                    {groupedOrders.earlier.slice(0, showAll ? undefined : 3).map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        onViewOrder={loadOrderDetails}
-                        onBookAgain={handleBookAgain}
-                      />
-                    ))}
-                  </div>
-                  {!showAll && groupedOrders.earlier.length > 3 && (
-                    <div className="orders-more">
-                      <button className="btn btn--ghost" onClick={() => setShowAll(true)}>
-                        View more orders
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+          {hasOrders && (
+            <div className="orders-list">
+              {sortedOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onViewOrder={loadOrderDetails}
+                  onBookAgain={handleBookAgain}
+                />
+              ))}
             </div>
           )}
         </div>
       </UserSection>
 
       {modalLoading && (
-        <div className="order-modal">
+        <div className="order-modal" role="dialog" aria-modal="true" aria-live="polite">
           <div className="modal-content">
             <div className="loading">
               <div className="loading-spinner" />
@@ -536,14 +373,21 @@ const PastOrders: React.FC = () => {
       )}
 
       {modalOrder && !modalLoading && (
-        <div className="order-modal" onClick={() => setModalOrder(null)}>
+        <div
+          className="order-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={modalTitleId}
+          aria-describedby={modalDescriptionId}
+          onClick={() => setModalOrder(null)}
+        >
           <div className="modal-content" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <button className="modal-close" onClick={() => setModalOrder(null)} aria-label="Close dialog">
                 ×
               </button>
-              <h2 className="modal-title">{getOrderSummary(modalOrder)}</h2>
-              <div className="modal-order-id">Order #{modalOrder.id}</div>
+              <h2 className="modal-title" id={modalTitleId}>{getOrderSummary(modalOrder)}</h2>
+              <div className="modal-order-id" id={modalDescriptionId}>Order #{modalOrder.id}</div>
             </div>
 
             <div className="modal-body">

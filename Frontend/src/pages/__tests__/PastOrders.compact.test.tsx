@@ -61,8 +61,10 @@ describe('PastOrders compact list', () => {
   expect(items.length).toBe(2);
     // Each row should show a total amount
   // Amounts use locale with comma decimal separator
-  expect(screen.getByText(/R\s*123,45/)).toBeInTheDocument();
-  expect(screen.getByText(/R\s*223,45/)).toBeInTheDocument();
+  // Intl for en-ZA inserts a non-breaking space (\u00A0) after the currency symbol.
+  // Match either regular whitespace or NBSP to avoid brittle failures.
+  expect(screen.getByText(/R[\s\u00A0]*123,45/)).toBeInTheDocument();
+  expect(screen.getByText(/R[\s\u00A0]*223,45/)).toBeInTheDocument();
   });
 
   it('opens minimal modal with essential details', async () => {

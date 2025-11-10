@@ -20,6 +20,7 @@ import api from '../api/api';
 import { useAuth } from '../auth/AuthProvider';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { UserCard, UserHero, UserPage, UserSection } from '../components/user';
+import { Button } from '../components/ui';
 import { notifySuccess, notifyError } from '../utils/notifications';
 import { formatCents } from '../utils/format';
 import { track } from '../utils/analytics';
@@ -283,9 +284,9 @@ const EnhancedProfile: React.FC = () => {
         <UserSection>
           <UserCard className="enhanced-profile__error-card">
             <p>Something went wrong while fetching your profile. Please try again.</p>
-            <button type="button" className="btn btn--primary" onClick={handleRefresh}>
+            <Button type="button" onClick={handleRefresh}>
               Try again
-            </button>
+            </Button>
           </UserCard>
         </UserSection>
       </UserPage>
@@ -304,9 +305,14 @@ const EnhancedProfile: React.FC = () => {
         variant="compact"
         align="start"
         actions={
-          <button type="button" className="btn btn--ghost" onClick={handleRefresh}>
-            <HiOutlineRefresh aria-hidden="true" /> Refresh
-          </button>
+          <Button
+            type="button"
+            variant="ghost"
+            leftIcon={<HiOutlineRefresh aria-hidden="true" />}
+            onClick={handleRefresh}
+          >
+            Refresh
+          </Button>
         }
       />
 
@@ -322,13 +328,15 @@ const EnhancedProfile: React.FC = () => {
               </h2>
             </div>
             {!isEditingProfile && (
-              <button
+              <Button
                 type="button"
-                className="btn btn--ghost btn--dense"
+                variant="ghost"
+                size="sm"
                 onClick={() => setIsEditingProfile(true)}
+                leftIcon={<FaEdit aria-hidden="true" />}
               >
-                <FaEdit aria-hidden="true" /> Edit
-              </button>
+                Edit
+              </Button>
             )}
           </header>
 
@@ -370,21 +378,25 @@ const EnhancedProfile: React.FC = () => {
                 </label>
               </div>
               <div className="enhanced-profile__form-actions">
-                <button
+                <Button
                   type="submit"
-                  className="btn btn--primary"
-                  disabled={updateProfileMutation.isPending}
+                  variant="primary"
+                  isLoading={updateProfileMutation.isPending}
+                  leftIcon={<FaSave aria-hidden="true" />}
+                  className="enhanced-profile__form-actions-button"
                 >
-                  <FaSave aria-hidden="true" /> Save changes
-                </button>
-                <button
+                  Save changes
+                </Button>
+                <Button
                   type="button"
-                  className="btn btn--ghost"
+                  variant="ghost"
                   onClick={handleCancelEdit}
                   disabled={updateProfileMutation.isPending}
+                  leftIcon={<FaTimes aria-hidden="true" />}
+                  className="enhanced-profile__form-actions-button"
                 >
-                  <FaTimes aria-hidden="true" /> Cancel
-                </button>
+                  Cancel
+                </Button>
               </div>
             </form>
           ) : (
@@ -458,13 +470,13 @@ const EnhancedProfile: React.FC = () => {
                 <FaCar aria-hidden="true" /> My vehicles
               </h2>
             </div>
-            <button
+            <Button
               type="button"
-              className="btn btn--primary"
               onClick={() => setShowVehicleForm(true)}
+              leftIcon={<FaPlus aria-hidden="true" />}
             >
-              <FaPlus aria-hidden="true" /> Add vehicle
-            </button>
+              Add vehicle
+            </Button>
           </header>
 
           {vehicles.length === 0 ? (
@@ -636,21 +648,23 @@ const EnhancedProfile: React.FC = () => {
                 </label>
               </div>
               <div className="enhanced-profile__form-actions">
-                <button
+                <Button
                   type="submit"
-                  className="btn btn--primary"
-                  disabled={addVehicleMutation.isPending}
+                  isLoading={addVehicleMutation.isPending}
+                  leftIcon={<FaPlus aria-hidden="true" />}
+                  className="enhanced-profile__form-actions-button"
                 >
-                  <FaPlus aria-hidden="true" /> Save vehicle
-                </button>
-                <button
+                  Save vehicle
+                </Button>
+                <Button
                   type="button"
-                  className="btn btn--ghost"
+                  variant="ghost"
                   onClick={() => setShowVehicleForm(false)}
                   disabled={addVehicleMutation.isPending}
+                  className="enhanced-profile__form-actions-button"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </form>
           </UserCard>

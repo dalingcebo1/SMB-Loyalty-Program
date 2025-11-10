@@ -8,7 +8,8 @@ import { MemoryRouter, type MemoryRouterProps } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthProvider';
 import { TenantConfigContext } from '../config/TenantConfigProvider';
 import { getModuleFlags } from '../config/modules';
-import { ToastContainer } from 'react-toastify';
+import ToastProvider from '../components/ToastProvider';
+import { ROUTER_FUTURE_FLAGS } from '../router/futureFlags';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
@@ -30,13 +31,20 @@ interface AllProvidersProps {
 }
 
 function AllProviders({ children, routerProps }: AllProvidersProps) {
+  const mergedRouterProps: MemoryRouterProps = {
+    ...(routerProps ?? {}),
+    future: {
+      ...ROUTER_FUTURE_FLAGS,
+      ...(routerProps?.future ?? {}),
+    },
+  };
+
   return (
-    <MemoryRouter {...routerProps}>
+    <MemoryRouter {...mergedRouterProps}>
       <TenantConfigContext.Provider value={tenantConfigValue}>
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
-            <ToastContainer />
-            {children}
+            <ToastProvider>{children}</ToastProvider>
           </QueryClientProvider>
         </AuthProvider>
       </TenantConfigContext.Provider>

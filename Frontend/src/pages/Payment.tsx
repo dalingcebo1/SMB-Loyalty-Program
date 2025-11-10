@@ -1,7 +1,6 @@
 // src/pages/Payment.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
 import {
   FaClock,
   FaCreditCard,
@@ -12,12 +11,11 @@ import StepIndicator from "../components/StepIndicator";
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import { UserCard, UserHero, UserPage, UserSection } from "../components/user";
+import { Button } from "../components/ui";
 import { track } from "../utils/analytics";
 import { formatCents } from "../utils/format";
-import "react-toastify/dist/ReactToastify.css";
 import "./Payment.css";
 import "../styles/yoco-modal.css";
-import "../styles/shared-buttons.css"; // ensure tokenized button styles available
 import { notifyError, notifyInfo, notifySuccess } from '../utils/notifications';
 
 interface LocationState {
@@ -441,7 +439,6 @@ const Payment: React.FC = () => {
 
   return (
     <UserPage className="payment-page" size="narrow">
-      <ToastContainer position="top-right" />
       <UserHero
         eyebrow="Payment"
         title="Complete Your Payment"
@@ -523,28 +520,35 @@ const Payment: React.FC = () => {
       <UserSection>
         <UserCard className="payment-actions-card" padding="loose">
           <div className="payment-buttons">
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="lg"
               onClick={handlePay}
               disabled={paying || !yocoLoaded}
+              isLoading={paying}
               data-testid="pay-button"
-              className={`action-button primary ${paying || !yocoLoaded ? 'flat' : ''}`}
               aria-label={paying ? 'Processing payment' : 'Pay now with card'}
+              leftIcon={<FaCreditCard aria-hidden="true" />}
+              isFullWidth
             >
-              {!yocoLoaded ? "Loading payment…" : paying ? "Processing…" : "Pay with card"}
-            </button>
+              {!yocoLoaded ? "Loading payment…" : "Pay with card"}
+            </Button>
 
             {rewardInfo && canApplyLoyalty && !rewardApplied && !hasRewardExpired && (
-              <button
+              <Button
                 type="button"
+                variant="success"
                 onClick={handleApplyReward}
                 disabled={paying || loadingReward}
+                isLoading={loadingReward}
                 data-testid="apply-reward-button"
-                className="action-button success"
                 aria-label={loadingReward ? 'Checking reward eligibility' : 'Apply loyalty reward'}
+                leftIcon={<FaGift aria-hidden="true" />}
+                isFullWidth
               >
-                {loadingReward ? "Checking reward…" : "Apply reward"}
-              </button>
+                Apply reward
+              </Button>
             )}
           </div>
 

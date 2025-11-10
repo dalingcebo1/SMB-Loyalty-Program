@@ -1,11 +1,9 @@
 // src/pages/OrderConfirmation.tsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import StepIndicator from "../components/StepIndicator";
 import CalendarModal from "../components/CalendarModal";
 import { track } from '../utils/analytics';
 import { formatCents } from '../utils/format';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { moduleFlags } from '../config/modules';
 import { notifyOrderConfirmed, notifyRedeemSuccess, notifyRedeemError, notifyClipboard } from '../utils/notifications';
 import { useLocation, useNavigate, useParams, Navigate } from "react-router-dom";
@@ -16,8 +14,8 @@ import { useAuth } from "../auth/AuthProvider";
 import Loading from "../components/Loading";
 import LoadingOverlay from "../components/LoadingOverlay";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
+import { Button, ButtonLink } from '../components/ui';
 import "./OrderConfirmation.css";
-import '../styles/shared-buttons.css';
 
 interface LocationState {
   orderId: string;
@@ -85,6 +83,16 @@ const OrderConfirmation: React.FC = () => {
       reward: string;
     }>;
   } | null>(null);
+
+  const handleDownloadQr = useCallback(() => {
+    if (!qrCodeBase64) return;
+    const link = document.createElement('a');
+    link.href = `data:image/png;base64,${qrCodeBase64}`;
+    link.download = `order-${orderId || 'receipt'}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }, [qrCodeBase64, orderId]);
 
   useEffect(() => {
     let didSet = false;
@@ -239,12 +247,13 @@ const OrderConfirmation: React.FC = () => {
           <UserCard className="confirmation-error" muted>
             <div className="error-content">
               <div className="error-message">{error}</div>
-              <button
-                onClick={() => navigate("/")}
-                className="action-button secondary"
+              <ButtonLink
+                to="/"
+                variant="secondary"
+                replace
               >
-                Go Home
-              </button>
+                Go home
+              </ButtonLink>
             </div>
           </UserCard>
         </UserSection>
@@ -254,7 +263,6 @@ const OrderConfirmation: React.FC = () => {
 
   return (
     <UserPage className="confirmation-page">
-      <ToastContainer position="top-right" />
 
       <UserHero
         className="confirmation-hero"
@@ -459,73 +467,90 @@ const OrderConfirmation: React.FC = () => {
               Save your booking details to your calendar for easy reference.
             </p>
           )}
-          <button
-            className="action-button primary"
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            leftIcon={<span aria-hidden="true">➕</span>}
             onClick={() => {
               setShowCalendarModal(true);
               track('cta_click', { label: 'Add to Calendar', page: 'OrderConfirmation' });
             }}
           >
-            ➕ Add to Calendar
-          </button>
+            Add to Calendar
+          </Button>
         </UserCard>
       </UserSection>
 
       <UserSection>
         <UserCard className="action-buttons-card" padding="loose">
           <div className="primary-actions">
-            <button
-              onClick={() => navigate("/")}
-              className="action-button primary"
+            <ButtonLink
+              to="/"
+              variant="primary"
+              leftIcon={<span aria-hidden="true">🏠</span>}
+              isFullWidth
             >
-              🏠 Home
-            </button>
+              Home
+            </ButtonLink>
             {enableOrders && (
-              <button
-                onClick={() => {
-                  track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' });
-                  navigate("/past-orders");
-                }}
-                className="action-button secondary"
+              <ButtonLink
+                to="/past-orders"
+                variant="secondary"
+                leftIcon={<span aria-hidden="true">📋</span>}
+                onClick={() => track('cta_click', { label: 'View Orders', page: 'OrderConfirmation' })}
+                isFullWidth
               >
-                📋 View Orders
-              </button>
+                View Orders
+              </ButtonLink>
             )}
             {enableLoyalty && (
-              <button
-                onClick={() => navigate("/myloyalty")}
-                className="action-button success"
+              <ButtonLink
+                to="/myloyalty"
+                variant="success"
+                leftIcon={<span aria-hidden="true">🎁</span>}
+                isFullWidth
               >
-                🎁 My Loyalty
-              </button>
+                My Loyalty
+              </ButtonLink>
             )}
           </div>
 
           <div className="secondary-actions">
             {qrCodeBase64 && (
-              <a
-                href={`data:image/png;base64,${qrCodeBase64}`}
-                download={`order-${orderId}.png`}
-                className="download-button"
+              <Button
+                type="button"
+                variant="outline"
+                size="base"
+                className="secondary-action"
+                leftIcon={<span aria-hidden="true">💾</span>}
+                onClick={() => {
+                  track('cta_click', { label: 'Download QR', page: 'OrderConfirmation' });
+                  handleDownloadQr();
+                }}
                 data-testid="download-qr-button"
                 aria-label="Download QR code image"
               >
-                💾 Download QR
-              </a>
+                Download QR
+              </Button>
             )}
             {paymentPin && (
-              <button
+              <Button
+                type="button"
+                variant="ghost"
+                size="base"
+                className="secondary-action"
+                leftIcon={<span aria-hidden="true">📋</span>}
                 onClick={() => {
                   navigator.clipboard.writeText(paymentPin);
                   track('cta_click', { label: 'Copy PIN', page: 'OrderConfirmation' });
                   notifyClipboard('PIN copied to clipboard');
                 }}
-                className="copy-button"
                 data-testid="copy-pin-button"
                 aria-label="Copy payment PIN to clipboard"
               >
-                📋 Copy PIN
-              </button>
+                Copy PIN
+              </Button>
             )}
           </div>
 

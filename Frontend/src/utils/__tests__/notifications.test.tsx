@@ -6,12 +6,14 @@ vi.mock('../analytics', () => ({
 }));
 
 // Mock react-toastify toast methods
-vi.mock('react-toastify', () => {
+vi.mock('react-toastify', async (orig) => {
+  const actual: any = await (orig as any)();
   const success = vi.fn();
   const error = vi.fn();
   const info = vi.fn();
   const warning = vi.fn();
   return {
+    ...actual,
     toast: { success, error, info, warning },
     ToastContainer: () => null,
   };

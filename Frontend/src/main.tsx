@@ -8,6 +8,8 @@ import { TenantConfigProvider } from './config/TenantConfigProvider';
 import ErrorBoundary from "./components/ErrorBoundary";
 // api import removed: unused
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ROUTER_FUTURE_FLAGS } from './router/futureFlags';
+import ToastProvider from './components/ToastProvider';
 
 import "./firebase";
 import "./index.css";
@@ -92,13 +94,15 @@ if (typeof window !== 'undefined') {
 async function bootstrap() {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter future={ROUTER_FUTURE_FLAGS}>
         <QueryClientProvider client={queryClient}>
           <TenantConfigProvider>
             <AuthProvider>
-              <ErrorBoundary>
-                <RootWithTheme />
-              </ErrorBoundary>
+              <ToastProvider>
+                <ErrorBoundary>
+                  <RootWithTheme />
+                </ErrorBoundary>
+              </ToastProvider>
             </AuthProvider>
           </TenantConfigProvider>
         </QueryClientProvider>

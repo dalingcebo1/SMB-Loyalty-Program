@@ -6,11 +6,11 @@ import api from "../api/api";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import WelcomeModal from '../components/WelcomeModal';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { UserPage, UserHero, UserSection, UserCard } from '../components/user';
+import { Button, ButtonLink } from '../components/ui';
 import { track } from '../utils/analytics';
 import { notifySuccess, notifyError } from '../utils/notifications';
-import 'react-toastify/dist/ReactToastify.css';
 import { Wash } from '../types';
 import { readJsonStorage } from '../utils/storage';
 import './Welcome.css';
@@ -197,20 +197,22 @@ const Welcome: React.FC = () => {
         )}
         actions={(
           <>
-            <Link
+            <ButtonLink
               to="/myloyalty"
-              className="btn btn--primary"
+              variant="primary"
               onClick={() => track('cta_click', { label: 'View Rewards', page: 'Welcome' })}
+              leftIcon={<FaGift aria-hidden="true" />}
             >
-              <FaGift aria-hidden="true" /> View Rewards
-            </Link>
-            <Link
+              View Rewards
+            </ButtonLink>
+            <ButtonLink
               to="/order"
-              className="btn btn--secondary"
+              variant="secondary"
               onClick={() => track('cta_click', { label: 'Book a Service', page: 'Welcome' })}
+              leftIcon={<FaCar aria-hidden="true" />}
             >
-              <FaCar aria-hidden="true" /> Book a Service
-            </Link>
+              Book a Service
+            </ButtonLink>
           </>
         )}
       />
@@ -283,13 +285,13 @@ const Welcome: React.FC = () => {
               {rewardsReady.length > 0 ? (
                 <div className="insight-card__cta">
                   <p className="insight-card__text">You have a reward ready to claim!</p>
-                  <button
-                    onClick={handleClaimReward}
-                    className="btn btn--primary btn--dense"
+                  <Button
                     type="button"
+                    onClick={handleClaimReward}
+                    size="sm"
                   >
                     Claim reward
-                  </button>
+                  </Button>
                 </div>
               ) : upcomingReward ? (
                 <div>

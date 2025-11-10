@@ -305,7 +305,15 @@
 
 /* Modal actions retained but a minimal variant added */
 .modal-actions.minimal { justify-content: flex-end; gap: 0.5rem; }
-.modal-actions.minimal .action-button { padding: 0.4rem 0.9rem; font-size: 0.8rem; min-height: 30px; }
+.modal-actions__button {
+  min-width: 140px;
+}
+
+.modal-actions.minimal .modal-actions__button {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  min-height: 30px;
+}
 
 /* Timeline removed from modal */
 
@@ -412,7 +420,7 @@
     justify-content: stretch;
   }
 
-  .modal-actions .action-button {
+  .modal-actions__button {
     flex: 1 1 100%;
     justify-content: center;
   }

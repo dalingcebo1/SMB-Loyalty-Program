@@ -10,7 +10,8 @@ const base: ToastOptions = {
   autoClose: 3000,
   pauseOnHover: true,
   closeOnClick: true,
-  draggable: true,
+  draggable: false,
+  hideProgressBar: true,
 };
 
 // Deduplication map: message -> last timestamp

@@ -26,6 +26,7 @@ vi.mock('react-hook-form', async () => {
 // Stub react-toastify to prevent timers and DOM insertion
 vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
+  cssTransition: vi.fn((config: unknown) => config),
   toast: {
     success: vi.fn(),
     error: vi.fn(),

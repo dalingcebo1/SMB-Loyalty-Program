@@ -131,7 +131,7 @@
   gap: 1rem;
 }
 
-.services-cta .btn {
+.services-cta__button {
   flex: 0 0 auto;
 }
 
@@ -141,7 +141,7 @@
     align-items: stretch;
   }
 
-  .services-cta .btn {
+  .services-cta__button {
     width: 100%;
   }
 }

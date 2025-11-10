@@ -310,6 +310,11 @@
   min-width: 180px;
 }
 
+.form-actions__button {
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .category-tabs {
@@ -332,7 +337,7 @@
     width: 100%;
   }
 
-  .form-actions .action-button {
+  .form-actions__button {
     width: 100%;
   }
 

@@ -10,9 +10,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
 import ContentLoader from 'react-content-loader';
 import Modal from 'react-modal';
-import { ToastContainer } from 'react-toastify';
 import { notifySuccessKey, notifyErrorKey } from '../../utils/notifications';
-import 'react-toastify/dist/ReactToastify.css';
 
 // API user shape
 interface ApiUser {
@@ -209,7 +207,6 @@ const UsersList: React.FC = () => {
 
   return (
     <PageLayout>
-      <ToastContainer position="bottom-right" />
       <h1 className="text-2xl font-bold mb-4">Users</h1>
       {/* Toolbar: filter + sort */}
       <div className="flex mb-4 items-center">

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { waitFor, render } from '@testing-library/react';
+import { Route, Routes } from 'react-router-dom';
+import { render, waitFor } from '../../../../utils/test-utils';
 import UnifiedOnboarding from '../UnifiedOnboarding';
 import { translate } from '../../../../utils/i18n';
 
@@ -12,14 +12,14 @@ vi.mock('../../../../firebase', () => ({
 
 describe('UnifiedOnboarding page', () => {
   it('renders profile step with continue button using shared Button component', () => {
-    const ui = (
-      <MemoryRouter initialEntries={[{ pathname: '/onboarding', state: { email: 'user@example.com' } }]}> 
+    const { container } = render(
+      (
         <Routes>
           <Route path="/onboarding" element={<UnifiedOnboarding />} />
         </Routes>
-      </MemoryRouter>
+      ),
+      { routerProps: { initialEntries: [{ pathname: '/onboarding', state: { email: 'user@example.com' } }] } }
     );
-  const { container } = render(ui);
     const continueBtn = container.querySelector('button');
     expect(continueBtn).toBeTruthy();
     expect(continueBtn!.textContent).toBe(translate('onboarding.button.continuePhone'));
@@ -28,14 +28,23 @@ describe('UnifiedOnboarding page', () => {
   });
 
   it('renders phone step with subscription checkbox and send code button', async () => {
-    const ui = (
-      <MemoryRouter initialEntries={[{ pathname: '/onboarding', state: { email: 'user@example.com', firstName: 'Jane', lastName: 'Doe', skipProfileStep: true } }]}> 
+    const { container } = render(
+      (
         <Routes>
           <Route path="/onboarding" element={<UnifiedOnboarding />} />
         </Routes>
-      </MemoryRouter>
+      ),
+      {
+        routerProps: {
+          initialEntries: [
+            {
+              pathname: '/onboarding',
+              state: { email: 'user@example.com', firstName: 'Jane', lastName: 'Doe', skipProfileStep: true },
+            },
+          ],
+        },
+      }
     );
-  const { container } = render(ui);
     await waitFor(() => {
       // Wait until checkbox label appears
       expect(container.textContent).toContain(translate('onboarding.checkbox.subscribe.label'));
@@ -47,5 +56,3 @@ describe('UnifiedOnboarding page', () => {
     expect(sendBtn).toBeTruthy();
   });
 });
-
-// Removed custom render helper; using testing-library render directly.

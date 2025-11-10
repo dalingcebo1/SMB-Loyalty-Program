@@ -158,7 +158,7 @@
   width: 100%;
 }
 
-.account-form__actions .btn {
+.account-form__actions-button {
   flex: 1 1 220px;
 }
 
@@ -229,6 +229,10 @@
   .account-form__actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .account-form__actions-button {
+    width: 100%;
   }
 
   .account-actions__body {

@@ -14,6 +14,7 @@ import { notifySuccess, notifyError, getNotificationsEnabled, setNotificationsEn
 import api from "../api/api";
 import { useAuth } from "../auth/AuthProvider";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
+import { Button } from "../components/ui";
 import "./Account.css";
 
 const Account: React.FC = () => {
@@ -72,7 +73,7 @@ const Account: React.FC = () => {
       });
       await refreshUser();
       setEditing(false);
-  notifySuccess("Profile updated successfully");
+      notifySuccess("Profile updated successfully");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update profile");
     }
@@ -81,10 +82,9 @@ const Account: React.FC = () => {
   const handleLogout = async () => {
     try {
       await logout();
-  notifySuccess("Successfully logged out");
       navigate("/login");
     } catch (err) {
-  notifyError("Error logging out");
+      notifyError("Error logging out");
       console.error("Logout error:", err);
     }
   };
@@ -115,14 +115,16 @@ const Account: React.FC = () => {
               <h2 className="surface-card__title">Profile information</h2>
             </div>
             {!editing && (
-              <button
+              <Button
                 type="button"
-                className="btn btn--ghost btn--dense account-card__edit"
+                variant="ghost"
+                size="sm"
+                className="account-card__edit"
+                leftIcon={<FaEdit aria-hidden="true" />}
                 onClick={handleEdit}
               >
-                <FaEdit aria-hidden="true" />
                 Edit
-              </button>
+              </Button>
             )}
           </header>
 
@@ -158,14 +160,22 @@ const Account: React.FC = () => {
               )}
 
               <div className="account-form__actions">
-                <button type="submit" className="btn btn--primary">
-                  <FaSave aria-hidden="true" />
+                <Button
+                  type="submit"
+                  leftIcon={<FaSave aria-hidden="true" />}
+                  className="account-form__actions-button"
+                >
                   Save changes
-                </button>
-                <button type="button" className="btn btn--ghost" onClick={handleCancel}>
-                  <FaTimes aria-hidden="true" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleCancel}
+                  leftIcon={<FaTimes aria-hidden="true" />}
+                  className="account-form__actions-button"
+                >
                   Cancel
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
@@ -204,10 +214,15 @@ const Account: React.FC = () => {
         <UserCard className="account-actions" muted>
           <h2 className="surface-card__title">Session controls</h2>
           <div className="account-actions__body">
-            <button type="button" className="btn account-logout" onClick={handleLogout}>
-              <FaSignOutAlt aria-hidden="true" />
+            <Button
+              type="button"
+              variant="outline"
+              className="account-logout"
+              leftIcon={<FaSignOutAlt aria-hidden="true" />}
+              onClick={handleLogout}
+            >
               Logout
-            </button>
+            </Button>
           </div>
         </UserCard>
       </UserSection>
@@ -216,9 +231,13 @@ const Account: React.FC = () => {
           <h2 className="surface-card__title">Notification preferences</h2>
           <div className="account-actions__body">
             <p className="text-sm mb-3">Toggle in-app toast messages. Critical errors may still appear regardless of this setting.</p>
-            <button type="button" className="btn" onClick={toggleNotifications}>
+            <Button
+              type="button"
+              variant={notificationsOn ? 'ghost' : 'primary'}
+              onClick={toggleNotifications}
+            >
               {notificationsOn ? 'Disable Toasts' : 'Enable Toasts'}
-            </button>
+            </Button>
           </div>
         </UserCard>
       </UserSection>

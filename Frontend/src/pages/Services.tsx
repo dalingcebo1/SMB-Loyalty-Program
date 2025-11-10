@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { UserCard, UserHero, UserPage, UserSection } from "../components/user";
+import { Button, ButtonLink } from "../components/ui";
 import { formatCents } from "../utils/format";
 import { track } from "../utils/analytics";
 import "./Services.css";
@@ -106,9 +107,9 @@ const Services: React.FC = () => {
         <UserSection>
           <UserCard className="services-state services-state--error">
             <p>{error}</p>
-            <button type="button" className="btn btn--primary" onClick={handleRetry}>
+            <Button type="button" onClick={handleRetry}>
               Try again
-            </button>
+            </Button>
           </UserCard>
         </UserSection>
       </UserPage>
@@ -173,9 +174,9 @@ const Services: React.FC = () => {
           <div>
             <h2 className="surface-card__title">Ready to book?</h2>
           </div>
-          <a className="btn btn--primary" href="/order">
+            <ButtonLink to="/order" variant="primary" className="services-cta__button">
             Start booking
-          </a>
+          </ButtonLink>
         </UserCard>
       </UserSection>
     </UserPage>

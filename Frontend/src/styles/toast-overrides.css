@@ -1,0 +1,33 @@
+.rt-fade-enter {
+  opacity: 0;
+}
+
+.rt-fade-enter.rt-fade-enter-active {
+  opacity: 1;
+  transition: opacity 220ms ease-in;
+}
+
+.rt-fade-exit {
+  opacity: 1;
+}
+
+.rt-fade-exit.rt-fade-exit-active {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+/* Ensure toast body adopts design system spacing */
+.Toastify__toast {
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+  padding: 0.75rem 1rem;
+}
+
+.Toastify__toast-body {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.Toastify__toast-icon {
+  margin-inline-end: 0.75rem;
+}

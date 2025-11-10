@@ -26,10 +26,14 @@ vi.mock('../../api/api', () => ({
 }));
 
 // Silence toast + provide stub ToastContainer used by test-utils
-vi.mock('react-toastify', () => ({
-  ToastContainer: () => <div data-testid="toast-root" />,
-  toast: { error: vi.fn(), success: vi.fn() }
-}));
+vi.mock('react-toastify', async (orig) => {
+  const actual: any = await (orig as any)();
+  return {
+    ...actual,
+    ToastContainer: () => <div data-testid="toast-root" />,
+    toast: { error: vi.fn(), success: vi.fn() },
+  };
+});
 
 // Stub QRCode to avoid SVG complexity
 vi.mock('react-qr-code', () => ({

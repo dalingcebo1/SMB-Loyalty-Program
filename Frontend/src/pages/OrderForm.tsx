@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../api/api";
 import Loading from "../components/Loading";
@@ -12,10 +10,10 @@ import StepIndicator from "../components/StepIndicator";
 import ServiceCard from "../components/ServiceCard";
 import DateTimePicker from "../components/DateTimePicker";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
+import { Button } from "../components/ui";
 import { formatCurrency } from "../utils/format";
 import { track } from '../utils/analytics';
 import './OrderForm.css';
-import '../styles/shared-buttons.css';
 import { notifyError, notifySuccess, notifyWarning } from '../utils/notifications';
 
 interface Service {
@@ -293,7 +291,6 @@ const OrderForm: React.FC = () => {
 
   return (
     <UserPage className="order-form-page">
-      <ToastContainer position="top-right" />
 
       <UserHero
         align="start"
@@ -404,13 +401,16 @@ const OrderForm: React.FC = () => {
                   <div className="total-amount">
                     Total: {formatCurrency(total)}
                   </div>
-                  <button
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
                     onClick={handleNextStep}
                     disabled={!canProceedToStep2}
-                    className={`action-button ${canProceedToStep2 ? 'primary flat' : 'secondary flat'}`}
+                    className="form-actions__button"
                   >
                     Choose Date & Time
-                  </button>
+                  </Button>
                 </div>
               </UserCard>
             </motion.div>
@@ -436,22 +436,26 @@ const OrderForm: React.FC = () => {
                 />
 
                 <div className="form-actions">
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
                     onClick={handlePrevStep}
-                    className="action-button secondary"
+                    className="form-actions__button"
                   >
                     Back
-                  </button>
+                  </Button>
                   <div className="total-amount">
                     Total: {formatCurrency(total)}
                   </div>
-                  <button
+                  <Button
+                    type="button"
+                    variant="primary"
                     onClick={handleNextStep}
                     disabled={!canProceedToStep3}
-                    className={`action-button ${canProceedToStep3 ? 'primary' : 'secondary'}`}
+                    className="form-actions__button"
                   >
                     Review Booking
-                  </button>
+                  </Button>
                 </div>
               </UserCard>
             </motion.div>
@@ -519,19 +523,24 @@ const OrderForm: React.FC = () => {
                 </div>
 
                 <div className="form-actions">
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
                     onClick={handlePrevStep}
-                    className="action-button secondary"
+                    className="form-actions__button"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className={`action-button ${isSubmitting ? 'secondary' : 'primary'}`}
+                    isLoading={isSubmitting}
+                    className="form-actions__button"
                   >
-                    {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
-                  </button>
+                    Confirm Booking
+                  </Button>
                 </div>
               </UserCard>
             </motion.div>

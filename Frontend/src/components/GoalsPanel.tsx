@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+import { useQuery } from '@tanstack/react-query';
 import { useDateRange } from '../hooks/useDateRange';
 import api, { buildQuery } from '../api/api';
-import { useQuery } from '@tanstack/react-query';
 import { SummaryMetrics } from '../types/metrics';
+import { Button } from './ui';
 
 const GoalsPanel: React.FC = () => {
   const { start, end } = useDateRange();
@@ -61,12 +62,11 @@ const GoalsPanel: React.FC = () => {
 
   const handleSave = () => {
     localStorage.setItem('monthlyTarget', String(target));
-  toast('Target saved', { type: 'info' });
+    toast('Target saved', { type: 'info' });
   };
 
   return (
     <>
-      <ToastContainer />
       <div className="bg-white rounded shadow-sm p-4 mb-6">
       <h3 className="text-lg font-semibold mb-2">Monthly Transaction Target</h3>
       <div className="flex items-center gap-4">
@@ -82,12 +82,12 @@ const GoalsPanel: React.FC = () => {
             type="number"
             value={target}
             min={0}
-            onChange={e => setTarget(Number(e.target.value))}
+            onChange={(event) => setTarget(Number(event.target.value))}
             className="border p-2 rounded w-24"
           />
-          <button onClick={handleSave} className="ml-2 px-3 py-1 bg-blue-600 text-white rounded">
+          <Button type="button" size="sm" className="ml-2" onClick={handleSave}>
             Save
-          </button>
+          </Button>
         </div>
       </div>
       </div>

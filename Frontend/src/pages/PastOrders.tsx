@@ -8,8 +8,8 @@ import useFetch from "../hooks/useFetch";
 import { Order, Extra } from "../types";
 import api from "../api/api";
 import { UserPage, UserHero, UserSection, UserCard } from "../components/user";
+import { Button } from "../components/ui";
 import { formatCents } from "../utils/format";
-import "../styles/shared-buttons.css";
 import "./PastOrders.css";
 
 type StatusBadgeVariant = "completed" | "pending" | "cancelled";
@@ -369,18 +369,28 @@ const PastOrders: React.FC = () => {
             </div>
 
             <div className="modal-actions minimal">
-              <button
-                className="action-button primary flat"
+              <Button
+                type="button"
+                variant="primary"
                 onClick={() => {
                   setModalOrder(null);
                   handleBookAgain();
                 }}
+                leftIcon={<FaRedo />}
+                isFullWidth
+                className="modal-actions__button"
               >
-                <FaRedo /> Book Again
-              </button>
-              <button className="action-button secondary" onClick={() => setModalOrder(null)}>
+                Book Again
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOrder(null)}
+                isFullWidth
+                className="modal-actions__button"
+              >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>

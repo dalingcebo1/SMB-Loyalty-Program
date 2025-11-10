@@ -10,6 +10,10 @@ import Loading from "../../../components/Loading";
 import api from "../../../api/api";
 import { confirmationRef } from "../../../utils/confirmationRef";
 import "./UnifiedOnboarding.css";
+import { Button } from "../../../components/ui/Button";
+import Checkbox from "../../../components/ui/Checkbox";
+import { notifyErrorKey, notifySuccessKey } from "../../../utils/notifications";
+import { translate } from "../../../utils/i18n";
 
 interface OnboardingLocationState {
   email?: string;
@@ -149,7 +153,9 @@ const UnifiedOnboarding: React.FC = () => {
     e.preventDefault();
     
     if (!firstName.trim() || !lastName.trim()) {
-      setError("First name and last name are required.");
+      const msg = translate('notifications.generic.error');
+      setError(msg);
+      notifyErrorKey('notifications.generic.error');
       return;
     }
 
@@ -163,9 +169,11 @@ const UnifiedOnboarding: React.FC = () => {
       // Clear error and proceed to phone verification step
       setError("");
       setCurrentStep('phone');
+      notifySuccessKey('notifications.profile.updated');
     } catch (err) {
       console.error('Profile update failed', err);
-      setError("Failed to update profile. Please try again.");
+      setError(translate('notifications.generic.error'));
+      notifyErrorKey('notifications.generic.error');
     } finally {
       setLoading(false);
     }
@@ -177,11 +185,15 @@ const UnifiedOnboarding: React.FC = () => {
     setError("");
 
     if (!phone.trim()) {
-      return setError("Phone number is required.");
+      setError(translate('notifications.onboarding.phone.invalid'));
+      notifyErrorKey('notifications.onboarding.phone.invalid');
+      return;
     }
     const normalizedPhone = normalizePhoneInput(phone);
     if (!validateE164(normalizedPhone)) {
-      return setError("Phone must be a valid South African number, e.g. 0731234567 or +27831234567.");
+      setError(translate('notifications.onboarding.phone.invalid'));
+      notifyErrorKey('notifications.onboarding.phone.invalid');
+      return;
     }
     setPhone(normalizedPhone);
     // Ensure verifier present (handles HMR or unmounted container)
@@ -229,30 +241,36 @@ const UnifiedOnboarding: React.FC = () => {
           fromSocialLogin: state?.fromSocialLogin ?? false,
         },
       });
+      notifySuccessKey('notifications.onboarding.code.sent');
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
       console.error("Send OTP failed", error.code, error.message, err);
       setLastPhoneError(`${error.code || 'unknown'}: ${error.message || ''}`.trim());
       switch (error.code) {
         case "auth/invalid-phone-number":
-          setError("That phone number is invalid.");
+          setError(translate('notifications.onboarding.phone.invalid'));
+          notifyErrorKey('notifications.onboarding.phone.invalid');
           break;
         case "auth/quota-exceeded":
-          setError("SMS quota exceeded; please try again later.");
+          setError(translate('notifications.onboarding.sms.quota'));
+          notifyErrorKey('notifications.onboarding.sms.quota');
           break;
         case "auth/too-many-requests":
-          setError("Too many attempts. Please wait and try again.");
+          setError(translate('notifications.onboarding.rate.limit'));
+          notifyErrorKey('notifications.onboarding.rate.limit');
           break;
         case "auth/unauthorized-domain":
-          setError("Domain not authorized for Phone Auth. Add this domain in Firebase console.");
+          setError(translate('notifications.onboarding.network.error'));
+          notifyErrorKey('notifications.onboarding.network.error');
           break;
         case "auth/missing-phone-number":
-          setError("Phone number missing. Please re-enter and try again.");
+          setError(translate('notifications.onboarding.phone.invalid'));
+          notifyErrorKey('notifications.onboarding.phone.invalid');
           break;
         default: {
-          const generic = "Could not send OTP. Check your network and try again.";
-          // Surface code in dev to speed debugging
-          setError(import.meta.env.DEV && error.code ? `${generic} (${error.code})` : generic);
+          // Surface code in dev to speed debugging; use single translation key
+          setError(translate('notifications.onboarding.network.error'));
+          notifyErrorKey('notifications.onboarding.network.error');
         }
       }
     } finally {
@@ -273,12 +291,12 @@ const UnifiedOnboarding: React.FC = () => {
       <div className="onboarding-card">
         <div className="onboarding-header">
           <h1 className="onboarding-title">
-            {currentStep === 'profile' ? 'Complete Your Profile' : 'Verify Your Phone'}
+            {currentStep === 'profile' ? translate('onboarding.title.profile') : translate('onboarding.title.phone')}
           </h1>
           <p className="onboarding-subtitle">
             {currentStep === 'profile' 
-              ? 'Help us personalize your experience' 
-              : 'We\'ll send you a verification code'
+              ? translate('onboarding.subtitle.profile')
+              : translate('onboarding.subtitle.phone')
             }
           </p>
         </div>
@@ -289,29 +307,32 @@ const UnifiedOnboarding: React.FC = () => {
           <div className={`step-dot ${currentStep === 'phone' ? 'active' : ''}`}></div>
         </div>
         
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="status" aria-live="polite" aria-atomic="true">
+            {error}
+          </div>
+        )}
 
         {currentStep === 'profile' ? (
           // Profile completion form
           <div className="progress-section">
-            <h2 className="progress-title">Tell us about yourself</h2>
+            <h2 className="progress-title">{translate('onboarding.subtitle.profile')}</h2>
             <p className="progress-description">
-              This information helps us provide you with a personalized experience.
+              {translate('onboarding.subtitle.profile')}.
             </p>
           </div>
         ) : (
           // Phone verification intro
           <div className="progress-section">
-            <h2 className="progress-title">Phone verification</h2>
+            <h2 className="progress-title">{translate('onboarding.title.phone')}</h2>
             <p className="progress-description">
-              We'll send a verification code to your phone number to complete setup.
+              {translate('onboarding.subtitle.phone')}
             </p>
             
             <div className="info-card">
-              <div className="info-card-title">Why do we need your phone?</div>
+              <div className="info-card-title">{translate('onboarding.title.phone')}</div>
               <div className="info-card-text">
-                Your phone number helps us send important updates about your orders and loyalty rewards. 
-                It also adds an extra layer of security to your account.
+                {translate('onboarding.subtitle.phone')}
               </div>
             </div>
           </div>
@@ -355,13 +376,9 @@ const UnifiedOnboarding: React.FC = () => {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="onboarding-button"
-              >
-                {loading ? "Updating…" : "Continue to Phone Verification"}
-              </button>
+              <Button type="submit" disabled={loading} isLoading={loading} variant="primary" size="lg" className="mt-4" isFullWidth>
+                {loading ? translate('onboarding.button.updating') : translate('onboarding.button.continuePhone')}
+              </Button>
             </>
           ) : (
             // Phone verification form
@@ -400,32 +417,33 @@ const UnifiedOnboarding: React.FC = () => {
                   />
                 </div>
                 <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                  We accept local numbers (073…) and full international format (+27…)
+                  {translate('onboarding.helper.phone.format')}
                 </small>
               </div>
 
-              <div className="checkbox-group">
-                <input
+              <div style={{ marginTop: '0.75rem' }}>
+                <Checkbox
                   id="subscribe"
-                  type="checkbox"
                   checked={subscribe}
                   onChange={e => setSubscribe(e.target.checked)}
-                  className="checkbox-input"
+                  label={translate('onboarding.checkbox.subscribe.label')}
+                  helperText={translate('onboarding.checkbox.subscribe.helper')}
                 />
-                <label htmlFor="subscribe" className="checkbox-label">
-                  Subscribe to newsletter and promotional updates
-                </label>
               </div>
 
               {/* Global reCAPTCHA used; container mounted outside React */}
 
-              <button
+              <Button
                 type="submit"
                 disabled={sending || !recaptchaReady}
-                className="onboarding-button"
+                isLoading={sending}
+                variant="success"
+                size="lg"
+                className="mt-6"
+                isFullWidth
               >
-                {sending ? "Sending…" : !recaptchaReady ? 'Preparing Security Check…' : "Send Verification Code"}
-              </button>
+                {sending ? translate('onboarding.button.sending') : !recaptchaReady ? translate('onboarding.security.preparing') : translate('onboarding.button.sendCode')}
+              </Button>
               
               {!recaptchaReady && currentStep === 'phone' && (
                 <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#6b7280' }}>

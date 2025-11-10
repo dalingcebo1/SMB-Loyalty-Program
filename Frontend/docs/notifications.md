@@ -22,6 +22,9 @@ Messages shown within 2500ms repeat are suppressed. To bypass (e.g. looping prog
 notifyInfo('Processing batch...', { skipDedupe: true, autoClose: 1500 });
 ```
 
+### Dedupe Testing
+Automated tests (`notifications.dedupe.test.ts`) assert that firing the same success message or translation key multiple times within the interval only produces one toast. If a message must repeat (e.g. streaming updates), explicitly disable dedupe.
+
 ## Specialized Helpers
 | Helper | Purpose |
 | ------ | ------- |
@@ -89,6 +92,18 @@ The dictionary in `src/utils/i18n.ts` groups many more domains. Below is a conci
 | Onboarding | `notifications.onboarding.phone.invalid` | Invalid phone number. Restart onboarding. |
 | Onboarding | `notifications.onboarding.rate.limit` | Too many requests. Please wait and retry. |
 | Onboarding | `notifications.onboarding.resend.failed` | Failed to resend verification code. Try again. |
+| Onboarding UI | `onboarding.title.profile` | Complete Your Profile |
+| Onboarding UI | `onboarding.title.phone` | Verify Your Phone |
+| Onboarding UI | `onboarding.subtitle.profile` | Help us personalize your experience |
+| Onboarding UI | `onboarding.subtitle.phone` | We'll send you a verification code |
+| Onboarding UI | `onboarding.button.continuePhone` | Continue to Phone Verification |
+| Onboarding UI | `onboarding.button.updating` | Updating… |
+| Onboarding UI | `onboarding.button.sendCode` | Send Verification Code |
+| Onboarding UI | `onboarding.button.sending` | Sending… |
+| Onboarding UI | `onboarding.security.preparing` | Preparing Security Check… |
+| Onboarding UI | `onboarding.checkbox.subscribe.label` | Subscribe to updates |
+| Onboarding UI | `onboarding.checkbox.subscribe.helper` | Get promotional offers and loyalty updates |
+| Onboarding UI | `onboarding.helper.phone.format` | We accept local numbers (073…) and full international format (+27…) |
 | Users | `notifications.user.deleted` | User deleted |
 | Users | `notifications.user.delete.failed` | Delete user failed |
 | Users | `notifications.user.updated` | User updated |
@@ -152,3 +167,4 @@ const toggle = () => { const next = !on; setNotificationsEnabled(next); setOn(ne
 - Queueing & stacking logic.
 - Rich ARIA live-region management.
 - Per-context mute (e.g. marketing vs. transactional).
+- Accessibility: Error messages in onboarding now use `aria-live="polite"` + `role="status"` for assistive technologies. Follow this pattern when introducing form-level errors elsewhere.

@@ -125,6 +125,17 @@ Production uses JSON logs; locally you get human-readable logs. To preview prod 
 ENVIRONMENT=production uvicorn main:app --port 8000
 ```
 
+### Time Handling
+All backend timestamps must use the `utc_now()` helper (`app/utils/time.py`). Do not call `datetime.utcnow()` directly in application code or tests.
+
+Patterns:
+- Current timestamp: `utc_now()`
+- ISO string: `utc_now().isoformat()`
+- Date math: `utc_now() - timedelta(days=7)`
+- Current date: `utc_now().date()`
+
+Rationale: Centralization enables future transition to timezone-aware or monotonic time sources without sweeping changes. In tests, patch or monkeypatch `app.utils.time.utc_now` for determinism.
+
 ### Sentry (Optional)
 Set `SENTRY_DSN` to enable Sentry. Tracing sample rate defaults to 0.1.
 

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.utils.time import utc_now
 from sqlalchemy import func
 import hmac
 import hashlib
@@ -142,7 +143,7 @@ def _ensure_subscription_struct(t: Tenant):
     if "history" not in sub:
         sub["history"] = []
     if "started_at" not in sub:
-        sub["started_at"] = datetime.utcnow().isoformat()
+        sub["started_at"] = utc_now().isoformat()
     cfg["subscription"] = sub
     t.config = cfg
     return sub
@@ -150,7 +151,7 @@ def _ensure_subscription_struct(t: Tenant):
 
 def _record_history(sub: dict, action: str, details: Optional[str] = None, actor: Optional[str] = None):
     sub.setdefault("history", []).insert(0, {
-        "ts": datetime.utcnow().isoformat(),
+        "ts": utc_now().isoformat(),
         "action": action,
         "details": details,
         "actor": actor or "system",
@@ -205,7 +206,7 @@ def create_plan(payload: PlanIn, db: Session = Depends(get_db)):
 
 @router.put("/plans/{plan_id}", response_model=PlanOut)
 def update_plan(plan_id: int, payload: PlanIn, db: Session = Depends(get_db)):
-    r = db.query(SubscriptionPlan).get(plan_id)
+    r = db.get(SubscriptionPlan, plan_id)
     if not r:
         raise HTTPException(status_code=404, detail="Plan not found")
     r.name = payload.name
@@ -221,7 +222,7 @@ def update_plan(plan_id: int, payload: PlanIn, db: Session = Depends(get_db)):
 
 @router.post("/plans/{plan_id}/archive")
 def archive_plan(plan_id: int, db: Session = Depends(get_db)):
-    r = db.query(SubscriptionPlan).get(plan_id)
+    r = db.get(SubscriptionPlan, plan_id)
     if not r:
         raise HTTPException(status_code=404, detail="Plan not found")
     r.active = False
@@ -231,7 +232,7 @@ def archive_plan(plan_id: int, db: Session = Depends(get_db)):
 
 @router.post("/plans/{plan_id}/restore")
 def restore_plan(plan_id: int, db: Session = Depends(get_db)):
-    r = db.query(SubscriptionPlan).get(plan_id)
+    r = db.get(SubscriptionPlan, plan_id)
     if not r:
         raise HTTPException(status_code=404, detail="Plan not found")
     r.active = True
@@ -245,7 +246,7 @@ def get_tenant_subscription(tenant_id: str, db: Session = Depends(get_db)):
     sub = _ensure_subscription_struct(t)
     # Pick plan from DB if available; fallback to defaults by index name
     plan_id = sub.get("plan_id")
-    plan_row = db.query(SubscriptionPlan).get(plan_id) if plan_id else None
+    plan_row = db.get(SubscriptionPlan, plan_id) if plan_id else None
     if not plan_row:
         _seed_default_plans_if_empty(db)
         plan_row = db.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Starter").first()
@@ -279,7 +280,7 @@ def get_tenant_subscription(tenant_id: str, db: Session = Depends(get_db)):
 def assign_plan(tenant_id: str, payload: TenantAssignPlan, db: Session = Depends(get_db)):
     t = _get_tenant(db, tenant_id)
     sub = _ensure_subscription_struct(t)
-    plan_row = db.query(SubscriptionPlan).get(payload.plan_id)
+    plan_row = db.get(SubscriptionPlan, payload.plan_id)
     if not plan_row:
         raise HTTPException(status_code=404, detail="Plan not found")
     if not plan_row.active:
@@ -352,7 +353,7 @@ def get_usage(
     - inventory: placeholder (0) unless you later add inventory events
     """
     days = 30 if window.endswith("30d") else 7
-    start = datetime.utcnow() - timedelta(days=days)
+    start = utc_now() - timedelta(days=days)
     tid = tenant_id or "default"
 
     # Fetch limits from current plan assignment
@@ -432,7 +433,7 @@ def get_payment_methods(tenant_id: Optional[str] = Header(default=None, alias="X
 @router.get("/invoices")
 def get_invoices(tenant_id: Optional[str] = Header(default=None, alias="X-Tenant-ID")):
     # Demo invoices
-    today = datetime.utcnow().date()
+    today = utc_now().date()
     return [
         {"id": "inv_1", "date": today.isoformat(), "amount_cents": 49900, "currency": "ZAR", "status": "paid", "hosted_invoice_url": None},
         {"id": "inv_2", "date": (today - timedelta(days=30)).isoformat(), "amount_cents": 49900, "currency": "ZAR", "status": "paid", "hosted_invoice_url": None},
@@ -450,7 +451,7 @@ def start_trial(days: int = 14, tenant_id: Optional[str] = Header(default=None, 
     t = _get_tenant(db, tenant_id or "default")
     sub = _ensure_subscription_struct(t)
     sub["status"] = "trialing"
-    sub["trial_ends_at"] = (datetime.utcnow() + timedelta(days=days)).isoformat()
+    sub["trial_ends_at"] = (utc_now() + timedelta(days=days)).isoformat()
     _record_history(sub, "trial.start", details=f"{days}d")
     db.add(t); db.commit()
     return {"ok": True}
@@ -497,7 +498,7 @@ def setup_subscription(
 ):
     """Set up a real subscription with Yoco for recurring billing."""
     tenant = _get_tenant(db, tenant_id or "default")
-    plan = db.query(SubscriptionPlan).get(payload.plan_id)
+    plan = db.get(SubscriptionPlan, payload.plan_id)
     
     if not plan or not plan.active:
         raise HTTPException(status_code=404, detail="Plan not found or inactive")
@@ -568,7 +569,7 @@ def cancel_subscription(
         
         # Update local status
         subscription_config["status"] = "cancelled"
-        subscription_config["cancelled_at"] = datetime.utcnow().isoformat()
+        subscription_config["cancelled_at"] = utc_now().isoformat()
         
         _record_history(subscription_config, "subscription.cancel", details=f"Subscription ID: {yoco_subscription_id}")
         
@@ -620,7 +621,7 @@ def get_subscription_status(
     plan_id = subscription_config.get("plan_id")
     plan = None
     if plan_id:
-        plan = db.query(SubscriptionPlan).get(plan_id)
+        plan = db.get(SubscriptionPlan, plan_id)
     
     return {
         "tenant_id": tenant.id,

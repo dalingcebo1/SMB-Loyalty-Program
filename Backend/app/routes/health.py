@@ -2,6 +2,7 @@
 Monitoring and health check endpoints for production.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
@@ -17,6 +18,8 @@ PROCESS_START = datetime.utcnow()
 
 router = APIRouter(prefix="/health", tags=["health"])
 
+# NOTE: Test PR change (non-functional) to trigger OpenAPI diff workflow.
+# This comment should not alter the generated OpenAPI spec.
 
 @router.get("/")
 async def health_check() -> Dict[str, Any]:

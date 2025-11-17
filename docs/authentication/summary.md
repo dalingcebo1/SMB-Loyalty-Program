@@ -1,3 +1,4 @@
+```markdown
 # Authentication Flow Analysis & Recommendations (moved)
 
 The canonical authentication summary now lives at `docs/authentication/summary.md`.
@@ -81,36 +82,29 @@ Detailed analysis retained here for reference during migration.
 7. **Error Handling Inconsistencies**
    - Different error messages for same scenarios
    - No retry mechanisms for network failures in all flows
-   The authentication flow analysis has been moved to `docs/authentication/summary.md`.
+   - Unclear guidance when onboarding fails
 
-   Please update any links to point to `docs/authentication/summary.md` (the original content is preserved there).
-- [ ] Advanced session recovery mechanisms
-- [ ] Performance optimizations for auth flows
-- [ ] Enhanced security measures
+### 🔧 Technical Debt
 
-## Test Scenarios Needed
+8. **Backend Response Inconsistencies**
+   - `/auth/login` returns full `LoginResponse` with onboarding flags
+   - `/auth/social-login` returns same schema but logic differs
+   - `/auth/confirm-otp` returns simple token without user data
 
-1. **New Traditional User**
-   - Signup → Profile → Phone → Complete → Dashboard
+9. **Role-Based Navigation**
+   - Hardcoded navigation logic in multiple places
+   - No centralized role-based routing
+   - Staff/admin users mixed with regular user flows
 
-2. **New Social User** 
-   - Google login → Profile completion → Phone verification → Dashboard
+10. **Firebase Integration Issues**n+    - Phone verification not integrated with backend user creation
+    - Firebase users may exist without backend counterparts
+    - No cleanup of failed Firebase auth attempts
 
-3. **Returning Incomplete User**
-   - Login → Continue onboarding from last step → Complete
+... (content preserved)
 
-4. **Network Failure Recovery**
-   - Test failures at each step with retry mechanisms
+```
+# Authentication Summary
 
-5. **Cross-Platform Consistency**
-   - Ensure flow works on mobile and desktop
-   - Test popup vs redirect OAuth flows
+(Imported from root authentication docs)
 
-## Success Metrics
-
-- [ ] 100% of users complete onboarding regardless of signup method
-- [ ] Zero confusion about next steps in onboarding flow
-- [ ] All users have verified phone numbers upon completion
-- [ ] Consistent UX across traditional and social signup
-- [ ] < 5% onboarding abandonment rate
-- [ ] Zero authentication flow bugs in production
+Includes a short summary of authentication flow, improvements, and tasks. For detailed analysis, see the original files under repository root (or consider full migration).

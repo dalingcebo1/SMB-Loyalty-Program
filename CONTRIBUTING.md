@@ -1,5 +1,7 @@
 ## Contributing Guidelines
 
+Note: Project canonical docs live in the `docs/` folder. Please consult `docs/README.md` for onboarding, deploy, and testing guides. The `docs/` folder is the maintained docs pack — prefer it over ad-hoc root markdown files.
+
 ### Branch Strategy
 - `main`: production deploy only. Merges here trigger deployment workflows; do not open feature PRs directly against `main`.
 - `develop`: integration branch. All feature and fix branches target `develop` first. Periodic release PRs merge `develop` into `main` after quality gates pass.

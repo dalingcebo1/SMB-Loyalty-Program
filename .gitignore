@@ -10,3 +10,7 @@ venv/
 .venv/
 *.sqlite
 *.sqlite3
+
+# Internal AI / Copilot instruction files (do not commit these to keep sensitive guidance out of VCS)
+.github/copilot-instructions.md
+.github/instructions/

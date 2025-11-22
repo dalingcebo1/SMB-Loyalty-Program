@@ -61,6 +61,25 @@ jobs:
           VITE_API_BASE_URL_DEV: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
           VITE_FIREBASE_PROJECT_ID_DEV: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
 
+      - name: Validate deployment prerequisites
+        run: |
+          MISSING=0
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::Missing secret AZURE_STATIC_WEB_APPS_API_TOKEN_DEV. Add it under Settings > Secrets and variables > Actions. Deployment cannot proceed.";
+            MISSING=1
+          fi
+          if [ -z "$API_BASE" ]; then
+            echo "::warning::No API base URL resolved (VITE_API_BASE_URL_DEV). Frontend will build with an empty endpoint. Set a repository variable VITE_API_BASE_URL_DEV or trigger manual dispatch with input vite_api_base_url.";
+          else
+            echo "Resolved API base URL: $API_BASE"
+          fi
+          if [ "$MISSING" -eq 1 ]; then
+            exit 1
+          fi
+        env:
+          DEPLOY_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
+          API_BASE: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
+
       - name: Prefer npm – remove yarn.lock to avoid Yarn engine checks
         run: |
           rm -f Frontend/yarn.lock || true

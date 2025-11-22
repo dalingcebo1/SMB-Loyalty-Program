@@ -1,5 +1,7 @@
 # SMB-Loyalty-Program
 
+Note: Canonical developer and ops documentation has been consolidated under `docs/`. See `docs/README.md` for the maintained docs pack.
+
 | Workflow | Status |
 | --- | --- |
 | Frontend CI (lint, unit tests, build) | ![Frontend CI](https://github.com/dalingcebo1/SMB-Loyalty-Program/actions/workflows/frontend-ci.yml/badge.svg) |

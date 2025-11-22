@@ -314,7 +314,7 @@ jobs:
             seed_args="$seed_args --reset"
           fi
           echo "Running Backend/seed_all.py $seed_args inside container"
-          python /tmp/az_containerapp_exec.py "sh -lc 'cd /app && python seed_all.py $seed_args'"
+          python /tmp/az_containerapp_exec.py "bash -c \"cd /app && python seed_all.py $seed_args\""
           echo "Seeding complete"
 
       - name: Health check (ready-lite + diagnostics)
@@ -330,7 +330,7 @@ jobs:
           while [ $SECONDS -lt $end ]; do
             attempt=$((attempt+1))
             # Run curl inside the running container to avoid public ingress/ringfence
-            if python /tmp/az_containerapp_exec.py 'sh -lc '\''code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health/ready-lite || echo 000); echo ready-lite: $code; [ "$code" = 200 ]'\'''; then
+            if python /tmp/az_containerapp_exec.py "bash -c \"code=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health/ready-lite || echo 000); echo ready-lite: \$code; [ \"\$code\" = 200 ]\""; then
               ok=true
               break
             fi
@@ -343,15 +343,15 @@ jobs:
             echo "ready-lite check (internal) failed" >&2; exit 1; fi
           echo "ready-lite OK (internal)"
           # Optional: surface deep readiness and startup via internal checks (non-fatal)
-          python /tmp/az_containerapp_exec.py "sh -lc 'curl -s -o /dev/null -w \"deep=%{http_code}\\n\" http://localhost:8000/health/ready || true'" || true
-          python /tmp/az_containerapp_exec.py "sh -lc 'curl -s -o /dev/null -w \"startup=%{http_code}\\n\" http://localhost:8000/health/startup || true'" || true
+          python /tmp/az_containerapp_exec.py "bash -c \"curl -s -o /dev/null -w 'deep=%{http_code}\\n' http://localhost:8000/health/ready || true\"" || true
+          python /tmp/az_containerapp_exec.py "bash -c \"curl -s -o /dev/null -w 'startup=%{http_code}\\n' http://localhost:8000/health/startup || true\"" || true
 
       - name: DB connectivity check (internal public endpoint)
         run: |
           set -euo pipefail
           echo "Checking DB connectivity via internal call to /api/public/tenant-meta (expects 200/304/404, not 5xx) ..."
           # Use explicit header to exercise DB lookup; 404 is acceptable if tenant doesn't exist
-          python /tmp/az_containerapp_exec.py 'sh -lc '\''code=$(curl -s -H "X-Tenant-ID: ${DEFAULT_TENANT:-default}" -o /dev/null -w "%{http_code}" http://localhost:8000/api/public/tenant-meta || echo 000); echo tenant-meta: $code; case "$code" in 5*) exit 1 ;; *) exit 0 ;; esac'\'''
+          python /tmp/az_containerapp_exec.py "bash -c \"code=\$(curl -s -H 'X-Tenant-ID: ${DEFAULT_TENANT:-default}' -o /dev/null -w '%{http_code}' http://localhost:8000/api/public/tenant-meta || echo 000); echo tenant-meta: \$code; case \"\$code\" in 5*) exit 1 ;; *) exit 0 ;; esac\""
           echo "DB connectivity appears OK (no 5xx from tenant-meta)."
 
       - name: Post-deploy smoke tests

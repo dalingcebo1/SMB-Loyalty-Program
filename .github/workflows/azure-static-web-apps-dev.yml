@@ -102,6 +102,29 @@ jobs:
           VITE_YOCO_PUBLIC_KEY: ${{ vars.VITE_YOCO_PUBLIC_KEY_DEV || vars.VITE_YOCO_PUBLIC_KEY || secrets.VITE_YOCO_PUBLIC_KEY_DEV || secrets.VITE_YOCO_PUBLIC_KEY }}
           VITE_APP_VERSION: ${{ github.sha }}
 
+      - name: Verify built assets (API base + placeholder check)
+        if: always()
+        run: |
+          cd Frontend/dist
+          echo "Verifying dist contents..."
+          if [ ! -f index.html ]; then
+            echo "::error::index.html missing in dist; build likely failed."; exit 1; fi
+          echo "Dist file list:"; ls -1 | sed 's/^/ - /'
+          if [ -n "$API_BASE" ]; then
+            echo "Checking for API base string: $API_BASE"
+            if grep -R --include='*.js' -q "$API_BASE" .; then
+              echo "API base found in JS bundle.";
+            else
+              echo "::warning::API base '$API_BASE' not found in JS bundle; may be loaded dynamically or missing.";
+            fi
+          else
+            echo "::warning::API_BASE unset; cannot verify inlining.";
+          fi
+          if grep -q "Congratulations" index.html; then
+            echo "::error::Azure placeholder content detected in index.html; deployment would serve default page."; exit 1; fi
+        env:
+          API_BASE: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
+
       - name: Upload build artifact (skip deploy path)
         if: steps.prereq.outputs.can_deploy != 'true'
         uses: actions/upload-artifact@v4

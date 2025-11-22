@@ -1,0 +1,94 @@
+name: Azure Static Web Apps CI/CD (Dev)
+
+on:
+  push:
+    branches:
+      - develop
+      - "feature/**"
+      - "test/**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      vite_api_base_url:
+        description: "Override VITE_API_BASE_URL for dev (e.g., https://dev-api.example.com)"
+        required: false
+        type: string
+
+jobs:
+  build_and_deploy_dev:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Dev Frontend
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+
+      - name: Upsert VITE_API_BASE_URL_DEV from manual input (optional)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.vite_api_base_url != ''
+        uses: actions/github-script@v7
+        env:
+          VITE_API_BASE_URL_DEV_IN: ${{ github.event.inputs.vite_api_base_url }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const value = process.env.VITE_API_BASE_URL_DEV_IN;
+            if (value && String(value).trim().length > 0) {
+              core.info(`Setting repository variable VITE_API_BASE_URL_DEV=${value}`);
+              await github.request('PUT /repos/{owner}/{repo}/actions/variables/{name}', {
+                owner,
+                repo,
+                name: 'VITE_API_BASE_URL_DEV',
+                value: String(value),
+              });
+            } else {
+              core.info('No VITE_API_BASE_URL_DEV provided; skipping.');
+            }
+
+      - name: Sanity check dev build env (VITE_* presence)
+        run: |
+          echo "VITE_API_BASE_URL_DEV=${VITE_API_BASE_URL_DEV:+Set}" 
+          echo "VITE_FIREBASE_PROJECT_ID_DEV=${VITE_FIREBASE_PROJECT_ID_DEV:-Missing}"
+        env:
+          VITE_API_BASE_URL_DEV: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
+          VITE_FIREBASE_PROJECT_ID_DEV: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
+
+      - name: Prefer npm – remove yarn.lock to avoid Yarn engine checks
+        run: |
+          rm -f Frontend/yarn.lock || true
+
+      - name: Build And Deploy (Dev SWA)
+        id: builddeploy-dev
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "./Frontend"
+          output_location: "dist"
+          app_build_command: |
+            rm -f yarn.lock || true
+            npm ci
+            npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY_DEV || vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY_DEV || secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN_DEV || vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET_DEV || vars.VITE_FIREBASE_STORAGE_BUCKET || secrets.VITE_FIREBASE_STORAGE_BUCKET_DEV || secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID_DEV || vars.VITE_FIREBASE_MESSAGING_SENDER_ID || secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_DEV || secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID_DEV || vars.VITE_FIREBASE_APP_ID || secrets.VITE_FIREBASE_APP_ID_DEV || secrets.VITE_FIREBASE_APP_ID }}
+          VITE_YOCO_PUBLIC_KEY: ${{ vars.VITE_YOCO_PUBLIC_KEY_DEV || vars.VITE_YOCO_PUBLIC_KEY || secrets.VITE_YOCO_PUBLIC_KEY_DEV || secrets.VITE_YOCO_PUBLIC_KEY }}
+          USE_NPM: "true"
+          NODE_VERSION: "20"
+          WEBSITE_NODE_DEFAULT_VERSION: "~20"
+          SWA_NODE_VERSION: "20"
+          VITE_APP_VERSION: ${{ github.sha }}

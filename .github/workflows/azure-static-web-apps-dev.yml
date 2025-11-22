@@ -92,7 +92,7 @@ jobs:
           cd Frontend
           npm run build
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY_DEV || vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY_DEV || secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN_DEV || vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -121,7 +121,7 @@ jobs:
           app_location: "./Frontend"
           output_location: "dist"
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL }}
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY_DEV || vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY_DEV || secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN_DEV || vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}

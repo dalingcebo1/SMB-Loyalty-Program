@@ -647,14 +647,21 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
             request.state.tenant_id = t.id
             return TenantContext(t)
 
-    # Production fallback to default tenant
-    if settings.environment == 'production' and settings.default_tenant:
+    # Fallback to default tenant when allowed (production always, optionally non-prod)
+    fallback_allowed = (
+        bool(settings.default_tenant)
+        and (settings.environment == 'production' or settings.allow_default_tenant_fallback_non_prod)
+    )
+    if fallback_allowed:
         try:
             t = db.query(_Tenant).filter_by(id=settings.default_tenant).first()
         except (ProgrammingError, OperationalError, DatabaseError) as exc:
             logger.warning(
                 "default tenant lookup failed; returning no-tenant",
-                extra={"default_tenant": settings.default_tenant},
+                extra={
+                    "default_tenant": settings.default_tenant,
+                    "environment": settings.environment,
+                },
                 exc_info=exc,
             )
             try:

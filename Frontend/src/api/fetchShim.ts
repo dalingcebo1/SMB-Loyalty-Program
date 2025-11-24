@@ -1,7 +1,10 @@
 const ABSOLUTE_URL = /^[a-z]+:\/\//i;
 
 function computeBaseURL(): string | null {
-  const raw = import.meta.env?.VITE_API_BASE_URL ?? '';
+  const raw =
+    import.meta.env?.VITE_API_BASE_URL_DEV ??
+    import.meta.env?.VITE_API_BASE_URL ??
+    '';
   const trimmed = raw.replace(/\/+$/g, '');
   if (!trimmed) return null;
   if (trimmed.endsWith('/api')) return trimmed;

@@ -70,8 +70,11 @@ jobs:
           if [ -z "$API_BASE_URL" ]; then
             echo "::warning::API base empty; Frontend/.env.production not updated.";
           else
-            printf 'VITE_API_BASE_URL=%s\n' "$API_BASE_URL" > Frontend/.env.production
-            echo "Pinned VITE_API_BASE_URL to $API_BASE_URL for this build.";
+            {
+              printf 'VITE_API_BASE_URL=%s\n' "$API_BASE_URL"
+              printf 'VITE_API_BASE_URL_DEV=%s\n' "$API_BASE_URL"
+            } > Frontend/.env.production
+            echo "Pinned VITE_API_BASE_URL and VITE_API_BASE_URL_DEV to $API_BASE_URL for this build.";
           fi
         env:
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || secrets.CA_PUBLIC_API_URL_DEV || env.API_BASE_FALLBACK }}
@@ -106,6 +109,7 @@ jobs:
           npm run build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || secrets.CA_PUBLIC_API_URL_DEV || env.API_BASE_FALLBACK }}
+          VITE_API_BASE_URL_DEV: ${{ vars.VITE_API_BASE_URL_DEV || secrets.CA_PUBLIC_API_URL_DEV || env.API_BASE_FALLBACK }}
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY_DEV || secrets.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY_DEV }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN || vars.VITE_FIREBASE_AUTH_DOMAIN_DEV || secrets.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV }}
@@ -148,6 +152,7 @@ jobs:
             npm run build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || secrets.CA_PUBLIC_API_URL_DEV || env.API_BASE_FALLBACK }}
+          VITE_API_BASE_URL_DEV: ${{ vars.VITE_API_BASE_URL_DEV || secrets.CA_PUBLIC_API_URL_DEV || env.API_BASE_FALLBACK }}
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY_DEV || secrets.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY_DEV }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN || vars.VITE_FIREBASE_AUTH_DOMAIN_DEV || secrets.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV }}

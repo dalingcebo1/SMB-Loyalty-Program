@@ -115,6 +115,15 @@ jobs:
           VITE_YOCO_PUBLIC_KEY: ${{ vars.VITE_YOCO_PUBLIC_KEY || vars.VITE_YOCO_PUBLIC_KEY_DEV || secrets.VITE_YOCO_PUBLIC_KEY || secrets.VITE_YOCO_PUBLIC_KEY_DEV }}
           VITE_APP_VERSION: ${{ github.sha }}
 
+      - name: Fail if localhost API base is still in bundle (build only)
+        if: steps.prereq.outputs.can_deploy != 'true'
+        run: |
+          cd Frontend
+          if grep -R "127.0.0.1:8000" dist || grep -R "http://127.0.0.1" dist; then
+            echo "::error::Found localhost API base in built assets. Check VITE_API_BASE_URL* wiring."
+            exit 1
+          fi
+
       - name: Upload build artifact (build only)
         if: steps.prereq.outputs.can_deploy != 'true'
         uses: actions/upload-artifact@v4

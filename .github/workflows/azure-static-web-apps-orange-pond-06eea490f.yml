@@ -65,6 +65,17 @@ jobs:
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV }}
           VITE_YOCO_PUBLIC_KEY: ${{ vars.VITE_YOCO_PUBLIC_KEY || secrets.VITE_YOCO_PUBLIC_KEY || vars.VITE_YOCO_PUBLIC_KEY_DEV || secrets.VITE_YOCO_PUBLIC_KEY_DEV }}
 
+      - name: Write production env override for Vite
+        run: |
+          if [ -z "$API_BASE_URL" ]; then
+            echo "::warning::API base empty; Frontend/.env.production not updated.";
+          else
+            printf 'VITE_API_BASE_URL=%s\n' "$API_BASE_URL" > Frontend/.env.production
+            echo "Pinned VITE_API_BASE_URL to $API_BASE_URL for this build.";
+          fi
+        env:
+          API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || secrets.CA_PUBLIC_API_URL_DEV || env.API_BASE_FALLBACK }}
+
       - name: Prefer npm – remove yarn.lock to avoid Yarn engine checks
         run: |
           rm -f Frontend/yarn.lock || true

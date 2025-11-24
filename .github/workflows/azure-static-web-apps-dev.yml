@@ -63,6 +63,18 @@ jobs:
           VITE_API_BASE_URL_DEV: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || env.DEV_API_BASE_FALLBACK }}
           VITE_FIREBASE_PROJECT_ID_DEV: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
 
+      - name: Write production env override for Vite
+        run: |
+          API_BASE="$API_BASE_URL"
+          if [ -z "$API_BASE" ]; then
+            echo "::warning::API base empty; leaving Frontend/.env.production untouched.";
+          else
+            printf 'VITE_API_BASE_URL=%s\n' "$API_BASE" > Frontend/.env.production
+            echo "Wrote Frontend/.env.production with API base $API_BASE";
+          fi
+        env:
+          API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || env.DEV_API_BASE_FALLBACK }}
+
       - name: Validate deployment prerequisites
         id: prereq
         run: |

@@ -17,8 +17,10 @@ function computeBaseURL(): string | null {
     import.meta.env?.VITE_API_BASE_URL ??
     '';
   const trimmed = raw.replace(/\/+$/g, '');
-  // Safety: in production builds, never use localhost/127.0.0.1
-  if (import.meta.env?.PROD && trimmed && isLocalHost(trimmed)) {
+  // Safety: never use localhost/127.0.0.1 when app isn't served from localhost
+  const isBrowser = typeof window !== 'undefined';
+  const onLocalHost = isBrowser && ['localhost','127.0.0.1'].includes(window.location.hostname);
+  if (trimmed && isLocalHost(trimmed) && !onLocalHost) {
     return null; // fall back to relative fetch
   }
   if (!trimmed) return null;

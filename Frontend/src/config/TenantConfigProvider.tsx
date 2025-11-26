@@ -90,6 +90,7 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
       <div style={{padding:'2rem', textAlign:'center', fontFamily:'sans-serif'}}>
         <div className="tenant-loading-spinner" style={{marginBottom:'1rem'}} />
         <div>Loading tenant configuration…</div>
+        <div style={{ marginTop: '0.75rem', fontSize: 12, color: '#666' }}>Build: {String((import.meta as any)?.env?.VITE_APP_VERSION || 'dev-local')}</div>
       </div>
     );
   }
@@ -98,6 +99,7 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
       <div style={{padding:'2rem', textAlign:'center', color:'var(--brand-text,#b00)'}}>
         <p style={{marginBottom:'1rem'}}>Failed to load tenant configuration.</p>
         <button onClick={() => refetch()} style={{padding:'0.5rem 1rem', background:'var(--brand-primary,#333)', color:'#fff', borderRadius:4}}>Retry</button>
+        <div style={{ marginTop: '0.75rem', fontSize: 12, color: '#666' }}>Build: {String((import.meta as any)?.env?.VITE_APP_VERSION || 'dev-local')}</div>
       </div>
     );
   }

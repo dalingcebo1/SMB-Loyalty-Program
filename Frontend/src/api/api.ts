@@ -33,8 +33,12 @@ function computeBaseURL() {
   return `${trimmed}/api`;
 }
 
+const resolvedBase = computeBaseURL();
+try {
+  console.info('[API] baseURL resolved', { baseURL: resolvedBase, host: typeof window!== 'undefined' ? window.location.hostname : 'ssr' });
+} catch {}
 const api = axios.create({
-  baseURL: computeBaseURL(),
+  baseURL: resolvedBase,
 });
 
 const ABSOLUTE_URL = /^[a-z]+:\/\//i;

@@ -40,6 +40,7 @@ function normalizeRelativePath(path: string): string {
 
 if (typeof window !== 'undefined') {
   const baseURL = computeBaseURL();
+  try { console.info('[fetchShim] baseURL resolved', { baseURL, host: window.location.hostname }); } catch {}
   if (baseURL) {
     const origFetch: typeof window.fetch = window.fetch.bind(window);
 

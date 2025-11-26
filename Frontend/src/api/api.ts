@@ -4,12 +4,28 @@ import axios from "axios";
 // Ensure all requests hit the backend's /api prefix.
 // Prefer VITE_API_BASE_URL_DEV when present (used by dev/preview deployments),
 // otherwise fall back to VITE_API_BASE_URL. If neither is set, use relative '/api'.
+function isLocalHost(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    // Not an absolute URL, check simple patterns
+    const lower = url.toLowerCase();
+    return lower.includes('localhost') || lower.includes('127.0.0.1');
+  }
+}
+
 function computeBaseURL() {
   const raw =
     import.meta.env?.VITE_API_BASE_URL_DEV ??
     import.meta.env?.VITE_API_BASE_URL ??
     "";
   const trimmed = raw.replace(/\/+$/g, "");
+  // Safety: in production builds, never use localhost/127.0.0.1
+  if (import.meta.env?.PROD && trimmed && isLocalHost(trimmed)) {
+    return "/api";
+  }
   if (!trimmed) return "/api";
   if (trimmed.endsWith("/api")) return trimmed; // already includes /api
   return `${trimmed}/api`;

@@ -1,11 +1,26 @@
 const ABSOLUTE_URL = /^[a-z]+:\/\//i;
 
+function isLocalHost(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    const lower = url.toLowerCase();
+    return lower.includes('localhost') || lower.includes('127.0.0.1');
+  }
+}
+
 function computeBaseURL(): string | null {
   const raw =
     import.meta.env?.VITE_API_BASE_URL_DEV ??
     import.meta.env?.VITE_API_BASE_URL ??
     '';
   const trimmed = raw.replace(/\/+$/g, '');
+  // Safety: in production builds, never use localhost/127.0.0.1
+  if (import.meta.env?.PROD && trimmed && isLocalHost(trimmed)) {
+    return null; // fall back to relative fetch
+  }
   if (!trimmed) return null;
   if (trimmed.endsWith('/api')) return trimmed;
   return `${trimmed}/api`;

@@ -25,6 +25,10 @@ function computeBaseURL() {
   // Safety: never use localhost/127.0.0.1 when running in a non-local host
   const isBrowser = typeof window !== 'undefined';
   const onLocalHost = isBrowser && ['localhost','127.0.0.1'].includes(window.location.hostname);
+  // Hard override: when served from a public host, always use relative /api to rely on SWA proxy
+  if (isBrowser && !onLocalHost) {
+    return "/api";
+  }
   if (trimmed && isLocalHost(trimmed) && !onLocalHost) {
     return "/api";
   }

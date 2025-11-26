@@ -14,3 +14,6 @@ venv/
 # Internal AI / Copilot instruction files (do not commit these to keep sensitive guidance out of VCS)
 .github/copilot-instructions.md
 .github/instructions/
+
+# Ephemeral AI/working docs (not for commit)
+docs/DEPLOYMENT_FLOW_DEV_TO_PROD.md

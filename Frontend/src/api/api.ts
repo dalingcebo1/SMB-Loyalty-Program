@@ -90,17 +90,76 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err.response?.status;
-    // Global 401 handler
-  if (status === 401) {
+    const url = err.config.url || '';
+    
+    // Global 401 handler - session expired or invalid token
+    if (status === 401) {
       // Only force logout on auth errors, not on other protected endpoints
-      const url = err.config.url || '';
       if (url.includes('/auth/')) {
         localStorage.removeItem('token');
-  notifyErrorKey('notifications.session.expired');
+        notifyErrorKey('notifications.session.expired');
         window.location.href = '/login';
       }
       return Promise.reject(err);
     }
+    
+    // Global 403 handler - permission denied or wrong account
+    if (status === 403) {
+      const errorDetail = err.response?.data?.detail;
+      
+      // Check if this is a permission/role mismatch
+      if (errorDetail && typeof errorDetail === 'string') {
+        if (errorDetail.toLowerCase().includes('permission') || 
+            errorDetail.toLowerCase().includes('not authorized') ||
+            errorDetail.toLowerCase().includes('access denied')) {
+          // Show a friendly message about switching accounts
+          console.warn('[API] Permission denied - possible account mismatch');
+          
+          // Create a notification banner
+          const banner = document.createElement('div');
+          banner.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #FEE2E2;
+            border: 1px solid #EF4444;
+            color: #991B1B;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10000;
+            max-width: 400px;
+            font-family: system-ui, -apple-system, sans-serif;
+          `;
+          banner.innerHTML = `
+            <div style="display: flex; align-items: start; gap: 12px;">
+              <svg style="width: 24px; height: 24px; flex-shrink: 0; margin-top: 2px;" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+              <div style="flex: 1;">
+                <div style="font-weight: 600; margin-bottom: 4px;">Access Denied</div>
+                <div style="font-size: 14px; line-height: 1.5; margin-bottom: 12px;">
+                  You don't have permission to access this resource. This may happen if you're logged in with the wrong account.
+                </div>
+                <button onclick="localStorage.removeItem('token'); window.location.href='/login';" 
+                        style="background: #DC2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                  Log out and try a different account
+                </button>
+              </div>
+              <button onclick="this.parentElement.parentElement.remove()" 
+                      style="background: none; border: none; cursor: pointer; padding: 0; color: #991B1B; font-size: 20px; line-height: 1; margin-top: -4px;">
+                ×
+              </button>
+            </div>
+          `;
+          document.body.appendChild(banner);
+          
+          // Auto-remove after 10 seconds
+          setTimeout(() => banner.remove(), 10000);
+        }
+      }
+    }
+    
     console.error('[API Response Error]', {
       url: err.config.baseURL + err.config.url,
       status,

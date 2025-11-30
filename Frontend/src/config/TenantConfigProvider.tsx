@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/api';
 import { ModuleFlags, getModuleFlags } from './modules';
 import { applyFeatureDefaults } from './features';
@@ -49,6 +49,7 @@ async function fetchTenantMeta(): Promise<TenantMetaResponse> {
 }
 
 export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const queryClient = useQueryClient();
   const { data: meta, error, isLoading, refetch } = useQuery({
     queryKey: TENANT_META_QUERY_KEY,
     queryFn: fetchTenantMeta,
@@ -65,6 +66,17 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (branding.secondaryColor) root.style.setProperty('--brand-secondary', String(branding.secondaryColor));
     if (branding.textColor) root.style.setProperty('--brand-text', String(branding.textColor));
   }, [meta]);
+
+  // Listen for branding updates from admin panel
+  useEffect(() => {
+    const handler = () => {
+      console.log('[TenantConfigProvider] Received tenant-theme:refresh, invalidating cache and refetching...');
+      // Invalidate cache to force a fresh fetch, bypassing staleTime
+      queryClient.invalidateQueries({ queryKey: TENANT_META_QUERY_KEY });
+    };
+    window.addEventListener('tenant-theme:refresh', handler);
+    return () => window.removeEventListener('tenant-theme:refresh', handler);
+  }, [queryClient]);
 
   const moduleFlags = useMemo(() => {
     const base = getModuleFlags();

@@ -60,7 +60,7 @@ jobs:
           echo "VITE_API_BASE_URL_DEV=${VITE_API_BASE_URL_DEV:+Set}" 
           echo "VITE_FIREBASE_PROJECT_ID_DEV=${VITE_FIREBASE_PROJECT_ID_DEV:-Missing}"
         env:
-          VITE_API_BASE_URL_DEV: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || env.DEV_API_BASE_FALLBACK }}
+          VITE_API_BASE_URL_DEV: ${{ github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || env.DEV_API_BASE_FALLBACK }}
           VITE_FIREBASE_PROJECT_ID_DEV: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
 
       - name: Write production env override for Vite
@@ -76,7 +76,7 @@ jobs:
             echo "Wrote Frontend/.env.production with API base $API_BASE";
           fi
         env:
-          API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || env.DEV_API_BASE_FALLBACK }}
+          API_BASE_URL: ${{ github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || env.DEV_API_BASE_FALLBACK }}
 
       - name: Validate deployment prerequisites
         id: prereq
@@ -94,7 +94,7 @@ jobs:
           echo "can_deploy=$can_deploy" >> "$GITHUB_OUTPUT"
         env:
           DEPLOY_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
-          API_BASE: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || env.DEV_API_BASE_FALLBACK }}
+          API_BASE: ${{ github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || env.DEV_API_BASE_FALLBACK }}
 
       - name: Install Node & dependencies (build-only or deploy)
         if: always()
@@ -109,8 +109,8 @@ jobs:
           cd Frontend
           npm run build
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || env.DEV_API_BASE_FALLBACK }}
-          VITE_API_BASE_URL_DEV: ${{ vars.VITE_API_BASE_URL_DEV || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || env.DEV_API_BASE_FALLBACK }}
+          VITE_API_BASE_URL: ${{ github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || env.DEV_API_BASE_FALLBACK }}
+          VITE_API_BASE_URL_DEV: ${{ github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || vars.VITE_API_BASE_URL_DEV || env.DEV_API_BASE_FALLBACK }}
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY_DEV || vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY_DEV || secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN_DEV || vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -141,7 +141,7 @@ jobs:
           if grep -q "Congratulations" index.html; then
             echo "::error::Azure placeholder content detected in index.html; deployment would serve default page."; exit 1; fi
         env:
-          API_BASE: ${{ vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || env.DEV_API_BASE_FALLBACK }}
+          API_BASE: ${{ github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL || env.DEV_API_BASE_FALLBACK }}
 
       - name: Remove Frontend node_modules before deploy upload
         if: always()

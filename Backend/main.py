@@ -37,6 +37,7 @@ from app.routes.notifications import router as notifications_router
 from app.routes.profile import router as profile_router
 from app.routes.secure import router as secure_router
 from app.routes.ops import router as ops_router
+from app.routes.tenant_domains import router as tenant_domains_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 from app.core.rate_limit import check_rate, compute_retry_after, build_429_payload
 from app.core.rate_limit import bucket_snapshot  # used elsewhere optionally
@@ -505,6 +506,7 @@ router_mounts = [
     ("/api/profile",   profile_router),
     ("/api",           secure_router),
     ("/api",           ops_router),
+    ("/api",           tenant_domains_router),
 ]
 # Conditionally include dev router outside production
 if settings.environment != 'production':
@@ -564,11 +566,14 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
     Attempts:
       1) X-Tenant-ID explicit header
       2) X-Forwarded-Host / Forwarded host= / Host / Origin host
-         - tries exact primary_domain, then subdomain (first label) match
+         - tries tenant_domains table first (dynamic domains)
+         - then primary_domain (legacy support)
       3) In production, if still unresolved and default_tenant is set, use it
     
     Returns None if no tenant found, allowing endpoints to handle gracefully.
     """
+    from app.models import TenantDomain as _TenantDomain
+    
     # 1) Explicit header
     x_tid = request.headers.get("x-tenant-id") or request.headers.get("X-Tenant-ID")
     if x_tid:
@@ -628,7 +633,27 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
             seen.add(c)
             ordered.append(c)
 
-    # Try primary_domain lookup
+    # Try tenant_domains table first (dynamic domain mappings)
+    for h in ordered:
+        try:
+            domain_entry = db.query(_TenantDomain).filter_by(domain=h).first()
+            if domain_entry:
+                t = db.query(_Tenant).filter_by(id=domain_entry.tenant_id).first()
+                if t:
+                    request.state.tenant_id = t.id
+                    return TenantContext(t)
+        except (ProgrammingError, OperationalError, DatabaseError) as exc:
+            logger.warning(
+                "tenant_domains lookup failed; continuing",
+                extra={"host": h},
+                exc_info=exc,
+            )
+            try:
+                db.rollback()
+            except Exception:
+                pass
+
+    # Fallback: try primary_domain lookup (legacy support)
     for h in ordered:
         try:
             t = db.query(_Tenant).filter_by(primary_domain=h).first()

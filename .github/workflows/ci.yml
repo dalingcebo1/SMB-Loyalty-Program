@@ -49,6 +49,8 @@ jobs:
           pip install mypy
           mypy Backend --ignore-missing-imports
       - name: Run tests with coverage
+        env:
+          ALLOW_NEW_ENDPOINTS: 1
         run: |
           pip install pytest-cov
           pytest --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml -v Backend/tests

@@ -3002,6 +3002,123 @@
         "title": "TenantCreate",
         "type": "object"
       },
+      "TenantDomainCreate": {
+        "description": "Schema for creating a tenant domain mapping.",
+        "properties": {
+          "domain": {
+            "description": "Domain name (e.g., 'example.com' or 'subdomain.example.com')",
+            "title": "Domain",
+            "type": "string"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Environment label (e.g., 'production', 'dev', 'staging')",
+            "title": "Environment"
+          },
+          "is_primary": {
+            "default": false,
+            "description": "Whether this is the primary domain for the tenant",
+            "title": "Is Primary",
+            "type": "boolean"
+          },
+          "tenant_id": {
+            "description": "Tenant ID to map the domain to",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "domain"
+        ],
+        "title": "TenantDomainCreate",
+        "type": "object"
+      },
+      "TenantDomainResponse": {
+        "description": "Schema for tenant domain response.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_primary": {
+            "title": "Is Primary",
+            "type": "boolean"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "domain",
+          "is_primary",
+          "environment",
+          "created_at"
+        ],
+        "title": "TenantDomainResponse",
+        "type": "object"
+      },
+      "TenantDomainUpdate": {
+        "description": "Schema for updating a tenant domain mapping.",
+        "properties": {
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Environment label (e.g., 'production', 'dev', 'staging')",
+            "title": "Environment"
+          },
+          "is_primary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether this is the primary domain for the tenant",
+            "title": "Is Primary"
+          }
+        },
+        "title": "TenantDomainUpdate",
+        "type": "object"
+      },
       "TenantInvite": {
         "properties": {
           "email": {
@@ -4203,6 +4320,255 @@
         "summary": "Remove Rate Limit",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/admin/tenant-domains/": {
+      "get": {
+        "description": "List all tenant domain mappings, optionally filtered by tenant_id.",
+        "operationId": "list_tenant_domains_api_admin_tenant_domains__get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantDomainResponse"
+                  },
+                  "title": "Response List Tenant Domains Api Admin Tenant Domains  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Tenant Domains",
+        "tags": [
+          "Admin - Tenant Domains"
+        ]
+      },
+      "post": {
+        "description": "Create a new tenant domain mapping.",
+        "operationId": "create_tenant_domain_api_admin_tenant_domains__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDomainCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDomainResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Tenant Domain",
+        "tags": [
+          "Admin - Tenant Domains"
+        ]
+      }
+    },
+    "/api/admin/tenant-domains/lookup/{domain}": {
+      "get": {
+        "description": "Look up which tenant a specific domain maps to.",
+        "operationId": "lookup_domain_api_admin_tenant_domains_lookup__domain__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain",
+            "required": true,
+            "schema": {
+              "title": "Domain",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDomainResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Lookup Domain",
+        "tags": [
+          "Admin - Tenant Domains"
+        ]
+      }
+    },
+    "/api/admin/tenant-domains/{domain_id}": {
+      "delete": {
+        "description": "Delete a tenant domain mapping.",
+        "operationId": "delete_tenant_domain_api_admin_tenant_domains__domain_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Tenant Domain",
+        "tags": [
+          "Admin - Tenant Domains"
+        ]
+      },
+      "patch": {
+        "description": "Update a tenant domain mapping.",
+        "operationId": "update_tenant_domain_api_admin_tenant_domains__domain_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDomainUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDomainResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Tenant Domain",
+        "tags": [
+          "Admin - Tenant Domains"
         ]
       }
     },
@@ -14296,7 +14662,7 @@
         ]
       },
       "patch": {
-        "description": "Partial update for branding settings (white-labeling convenience).\n\nAllows updating a subset of fields without sending the full object. Mirrors PUT\nsemantics but without overwriting unspecified values. Creates the branding row\nif it does not yet exist. Capability guard enforced by router dependencies.",
+        "description": "Partial update for branding settings.\n\nOnly fields provided are modified; unspecified values remain unchanged. Creates\nthe branding row if it doesn't exist. Enforces tenant existence and audit trail.",
         "operationId": "patch_branding_api_tenants__tenant_id__branding_patch",
         "parameters": [
           {

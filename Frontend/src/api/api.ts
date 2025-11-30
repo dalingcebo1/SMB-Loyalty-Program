@@ -86,6 +86,23 @@ api.interceptors.request.use((req) => {
 });
 
 import { notifyErrorKey } from '../utils/notifications';
+
+// Helper to navigate without full page reload (avoids SWA 404s)
+function navigateToLogin() {
+  localStorage.removeItem('token');
+  delete api.defaults.headers.common["Authorization"];
+  // Use pushState for SPA navigation instead of full reload
+  window.history.pushState({}, '', '/login');
+  // Dispatch popstate to trigger React Router
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  // Fallback: if router doesn't pick it up, do full reload after delay
+  setTimeout(() => {
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }, 100);
+}
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -96,9 +113,8 @@ api.interceptors.response.use(
     if (status === 401) {
       // Only force logout on auth errors, not on other protected endpoints
       if (url.includes('/auth/')) {
-        localStorage.removeItem('token');
         notifyErrorKey('notifications.session.expired');
-        window.location.href = '/login';
+        navigateToLogin();
       }
       return Promise.reject(err);
     }
@@ -141,7 +157,7 @@ api.interceptors.response.use(
                 <div style="font-size: 14px; line-height: 1.5; margin-bottom: 12px;">
                   You don't have permission to access this resource. This may happen if you're logged in with the wrong account.
                 </div>
-                <button onclick="localStorage.removeItem('token'); window.location.href='/login';" 
+                <button onclick="(function(){localStorage.removeItem('token');delete window.apiClient?.defaults?.headers?.common?.['Authorization'];window.history.pushState({},'','/login');window.dispatchEvent(new PopStateEvent('popstate'));setTimeout(()=>{if(window.location.pathname!=='/login')window.location.href='/login'},100)})();" 
                         style="background: #DC2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                   Log out and try a different account
                 </button>

@@ -4,8 +4,9 @@
 The SMB Loyalty Program provides a comprehensive multi-tenant SaaS platform for small and medium businesses to manage customer loyalty programs, process orders, and handle payments.
 
 ## Base URL
-- Development: `http://localhost:8000`
-- Production: `https://api.yourdomain.com`
+- Development: `https://dev-loyalty-backend.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io`
+- Production: `https://api.yourdomain.com` (to be configured)
+- Local: `http://localhost:8000`
 
 ## Authentication
 All API endpoints require authentication via JWT token except for public endpoints.
@@ -14,8 +15,24 @@ All API endpoints require authentication via JWT token except for public endpoin
 ```
 Authorization: Bearer <jwt_token>
 Content-Type: application/json
-X-Tenant-ID: <tenant_id> (optional, can be inferred from domain)
+X-Tenant-ID: <tenant_id> (optional, inferred from Host header or domain mapping)
 ```
+
+### Tenant Resolution
+The platform supports multi-tenant architecture with dynamic domain mapping:
+
+1. **Domain-based resolution** (recommended):
+   - Request sent to mapped domain (e.g., `orange-pond-06eea490f.3.azurestaticapps.net`)
+   - Backend checks `Host` header against `tenant_domains` table
+   - Tenant context automatically applied
+
+2. **Header-based resolution** (fallback):
+   - Include `X-Tenant-ID: tenant-slug` header
+   - Used when domain mapping not found
+
+3. **Default tenant fallback** (dev/staging only):
+   - If no domain mapping and no header, uses `DEFAULT_TENANT` env var
+   - Disabled in production for security
 
 ## Core API Endpoints
 
@@ -83,6 +100,40 @@ X-Tenant-ID: <tenant_id> (optional, can be inferred from domain)
 - `POST /api/notifications/send` - Send notification (admin only)
 - `GET /api/notifications/admin/all` - List all notifications (admin only)
 - `GET /api/notifications/admin/stats` - Notification statistics (admin only)
+
+### Tenant Domains (`/api/admin/tenant-domains`) - Admin Only
+- `GET /api/admin/tenant-domains/` - List all tenant domain mappings
+- `POST /api/admin/tenant-domains/` - Create new domain mapping
+- `GET /api/admin/tenant-domains/{id}` - Get domain mapping details
+- `PATCH /api/admin/tenant-domains/{id}` - Update domain mapping
+- `DELETE /api/admin/tenant-domains/{id}` - Delete domain mapping
+- `GET /api/admin/tenant-domains/lookup/{domain}` - Lookup tenant by domain
+
+**Example - Create Domain Mapping:**
+```json
+POST /api/admin/tenant-domains/
+{
+  "tenant_id": "acme-corp",
+  "domain": "loyalty.acme.com",
+  "is_primary": true,
+  "environment": "production"
+}
+```
+
+**Example - Lookup Domain:**
+```bash
+GET /api/admin/tenant-domains/lookup/orange-pond-06eea490f.3.azurestaticapps.net
+
+Response:
+{
+  "id": 1,
+  "tenant_id": "default",
+  "domain": "orange-pond-06eea490f.3.azurestaticapps.net",
+  "is_primary": true,
+  "environment": "dev",
+  "created_at": "2025-11-30T11:00:00Z"
+}
+```
 
 ### Subscriptions (`/api/subscriptions`)
 - `GET /api/subscriptions/plans` - List subscription plans

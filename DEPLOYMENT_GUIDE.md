@@ -2,10 +2,26 @@
 
 ## 🚀 Quick Start Deployment
 
+### Azure Resources
+
+**Development Environment:**
+- Resource Group: `SMB-Loyalty-Group`
+- Backend: `apismbloyaltyapp-dev` (Container App)
+  - URL: `dev-loyalty-backend.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io`
+  - Environment: `smbloyalty-ca-env`
+- Frontend: `SMBstaticwebapp` (Static Web Apps)
+  - URL: `orange-pond-06eea490f.3.azurestaticapps.net`
+- Database: Azure PostgreSQL Flexible Server
+
+**Production Environment:**
+- Backend: `apismbloyaltyapp` (Container App)
+- Frontend: Production Static Web App (to be configured)
+
 ### Prerequisites
-- Docker and Docker Compose installed
-- Domain name with SSL certificate
-- PostgreSQL database (or use included Docker setup)
+- Azure CLI installed and authenticated
+- Azure Container Registry: `smblpcontainerregistry`
+- Azure subscription with Container Apps and Static Web Apps enabled
+- PostgreSQL database (Azure Flexible Server)
 - Yoco payment gateway account
 - Firebase project for authentication
 
@@ -69,38 +85,79 @@ docker-compose logs -f
 ### 6. Database Migration
 
 ```bash
-# Run database migrations
-docker-compose exec backend alembic upgrade head
+# Run database migrations via Azure Container Apps Console
+# Navigate to: Azure Portal > Container Apps > apismbloyaltyapp-dev > Console
+cd /app
+alembic -c alembic.ini upgrade head
 
-# Create initial admin user (optional)
-docker-compose exec backend python scripts/create_admin.py
+# Seed tenant domain mappings
+python scripts/seed_tenant_domains.py
+
+# Verify migration status
+python -c "from sqlalchemy import create_engine, text; import os; engine = create_engine(os.environ['DATABASE_URL']); conn = engine.connect(); result = conn.execute(text('SELECT version_num FROM alembic_version')); print(f'Current migration: {result.scalar()}')"
 ```
 
-### 7. SSL/TLS Configuration
+### 7. Tenant Domain Configuration
 
-Update `nginx.conf` for SSL:
+The platform uses dynamic tenant resolution via the `tenant_domains` table:
 
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name yourdomain.com;
-    
-    ssl_certificate /etc/nginx/ssl/cert.pem;
-    ssl_certificate_key /etc/nginx/ssl/key.pem;
-    
-    # Backend API
-    location /api/ {
-        proxy_pass http://backend:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    # Frontend
-    location / {
-        proxy_pass http://frontend:3000;
-        proxy_set_header Host $host;
-    }
-}
+**Domain Resolution Logic:**
+1. Check `Host` header against `tenant_domains` table
+2. Fallback to `X-Tenant-ID` header if domain not found
+3. Fallback to `DEFAULT_TENANT` environment variable (dev/staging only)
+
+**Seeded Domains (default tenant):**
+- `orange-pond-06eea490f.3.azurestaticapps.net` (dev frontend)
+- `localhost:5173` (local development)
+- `127.0.0.1:5173` (local development)
+
+**Adding New Tenant Domains:**
+```bash
+# Via Admin API
+curl -X POST https://dev-loyalty-backend.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io/api/admin/tenant-domains/ \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "tenant-slug",
+    "domain": "custom-domain.example.com",
+    "is_primary": true,
+    "environment": "production"
+  }'
+
+# Via database
+INSERT INTO tenant_domains (tenant_id, domain, is_primary, environment) 
+VALUES ('tenant-slug', 'custom-domain.example.com', true, 'production');
+```
+
+**Lookup Domain Mapping:**
+```bash
+curl https://dev-loyalty-backend.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io/api/admin/tenant-domains/lookup/orange-pond-06eea490f.3.azurestaticapps.net \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+### 8. SSL/TLS Configuration
+
+**Azure Container Apps:**
+SSL/TLS is automatically managed by Azure for `*.azurecontainerapps.io` domains.
+
+**Custom Domains:**
+1. Navigate to Azure Portal > Container Apps > `apismbloyaltyapp-dev`
+2. Go to **Custom domains**
+3. Add your custom domain
+4. Azure will provide DNS records (CNAME or TXT) to verify ownership
+5. SSL certificate is automatically provisioned via Azure's managed certificates
+
+**Azure Static Web Apps:**
+SSL/TLS is automatically managed. For custom domains:
+1. Navigate to Azure Portal > Static Web Apps > `SMBstaticwebapp`
+2. Go to **Custom domains**
+3. Add domain and follow DNS verification steps
+4. Azure provisions free SSL certificate automatically
+
+**CORS Configuration:**
+Backend automatically allows requests from configured `ALLOWED_ORIGINS`. Update via environment variable:
+```bash
+ALLOWED_ORIGINS=https://orange-pond-06eea490f.3.azurestaticapps.net,https://custom-domain.com
 ```
 
 ## 📊 Health Monitoring

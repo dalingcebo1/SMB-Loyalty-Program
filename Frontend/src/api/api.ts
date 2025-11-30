@@ -86,22 +86,7 @@ api.interceptors.request.use((req) => {
 });
 
 import { notifyErrorKey } from '../utils/notifications';
-
-// Helper to navigate without full page reload (avoids SWA 404s)
-function navigateToLogin() {
-  localStorage.removeItem('token');
-  delete api.defaults.headers.common["Authorization"];
-  // Use pushState for SPA navigation instead of full reload
-  window.history.pushState({}, '', '/login');
-  // Dispatch popstate to trigger React Router
-  window.dispatchEvent(new PopStateEvent('popstate'));
-  // Fallback: if router doesn't pick it up, do full reload after delay
-  setTimeout(() => {
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
-  }, 100);
-}
+import { logoutAndNavigateToLogin } from '../utils/auth';
 
 api.interceptors.response.use(
   (res) => res,
@@ -114,7 +99,7 @@ api.interceptors.response.use(
       // Only force logout on auth errors, not on other protected endpoints
       if (url.includes('/auth/')) {
         notifyErrorKey('notifications.session.expired');
-        navigateToLogin();
+        logoutAndNavigateToLogin(undefined, 'Session expired (401)');
       }
       return Promise.reject(err);
     }
@@ -131,8 +116,13 @@ api.interceptors.response.use(
           // Show a friendly message about switching accounts
           console.warn('[API] Permission denied - possible account mismatch');
           
+          // Remove any existing banners first to avoid duplicates
+          const existingBanner = document.getElementById('auth-403-banner');
+          if (existingBanner) existingBanner.remove();
+          
           // Create a notification banner
           const banner = document.createElement('div');
+          banner.id = 'auth-403-banner';
           banner.style.cssText = `
             position: fixed;
             top: 20px;
@@ -144,34 +134,66 @@ api.interceptors.response.use(
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             z-index: 10000;
-            max-width: 400px;
+            max-width: 420px;
             font-family: system-ui, -apple-system, sans-serif;
+            animation: slideIn 0.3s ease-out;
           `;
-          banner.innerHTML = `
-            <div style="display: flex; align-items: start; gap: 12px;">
-              <svg style="width: 24px; height: 24px; flex-shrink: 0; margin-top: 2px;" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-              </svg>
-              <div style="flex: 1;">
-                <div style="font-weight: 600; margin-bottom: 4px;">Access Denied</div>
-                <div style="font-size: 14px; line-height: 1.5; margin-bottom: 12px;">
-                  You don't have permission to access this resource. This may happen if you're logged in with the wrong account.
-                </div>
-                <button onclick="(function(){localStorage.removeItem('token');delete window.apiClient?.defaults?.headers?.common?.['Authorization'];window.history.pushState({},'','/login');window.dispatchEvent(new PopStateEvent('popstate'));setTimeout(()=>{if(window.location.pathname!=='/login')window.location.href='/login'},100)})();" 
-                        style="background: #DC2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                  Log out and try a different account
-                </button>
-              </div>
-              <button onclick="this.parentElement.parentElement.remove()" 
-                      style="background: none; border: none; cursor: pointer; padding: 0; color: #991B1B; font-size: 20px; line-height: 1; margin-top: -4px;">
-                ×
-              </button>
-            </div>
-          `;
+          
+          // Create structure with proper DOM nodes
+          const container = document.createElement('div');
+          container.style.cssText = 'display: flex; align-items: start; gap: 12px;';
+          
+          // Icon
+          const icon = document.createElement('svg');
+          icon.style.cssText = 'width: 24px; height: 24px; flex-shrink: 0; margin-top: 2px;';
+          icon.setAttribute('fill', 'currentColor');
+          icon.setAttribute('viewBox', '0 0 20 20');
+          icon.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>';
+          
+          // Content area
+          const content = document.createElement('div');
+          content.style.cssText = 'flex: 1;';
+          
+          const title = document.createElement('div');
+          title.style.cssText = 'font-weight: 600; margin-bottom: 4px;';
+          title.textContent = 'Access Denied';
+          
+          const message = document.createElement('div');
+          message.style.cssText = 'font-size: 14px; line-height: 1.5; margin-bottom: 12px;';
+          message.textContent = "You don't have permission to access this resource. You may be logged in with the wrong account type (e.g., customer vs. staff/admin).";
+          
+          const logoutBtn = document.createElement('button');
+          logoutBtn.textContent = 'Log out and switch accounts';
+          logoutBtn.style.cssText = 'background: #DC2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s;';
+          logoutBtn.onmouseover = () => { logoutBtn.style.background = '#B91C1C'; };
+          logoutBtn.onmouseout = () => { logoutBtn.style.background = '#DC2626'; };
+          logoutBtn.onclick = () => {
+            banner.remove();
+            logoutAndNavigateToLogin(undefined, 'User clicked logout from 403 banner');
+          };
+          
+          // Close button
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '×';
+          closeBtn.style.cssText = 'background: none; border: none; cursor: pointer; padding: 0; color: #991B1B; font-size: 24px; line-height: 1; margin-top: -4px; width: 24px; height: 24px;';
+          closeBtn.onclick = () => banner.remove();
+          
+          // Assemble
+          content.appendChild(title);
+          content.appendChild(message);
+          content.appendChild(logoutBtn);
+          container.appendChild(icon);
+          container.appendChild(content);
+          container.appendChild(closeBtn);
+          banner.appendChild(container);
+          
+          // Add to page
           document.body.appendChild(banner);
           
-          // Auto-remove after 10 seconds
-          setTimeout(() => banner.remove(), 10000);
+          // Auto-remove after 15 seconds (longer than before since this is important)
+          setTimeout(() => {
+            if (banner.parentElement) banner.remove();
+          }, 15000);
         }
       }
     }

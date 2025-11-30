@@ -170,7 +170,9 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           skip_app_build: true
-          app_location: "./Frontend/dist"
+          skip_api_build: true
+          app_location: "Frontend/dist"
+          api_location: ""
           output_location: ""
 
       - name: Cleanup old dev artifacts (keep latest 5)

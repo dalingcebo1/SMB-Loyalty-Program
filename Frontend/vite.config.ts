@@ -7,6 +7,20 @@ import { visualizer } from 'rollup-plugin-visualizer';
 // Import from dist for proper ESM resolution per package exports
 import { VitePWA } from 'vite-plugin-pwa/dist/index.js';
 
+function resolveApiBaseUrl(): string | undefined {
+  const explicitDev = process.env.VITE_API_BASE_URL_DEV;
+  if (explicitDev && explicitDev.trim().length > 0) {
+    return explicitDev.trim();
+  }
+  return process.env.VITE_API_BASE_URL;
+}
+
+// Ensure Vite sees the correct API base at build time
+const resolvedApiBase = resolveApiBaseUrl();
+if (resolvedApiBase) {
+  process.env.VITE_API_BASE_URL = resolvedApiBase;
+}
+
 export default defineConfig({
   // Include 'react-is' to satisfy recharts peer dependency
   optimizeDeps: {
@@ -22,6 +36,23 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       selfDestroying: true,
+      workbox: {
+        // Don't cache navigation requests to always fetch fresh index.html
+        navigateFallback: undefined,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|svg|gif|webp)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 30 * 24 * 60 * 60
+              }
+            }
+          }
+        ]
+      },
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: 'SMB Loyalty',

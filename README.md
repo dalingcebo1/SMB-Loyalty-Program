@@ -1,5 +1,7 @@
 # SMB-Loyalty-Program
 
+Note: Canonical developer and ops documentation has been consolidated under `docs/`. See `docs/README.md` for the maintained docs pack.
+
 | Workflow | Status |
 | --- | --- |
 | Frontend CI (lint, unit tests, build) | ![Frontend CI](https://github.com/dalingcebo1/SMB-Loyalty-Program/actions/workflows/frontend-ci.yml/badge.svg) |
@@ -125,6 +127,17 @@ Production uses JSON logs; locally you get human-readable logs. To preview prod 
 ENVIRONMENT=production uvicorn main:app --port 8000
 ```
 
+### Time Handling
+All backend timestamps must use the `utc_now()` helper (`app/utils/time.py`). Do not call `datetime.utcnow()` directly in application code or tests.
+
+Patterns:
+- Current timestamp: `utc_now()`
+- ISO string: `utc_now().isoformat()`
+- Date math: `utc_now() - timedelta(days=7)`
+- Current date: `utc_now().date()`
+
+Rationale: Centralization enables future transition to timezone-aware or monotonic time sources without sweeping changes. In tests, patch or monkeypatch `app.utils.time.utc_now` for determinism.
+
 ### Sentry (Optional)
 Set `SENTRY_DSN` to enable Sentry. Tracing sample rate defaults to 0.1.
 
@@ -171,6 +184,28 @@ make backend-quality    # lint + type + coverage
 
 ## Deployment & Release
 
+### Azure Deployment Workflow
+
+**Development Pipeline:**
+1. Push to `develop` branch triggers workflows:
+   - `backend-azure-containerapps-dev.yml` - Builds and deploys to `apismbloyaltyapp-dev`
+   - `azure-static-web-apps-orange-pond-06eea490f.yml` - Deploys frontend to `SMBstaticwebapp`
+2. Backend image built via ACR (`smblpcontainerregistry`) remote build
+3. Frontend built and deployed to Azure Static Web Apps
+4. Migrations can be run via workflow dispatch or Azure Console
+
+**Production Pipeline:**
+1. Merge `develop` → `main` via PR
+2. Production workflows triggered automatically
+3. Requires all CI checks passing
+4. Manual approval may be required
+
+**Azure Resources:**
+- **Dev Backend:** `apismbloyaltyapp-dev` in `SMB-Loyalty-Group`
+- **Dev Frontend:** `SMBstaticwebapp` (orange-pond-06eea490f.3.azurestaticapps.net)
+- **Container Registry:** `smblpcontainerregistry`
+- **Database:** Azure PostgreSQL Flexible Server
+
 ### Image Publishing
 Version tags (`vX.Y.Z`) now trigger two GitHub Actions workflows:
 - `release-backend.yml` builds & pushes `ghcr.io/<owner>/smb-loyalty-backend:<tag>` and `:latest`.
@@ -181,6 +216,23 @@ Tag creation example:
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+### Running Migrations in Azure
+
+**Via Azure Portal Console:**
+1. Navigate to Container Apps > `apismbloyaltyapp-dev` > Console
+2. Run:
+```bash
+cd /app
+alembic -c alembic.ini upgrade head
+python scripts/seed_tenant_domains.py
+```
+
+**Via Workflow Dispatch:**
+1. Go to Actions > "Deploy API (Azure Container Apps - Dev)"
+2. Click "Run workflow"
+3. Set `run_migrations` to `true`
+4. Deploy will include migration step
 
 ### Local Database Options
 1. **SQLite (default)** – remove `DATABASE_URL` or set `sqlite:///./dev.db`.
@@ -235,6 +287,56 @@ Adding endpoints without updating the snapshot now fails the test unless you set
 ```
 make snapshot-openapi
 git add Backend/tests/openapi_snapshot.json
+```
+
+## Multi-Tenant Domain Configuration
+
+### Dynamic Tenant Resolution
+The platform uses a `tenant_domains` table to map domains to tenants:
+
+**Current Mappings (default tenant):**
+- `orange-pond-06eea490f.3.azurestaticapps.net` - Dev frontend
+- `localhost:5173` - Local development
+- `127.0.0.1:5173` - Local development
+
+**Resolution Priority:**
+1. `Host` header lookup in `tenant_domains` table
+2. `X-Tenant-ID` request header
+3. `DEFAULT_TENANT` environment variable (dev/staging only)
+
+### Adding New Client Domains
+
+**Via Admin API:**
+```bash
+curl -X POST $API_BASE/api/admin/tenant-domains/ \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{
+    "tenant_id": "new-client",
+    "domain": "loyalty.newclient.com",
+    "is_primary": true,
+    "environment": "production"
+  }'
+```
+
+**Via Seed Script:**
+Edit `Backend/scripts/seed_tenant_domains.py` and add domains, then run:
+```bash
+python Backend/scripts/seed_tenant_domains.py
+```
+
+### Database Schema
+```sql
+CREATE TABLE tenant_domains (
+    id SERIAL PRIMARY KEY,
+    tenant_id VARCHAR NOT NULL REFERENCES tenants(id),
+    domain VARCHAR NOT NULL UNIQUE,
+    is_primary BOOLEAN DEFAULT FALSE,
+    environment VARCHAR,  -- 'dev', 'staging', 'production'
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_tenant_domains_lookup ON tenant_domains(domain);
+CREATE INDEX idx_tenant_domains_tenant ON tenant_domains(tenant_id);
 ```
 
 ### Load Testing (k6)

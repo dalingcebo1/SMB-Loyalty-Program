@@ -12,6 +12,7 @@ import SplashScreen from "../components/SplashScreen";
 import { auth as firebaseAuth, isFirebaseEnabled } from "../firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useNavigate } from 'react-router-dom';
+import { logoutAndNavigateToLogin } from '../utils/auth';
 
 export interface User {
   id: number;
@@ -135,9 +136,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         }
       } else {
         console.error('Failed /auth/me', err);
-        localStorage.removeItem('token');
-        delete api.defaults.headers.common["Authorization"];
         setUser(null);
+        logoutAndNavigateToLogin(navigate, 'Failed to fetch user (invalid token)');
       }
       return null;
     }).finally(() => { meInFlight = null; });
@@ -206,9 +206,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const logout = async () => {
-    localStorage.removeItem("token");
-    delete api.defaults.headers.common["Authorization"];
     setUser(null);
+    logoutAndNavigateToLogin(navigate, 'User-initiated logout');
   };
 
   // Popup-based Google social login

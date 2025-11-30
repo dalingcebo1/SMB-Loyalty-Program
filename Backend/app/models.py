@@ -66,9 +66,35 @@ class Tenant(Base):
     )
     branding       = relationship("TenantBranding", back_populates="tenant", uselist=False, cascade="all, delete-orphan")
     integrations   = relationship("TenantIntegration", back_populates="tenant", cascade="all, delete-orphan")
+    domains        = relationship("TenantDomain", back_populates="tenant", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_tenants_vertical_domain", "vertical_type", "primary_domain"),
+    )
+
+
+class TenantDomain(Base):
+    """Dynamic domain mappings for tenants.
+    
+    Allows multiple domains per tenant for:
+    - Production custom domains (e.g., loyalty.carwash.com)
+    - Dev/staging environments (e.g., orange-pond-06eea490f.3.azurestaticapps.net)
+    - Testing domains
+    
+    The tenant resolution will check this table first before falling back to primary_domain.
+    """
+    __tablename__ = "tenant_domains"
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id   = Column(String, ForeignKey("tenants.id"), nullable=False, index=True)
+    domain      = Column(String, nullable=False, unique=True, index=True)
+    is_primary  = Column(Boolean, default=False)
+    environment = Column(String, nullable=True)  # 'production', 'dev', 'staging', etc.
+    created_at  = Column(DateTime, default=datetime.utcnow)
+    
+    tenant = relationship("Tenant", back_populates="domains")
+    
+    __table_args__ = (
+        Index("ix_tenant_domains_lookup", "domain", "tenant_id"),
     )
 
 

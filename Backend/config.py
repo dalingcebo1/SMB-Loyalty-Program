@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Using alias ensures population from environment variable SECRET_KEY (populate_by_name enabled implicitly for BaseSettings).
     loyalty_secret: str = Field("dev_loyalty_secret", alias="SECRET_KEY")
     default_tenant: str = "default"
+    allow_default_tenant_fallback_non_prod: bool = Field(True, alias="ALLOW_DEFAULT_TENANT_FALLBACK_NON_PROD")
     price_csv_url: Optional[str] = None
     google_application_credentials: Optional[str] = None
     # Optional: Inline JSON for Firebase service account (alternative to mounting a file)

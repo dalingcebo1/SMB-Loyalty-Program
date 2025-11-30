@@ -46,12 +46,18 @@ const Login: React.FC = () => {
         setLastCreds(data);
         const axiosError = err as AxiosError;
         const status = axiosError.response?.status;
+        const detail = (axiosError.response?.data as { detail?: string })?.detail;
+        
         if (status === 404) {
           setAuthError("Email is not registered. Please sign up first.");
         } else if (status === 401) {
           setAuthError("Incorrect email or password.");
         } else if (status === 403) {
-          setAuthError("Please complete onboarding before logging in.");
+          if (detail && detail.toLowerCase().includes('onboarding')) {
+            setAuthError("Please complete onboarding before logging in.");
+          } else {
+            setAuthError("Access denied. If you were logged in with a different account, please ensure you logged out first.");
+          }
         } else {
           setAuthError("Unable to log in right now. Please try again later.");
         }

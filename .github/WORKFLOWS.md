@@ -42,6 +42,7 @@ This repository deploys on Azure. We removed legacy AWS pipelines and kept a foc
 
 Notes:
 - SWA build uses `VITE_API_BASE_URL` from `CA_PUBLIC_API_URL` secret. Set this to an approved public domain. If unset, frontend may not be able to call the API.
+- The dev SWA build prefers `CA_PUBLIC_API_URL_DEV` (and the repo dispatch input) before falling back to any `VITE_API_BASE_URL_DEV` variable, so keep that secret pointed at the dev backend instead of localhost.
 - E2E workflow applies Alembic migrations and sets `ENVIRONMENT=production` before starting the backend to avoid automatic table creation and enforce the real schema.
 
 ## Contributor tips

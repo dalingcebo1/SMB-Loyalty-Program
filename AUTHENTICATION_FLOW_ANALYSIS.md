@@ -1,3 +1,8 @@
+# Authentication Flow Analysis & Recommendations (moved)
+
+The canonical authentication summary now lives at `docs/authentication/summary.md`.
+Detailed analysis retained here for reference during migration.
+
 # Authentication Flow Analysis & Recommendations
 
 ## Current Authentication Flow Map
@@ -76,110 +81,9 @@
 7. **Error Handling Inconsistencies**
    - Different error messages for same scenarios
    - No retry mechanisms for network failures in all flows
-   - Unclear guidance when onboarding fails
+   The authentication flow analysis has been moved to `docs/authentication/summary.md`.
 
-### 🔧 Technical Debt
-
-8. **Backend Response Inconsistencies**
-   - `/auth/login` returns full `LoginResponse` with onboarding flags
-   - `/auth/social-login` returns same schema but logic differs
-   - `/auth/confirm-otp` returns simple token without user data
-
-9. **Role-Based Navigation**
-   - Hardcoded navigation logic in multiple places
-   - No centralized role-based routing
-   - Staff/admin users mixed with regular user flows
-
-10. **Firebase Integration Issues**
-    - Phone verification not integrated with backend user creation
-    - Firebase users may exist without backend counterparts
-    - No cleanup of failed Firebase auth attempts
-
-## Recommended Solutions
-
-### Phase 1: Standardize Onboarding Logic
-
-1. **Unified Onboarding Status**
-   ```typescript
-   interface OnboardingStatus {
-     profile_complete: boolean;    // first_name, last_name exist
-     phone_verified: boolean;      // phone exists and verified
-     onboarding_complete: boolean; // both above = true
-   }
-   ```
-
-2. **Backend Response Standardization**
-   ```typescript
-   interface AuthResponse {
-     access_token: string;
-     user: UserData;
-     onboarding: OnboardingStatus;
-     next_step: 'PROFILE_INFO' | 'PHONE_VERIFICATION' | 'COMPLETE' | null;
-   }
-   ```
-
-3. **Consolidate Onboarding Flow**
-   - Single `/onboarding` route with step-based navigation
-   - Unified component handling all onboarding scenarios
-   - Clear progression: Profile → Phone → Complete
-
-### Phase 2: Fix Social Login Flow
-
-1. **Social User Creation Logic**
-   ```python
-   # In social-login endpoint
-   if not user:
-       user = User(
-           email=email,
-           onboarded=False,  # Force onboarding for profile completion
-           created_at=datetime.utcnow(),
-           tenant_id="default",
-           role="user",
-       )
-   ```
-
-2. **Profile Completion for Social Users**
-   - Social users must complete profile even if they have Google name
-   - Phone verification required for all users
-   - Consistent onboarding experience regardless of signup method
-
-### Phase 3: Improve UX Flow
-
-1. **Smart Navigation**
-   ```typescript
-   const getNextStep = (user: User, onboarding: OnboardingStatus) => {
-     if (!onboarding.profile_complete) return '/onboarding/profile';
-     if (!onboarding.phone_verified) return '/onboarding/phone';
-     return '/dashboard';
-   }
-   ```
-
-2. **Session Recovery**
-   - Implement robust session recovery for interrupted flows
-   - Clear localStorage management
-   - Graceful handling of expired OTP sessions
-
-3. **Error Recovery**
-   - Retry mechanisms for network failures
-   - Clear error messages with actionable steps
-   - Fallback options for common failure scenarios
-
-## Implementation Priority
-
-### High Priority (Fix Immediately)
-- [ ] Standardize onboarding logic in backend
-- [ ] Fix social login user creation to require onboarding
-- [ ] Consolidate duplicate onboarding components
-- [ ] Add phone verification requirement for all users
-
-### Medium Priority (Next Sprint)
-- [ ] Implement unified onboarding status tracking
-- [ ] Add smart navigation based on completion status
-- [ ] Improve error handling and recovery flows
-- [ ] Add comprehensive testing for all auth scenarios
-
-### Low Priority (Future)
-- [ ] Role-based navigation centralization
+   Please update any links to point to `docs/authentication/summary.md` (the original content is preserved there).
 - [ ] Advanced session recovery mechanisms
 - [ ] Performance optimizations for auth flows
 - [ ] Enhanced security measures

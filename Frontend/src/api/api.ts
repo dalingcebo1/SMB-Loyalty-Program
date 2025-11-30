@@ -34,9 +34,15 @@ function computeBaseURL() {
 }
 
 const resolvedBase = computeBaseURL();
-try {
-  console.info('[API] baseURL resolved', { baseURL: resolvedBase, host: typeof window!== 'undefined' ? window.location.hostname : 'ssr' });
-} catch {}
+if (typeof window !== 'undefined') {
+  console.log('═══════════════════════════════════════════');
+  console.log('[API CONFIG] Resolved baseURL:', resolvedBase);
+  console.log('[API CONFIG] window.location.hostname:', window.location.hostname);
+  console.log('[API CONFIG] VITE_API_BASE_URL:', import.meta.env?.VITE_API_BASE_URL);
+  console.log('[API CONFIG] VITE_API_BASE_URL_DEV:', import.meta.env?.VITE_API_BASE_URL_DEV);
+  console.log('[API CONFIG] VITE_APP_VERSION:', import.meta.env?.VITE_APP_VERSION);
+  console.log('═══════════════════════════════════════════');
+}
 const api = axios.create({
   baseURL: resolvedBase,
 });

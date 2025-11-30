@@ -5,7 +5,8 @@
     "exclude": [
       "/assets/*",
       "/favicon.ico",
-      "/robots.txt"
+      "/robots.txt",
+      "/api/*"
     ]
   },
   "globalHeaders": {
@@ -24,5 +25,20 @@
         "Cache-Control": "public, max-age=31536000, immutable"
       }
     }
-  ]
+  ],
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
+  },
+  "platform": {
+    "apiRuntime": "node:16"
+  },
+  "trailingSlash": "auto",
+  "mimeTypes": {
+    ".json": "application/json",
+    ".js": "text/javascript",
+    ".css": "text/css"
+  }
 }

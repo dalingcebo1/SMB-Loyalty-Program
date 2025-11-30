@@ -11,10 +11,17 @@ Note: Canonical developer and ops documentation has been consolidated under `doc
 
 We’re building a modern loyalty infrastructure that empowers small businesses and global enterprises alike to reward customers through seamless digital experiences—starting with QR-based programs for SMBs, and evolving into a blockchain-powered loyalty protocol for the future of partner ecosystems.
 
-## Recent Maintenance Highlights (October 2025)
+## Recent Maintenance Highlights
 
+### November 30, 2025 - Critical Production Fixes
+- **Fixed Azure SWA routing**: Moved `staticwebapp.config.json` to `public/` directory for proper Vite build copying. Eliminates intermittent 404s on direct navigation.
+- **Fixed branding updates**: Added event listener to `TenantConfigProvider` to invalidate React Query cache on branding changes. Colors now update immediately without page refresh.
+- **Centralized authentication**: Created `utils/auth.ts` with single logout function, eliminating SWA 404s on logout and ensuring consistent behavior.
+- **See [docs/RECENT_FIXES.md](docs/RECENT_FIXES.md) for detailed analysis and lessons learned.**
+
+### October 2025
 - Root `pytest.ini` now discovers both `tests/` and `Backend/tests/`, so coverage gates exercise the full backend suite during CI.
-- The backend authentication override in `Backend/tests/conftest.py` has been aligned with FastAPI’s dependency signature. Tests now read bearer tokens from the `Authorization` header and decode JWTs using the same logic as production routes.
+- The backend authentication override in `Backend/tests/conftest.py` has been aligned with FastAPI's dependency signature. Tests now read bearer tokens from the `Authorization` header and decode JWTs using the same logic as production routes.
 - `Frontend/package-lock.json` has been regenerated to include missing peer type packages, ensuring `npm ci` matches local installs without manual flags.
 
 ## Branch Strategy & Environments

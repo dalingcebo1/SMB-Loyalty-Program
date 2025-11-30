@@ -111,6 +111,13 @@ The platform uses dynamic tenant resolution via the `tenant_domains` table:
 - `localhost:5173` (local development)
 - `127.0.0.1:5173` (local development)
 
+**Critical Configuration Notes:**
+- ⚠️ **Azure SWA Routing**: The `staticwebapp.config.json` MUST be in `Frontend/public/` directory (not root). Vite will auto-copy it to `dist/` during build. Without this, direct navigation to routes like `/admin/branding` will fail with 404.
+- ⚠️ **Branding Updates**: The `TenantConfigProvider` listens for `tenant-theme:refresh` events to invalidate cache. Don't rely on automatic refetch alone.
+- ⚠️ **Logout Flow**: Always use the centralized `logoutAndNavigateToLogin()` function from `utils/auth.ts`. Direct `window.location.href` changes cause SWA 404s.
+
+See [docs/RECENT_FIXES.md](../docs/RECENT_FIXES.md) for detailed troubleshooting.
+
 **Adding New Tenant Domains:**
 ```bash
 # Via Admin API

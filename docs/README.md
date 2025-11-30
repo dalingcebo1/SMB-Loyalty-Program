@@ -5,6 +5,8 @@ This folder contains a concise, maintained pack of documentation meant for contr
 Included:
 - `CHECKLIST.md` — quick onboarding and contribution checklist
 - `STREAMLINE_SUMMARY.md` — summary of documentation structure and recommended canonical docs
+- `RECENT_FIXES.md` — critical bug fixes and lessons learned (Nov 30, 2025)
+- `ARCHITECTURE_REVIEW.md` — comprehensive architecture review and multi-tenant roadmap
 
 Guidelines:
 - Keep `docs/` as the canonical set for user-facing and developer-facing docs.

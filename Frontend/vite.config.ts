@@ -36,6 +36,23 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       selfDestroying: true,
+      workbox: {
+        // Don't cache navigation requests to always fetch fresh index.html
+        navigateFallback: undefined,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|svg|gif|webp)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 30 * 24 * 60 * 60
+              }
+            }
+          }
+        ]
+      },
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: 'SMB Loyalty',

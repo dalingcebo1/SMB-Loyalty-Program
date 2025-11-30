@@ -68,6 +68,10 @@ api.interceptors.request.use((config) => {
   if (token && config.headers) {
     config.headers["Authorization"] = `Bearer ${token}`;
   }
+  // Add default tenant ID for dev environment
+  if (config.headers) {
+    config.headers["X-Tenant-ID"] = "default";
+  }
   return config;
 });
 // --- DEBUGGING INTERCEPTORS ---

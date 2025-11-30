@@ -6,7 +6,7 @@ from typing import Optional, List
 from datetime import datetime
 
 from app.core.database import get_db
-from app.core.tenant_context import require_capabilities
+from app.plugins.auth.routes import require_capability
 from app.models import TenantDomain, Tenant
 
 router = APIRouter(prefix="/admin/tenant-domains", tags=["Admin - Tenant Domains"])
@@ -43,7 +43,7 @@ class TenantDomainResponse(BaseModel):
 def list_tenant_domains(
     tenant_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    _auth=Depends(require_capabilities("view_admin_panel"))
+    _auth=Depends(require_capability("view_admin_panel"))
 ):
     """List all tenant domain mappings, optionally filtered by tenant_id."""
     query = db.query(TenantDomain)
@@ -56,7 +56,7 @@ def list_tenant_domains(
 def create_tenant_domain(
     data: TenantDomainCreate,
     db: Session = Depends(get_db),
-    _auth=Depends(require_capabilities("manage_tenants"))
+    _auth=Depends(require_capability("manage_tenants"))
 ):
     """Create a new tenant domain mapping."""
     # Verify tenant exists
@@ -95,7 +95,7 @@ def update_tenant_domain(
     domain_id: int,
     data: TenantDomainUpdate,
     db: Session = Depends(get_db),
-    _auth=Depends(require_capabilities("manage_tenants"))
+    _auth=Depends(require_capability("manage_tenants"))
 ):
     """Update a tenant domain mapping."""
     domain_mapping = db.query(TenantDomain).filter_by(id=domain_id).first()
@@ -121,7 +121,7 @@ def update_tenant_domain(
 def delete_tenant_domain(
     domain_id: int,
     db: Session = Depends(get_db),
-    _auth=Depends(require_capabilities("manage_tenants"))
+    _auth=Depends(require_capability("manage_tenants"))
 ):
     """Delete a tenant domain mapping."""
     domain_mapping = db.query(TenantDomain).filter_by(id=domain_id).first()
@@ -141,7 +141,7 @@ def delete_tenant_domain(
 def lookup_domain(
     domain: str,
     db: Session = Depends(get_db),
-    _auth=Depends(require_capabilities("view_admin_panel"))
+    _auth=Depends(require_capability("view_admin_panel"))
 ):
     """Look up which tenant a specific domain maps to."""
     domain_mapping = db.query(TenantDomain).filter_by(domain=domain).first()

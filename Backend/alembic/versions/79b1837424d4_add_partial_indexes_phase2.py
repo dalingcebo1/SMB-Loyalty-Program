@@ -57,17 +57,35 @@ def upgrade() -> None:
     """)
     
     # 5. Redemptions: Partial index for redeemed (completed) redemptions (analytics)
+    # Note: Only create if redeemed_at column exists (it may not exist in older schemas)
     op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_redemptions_tenant_redeemed
-        ON redemptions(tenant_id, created_at)
-        WHERE redeemed_at IS NOT NULL
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'redemptions' AND column_name = 'redeemed_at'
+            ) THEN
+                CREATE INDEX IF NOT EXISTS ix_redemptions_tenant_redeemed
+                ON redemptions(tenant_id, created_at)
+                WHERE redeemed_at IS NOT NULL;
+            END IF;
+        END $$;
     """)
     
     # 6. Audit logs: Partial index for high-priority actions (security monitoring)
+    # Note: Only create if action column exists
     op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_audit_tenant_priority_actions
-        ON audit_logs(tenant_id, created_at, action)
-        WHERE action IN ('user_login', 'user_logout', 'order_created', 'payment_processed')
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'audit_logs' AND column_name = 'action'
+            ) THEN
+                CREATE INDEX IF NOT EXISTS ix_audit_tenant_priority_actions
+                ON audit_logs(tenant_id, created_at, action)
+                WHERE action IN ('user_login', 'user_logout', 'order_created', 'payment_processed');
+            END IF;
+        END $$;
     """)
 
 

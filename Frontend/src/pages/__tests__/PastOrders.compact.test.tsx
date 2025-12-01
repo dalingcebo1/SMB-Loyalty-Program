@@ -18,7 +18,30 @@ vi.mock('../../api/api', () => ({
       }
       if (url.startsWith('/orders/')) {
         const id = url.split('/').pop();
-        return Promise.resolve({ data: { id, amount: 12345, status: 'completed', service_name: id === '2' ? 'Express Wash' : 'Full Wash', extras: id === '2' ? [{ name: 'Wax' }, { name: 'Vacuum' }] : [], payment_pin: '9999' } });
+        // Return mocked order details matching the list data
+        if (id === '2') {
+          return Promise.resolve({ 
+            data: { 
+              id: '2', 
+              amount: 22345, 
+              status: 'pending', 
+              service_name: 'Express Wash', 
+              extras: [{ name: 'Wax' }, { name: 'Vacuum' }], 
+              payment_pin: '8888' 
+            } 
+          });
+        }
+        // Default to order 1
+        return Promise.resolve({ 
+          data: { 
+            id: '1', 
+            amount: 12345, 
+            status: 'completed', 
+            service_name: 'Full Wash', 
+            extras: [], 
+            payment_pin: '9999' 
+          } 
+        });
       }
       return Promise.resolve({ data: [] });
     }

@@ -127,9 +127,13 @@ def create_order(
         try:
             db.commit()
             db.refresh(new_order)
-            # Auto-assign default vehicle if exactly one user vehicle
+            # Auto-assign default vehicle if exactly one user vehicle (limited to 50 most recent)
+            from app.utils.pagination import safe_limit
             default_vehicle_id: Optional[int] = None
-            user_vehicles = db.query(Vehicle).filter_by(user_id=user.id).all()
+            user_vehicles = safe_limit(
+                db.query(Vehicle).filter_by(user_id=user.id).order_by(Vehicle.id.desc()),
+                limit=50
+            ).all()
             if len(user_vehicles) == 1:
                 default_vehicle_id = user_vehicles[0].id
                 db.add(OrderVehicle(order_id=new_order.id, vehicle_id=default_vehicle_id))

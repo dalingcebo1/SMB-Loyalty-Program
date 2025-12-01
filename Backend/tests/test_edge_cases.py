@@ -53,8 +53,22 @@ def test_users_vehicle_edge_cases(client: TestClient, db_session: Session):
     app.dependency_overrides.clear()
 
 @pytest.mark.usefixtures("db_session")
-def test_catalog_empty(client: TestClient):
-    # If no data seeded, should return empty structures
+def test_catalog_empty(client: TestClient, db_session: Session):
+    # Clean any existing catalog data
+    db_session.query(Service).delete()
+    db_session.query(Extra).delete()
+    db_session.commit()
+    
+    # Clear cache to ensure fresh data
+    try:
+        from app.core.cache import get_cache
+        cache = get_cache()
+        cache.delete("catalog:services")
+        cache.delete("catalog:extras")
+    except RuntimeError:
+        pass  # Cache not initialized in tests
+    
+    # With no data seeded, should return empty structures
     resp1 = client.get("/api/catalog/services")
     assert resp1.status_code == 200
     assert resp1.json() == {}

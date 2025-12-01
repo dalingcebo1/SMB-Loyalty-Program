@@ -56,7 +56,7 @@ class VehicleService:
         if active_only:
             query = query.filter_by(is_active=True)
         
-        return query.order_by(Vehicle.created_at.desc()).all()
+        return query.order_by(Vehicle.id.desc()).all()
     
     @staticmethod
     def get_vehicle_history(

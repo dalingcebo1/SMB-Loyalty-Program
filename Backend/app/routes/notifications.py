@@ -2,7 +2,7 @@
 Notification system API endpoints.
 """
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Body, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, case
 from typing import List, Optional, Dict, Any
 from app.plugins.auth.routes import get_current_user
@@ -269,7 +269,10 @@ async def get_all_notifications(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    query = db.query(Notification).filter(
+    # Use selectinload to eager-load user relationship and prevent N+1 queries
+    query = db.query(Notification).options(
+        selectinload(Notification.user)
+    ).filter(
         Notification.tenant_id == current_user.tenant_id
     )
     
@@ -278,7 +281,7 @@ async def get_all_notifications(
     
     notifications = query.order_by(Notification.created_at.desc()).offset(offset).limit(limit).all()
     
-    # Include user information
+    # Include user information - user is now already loaded, no additional queries
     result = []
     for notification in notifications:
         result.append({

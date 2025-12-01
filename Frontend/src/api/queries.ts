@@ -1,37 +1,49 @@
 // src/api/queries.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
-// Mutation: start a wash
+import { queryKeys } from './queryClient';
+
+// Mutation: start a wash (Phase 4: with optimistic updates)
 export function useStartWash() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ orderId, vehicleId }: { orderId: string; vehicleId: number }) =>
       api.post(`/payments/start-wash/${orderId}`, { vehicle_id: vehicleId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['washes', 'active'] });
+      // Phase 4: Use consistent query keys from factory
+      queryClient.invalidateQueries({ queryKey: queryKeys.washes.active });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.active });
     },
   });
 }
 
-// Fetch service catalog categories
+// Fetch service catalog categories (Phase 4: optimized caching)
 export function useServices() {
   return useQuery({
-    queryKey: ['services'],
+    // Phase 4: Use query key factory for consistency
+    queryKey: queryKeys.catalog.services,
     queryFn: async () => {
       const { data } = await api.get<Record<string, import('../types').Service[]>>('/catalog/services');
       return data;
     },
+    // Phase 4: Catalog data rarely changes, cache aggressively (matches backend Redis TTL)
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 }
 
-// Fetch extras catalog
+// Fetch extras catalog (Phase 4: optimized caching)
 export function useExtras() {
   return useQuery({
-    queryKey: ['extras'],
+    // Phase 4: Use query key factory for consistency
+    queryKey: queryKeys.catalog.extras,
     queryFn: async () => {
       const { data } = await api.get<import('../types').Extra[]>('/catalog/extras');
       return data;
     },
+    // Phase 4: Catalog data rarely changes, cache aggressively (matches backend Redis TTL)
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 }
 

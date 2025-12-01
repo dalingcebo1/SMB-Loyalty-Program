@@ -9,6 +9,7 @@ from app.core.rate_limit import check_rate, set_limit, bucket_snapshot, delete_l
 from config import settings
 from app.core import jobs
 from pydantic import BaseModel
+from app.utils.pagination import safe_limit
 
 from app.core.audit_safe import safe_audit
 
@@ -17,8 +18,8 @@ router = APIRouter(prefix="", tags=["dev"], dependencies=[Depends(developer_only
 
 @router.get("/", response_model=dict)
 def dev_status(db: Session = Depends(get_db)):
-    """Return basic dev console status and list of tenants."""
-    tenants = db.query(Tenant).all()
+    """Return basic dev console status and list of tenants (limited to 500 most recent)."""
+    tenants = safe_limit(db.query(Tenant).order_by(Tenant.created_at.desc()), limit=500).all()
     return {"status": "ok", "tenants": [{"id": t.id, "name": t.name} for t in tenants]}
 
 @router.post("/reset-db", dependencies=[Depends(require_roles(UserRole.superadmin, UserRole.developer))])

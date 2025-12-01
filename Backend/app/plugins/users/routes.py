@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import or_, func
 
 from app.core.database import get_db
 from app.models import User, Vehicle, Order, OrderVehicle
@@ -41,7 +41,11 @@ class VehicleOut(BaseModel):
 
 @router.get("/{user_id}/vehicles", response_model=list[VehicleOut])
 def get_user_vehicles(user_id: int, db: Session = Depends(get_db)):
-    return db.query(Vehicle).filter_by(user_id=user_id).all()
+    from app.utils.pagination import safe_limit
+    return safe_limit(
+        db.query(Vehicle).filter_by(user_id=user_id).order_by(Vehicle.id.desc()),
+        limit=50
+    ).all()
 
 @router.post("/{user_id}/vehicles", response_model=VehicleOut, status_code=201)
 def add_vehicle(user_id: int, vehicle: VehicleIn, db: Session = Depends(get_db)):
@@ -71,14 +75,18 @@ def delete_vehicle(user_id: int, vehicle_id: int, db: Session = Depends(get_db))
 
 @router.get("/search")
 def search_users(query: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    from app.utils.pagination import safe_limit
     norm_q = "+27" + query[1:] if query.startswith("0") and len(query) == 10 else query
-    users = db.query(User).filter(
-        or_(
-            User.first_name.ilike(f"%{query}%"),
-            User.last_name.ilike(f"%{query}%"),
-            User.phone.ilike(f"%{query}%"),
-            User.phone.ilike(f"%{norm_q}%"),
-        )
+    users = safe_limit(
+        db.query(User).filter(
+            or_(
+                User.first_name.ilike(f"%{query}%"),
+                User.last_name.ilike(f"%{query}%"),
+                User.phone.ilike(f"%{query}%"),
+                User.phone.ilike(f"%{norm_q}%"),
+            )
+        ),
+        limit=100
     ).all()
     return [
         {"id": u.id, "first_name": u.first_name, "last_name": u.last_name,
@@ -89,8 +97,9 @@ def search_users(query: str = Query(..., min_length=1), db: Session = Depends(ge
 @router.get("/vehicles/search")
 def search_vehicles(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
     """Search vehicles by plate/make/model or owner name/phone; include total washes & last wash date.
-    This supports the staff vehicle manager UI."""
+    This supports the staff vehicle manager UI. Optimized to prevent N+1 queries."""
     pattern = f"%{q}%"
+    
     # Join user for owner filtering
     vehs = (
         db.query(Vehicle, User)
@@ -108,18 +117,42 @@ def search_vehicles(q: str = Query(..., min_length=1), db: Session = Depends(get
           .limit(50)
           .all()
     )
+    
+    # Extract vehicle IDs for batch query
+    vehicle_ids = [v.id for v, _ in vehs]
+    
+    if not vehicle_ids:
+        return []
+    
+    # Batch query for wash statistics - single query instead of N queries
+    wash_stats = (
+        db.query(
+            OrderVehicle.vehicle_id,
+            func.count(Order.id).label('total_washes'),
+            func.max(Order.created_at).label('last_wash')
+        )
+        .join(Order, OrderVehicle.order_id == Order.id)
+        .filter(
+            OrderVehicle.vehicle_id.in_(vehicle_ids),
+            Order.status.in_(["paid", "completed"])
+        )
+        .group_by(OrderVehicle.vehicle_id)
+        .all()
+    )
+    
+    # Create lookup dict for O(1) access
+    stats_map = {
+        stat.vehicle_id: {
+            'total_washes': stat.total_washes,
+            'last_wash': stat.last_wash.isoformat() if stat.last_wash else None
+        }
+        for stat in wash_stats
+    }
+    
+    # Build results with pre-fetched stats
     results = []
     for v, u in vehs:
-        # Compute total washes and last wash timestamp via orders join
-        ov_q = (
-            db.query(Order)
-              .join(OrderVehicle, OrderVehicle.order_id == Order.id)
-              .filter(OrderVehicle.vehicle_id == v.id, Order.status.in_(["paid", "completed"]))
-              .order_by(Order.created_at.desc())
-        )
-        orders = ov_q.all()
-        total_washes = len(orders)
-        last_wash = orders[0].created_at.isoformat() if orders else None
+        stats = stats_map.get(v.id, {'total_washes': 0, 'last_wash': None})
         results.append({
             "id": v.id,
             "plate": v.plate,
@@ -131,8 +164,8 @@ def search_vehicles(q: str = Query(..., min_length=1), db: Session = Depends(get
                 "last_name": u.last_name,
                 "phone": u.phone,
             },
-            "total_washes": total_washes,
-            "last_wash": last_wash,
+            "total_washes": stats['total_washes'],
+            "last_wash": stats['last_wash'],
         })
     return results
  

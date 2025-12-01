@@ -130,6 +130,14 @@ database_query_duration_seconds = _get_or_create_metric(
     buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0)
 )
 
+# Slow queries (> 1 second)
+database_slow_queries_total = _get_or_create_metric(
+    Counter,
+    'database_slow_queries_total',
+    'Total slow database queries (duration > 1s)',
+    ['operation', 'table', 'endpoint']
+)
+
 # Connection pool
 database_connections = _get_or_create_metric(
     Gauge,

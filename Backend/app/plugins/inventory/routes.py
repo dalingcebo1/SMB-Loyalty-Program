@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Any
 
 from app.core.database import get_db
+from app.core.cache import get_cache
 from app.models import Service, Extra, User
 from app.plugins.auth.routes import require_capability
 
@@ -55,6 +56,14 @@ def create_service(req: ServiceCreate, db: Session = Depends(get_db), user: User
     svc = Service(category=req.category.strip(), name=req.name.strip(), base_price=req.base_price, loyalty_eligible=req.loyalty_eligible)
     db.add(svc)
     db.commit(); db.refresh(svc)
+    
+    # Phase 3: Invalidate catalog cache when service is created
+    try:
+        cache = get_cache()
+        cache.delete("catalog:services")
+    except RuntimeError:
+        pass  # Cache not initialized (e.g., in tests)
+    
     return {"id": svc.id}
 
 
@@ -67,6 +76,14 @@ def update_service(service_id: int, req: ServiceUpdate, db: Session = Depends(ge
     for k, v in data.items():
         setattr(svc, k, v)
     db.commit(); db.refresh(svc)
+    
+    # Phase 3: Invalidate catalog cache when service is updated
+    try:
+        cache = get_cache()
+        cache.delete("catalog:services")
+    except RuntimeError:
+        pass  # Cache not initialized (e.g., in tests)
+    
     return {"ok": True}
 
 
@@ -77,6 +94,14 @@ def delete_service(service_id: int, db: Session = Depends(get_db), user: User = 
         raise HTTPException(status_code=404, detail="Service not found")
     db.delete(svc)
     db.commit()
+    
+    # Phase 3: Invalidate catalog cache when service is deleted
+    try:
+        cache = get_cache()
+        cache.delete("catalog:services")
+    except RuntimeError:
+        pass  # Cache not initialized (e.g., in tests)
+    
     return {"ok": True}
 
 
@@ -94,6 +119,14 @@ def create_extra(req: ExtraCreate, db: Session = Depends(get_db), user: User = D
     extra = Extra(name=req.name.strip(), price_map=req.price_map)
     db.add(extra)
     db.commit(); db.refresh(extra)
+    
+    # Phase 3: Invalidate catalog cache when extra is created
+    try:
+        cache = get_cache()
+        cache.delete("catalog:extras")
+    except RuntimeError:
+        pass  # Cache not initialized (e.g., in tests)
+    
     return {"id": extra.id}
 
 
@@ -106,6 +139,14 @@ def update_extra(extra_id: int, req: ExtraUpdate, db: Session = Depends(get_db),
     for k, v in data.items():
         setattr(extra, k, v)
     db.commit(); db.refresh(extra)
+    
+    # Phase 3: Invalidate catalog cache when extra is updated
+    try:
+        cache = get_cache()
+        cache.delete("catalog:extras")
+    except RuntimeError:
+        pass  # Cache not initialized (e.g., in tests)
+    
     return {"ok": True}
 
 
@@ -116,4 +157,12 @@ def delete_extra(extra_id: int, db: Session = Depends(get_db), user: User = Depe
         raise HTTPException(status_code=404, detail="Extra not found")
     db.delete(extra)
     db.commit()
+    
+    # Phase 3: Invalidate catalog cache when extra is deleted
+    try:
+        cache = get_cache()
+        cache.delete("catalog:extras")
+    except RuntimeError:
+        pass  # Cache not initialized (e.g., in tests)
+    
     return {"ok": True}

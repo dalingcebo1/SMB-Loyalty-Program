@@ -7,6 +7,7 @@ from typing import List, Optional
 from app.plugins.auth.routes import get_current_user
 from app.core.database import get_db
 from app.models import User, Vehicle, PointBalance, VisitCount, Order, Redemption
+from app.utils.pagination import safe_limit
 from pydantic import BaseModel, EmailStr
 import os
 import uuid
@@ -52,8 +53,11 @@ async def get_my_profile(
     # Get latest user data
     user = db.query(User).filter(User.id == current_user.id).first()
     
-    # Get user vehicles
-    vehicles = db.query(Vehicle).filter(Vehicle.user_id == user.id).all()
+    # Get user's vehicles (limited to 50 most recent)
+    vehicles = safe_limit(
+        db.query(Vehicle).filter(Vehicle.user_id == user.id).order_by(Vehicle.id.desc()),
+        limit=50
+    ).all()
     vehicle_list = [
         VehicleResponse(id=v.id, plate=v.plate, make=v.make, model=v.model)
         for v in vehicles
@@ -165,9 +169,9 @@ async def get_my_vehicles(
     """Get current user's vehicles"""
     vehicles = db.query(Vehicle).filter(
         Vehicle.user_id == current_user.id
-    ).all()
+    ).order_by(Vehicle.id.desc())
     
-    return vehicles
+    return safe_limit(vehicles, limit=50).all()
 
 @router.post("/me/vehicles", response_model=VehicleResponse, status_code=201)
 async def create_vehicle(

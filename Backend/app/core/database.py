@@ -39,10 +39,12 @@ if DATABASE_URL.startswith("sqlite"):
         engine_kwargs["poolclass"] = StaticPool
 else:
     # Production / Postgres style settings
+    # Phase 2: Optimized connection pool for production workload
     engine_kwargs.update({
-        "pool_size": 20,
-        "max_overflow": 10,
+        "pool_size": 50,           # Increased from 20 for higher concurrent load
+        "max_overflow": 30,        # Increased from 10 for burst capacity
         "pool_timeout": 30,
+        "pool_recycle": 3600,      # Recycle connections every hour (Azure best practice)
     })
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)

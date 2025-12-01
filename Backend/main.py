@@ -396,6 +396,15 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
         response: Response | None = None
+        
+        # Set endpoint for query monitoring
+        endpoint = f"{request.method} {request.url.path}"
+        try:
+            from app.core.query_monitor import set_current_endpoint
+            set_current_endpoint(endpoint)
+        except ImportError:
+            pass  # Query monitoring not available
+        
         try:
             response = await call_next(request)
             return response
@@ -937,6 +946,15 @@ def on_startup():
     else:  # pragma: no cover - production path
         logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
 
+    # Initialize database query monitoring
+    if _settings.enable_metrics:
+        try:
+            from app.core.query_monitor import setup_query_monitoring
+            setup_query_monitoring()
+            logger.info("Database query monitoring enabled (tracking slow queries > 1s)")
+        except Exception as e:
+            logger.warning(f"Query monitoring initialization failed: {e}")
+    
     # Initialize caching layer (Redis + in-memory)
     if _settings.enable_cache:
         try:

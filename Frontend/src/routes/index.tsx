@@ -5,25 +5,28 @@ import { moduleFlags } from '../config/modules';
 import { useAuth } from '../auth/AuthProvider';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import LoadingFallback from '../components/LoadingFallback';
-import DashboardLayout from '../components/DashboardLayout';
-import AdminLayout from '../components/AdminLayout';
-// Dev admin area (developer portal)
-import DeveloperAdminApp from '../dev-admin/DeveloperAdminApp';
-import CreateTenant from '../dev-admin/CreateTenant';
-import TenantList from '../dev-admin/TenantList';
-import { RequireDeveloper as DevRequireDeveloper } from '../dev-admin/routeGuard';
 
-// Critical user experience pages are eagerly imported to ensure they are always
-// available even if the CDN temporarily misses a chunk. This avoids runtime
-// failures like the production 404s observed for OrderForm.
+// Layouts are lazy-loaded to reduce initial bundle
+const DashboardLayout = lazy(() => import('../components/DashboardLayout'));
+const AdminLayout = lazy(() => import('../components/AdminLayout'));
+
+// Dev admin area (developer portal)
+const DeveloperAdminApp = lazy(() => import('../dev-admin/DeveloperAdminApp'));
+const CreateTenant = lazy(() => import('../dev-admin/CreateTenant'));
+const TenantList = lazy(() => import('../dev-admin/TenantList'));
+const DevRequireDeveloper = lazy(() => import('../dev-admin/routeGuard').then(m => ({ default: m.RequireDeveloper })));
+
+// Critical pages: Welcome, OrderForm, and Payment are eagerly imported for best UX
 import Welcome from '../pages/Welcome';
-import MyLoyalty from '../features/loyalty/pages/MyLoyalty';
 import OrderForm from '../pages/OrderForm';
 import Payment from '../features/order/pages/Payment';
-import OrderConfirmation from '../pages/OrderConfirmation';
-import PastOrders from '../pages/PastOrders';
-import Account from '../pages/Account';
-import EnhancedProfile from '../pages/EnhancedProfile';
+
+// Secondary pages are lazy-loaded to reduce initial bundle size
+const MyLoyalty = lazy(() => import('../features/loyalty/pages/MyLoyalty'));
+const OrderConfirmation = lazy(() => import('../pages/OrderConfirmation'));
+const PastOrders = lazy(() => import('../pages/PastOrders'));
+const Account = lazy(() => import('../pages/Account'));
+const EnhancedProfile = lazy(() => import('../pages/EnhancedProfile'));
 
 // Auth pages (using unified onboarding flow)
 const Signup = lazy(() => import('../features/auth/pages/Signup'));

@@ -52,6 +52,13 @@ def warm_startup_caches() -> int:
         except Exception as exc:
             logger.warning(f"Failed to warm vertical registry cache: {exc}")
         
+        # Phase 3: Warm catalog cache
+        try:
+            _warm_catalog_cache(db)
+            warmed_count += 2  # services + extras
+        except Exception as exc:
+            logger.warning(f"Failed to warm catalog cache: {exc}")
+        
         logger.info(f"Cache warming complete: {warmed_count} items warmed")
         return warmed_count
         
@@ -90,6 +97,43 @@ def _warm_vertical_registry():
     )
     
     logger.debug(f"Warmed vertical registry cache: {len(verticals)} verticals")
+
+
+def _warm_catalog_cache(db: Session):
+    """Warm catalog cache with services and extras (Phase 3).
+    
+    Catalog data is frequently accessed but rarely changes,
+    making it an excellent candidate for pre-warming on startup.
+    """
+    from app.models import Service, Extra
+    from app.utils.pagination import safe_limit
+    
+    cache = get_cache()
+    if not cache:
+        return
+    
+    try:
+        # Warm services cache
+        services_out: dict[str, list] = {}
+        for s in safe_limit(db.query(Service).order_by(Service.category, Service.name), limit=200).all():
+            services_out.setdefault(s.category, []).append({
+                "id": s.id,
+                "name": s.name,
+                "base_price": s.base_price,
+            })
+        cache.set("catalog:services", services_out, ttl=600)
+        logger.debug(f"Warmed services cache: {len(services_out)} categories")
+        
+        # Warm extras cache
+        extras_list = [
+            {"id": e.id, "name": e.name, "price_map": e.price_map}
+            for e in safe_limit(db.query(Extra).order_by(Extra.name), limit=200).all()
+        ]
+        cache.set("catalog:extras", extras_list, ttl=600)
+        logger.debug(f"Warmed extras cache: {len(extras_list)} extras")
+        
+    except Exception as exc:
+        logger.warning(f"Failed to warm catalog cache: {exc}")
 
 
 def warm_tenant_cache_by_id(tenant_id: str) -> bool:

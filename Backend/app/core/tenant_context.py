@@ -248,11 +248,21 @@ def tenant_meta_dict(ctx: TenantContext) -> dict:
         "name": ctx.tenant.name,
         "loyalty_type": ctx.tenant.loyalty_type,
     }
-    # Allow vertical plugins to decorate meta in-place
+    # Allow vertical plugins to decorate meta in-place (legacy dispatch system)
     try:  # defensive: plugin errors shouldn't break core endpoint
         dispatch('decorate_tenant_meta', meta, ctx.tenant)
     except Exception:  # pragma: no cover - log future
         pass
+    
+    # Use new vertical registry system to decorate metadata
+    try:
+        from app.verticals import registry
+        vertical = registry.get(ctx.vertical)
+        if vertical:
+            vertical.decorate_tenant_meta(meta, ctx.tenant)
+    except Exception:  # pragma: no cover - defensive guard
+        pass
+    
     return meta
 
 def set_current_tenant_id(tenant_id: str):  # utility used in dependency

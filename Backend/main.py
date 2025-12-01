@@ -39,6 +39,14 @@ from app.routes.secure import router as secure_router
 from app.routes.ops import router as ops_router
 from app.routes.tenant_domains import router as tenant_domains_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
+
+# Conditional import for verticals (may not be available in all test contexts)
+try:
+    from app.routes.verticals import router as verticals_router
+    _verticals_router_available = True
+except ImportError:
+    verticals_router = None
+    _verticals_router_available = False
 from app.core.rate_limit import check_rate, compute_retry_after, build_429_payload
 from app.core.rate_limit import bucket_snapshot  # used elsewhere optionally
 from app.core.rate_limit import set_limit  # future use
@@ -512,6 +520,10 @@ router_mounts = [
 if settings.environment != 'production':
     router_mounts.append(("/api/dev", dev_router))
 
+# Add verticals router if available
+if _verticals_router_available and verticals_router:
+    router_mounts.append(("", verticals_router))
+
 for prefix, router in router_mounts:
     app.include_router(router, prefix=prefix)
 
@@ -889,6 +901,14 @@ def on_startup():
         Base.metadata.create_all(bind=engine)
     else:  # pragma: no cover - production path
         logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
+
+    # Initialize vertical registry (auto-discover and register all verticals)
+    try:
+        from app.verticals import registry as vertical_registry
+        vertical_registry.auto_register_all()
+        logger.info(f"Vertical registry initialized: {len(vertical_registry.list_all())} verticals registered")
+    except Exception:  # pragma: no cover - defensive guard
+        logger.warning("Failed to initialize vertical registry", exc_info=True)
 
     # Default tenant seeding (idempotent) – now runs in ALL environments for reliability.
     if _settings.default_tenant:

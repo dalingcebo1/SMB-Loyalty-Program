@@ -1,13 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../auth/AuthProvider';
 import api from '../../../api/api';
-
-const Stat: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="p-4 rounded-lg bg-white shadow-sm border flex flex-col gap-1">
-    <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
-    <div className="text-xl font-semibold text-gray-800">{value}</div>
-  </div>
-);
+import { AdminPageContainer, AdminSection, AdminGrid } from '../components/AdminGrid';
+import { StatCard, AdminCard } from '../components/AdminCard';
 
 interface MetricsSnapshot {
   uptime_seconds: number;
@@ -32,33 +27,44 @@ const Overview: React.FC = () => {
   const tenantId: string | undefined = user?.tenant_id;
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Admin Overview</h1>
-          <p className="text-sm text-gray-500 mt-1">Quick operational snapshot & shortcuts.</p>
+    <AdminPageContainer
+      title="Admin Overview"
+      description="Quick operational snapshot & shortcuts."
+    >
+      {/* System Metrics */}
+      <AdminSection>
+        <AdminGrid cols={{ mobile: 1, tablet: 2, desktop: 4, xl: 4 }} gap="base">
+          <StatCard label="Environment" value={import.meta.env.MODE} />
+          <StatCard label="Role" value={user?.role || '—'} />
+          <StatCard label="Tenant" value={tenantId || 'default'} />
+          <StatCard label="Version" value={version} />
+          <StatCard label="Uptime (s)" value={metrics ? metrics.uptime_seconds.toLocaleString() : '…'} />
+          <StatCard label="Rate Overrides" value={metrics ? metrics.rate_limit_overrides : '…'} />
+        </AdminGrid>
+      </AdminSection>
+
+      {/* Activity & Alerts */}
+      <AdminSection>
+        <AdminGrid cols={{ mobile: 1, tablet: 2, desktop: 2, xl: 2 }} gap="base">
+          <AdminCard title="Recent Activity" padding="base">
+            <p className="text-gray-500" style={{ fontSize: 'var(--font-size-sm)' }}>
+              (Placeholder) Display latest staff actions / system events.
+            </p>
+          </AdminCard>
+          <AdminCard title="Alerts" padding="base">
+            <p className="text-gray-500" style={{ fontSize: 'var(--font-size-sm)' }}>
+              (Placeholder) Surface rate limit bans, failed jobs, payment verification spikes.
+            </p>
+          </AdminCard>
+        </AdminGrid>
+      </AdminSection>
+
+      {error && (
+        <div className="p-3 text-red-700 bg-red-50 rounded-lg border border-red-200" style={{ fontSize: 'var(--font-size-sm)' }}>
+          {error}
         </div>
-      </header>
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Environment" value={import.meta.env.MODE} />
-        <Stat label="Role" value={user?.role || '—'} />
-  <Stat label="Tenant" value={tenantId || 'default'} />
-  <Stat label="Version" value={version} />
-  <Stat label="Uptime (s)" value={metrics ? metrics.uptime_seconds : '…'} />
-  <Stat label="Rate Overrides" value={metrics ? metrics.rate_limit_overrides : '…'} />
-      </section>
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className="p-4 bg-white border rounded-lg shadow-sm">
-          <h2 className="font-medium mb-2">Recent Activity</h2>
-          <p className="text-sm text-gray-500">(Placeholder) Display latest staff actions / system events.</p>
-        </div>
-        <div className="p-4 bg-white border rounded-lg shadow-sm">
-          <h2 className="font-medium mb-2">Alerts</h2>
-          <p className="text-sm text-gray-500">(Placeholder) Surface rate limit bans, failed jobs, payment verification spikes.</p>
-        </div>
-  {error && <div className="p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">{error}</div>}
-      </section>
-    </div>
+      )}
+    </AdminPageContainer>
   );
 };
 

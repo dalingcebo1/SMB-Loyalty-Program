@@ -903,12 +903,13 @@ def on_startup():
         logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
 
     # Initialize vertical registry (auto-discover and register all verticals)
-    try:
-        from app.verticals import registry as vertical_registry
-        vertical_registry.auto_register_all()
-        logger.info(f"Vertical registry initialized: {len(vertical_registry.list_all())} verticals registered")
-    except Exception:  # pragma: no cover - defensive guard
-        logger.warning("Failed to initialize vertical registry", exc_info=True)
+    if _verticals_router_available:
+        try:
+            from app.verticals import registry as vertical_registry
+            vertical_registry.auto_register_all()
+            logger.info(f"Vertical registry initialized: {len(vertical_registry.list_all())} verticals registered")
+        except Exception:  # pragma: no cover - defensive guard
+            logger.warning("Failed to initialize vertical registry", exc_info=True)
 
     # Default tenant seeding (idempotent) – now runs in ALL environments for reliability.
     if _settings.default_tenant:

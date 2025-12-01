@@ -302,7 +302,6 @@ _cache_instance: Optional[CacheLayer] = None
 
 def get_cache() -> CacheLayer:
     """Get global cache instance."""
-    global _cache_instance
     if _cache_instance is None:
         raise RuntimeError("Cache layer not initialized. Call initialize_cache() first.")
     return _cache_instance

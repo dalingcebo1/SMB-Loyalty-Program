@@ -26,7 +26,7 @@ redis==5.0.8
 celery==5.4.0
 kombu==5.4.2  # Celery dependency
 prometheus-client==0.20.0  # Metrics and observability
-aiohttp==3.9.5  # Async HTTP client for domain verification
+aiohttp==3.12.14  # Async HTTP client for domain verification (fixed CVEs)
 dnspython==2.6.1  # DNS queries for domain verification
 
 # Security pin to satisfy image scan (Trivy):

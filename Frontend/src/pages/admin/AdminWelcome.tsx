@@ -110,79 +110,74 @@ const AdminWelcome: React.FC = () => {
   const ordersDelta = buildDeltaBadge(ordersChange);
   const revenueDelta = buildDeltaBadge(revenueChange);
 
-  const quickActions = [
-    {
-      category: 'Business Operations',
-      items: [
-        { to: '/admin/customers', icon: HiUsers, title: 'Customer Management', description: 'View & manage customer data' },
-        { to: '/admin/reports', icon: HiChartBar, title: 'Business Reports', description: 'Analytics & insights' },
-        { to: '/admin/notifications', icon: HiBell, title: 'Notifications', description: 'Send & manage notifications' },
-      ]
-    },
-    {
-      category: 'People Management',
-      items: [
-        { to: '/admin/users-admin', icon: HiUsers, title: 'Manage Users', description: 'View & manage user accounts' },
-        { to: '/admin/users-admin?registerStaff=1', icon: HiUserAdd, title: 'Register Staff', description: 'Invite staff & assign roles' },
-      ]
-    },
-    {
-      category: 'Business Configuration',
-      items: [
-        { to: '/admin/branding', icon: HiOfficeBuilding, title: 'Branding', description: 'Logos, colors & brand identity' },
-        { to: '/admin/modules', icon: HiCog, title: 'Modules', description: 'Feature toggles & settings' },
-        { to: '/admin/inventory', icon: HiClipboardList, title: 'Inventory', description: 'Manage services & extras' },
-      ]
-    },
-    {
-      category: 'Operations & Insights',
-      items: [
-        { to: '/admin/staff/analytics', icon: HiChartBar, title: 'Analytics', description: 'Business insights & reports' },
-        { to: '/admin/audit', icon: HiShieldCheck, title: 'Audit Logs', description: 'System activity & security' },
-        { to: '/admin/jobs', icon: HiClock, title: 'Jobs Monitor', description: 'Background job queue status' },
-        { to: '/admin/rate-limits', icon: HiLockClosed, title: 'Rate Limits', description: 'API throttling & IP bans' },
-      ]
-    }
-  ];
+  // Calculate urgent items that need attention
+  const urgentItems = [];
+  if (!isLoadingMetrics && pendingOrders && pendingOrders > 0) {
+    urgentItems.push({
+      type: 'warning',
+      message: `${pendingOrders} order${pendingOrders > 1 ? 's' : ''} pending over 10 minutes`,
+      action: 'View Orders',
+      to: '/staff/dashboard'
+    });
+  }
 
   return (
     <AdminPageContainer
       title={`Welcome back, ${user?.firstName || 'Admin'}`}
-      description="Quick overview and shortcuts to manage your platform"
+      description="Your business at a glance"
     >
 
-      {/* Quick Actions by Category */}
-      {quickActions.map(({ category, items }) => (
-        <AdminSection key={category} title={category}>
-          <AdminGrid cols={{ mobile: 1, tablet: 2, desktop: 3, xl: 3 }} gap="base">
-            {items.map(({ to, icon: Icon, title, description }) => (
-              <Link key={to} to={to}>
-                <ActionCard
-                  title={title}
-                  description={description}
-                  icon={<Icon className="w-5 h-5" />}
-                  onClick={() => {}}
-                  variant="primary"
-                />
-              </Link>
-            ))}
-          </AdminGrid>
-        </AdminSection>
-      ))}
+      {/* 1. CRITICAL: Alerts & Urgent Items First */}
+      {urgentItems.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <HiClock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-amber-900 text-sm mb-1">Needs Attention</h3>
+              {urgentItems.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-3 mt-2">
+                  <p className="text-amber-800 text-xs">{item.message}</p>
+                  <Link 
+                    to={item.to}
+                    className="text-xs font-medium text-amber-700 hover:text-amber-900 underline whitespace-nowrap"
+                  >
+                    {item.action} →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* System Overview Stats */}
-      <AdminSection
-        title="System Overview"
-        description={lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'}
-      >
+      {/* 2. PRIORITY: Key Business Metrics */}
+      <AdminSection title="Today's Performance">
         {hasMetricsError ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             Couldn't load metrics. Please refresh.
           </div>
         ) : (
-          <AdminGrid cols={{ mobile: 1, tablet: 2, desktop: 3, xl: 3 }} gap="base">
+          <AdminGrid cols={{ mobile: 2, tablet: 3, desktop: 4, xl: 4 }} gap="sm">
             <StatCard
-              label="Active Customers"
+              label="Revenue (7d)"
+              value={isLoadingMetrics ? '…' : formatCurrency(revenueCurrent)}
+              change={!isLoadingMetrics && revenueDelta ? revenueDelta.text : undefined}
+              changeDirection={
+                revenueDelta && revenueChange ? (revenueChange >= 0 ? 'positive' : 'negative') : 'neutral'
+              }
+            />
+            <StatCard
+              label="Orders (7d)"
+              value={isLoadingMetrics ? '…' : formatNumber(totalCompletedOrders)}
+              change={!isLoadingMetrics && ordersDelta ? ordersDelta.text : undefined}
+              changeDirection={
+                ordersDelta && ordersChange ? (ordersChange >= 0 ? 'positive' : 'negative') : 'neutral'
+              }
+            />
+            <StatCard
+              label="Customers (7d)"
               value={isLoadingMetrics ? '…' : formatNumber(activeCustomers)}
               change={!isLoadingMetrics && newCustomersDelta ? newCustomersDelta.text : undefined}
               changeDirection={
@@ -192,33 +187,148 @@ const AdminWelcome: React.FC = () => {
                     : 'negative'
                   : 'neutral'
               }
-              info="Last 7 days"
             />
             <StatCard
-              label="Completed Orders"
-              value={isLoadingMetrics ? '…' : formatNumber(totalCompletedOrders)}
-              change={!isLoadingMetrics && ordersDelta ? ordersDelta.text : undefined}
-              changeDirection={
-                ordersDelta && ordersChange ? (ordersChange >= 0 ? 'positive' : 'negative') : 'neutral'
-              }
-              info="Last 7 days"
-            />
-            <StatCard
-              label="Revenue"
-              value={isLoadingMetrics ? '…' : formatCurrency(revenueCurrent)}
-              change={!isLoadingMetrics && revenueDelta ? revenueDelta.text : undefined}
-              changeDirection={
-                revenueDelta && revenueChange ? (revenueChange >= 0 ? 'positive' : 'negative') : 'neutral'
-              }
-              info={
-                !isLoadingMetrics && pendingOrders !== null
-                  ? `Pending >10m: ${formatNumber(pendingOrders)}`
-                  : 'Last 7 days'
-              }
+              label="Avg Order"
+              value={isLoadingMetrics ? '…' : formatCurrency(summary?.avg_order_value ?? null)}
             />
           </AdminGrid>
         )}
       </AdminSection>
+
+      {/* 3. COMMON TASKS: Frequently Used Actions */}
+      <AdminSection title="Common Tasks">
+        <AdminGrid cols={{ mobile: 2, tablet: 3, desktop: 4, xl: 4 }} gap="sm">
+          <Link to="/admin/customers">
+            <ActionCard
+              title="Customers"
+              description="Manage accounts"
+              icon={<HiUsers className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="primary"
+            />
+          </Link>
+          <Link to="/admin/users-admin">
+            <ActionCard
+              title="Users"
+              description="Staff & access"
+              icon={<HiUserAdd className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="primary"
+            />
+          </Link>
+          <Link to="/admin/reports">
+            <ActionCard
+              title="Reports"
+              description="View analytics"
+              icon={<HiChartBar className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="primary"
+            />
+          </Link>
+          <Link to="/admin/inventory">
+            <ActionCard
+              title="Inventory"
+              description="Services & pricing"
+              icon={<HiClipboardList className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="primary"
+            />
+          </Link>
+        </AdminGrid>
+      </AdminSection>
+
+      {/* 4. SETTINGS: Less Frequent Configuration */}
+      <AdminSection title="Settings & Configuration">
+        <AdminGrid cols={{ mobile: 2, tablet: 3, desktop: 4, xl: 4 }} gap="sm">
+          <Link to="/admin/branding">
+            <ActionCard
+              title="Branding"
+              description="Logos & colors"
+              icon={<HiOfficeBuilding className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="default"
+            />
+          </Link>
+          <Link to="/admin/modules">
+            <ActionCard
+              title="Modules"
+              description="Feature toggles"
+              icon={<HiCog className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="default"
+            />
+          </Link>
+          <Link to="/admin/notifications">
+            <ActionCard
+              title="Notifications"
+              description="Send messages"
+              icon={<HiBell className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="default"
+            />
+          </Link>
+          <Link to="/admin/audit">
+            <ActionCard
+              title="Audit Logs"
+              description="Security & activity"
+              icon={<HiShieldCheck className="w-4 h-4" />}
+              onClick={() => {}}
+              variant="default"
+            />
+          </Link>
+        </AdminGrid>
+      </AdminSection>
+
+      {/* 5. SYSTEM: Advanced/Technical Features */}
+      <details className="group">
+        <summary className="cursor-pointer list-none">
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <span className="text-sm font-semibold text-gray-700">Advanced Tools</span>
+            <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+          </div>
+        </summary>
+        <div className="mt-3">
+          <AdminGrid cols={{ mobile: 2, tablet: 3, desktop: 4, xl: 4 }} gap="sm">
+            <Link to="/admin/staff/analytics">
+              <ActionCard
+                title="Analytics"
+                description="Deep insights"
+                icon={<HiChartBar className="w-4 h-4" />}
+                onClick={() => {}}
+                variant="default"
+              />
+            </Link>
+            <Link to="/admin/jobs">
+              <ActionCard
+                title="Jobs Monitor"
+                description="Background tasks"
+                icon={<HiClock className="w-4 h-4" />}
+                onClick={() => {}}
+                variant="default"
+              />
+            </Link>
+            <Link to="/admin/rate-limits">
+              <ActionCard
+                title="Rate Limits"
+                description="API throttling"
+                icon={<HiLockClosed className="w-4 h-4" />}
+                onClick={() => {}}
+                variant="default"
+              />
+            </Link>
+          </AdminGrid>
+        </div>
+      </details>
+
+      {/* Footer: Last Updated */}
+      {lastUpdated && (
+        <div className="text-center pt-4 border-t border-gray-100">
+          <p className="text-xs text-gray-400">
+            Last updated {lastUpdated.toLocaleTimeString()}
+          </p>
+        </div>
+      )}
     </AdminPageContainer>
   );
 };

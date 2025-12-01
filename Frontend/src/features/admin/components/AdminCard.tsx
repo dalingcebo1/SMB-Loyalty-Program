@@ -29,13 +29,13 @@ interface AdminCardProps {
 const variantStyles = {
   default: {
     card: 'bg-white border-gray-200',
-    iconBg: 'bg-gray-100',
-    iconColor: 'text-gray-600',
+    iconBg: 'bg-gray-50',
+    iconColor: 'text-gray-500',
   },
   primary: {
-    card: 'bg-white border-primary-200',
-    iconBg: 'bg-gradient-to-br from-primary-500 to-primary-600',
-    iconColor: 'text-white',
+    card: 'bg-white border-blue-100',
+    iconBg: 'bg-blue-50',
+    iconColor: 'text-blue-600',
   },
   success: {
     card: 'bg-white border-green-200',

@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = Field(None, alias="SENTRY_DSN")
     # Optional Content Security Policy (string). Example minimal default provided for guidance.
     csp_policy: Optional[str] = Field(None, alias="CSP_POLICY")
+    
+    # Redis configuration for caching
+    redis_url: Optional[str] = Field(None, alias="REDIS_URL")  # e.g., "redis://localhost:6379/0"
+    enable_cache: bool = Field(True, alias="ENABLE_CACHE")  # Master switch for caching
 
     def dangerous_allowed(self) -> bool:
         """Return True if destructive dev endpoints are permitted in this environment."""

@@ -48,6 +48,8 @@ class Tenant(Base):
     loyalty_type   = Column(String, nullable=False)
     # Multi-vertical support
     vertical_type  = Column(String, nullable=False, default=VerticalType.carwash.value, index=True)
+    # Schema-per-tenant support (nullable for backward compatibility with row-level isolation)
+    schema_name    = Column(String, nullable=True, unique=True, index=True)
     # Domain mapping (either full domain e.g. flowershop.com) for host-based resolution
     primary_domain = Column(String, nullable=True, unique=True)
     # Existing subdomain (retain for backward compatibility / internal routing)

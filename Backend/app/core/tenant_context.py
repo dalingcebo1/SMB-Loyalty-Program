@@ -70,12 +70,31 @@ class TenantContext:
         self.tenant = tenant
         self.id = tenant.id
         self.vertical = tenant.vertical_type or VerticalType.carwash.value
+        self.schema_name = tenant.schema_name  # None for row-level isolation, schema name for schema isolation
 
     @cached_property
     def settings(self):
         from app.services.tenant_settings import TenantSettingsService
 
         return TenantSettingsService(self.tenant)
+    
+    def uses_schema_isolation(self) -> bool:
+        """Check if this tenant uses schema-level isolation."""
+        return self.schema_name is not None
+    
+    def apply_search_path(self, db: Session) -> None:
+        """
+        Apply the appropriate search_path for this tenant's database session.
+        
+        If tenant uses schema isolation, sets search_path to their schema.
+        Otherwise, uses default public schema (row-level isolation).
+        
+        Args:
+            db: Database session to configure
+        """
+        if self.uses_schema_isolation():
+            from app.core.schema_manager import set_search_path
+            set_search_path(db, self.schema_name, include_public=True)
 
 
 async def get_tenant_context(

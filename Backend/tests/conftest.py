@@ -11,6 +11,9 @@ import os
 # a developer has a local DATABASE_URL configured for Postgres.
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
+# Clear Prometheus registry before importing metrics to avoid duplicate registration
+os.environ["PYTEST_CURRENT_TEST"] = "1"
+
 import pytest
 from fastapi.testclient import TestClient
 from app.core.database import Base, get_db, engine, SessionLocal as TestingSessionLocal

@@ -37,7 +37,10 @@ from app.routes.notifications import router as notifications_router
 from app.routes.profile import router as profile_router
 from app.routes.secure import router as secure_router
 from app.routes.ops import router as ops_router
+from app.routes.cache import router as cache_router
 from app.routes.tenant_domains import router as tenant_domains_router
+from app.routes.domain_verification import router as domain_verification_router
+from app.routes.metrics import router as metrics_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 
 # Conditional import for verticals (may not be available in all test contexts)
@@ -490,6 +493,16 @@ class GlobalAPIRateLimitMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(GlobalAPIRateLimitMiddleware)
 
+# ─── Prometheus Metrics Middleware ─────────────────────────────────────────
+# Track request/response metrics for observability
+if settings.enable_metrics_endpoint:
+    try:
+        from app.core.metrics_middleware import PrometheusMiddleware
+        app.add_middleware(PrometheusMiddleware)
+        logger.info("Prometheus metrics middleware enabled")
+    except ImportError:
+        logger.warning("Prometheus metrics not available (prometheus-client not installed)")
+
 # ─── Global Generic Rate Limiter (simple per-IP) ───────────────────────────
 
 # Mount plugin routers under /api
@@ -514,6 +527,9 @@ router_mounts = [
     ("/api/profile",   profile_router),
     ("/api",           secure_router),
     ("/api",           ops_router),
+    ("",               cache_router),  # Cache ops endpoints
+    ("",               metrics_router),  # Prometheus metrics endpoint
+    ("",               domain_verification_router),  # Domain verification endpoints
     ("/api",           tenant_domains_router),
 ]
 # Conditionally include dev router outside production
@@ -645,15 +661,32 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
             seen.add(c)
             ordered.append(c)
 
-    # Try tenant_domains table first (dynamic domain mappings)
+    # Try tenant_domains table first (dynamic domain mappings with wildcard support)
     for h in ordered:
         try:
+            # 1. Try exact match first
             domain_entry = db.query(_TenantDomain).filter_by(domain=h).first()
             if domain_entry:
                 t = db.query(_Tenant).filter_by(id=domain_entry.tenant_id).first()
                 if t:
                     request.state.tenant_id = t.id
                     return TenantContext(t)
+            
+            # 2. Try wildcard match (*.example.com)
+            # Extract subdomain parts and try wildcard patterns
+            parts = h.split('.')
+            for i in range(len(parts)):
+                wildcard = '*.' + '.'.join(parts[i:])
+                domain_entry = db.query(_TenantDomain).filter_by(domain=wildcard).first()
+                if domain_entry:
+                    t = db.query(_Tenant).filter_by(id=domain_entry.tenant_id).first()
+                    if t:
+                        # Store subdomain in request state for potential use
+                        if i > 0:
+                            request.state.subdomain = '.'.join(parts[:i])
+                        request.state.tenant_id = t.id
+                        return TenantContext(t)
+                        
         except (ProgrammingError, OperationalError, DatabaseError) as exc:
             logger.warning(
                 "tenant_domains lookup failed; continuing",
@@ -902,14 +935,45 @@ def on_startup():
     else:  # pragma: no cover - production path
         logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
 
-    # Initialize vertical registry (auto-discover and register all verticals)
-    if _verticals_router_available:
+    # Initialize caching layer (Redis + in-memory)
+    if _settings.enable_cache:
         try:
-            from app.verticals import registry as vertical_registry
-            vertical_registry.auto_register_all()
-            logger.info(f"Vertical registry initialized: {len(vertical_registry.list_all())} verticals registered")
-        except Exception:  # pragma: no cover - defensive guard
-            logger.warning("Failed to initialize vertical registry", exc_info=True)
+            from app.core.cache import initialize_cache
+            cache = initialize_cache(redis_url=_settings.redis_url)
+            if cache.redis_available:
+                logger.info(f"Multi-layer cache initialized with Redis: {_settings.redis_url}")
+            else:
+                logger.info("Cache initialized (memory-only, Redis unavailable)")
+            
+            # Warm critical caches on startup
+            try:
+                from app.core.cache_warmer import warm_startup_caches
+                warmed_count = warm_startup_caches()
+                logger.info(f"Startup cache warming complete: {warmed_count} items warmed")
+            except Exception as warm_exc:
+                logger.warning(f"Cache warming failed (non-critical): {warm_exc}")
+        except Exception as e:
+            logger.warning(f"Cache initialization failed: {e}. Caching disabled.")
+    else:
+        logger.info("Caching disabled by configuration")
+    
+    # Initialize vertical registry (auto-discover and register all verticals)
+    try:
+        from app.verticals import registry as vertical_registry
+        vertical_registry.auto_register_all()
+        logger.info(f"Vertical registry initialized: {len(vertical_registry.list_all())} verticals registered")
+        
+        # Mount vertical routes dynamically
+        vertical_routes = vertical_registry.get_all_routes()
+        logger.info(f"Found {len(vertical_routes)} vertical route(s) to mount")
+        for route in vertical_routes:
+            app.include_router(route)
+            prefix = getattr(route, 'prefix', 'unknown')
+            logger.info(f"Mounted vertical router: {prefix}")
+    except ImportError as e:
+        logger.warning(f"Vertical registry not available: {e}")
+    except Exception:  # pragma: no cover - defensive guard
+        logger.warning("Failed to initialize vertical registry", exc_info=True)
 
     # Default tenant seeding (idempotent) – now runs in ALL environments for reliability.
     if _settings.default_tenant:

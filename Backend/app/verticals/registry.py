@@ -115,6 +115,21 @@ class VerticalRegistry:
         """
         return vertical_key in self._verticals
     
+    def get_all_routes(self) -> list:
+        """
+        Get all routes from all registered verticals.
+        
+        Returns:
+            List of FastAPI APIRouter instances from all verticals
+        """
+        routes = []
+        for vertical in self._verticals.values():
+            vertical_routes = vertical.get_routes()
+            if vertical_routes:
+                routes.extend(vertical_routes)
+                logger.debug(f"Added {len(vertical_routes)} route(s) from {vertical.vertical_key}")
+        return routes
+    
     def auto_register_all(self) -> None:
         """
         Auto-discover and register all vertical modules.
@@ -128,7 +143,7 @@ class VerticalRegistry:
         
         # Import and register all verticals
         try:
-            from .carwash import CarwashVertical
+            from .carwash.module import CarwashVertical
             self.register(CarwashVertical())
         except ImportError as e:
             logger.warning(f"Could not register carwash vertical: {e}")

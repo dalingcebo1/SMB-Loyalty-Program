@@ -51,15 +51,18 @@ class CarwashVertical(VerticalModule):
     
     def get_routes(self) -> List[APIRouter]:
         """Return carwash-specific routes."""
-        # These routes would be defined in a separate routes module
-        # For now, return empty list until we migrate existing carwash routes
-        return []
+        from app.verticals.carwash.routes import router
+        return [router]
     
     def get_models(self) -> List[type]:
         """Return carwash-specific models."""
-        # Would return Vehicle, WashPackage, Bay, QueueEntry models
-        # For now, return empty until we refactor existing models
-        return []
+        from app.verticals.carwash.models import (
+            Vehicle,
+            WashPackage,
+            CarwashMembership,
+            WashHistory
+        )
+        return [Vehicle, WashPackage, CarwashMembership, WashHistory]
     
     def get_default_config(self) -> Dict[str, Any]:
         """Default configuration for new carwash tenants."""
@@ -96,14 +99,20 @@ class CarwashVertical(VerticalModule):
         """
         logger.info(f"Initializing carwash vertical for tenant {tenant_id}")
         
-        # TODO: Seed default wash packages
-        # This would create default Service entries in the database
-        # Example:
-        # - Basic Wash (R80)
-        # - Premium Wash (R150)
-        # - Deluxe Detailing (R300)
+        # Seed default wash packages
+        from app.verticals.carwash.services import WashPackageService
         
-        # For now, just log
+        try:
+            packages = WashPackageService.create_default_packages(db, tenant_id)
+            logger.info(
+                f"Created {len(packages)} default wash packages for tenant {tenant_id}"
+            )
+        except Exception as exc:
+            logger.error(
+                f"Failed to seed default packages for tenant {tenant_id}: {exc}",
+                exc_info=True
+            )
+        
         logger.info(f"Carwash vertical initialized for tenant {tenant_id}")
     
     def decorate_tenant_meta(self, meta: Dict[str, Any], tenant: Any) -> None:

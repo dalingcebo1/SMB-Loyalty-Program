@@ -384,6 +384,21 @@ def complete_wash(order_id: str, db: Session = Depends(get_db)):
         vc.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(order)
+    
+    # Trigger async background processing (notifications, loyalty points)
+    try:
+        from app.workers.tasks import process_order_completion
+        process_order_completion.delay(
+            tenant_id=order.tenant_id,
+            order_id=int(order.id)
+        )
+    except Exception as exc:
+        # Non-critical: don't block response if Celery unavailable
+        import logging
+        logging.getLogger(__name__).warning(
+            f"Failed to queue background task for order {order_id}: {exc}"
+        )
+    
     # build nextActionUrl for front-end to redeem wash for loyalty points
     # build nextActionUrl and return standardized response
     redeem_path = f"/api/orders/{order.id}/redeem"

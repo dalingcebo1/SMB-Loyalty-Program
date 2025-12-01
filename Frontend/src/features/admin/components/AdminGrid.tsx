@@ -79,36 +79,18 @@ export function AdminPageContainer({
   className = '',
 }: AdminPageContainerProps) {
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`admin-page ${className}`}>
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h1
-            className="font-bold text-gray-900"
-            style={{
-              fontSize: 'var(--font-size-2xl)',
-              lineHeight: 'var(--line-height-tight)',
-            }}
-          >
-            {title}
-          </h1>
-          {description && (
-            <p
-              className="mt-1 text-gray-600"
-              style={{
-                fontSize: 'var(--font-size-sm)',
-                lineHeight: 'var(--line-height-normal)',
-              }}
-            >
-              {description}
-            </p>
-          )}
+      <div className="admin-page-header">
+        <div className="flex-1 min-w-0 space-y-1">
+          <h1 className="admin-page-title">{title}</h1>
+          {description && <p className="admin-page-description">{description}</p>}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
 
       {/* Page Content */}
-      <div>{children}</div>
+      <div className="admin-page-content">{children}</div>
     </div>
   );
 }
@@ -132,34 +114,14 @@ export function AdminSection({
   className = '',
 }: AdminSectionProps) {
   return (
-    <div className={`space-y-3 ${className}`}>
+    <section className={`admin-section ${className}`}>
       {(title || description) && (
-        <div>
-          {title && (
-            <h2
-              className="font-semibold text-gray-900"
-              style={{
-                fontSize: 'var(--font-size-base)',
-                lineHeight: 'var(--line-height-snug)',
-              }}
-            >
-              {title}
-            </h2>
-          )}
-          {description && (
-            <p
-              className="mt-0.5 text-gray-600"
-              style={{
-                fontSize: '0.8125rem',
-                lineHeight: 'var(--line-height-normal)',
-              }}
-            >
-              {description}
-            </p>
-          )}
+        <div className="admin-section-header">
+          {title && <h2 className="admin-section-title">{title}</h2>}
+          {description && <p className="admin-section-subtitle">{description}</p>}
         </div>
       )}
-      <div>{children}</div>
-    </div>
+      <div className="admin-section-content">{children}</div>
+    </section>
   );
 }

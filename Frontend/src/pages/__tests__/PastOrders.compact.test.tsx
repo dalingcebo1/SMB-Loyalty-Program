@@ -72,11 +72,19 @@ vi.mock('react-router-dom', async (orig) => {
 
 import PastOrders from '../PastOrders';
 
-// Helper to open first order modal
-async function openFirstModal() {
+// Helper to open modal for order matching summary/service text
+async function openOrderModalBySummary(match: RegExp | string) {
   const rows = await screen.findAllByTestId('order-row');
+  const targetRow = rows.find((row) =>
+    within(row).queryByText(match)
+  );
+
+  if (!targetRow) {
+    throw new Error(`No order row found matching ${match.toString()}`);
+  }
+
   await act(async () => {
-    fireEvent.click(rows[0]);
+    fireEvent.click(targetRow);
   });
 }
 
@@ -106,7 +114,7 @@ describe('PastOrders compact list', () => {
 
   it('opens minimal modal with essential details', async () => {
     render(<PastOrders />);
-    await openFirstModal();
+    await openOrderModalBySummary(/Full Wash/i);
     const dialog = await screen.findByRole('dialog');
 
     // Wait for detail-table test id signaling loaded content (not skeleton)
@@ -123,9 +131,7 @@ describe('PastOrders compact list', () => {
 
   it('renders extras for an order that has them', async () => {
     render(<PastOrders />);
-    // Click the second row (has extras)
-    const rows = await screen.findAllByTestId('order-row');
-    await act(async () => fireEvent.click(rows[1]));
+    await openOrderModalBySummary(/Express Wash/i);
     const dialog = await screen.findByRole('dialog');
     await within(dialog).findByTestId('order-detail-table');
     // Extras row should list both extras joined by comma

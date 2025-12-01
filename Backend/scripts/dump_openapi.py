@@ -1,14 +1,23 @@
 """Utility script to dump the current OpenAPI schema to stdout.
 
-Usage (from repo root):
-  python Backend/scripts/dump_openapi.py > Backend/tests/openapi_snapshot.json
+Usage (from Backend directory):
+  cd Backend && python scripts/dump_openapi.py > tests/openapi_snapshot.json
 """
 from __future__ import annotations
 import json
-import importlib
+import sys
+import os
+from pathlib import Path
 
-mod = importlib.import_module('main')
-app = getattr(mod, 'app')
+# Set environment variable to use test registry and avoid Prometheus conflicts
+os.environ['PYTEST_CURRENT_TEST'] = 'dump_openapi_script'
+
+# Add Backend directory to path so we can import main
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
+
+import main
+app = main.app
 
 schema = app.openapi()
 # Add minimal metadata so we can detect accidental manual edits

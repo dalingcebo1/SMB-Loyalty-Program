@@ -4,6 +4,7 @@
  */
 
 import type { ReactNode } from 'react';
+import '../styles/admin-modern.css';
 
 interface AdminCardProps {
   /** Card title */
@@ -72,23 +73,19 @@ export function AdminCard({
   padding = 'base',
 }: AdminCardProps) {
   const styles = variantStyles[variant];
-  const isInteractive = !!onClick;
+  const isInteractive = !!onClick && hoverable;
 
   return (
     <div
       onClick={onClick}
       className={`
+        admin-card
+        ${variant === 'primary' ? 'admin-card-primary' : ''}
+        ${isInteractive ? 'admin-card-interactive' : ''}
         ${styles.card}
-        border rounded-lg
-        transition-all duration-200
         ${paddingSizes[padding]}
-        ${hoverable && 'hover:shadow-md hover:border-gray-300'}
-        ${isInteractive && 'cursor-pointer'}
         ${className}
       `}
-      style={{
-        boxShadow: 'var(--shadow-xs)',
-      }}
     >
       {/* Header with icon and title */}
       {(icon || title || description) && (
@@ -96,10 +93,9 @@ export function AdminCard({
           {icon && (
             <div
               className={`
+                admin-icon-wrapper admin-icon-wrapper-md
                 ${styles.iconBg}
                 ${styles.iconColor}
-                w-10 h-10 rounded-lg
-                flex items-center justify-center
                 flex-shrink-0
               `}
             >
@@ -169,10 +165,10 @@ export function StatCard({
   onClick,
   className = '',
 }: StatCardProps) {
-  const changeColors = {
-    positive: 'text-green-600 bg-green-50',
-    negative: 'text-red-600 bg-red-50',
-    neutral: 'text-gray-600 bg-gray-50',
+  const changeBadgeClass = {
+    positive: 'admin-badge admin-badge-green stat-trend-positive',
+    negative: 'admin-badge admin-badge-red stat-trend-negative',
+    neutral: 'admin-badge admin-badge-gray',
   };
 
   return (
@@ -180,7 +176,7 @@ export function StatCard({
       onClick={onClick}
       hoverable={!!onClick}
       icon={icon}
-      className={className}
+      className={`stat-card ${className}`}
       padding="base"
     >
       <div className="space-y-1">
@@ -194,7 +190,7 @@ export function StatCard({
           {label}
         </p>
         <p
-          className="text-gray-900 font-bold"
+          className="text-gray-900 font-bold stat-value"
           style={{
             fontSize: 'var(--font-size-xl)',
             lineHeight: 'var(--line-height-tight)',
@@ -203,17 +199,9 @@ export function StatCard({
           {value}
         </p>
         {(change || info) && (
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             {change && (
-              <span
-                className={`
-                  ${changeColors[changeDirection]}
-                  px-1.5 py-0.5 rounded font-medium
-                `}
-                style={{
-                  fontSize: '0.6875rem',
-                }}
-              >
+              <span className={changeBadgeClass[changeDirection]}>
                 {change}
               </span>
             )}
@@ -261,13 +249,21 @@ export function ActionCard({
   badge,
   className = '',
 }: ActionCardProps) {
+  const badgeClass = {
+    primary: 'admin-badge admin-badge-blue',
+    success: 'admin-badge admin-badge-green',
+    warning: 'admin-badge admin-badge-amber',
+    error: 'admin-badge admin-badge-red',
+    default: 'admin-badge admin-badge-gray',
+  };
+
   return (
     <AdminCard
       onClick={onClick}
       variant={variant}
       hoverable={true}
       icon={icon}
-      className={`group ${className}`}
+      className={`action-card group ${className}`}
       padding="sm"
     >
       <div className="space-y-1">
@@ -282,12 +278,7 @@ export function ActionCard({
             {title}
           </h3>
           {badge && (
-            <span
-              className="px-1.5 py-0.5 bg-primary-100 text-primary-700 rounded font-medium"
-              style={{
-                fontSize: '0.6875rem',
-              }}
-            >
+            <span className={badgeClass[variant]}>
               {badge}
             </span>
           )}

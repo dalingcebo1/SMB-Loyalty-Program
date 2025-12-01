@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { formatCurrency as formatCurrencyZAR } from '../../utils/format';
 import { AdminPageContainer, AdminSection, AdminGrid } from '../../features/admin/components/AdminGrid';
 import { StatCard, ActionCard } from '../../features/admin/components/AdminCard';
+import '../../features/admin/styles/admin-modern.css';
 
 interface BusinessSummaryResponse {
   total_revenue: number;
@@ -129,10 +130,10 @@ const AdminWelcome: React.FC = () => {
 
       {/* 1. CRITICAL: Alerts & Urgent Items First */}
       {urgentItems.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="admin-alert admin-alert-warning">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <HiClock className="w-5 h-5 text-amber-600" />
+            <div className="admin-icon-wrapper admin-icon-wrapper-md">
+              <HiClock className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-amber-900 text-sm mb-1">Needs Attention</h3>
@@ -141,7 +142,7 @@ const AdminWelcome: React.FC = () => {
                   <p className="text-amber-800 text-xs">{item.message}</p>
                   <Link 
                     to={item.to}
-                    className="text-xs font-medium text-amber-700 hover:text-amber-900 underline whitespace-nowrap"
+                    className="admin-link text-xs font-medium whitespace-nowrap"
                   >
                     {item.action} →
                   </Link>
@@ -155,8 +156,8 @@ const AdminWelcome: React.FC = () => {
       {/* 2. PRIORITY: Key Business Metrics */}
       <AdminSection title="Today's Performance">
         {hasMetricsError ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            Couldn't load metrics. Please refresh.
+          <div className="admin-alert admin-alert-error">
+            <p className="text-sm">Couldn't load metrics. Please refresh.</p>
           </div>
         ) : (
           <AdminGrid cols={{ mobile: 2, tablet: 3, desktop: 4, xl: 4 }} gap="sm">

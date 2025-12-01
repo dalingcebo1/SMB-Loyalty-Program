@@ -1,17 +1,14 @@
 import json
 from pathlib import Path
 from fastapi.testclient import TestClient
-import importlib
-
-# Import the FastAPI app
-app_module = importlib.import_module('main')
-app = app_module.app
-client = TestClient(app)
 
 SNAPSHOT_PATH = Path(__file__).parent / 'openapi_snapshot.json'
 
 
-def test_openapi_snapshot_structure():
+def test_openapi_snapshot_structure(fastapi_app):
+    """Validate the OpenAPI schema matches the stored snapshot."""
+    client = TestClient(fastapi_app)
+    
     resp = client.get('/api/openapi.json')
     assert resp.status_code == 200
     current = resp.json()

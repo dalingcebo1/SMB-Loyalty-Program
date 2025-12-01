@@ -27,7 +27,7 @@ except Exception:  # pragma: no cover - defensive
 # Backend.app.core module even if the top-level shim was imported earlier.
 try:  # pragma: no cover - defensive best-effort
 	_this_pkg = _sys.modules[__name__]
-	for _name in ("core", "plugins", "routes", "services", "utils", "models", "tests", "analytics"):
+	for _name in ("core", "plugins", "routes", "services", "utils", "models", "tests", "analytics", "verticals"):
 		try:
 			_mod = _imp(f"Backend.app.{_name}")
 			_sys.modules.setdefault(f"app.{_name}", _mod)

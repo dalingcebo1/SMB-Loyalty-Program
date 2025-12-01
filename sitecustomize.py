@@ -18,16 +18,19 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 # Provide a lightweight alias module name 'app' pointing to Backend to satisfy
-# older tests importing app.main
-try:
-    import Backend as _backend  # type: ignore
-    import types
+# older tests importing app.main only when the real package is absent (e.g. in
+# legacy deployment bundles). The actual Backend/app package now exists in this
+# repository, so we avoid overwriting it with a dummy module.
+if not (backend_dir / "app").is_dir():  # pragma: no cover - legacy path only
+    try:
+        import Backend as _backend  # type: ignore
+        import types
 
-    if 'app' not in sys.modules:
-        alias = types.ModuleType('app')
-        # Mirror selected attributes if needed
-        alias.main = _backend.main  # type: ignore[attr-defined]
-        sys.modules['app'] = alias
-except Exception:
-    # Best effort only; tests will fail clearly if alias not available
-    pass
+        if 'app' not in sys.modules:
+            alias = types.ModuleType('app')
+            # Mirror selected attributes if needed
+            alias.main = _backend.main  # type: ignore[attr-defined]
+            sys.modules['app'] = alias
+    except Exception:
+        # Best effort only; tests will fail clearly if alias not available
+        pass

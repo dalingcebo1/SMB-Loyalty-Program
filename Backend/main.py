@@ -44,12 +44,14 @@ from app.routes.metrics import router as metrics_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 
 # Conditional import for verticals (may not be available in all test contexts)
+_verticals_import_error: ImportError | None = None
 try:
     from app.routes.verticals import router as verticals_router
     _verticals_router_available = True
-except ImportError:
+except ImportError as verticals_import_error:  # pragma: no cover - optional dependency
     verticals_router = None
     _verticals_router_available = False
+    _verticals_import_error = verticals_import_error
 from app.core.rate_limit import check_rate, compute_retry_after, build_429_payload
 from app.core.rate_limit import bucket_snapshot  # used elsewhere optionally
 from app.core.rate_limit import set_limit  # future use

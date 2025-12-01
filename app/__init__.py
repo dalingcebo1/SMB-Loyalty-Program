@@ -17,7 +17,7 @@ import sys as _sys
 try:  # pragma: no cover - defensive best-effort
     _backend_app_pkg = _imp("Backend.app")
     _this_pkg = _sys.modules[__name__]
-    for _name in ("core", "plugins", "routes", "services", "utils", "models", "tests", "analytics"):
+    for _name in ("core", "plugins", "routes", "services", "utils", "models", "tests", "analytics", "verticals"):
         try:
             _mod = _imp(f"Backend.app.{_name}")
             # Register in sys.modules under aliased path

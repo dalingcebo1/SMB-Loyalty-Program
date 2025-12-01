@@ -79,26 +79,26 @@ export function AdminCard({
       onClick={onClick}
       className={`
         ${styles.card}
-        border rounded-xl
+        border rounded-lg
         transition-all duration-200
         ${paddingSizes[padding]}
-        ${hoverable && 'hover:shadow-lg'}
+        ${hoverable && 'hover:shadow-md hover:border-gray-300'}
         ${isInteractive && 'cursor-pointer'}
         ${className}
       `}
       style={{
-        boxShadow: 'var(--shadow-sm)',
+        boxShadow: 'var(--shadow-xs)',
       }}
     >
       {/* Header with icon and title */}
       {(icon || title || description) && (
-        <div className="flex items-start gap-4 mb-4">
+        <div className="flex items-start gap-3 mb-3">
           {icon && (
             <div
               className={`
                 ${styles.iconBg}
                 ${styles.iconColor}
-                w-12 h-12 rounded-lg
+                w-10 h-10 rounded-lg
                 flex items-center justify-center
                 flex-shrink-0
               `}
@@ -109,9 +109,9 @@ export function AdminCard({
           <div className="flex-1 min-w-0">
             {title && (
               <h3
-                className="font-semibold text-gray-900 mb-1"
+                className="font-semibold text-gray-900 mb-0.5"
                 style={{
-                  fontSize: 'var(--font-size-lg)',
+                  fontSize: 'var(--font-size-base)',
                   lineHeight: 'var(--line-height-snug)',
                 }}
               >
@@ -122,7 +122,7 @@ export function AdminCard({
               <p
                 className="text-gray-600"
                 style={{
-                  fontSize: 'var(--font-size-sm)',
+                  fontSize: 'var(--font-size-xs)',
                   lineHeight: 'var(--line-height-normal)',
                 }}
               >
@@ -183,12 +183,12 @@ export function StatCard({
       className={className}
       padding="base"
     >
-      <div className="space-y-2">
+      <div className="space-y-1">
         <p
-          className="text-gray-600 uppercase tracking-wide font-medium"
+          className="text-gray-500 uppercase tracking-wide font-medium"
           style={{
-            fontSize: 'var(--font-size-xs)',
-            letterSpacing: 'var(--letter-spacing-wider)',
+            fontSize: '0.6875rem',
+            letterSpacing: '0.05em',
           }}
         >
           {label}
@@ -196,22 +196,22 @@ export function StatCard({
         <p
           className="text-gray-900 font-bold"
           style={{
-            fontSize: 'var(--font-size-2xl)',
+            fontSize: 'var(--font-size-xl)',
             lineHeight: 'var(--line-height-tight)',
           }}
         >
           {value}
         </p>
         {(change || info) && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-1">
             {change && (
               <span
                 className={`
                   ${changeColors[changeDirection]}
-                  px-2 py-0.5 rounded-full font-medium
+                  px-1.5 py-0.5 rounded font-medium
                 `}
                 style={{
-                  fontSize: 'var(--font-size-xs)',
+                  fontSize: '0.6875rem',
                 }}
               >
                 {change}
@@ -221,7 +221,7 @@ export function StatCard({
               <span
                 className="text-gray-500"
                 style={{
-                  fontSize: 'var(--font-size-xs)',
+                  fontSize: '0.6875rem',
                 }}
               >
                 {info}
@@ -268,14 +268,14 @@ export function ActionCard({
       hoverable={true}
       icon={icon}
       className={`group ${className}`}
-      padding="base"
+      padding="sm"
     >
-      <div className="space-y-2">
+      <div className="space-y-1">
         <div className="flex items-center justify-between">
           <h3
             className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors"
             style={{
-              fontSize: 'var(--font-size-base)',
+              fontSize: 'var(--font-size-sm)',
               lineHeight: 'var(--line-height-snug)',
             }}
           >
@@ -283,9 +283,9 @@ export function ActionCard({
           </h3>
           {badge && (
             <span
-              className="px-2 py-1 bg-primary-100 text-primary-700 rounded-full font-medium"
+              className="px-1.5 py-0.5 bg-primary-100 text-primary-700 rounded font-medium"
               style={{
-                fontSize: 'var(--font-size-xs)',
+                fontSize: '0.6875rem',
               }}
             >
               {badge}
@@ -295,8 +295,8 @@ export function ActionCard({
         <p
           className="text-gray-600"
           style={{
-            fontSize: 'var(--font-size-sm)',
-            lineHeight: 'var(--line-height-relaxed)',
+            fontSize: '0.8125rem',
+            lineHeight: '1.4',
           }}
         >
           {description}

@@ -81,12 +81,12 @@ export function AdminPageContainer({
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h1
             className="font-bold text-gray-900"
             style={{
-              fontSize: 'var(--font-size-3xl)',
+              fontSize: 'var(--font-size-2xl)',
               lineHeight: 'var(--line-height-tight)',
             }}
           >
@@ -94,17 +94,17 @@ export function AdminPageContainer({
           </h1>
           {description && (
             <p
-              className="mt-2 text-gray-600"
+              className="mt-1 text-gray-600"
               style={{
-                fontSize: 'var(--font-size-base)',
-                lineHeight: 'var(--line-height-relaxed)',
+                fontSize: 'var(--font-size-sm)',
+                lineHeight: 'var(--line-height-normal)',
               }}
             >
               {description}
             </p>
           )}
         </div>
-        {actions && <div className="flex items-center gap-3">{actions}</div>}
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
 
       {/* Page Content */}
@@ -132,14 +132,14 @@ export function AdminSection({
   className = '',
 }: AdminSectionProps) {
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
       {(title || description) && (
         <div>
           {title && (
             <h2
               className="font-semibold text-gray-900"
               style={{
-                fontSize: 'var(--font-size-xl)',
+                fontSize: 'var(--font-size-base)',
                 lineHeight: 'var(--line-height-snug)',
               }}
             >
@@ -148,9 +148,9 @@ export function AdminSection({
           )}
           {description && (
             <p
-              className="mt-1 text-gray-600"
+              className="mt-0.5 text-gray-600"
               style={{
-                fontSize: 'var(--font-size-sm)',
+                fontSize: '0.8125rem',
                 lineHeight: 'var(--line-height-normal)',
               }}
             >

@@ -39,6 +39,11 @@
   "mimeTypes": {
     ".json": "application/json",
     ".js": "text/javascript",
-    ".css": "text/css"
+    ".mjs": "text/javascript",
+    ".jsx": "text/javascript",
+    ".ts": "text/typescript",
+    ".tsx": "text/typescript",
+    ".css": "text/css",
+    ".wasm": "application/wasm"
   }
 }

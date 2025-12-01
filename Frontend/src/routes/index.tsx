@@ -1,10 +1,35 @@
 // src/routes/index.tsx
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, ComponentType } from 'react';
 import { useRoutes, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { moduleFlags } from '../config/modules';
 import { useAuth } from '../auth/AuthProvider';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import LoadingFallback from '../components/LoadingFallback';
+
+// Lazy loading with retry logic for production MIME type errors
+function lazyWithRetry<T extends ComponentType<any>>(
+  importFn: () => Promise<{ default: T }>
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    importFn().catch((error) => {
+      console.error('Lazy loading failed, retrying...', error);
+      // Retry once after a short delay
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          importFn()
+            .then(resolve)
+            .catch((retryError) => {
+              console.error('Retry failed, reloading page...', retryError);
+              // If retry fails, reload the page to get fresh chunks
+              window.location.reload();
+              // Return a dummy component to satisfy TypeScript
+              return { default: (() => null) as T };
+            });
+        }, 1000);
+      });
+    })
+  );
+}
 
 // Layouts are lazy-loaded to reduce initial bundle
 const DashboardLayout = lazy(() => import('../components/DashboardLayout'));
@@ -61,14 +86,14 @@ const AdminUserEdit = lazy(() => import('../pages/AdminUserEdit'));
 const TenantsList = lazy(() => import('../pages/admin/TenantsList'));
 const TenantEdit = lazy(() => import('../pages/admin/TenantEdit'));
 // Expanded new admin feature scaffold pages
-const AdminOverview = lazy(() => import('../features/admin/pages/Overview'));
-const AdminUsers = lazy(() => import('../features/admin/pages/UsersAdmin'));
-const BrandingPage = lazy(() => import('../pages/admin/BrandingPage'));
-const InventoryPage = lazy(() => import('../pages/admin/InventoryPage'));
-const AdminAuditLogs = lazy(() => import('../features/admin/pages/AuditLogs'));
-const AdminJobsMonitor = lazy(() => import('../features/admin/pages/JobsMonitor'));
-const AdminRateLimitEditor = lazy(() => import('../features/admin/pages/RateLimitEditor'));
-const TransactionsAdmin = lazy(() => import('../features/admin/pages/TransactionsAdmin'));
+const AdminOverview = lazyWithRetry(() => import('../features/admin/pages/Overview'));
+const AdminUsers = lazyWithRetry(() => import('../features/admin/pages/UsersAdmin'));
+const BrandingPage = lazyWithRetry(() => import('../pages/admin/BrandingPage'));
+const InventoryPage = lazyWithRetry(() => import('../pages/admin/InventoryPage'));
+const AdminAuditLogs = lazyWithRetry(() => import('../features/admin/pages/AuditLogs'));
+const AdminJobsMonitor = lazyWithRetry(() => import('../features/admin/pages/JobsMonitor'));
+const AdminRateLimitEditor = lazyWithRetry(() => import('../features/admin/pages/RateLimitEditor'));
+const TransactionsAdmin = lazyWithRetry(() => import('../features/admin/pages/TransactionsAdmin'));
 // New admin pages for MVP
 const CustomersAdmin = lazy(() => import('../features/admin/pages/CustomersAdmin'));
 const CustomerDetailPage = lazy(() => import('../features/admin/pages/CustomerDetailPage'));

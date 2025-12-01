@@ -10,15 +10,24 @@ from typing import Generator
 DATABASE_URL = settings.database_url
 
 # 2) Create the SQLAlchemy engine with tuned pool settings
-engine = create_engine(
-    DATABASE_URL,
-    echo=True,
-    future=True,
-    pool_size=20,        # number of persistent connections
-    max_overflow=10,     # additional connections beyond pool_size
-    pool_timeout=30,     # seconds to wait before giving up on getting a connection
-    pool_pre_ping=True,  # checks connections before using to avoid stale ones
-)
+# SQLite doesn't support max_overflow and pool_timeout
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        echo=True,
+        future=True,
+        pool_pre_ping=True,
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        echo=True,
+        future=True,
+        pool_size=20,        # number of persistent connections
+        max_overflow=10,     # additional connections beyond pool_size
+        pool_timeout=30,     # seconds to wait before giving up on getting a connection
+        pool_pre_ping=True,  # checks connections before using to avoid stale ones
+    )
 
 # 3) Configure a Session factory
 SessionLocal = sessionmaker(

@@ -20,17 +20,19 @@ const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => (
   <>
     {children}
     <ToastContainer
-      position="top-center"
-      autoClose={3200}
+      position="bottom-center"
+      autoClose={2500}
       hideProgressBar
-      newestOnTop
+      newestOnTop={false}
       closeOnClick
+      closeButton={false}
       draggable={false}
-      pauseOnFocusLoss
+      pauseOnFocusLoss={false}
       pauseOnHover
-      limit={3}
+      limit={1}
       transition={FadeTransition}
       theme="light"
+      style={{ bottom: '24px' }}
     />
   </>
 );

@@ -6,17 +6,18 @@ import { track } from './analytics';
 import { translate } from './i18n';
 
 const base: ToastOptions = {
-  position: 'top-center',
-  autoClose: 3000,
+  position: 'bottom-center',
+  autoClose: 2500,
   pauseOnHover: true,
   closeOnClick: true,
   draggable: false,
   hideProgressBar: true,
+  closeButton: false,
 };
 
 // Deduplication map: message -> last timestamp
 const lastShown: Record<string, number> = {};
-const DEDUPE_INTERVAL = 2500; // ms
+const DEDUPE_INTERVAL = 2000; // ms
 
 interface NotifyOpts extends ToastOptions {
   skipDedupe?: boolean;
@@ -93,12 +94,12 @@ export function notifyWarningKey(key: string, params?: Record<string, unknown>, 
 // Specialized helpers for common app events
 export function notifyOrderConfirmed(orderId: string) {
   void orderId; // reserved for future context (tracking) - mark as used
-  return notifySuccess('🎉 Order confirmed successfully!', { autoClose: 2500 });
+  return notifySuccess('Order confirmed successfully', { autoClose: 2000 });
 }
 
 export function notifyPaymentSuccess(amountCents: number) {
   void amountCents; // reserved for later display; mark as used for lint
-  return notifySuccess('Payment successful!', { autoClose: 2000 });
+  return notifySuccess('Payment successful', { autoClose: 2000 });
 }
 
 export function notifyClipboard(message = 'Copied to clipboard') {
@@ -106,19 +107,19 @@ export function notifyClipboard(message = 'Copied to clipboard') {
 }
 
 export function notifyRedeemSuccess() {
-  return notifySuccess('Wash redeemed for loyalty points!');
+  return notifySuccess('Wash redeemed for loyalty points');
 }
 
 export function notifyRedeemError() {
-  return notifyError('Could not redeem wash. Please try again.');
+  return notifyError('Could not redeem wash');
 }
 
 export function notifySdkTimeout() {
-  return notifyInfo('SDK load timeout, proceeding with payment UI.');
+  return notifyInfo('Proceeding with payment');
 }
 
 export function notifyBookingConfirmed() {
-  return notifySuccess('Booking confirmed! Redirecting to payment...');
+  return notifySuccess('Booking confirmed');
 }
 
 export function notifyGenericError(detail?: string) {

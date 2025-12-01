@@ -14,7 +14,7 @@ function lazyWithRetry<T extends ComponentType<any>>(
     importFn().catch((error) => {
       console.error('Lazy loading failed, retrying...', error);
       // Retry once after a short delay
-      return new Promise((resolve) => {
+      return new Promise<{ default: T }>((resolve) => {
         setTimeout(() => {
           importFn()
             .then(resolve)
@@ -22,8 +22,8 @@ function lazyWithRetry<T extends ComponentType<any>>(
               console.error('Retry failed, reloading page...', retryError);
               // If retry fails, reload the page to get fresh chunks
               window.location.reload();
-              // Return a dummy component to satisfy TypeScript
-              return { default: (() => null) as T };
+              // Return a dummy component to satisfy TypeScript (never actually used due to reload)
+              return resolve({ default: (() => null) as unknown as T });
             });
         }, 1000);
       });

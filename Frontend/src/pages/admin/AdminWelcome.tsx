@@ -91,7 +91,7 @@ const AdminWelcome: React.FC = () => {
     }
     return {
       text: `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`,
-      tone: value >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800',
+      tone: value >= 0 ? 'bg-emerald-50  text-emerald-600  border border-emerald-100 ' : 'bg-rose-50  text-rose-600  border border-rose-100 ',
     };
   };
 
@@ -136,10 +136,10 @@ const AdminWelcome: React.FC = () => {
               <HiClock className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-amber-900 dark:text-amber-100 text-sm mb-1">Needs Attention</h3>
+              <h3 className="font-semibold text-amber-900  text-sm mb-1">Needs Attention</h3>
               {urgentItems.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between gap-3 mt-2">
-                  <p className="text-amber-800 dark:text-amber-200 text-xs">{item.message}</p>
+                  <p className="text-amber-800  text-xs">{item.message}</p>
                   <Link 
                     to={item.to}
                     className="admin-link text-xs font-medium whitespace-nowrap"
@@ -284,8 +284,8 @@ const AdminWelcome: React.FC = () => {
       {/* 5. SYSTEM: Advanced/Technical Features */}
       <details className="group">
         <summary className="cursor-pointer list-none">
-          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Advanced Tools</span>
+          <div className="flex items-center justify-between p-3 bg-gray-50  rounded-lg hover:bg-gray-100  transition-colors">
+            <span className="text-sm font-semibold text-gray-700 ">Advanced Tools</span>
             <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
           </div>
         </summary>
@@ -324,7 +324,7 @@ const AdminWelcome: React.FC = () => {
 
       {/* Footer: Last Updated */}
       {lastUpdated && (
-        <div className="text-center pt-4 border-t border-gray-100 dark:border-gray-800">
+        <div className="text-center pt-4 border-t border-gray-100 ">
           <p className="text-xs text-gray-400">
             Last updated {lastUpdated.toLocaleTimeString()}
           </p>

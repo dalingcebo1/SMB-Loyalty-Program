@@ -650,31 +650,4 @@ details.admin-collapsible[open] {
  * DARK MODE READY
  * =========================== */
 
-@media (prefers-color-scheme: dark) {
-  .admin-container {
-    background: linear-gradient(to bottom, #0f172a 0%, #1e293b 100%);
-  }
-  
-  .admin-card {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: rgba(71, 85, 105, 0.3);
-  }
-  
-  .admin-card:hover {
-    border-color: rgba(100, 116, 139, 0.5);
-  }
-  
-  .admin-section-title,
-  .admin-page-title {
-    color: #f1f5f9;
-  }
-  
-  .admin-section-subtitle,
-  .admin-page-description {
-    color: #94a3b8;
-  }
 
-  .admin-page-header {
-    border-bottom-color: rgba(71, 85, 105, 0.3);
-  }
-}

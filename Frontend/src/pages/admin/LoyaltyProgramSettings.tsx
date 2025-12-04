@@ -96,7 +96,6 @@ const LoyaltyProgramSettings: React.FC = () => {
 
   const getRecommendation = (type: string) => {
     if (vertical === 'carwash' && type === 'stamps') return true;
-    if (vertical === 'retail' && type === 'points') return true;
     if (vertical === 'dispensary' && type === 'points') return true;
     return false;
   };

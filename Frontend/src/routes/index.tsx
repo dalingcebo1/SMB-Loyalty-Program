@@ -85,6 +85,7 @@ const ModuleSettings = lazy(() => import('../pages/admin/ModuleSettings'));
 const AdminUserEdit = lazy(() => import('../pages/AdminUserEdit'));
 const TenantsList = lazy(() => import('../pages/admin/TenantsList'));
 const TenantEdit = lazy(() => import('../pages/admin/TenantEdit'));
+const OrganizationSettings = lazy(() => import('../pages/admin/OrganizationSettings'));
 // Expanded new admin feature scaffold pages
 const AdminOverview = lazyWithRetry(() => import('../features/admin/pages/Overview'));
 const AdminUsers = lazyWithRetry(() => import('../features/admin/pages/UsersAdmin'));
@@ -199,6 +200,7 @@ const AppRoutes: React.FC = () => {
             { path: 'customers/:id', element: <CustomerDetailPage /> },
             { path: 'reports', element: <ReportsAdmin /> },
             { path: 'notifications', element: <NotificationsAdmin /> },
+            { path: 'settings', element: <OrganizationSettings /> },
             { path: 'tenants', element: <TenantsList /> },
             { path: 'tenants/:tenantId/edit', element: <TenantEdit /> },
             { path: 'subscription', element: moduleFlags.enableSubscription ? <SubscriptionManagePage /> : <Navigate to='/admin' replace /> },

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../api/api';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../auth/AuthProvider';
+import { useCapabilities } from '../../features/admin/hooks/useCapabilities';
 import { HiOfficeBuilding, HiPlus, HiPencil, HiSearch, HiOutlineRefresh } from 'react-icons/hi';
 import { AdminPageContainer, AdminGrid } from '../../features/admin/components/AdminGrid';
 import { AdminCard, StatCard } from '../../features/admin/components/AdminCard';
@@ -20,6 +21,7 @@ interface ApiTenant {
 
 const TenantsList: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+  const { has } = useCapabilities();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -34,8 +36,8 @@ const TenantsList: React.FC = () => {
   if (authLoading) {
     return <div className="flex items-center justify-center h-screen"><LoadingSpinner /></div>;
   }
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/" replace />;
+  if (!user || !has('platform.manage_tenants')) {
+    return <Navigate to="/admin" replace />;
   }
 
   // Filter & paginate

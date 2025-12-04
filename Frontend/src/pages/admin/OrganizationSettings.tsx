@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
-import { useCapabilities } from '../../features/admin/hooks/useCapabilities';
 import api from '../../api/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { tenantSchema, TenantForm } from '../../schemas';
 import { AdminPageContainer } from '../../features/admin/components/AdminGrid';
 import { AdminCard } from '../../features/admin/components/AdminCard';
-import { HiSave, HiTrash, HiPlus, HiArrowLeft, HiMail } from 'react-icons/hi';
+import { HiSave, HiTrash, HiMail } from 'react-icons/hi';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-toastify';
 
@@ -26,17 +24,12 @@ interface ApiTenant {
   config: Record<string, any>;
 }
 
-const TenantEdit: React.FC = () => {
-  const { tenantId } = useParams<{ tenantId: string }>();
+const OrganizationSettings: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
-  const { has } = useCapabilities();
-  const navigate = useNavigate();
-  const isNew = tenantId === 'new';
   const [tenantData, setTenantData] = useState<ApiTenant>({ 
     id: '', name: '', loyalty_type: '', vertical_type: 'carwash', admin_ids: [], config: {} 
   });
   const [error, setError] = useState<string>('');
-  const [newAdminId, setNewAdminId] = useState<number | ''>('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
@@ -47,9 +40,9 @@ const TenantEdit: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!isNew && tenantId) {
+    if (user?.tenant_id) {
       setIsLoading(true);
-      api.get<ApiTenant>(`/tenants/${tenantId}`)
+      api.get<ApiTenant>(`/tenants/${user.tenant_id}`)
         .then(res => {
           setTenantData(res.data);
           reset({ 
@@ -62,25 +55,21 @@ const TenantEdit: React.FC = () => {
             config: JSON.stringify(res.data.config, null, 2)
           });
         })
-        .catch(err => setError(err.response?.data?.detail || 'Error loading tenant'))
+        .catch(err => setError(err.response?.data?.detail || 'Error loading organization details'))
         .finally(() => setIsLoading(false));
     }
-  }, [tenantId, isNew, reset]);
+  }, [user?.tenant_id, reset]);
 
   const onSubmit = handleSubmit(async data => {
+    if (!user?.tenant_id) return;
     try {
       const payload = {
         ...data,
         config: data.config ? JSON.parse(data.config) : {}
       };
 
-      if (isNew) {
-        await api.post<ApiTenant>('/tenants/', { id: tenantData.id, ...payload });
-      } else {
-        await api.patch<ApiTenant>(`/tenants/${tenantId}`, payload);
-      }
-      toast.success(isNew ? 'Tenant created successfully' : 'Tenant updated successfully');
-      navigate('/admin/tenants');
+      await api.patch<ApiTenant>(`/tenants/${user.tenant_id}`, payload);
+      toast.success('Organization settings updated successfully');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       const msg = error.response?.data?.detail || 'Save failed';
@@ -89,20 +78,17 @@ const TenantEdit: React.FC = () => {
     }
   });
 
-  const handleAssignAdmin = () => {
-    if (!newAdminId || !tenantId) return;
-    api.post<ApiTenant>(`/tenants/${tenantId}/admins`, { user_id: newAdminId })
-      .then(res => {
-        setTenantData(res.data);
-        toast.success('Admin assigned successfully');
-      })
-      .catch(err => toast.error(err.response?.data?.detail || 'Assign failed'));
-    setNewAdminId('');
-  };
-
   const handleRemoveAdmin = (id: number) => {
-    if (!tenantId) return;
-    api.delete<ApiTenant>(`/tenants/${tenantId}/admins/${id}`)
+    if (!user?.tenant_id) return;
+    // Prevent removing yourself
+    if (id === user.id) {
+      toast.error("You cannot remove yourself.");
+      return;
+    }
+    
+    if (!window.confirm("Are you sure you want to remove this admin?")) return;
+
+    api.delete<ApiTenant>(`/tenants/${user.tenant_id}/admins/${id}`)
       .then(res => {
         setTenantData(res.data);
         toast.success('Admin removed successfully');
@@ -111,10 +97,10 @@ const TenantEdit: React.FC = () => {
   };
 
   const handleInvite = async () => {
-    if (!inviteEmail || !tenantId) return;
+    if (!inviteEmail || !user?.tenant_id) return;
     setIsInviting(true);
     try {
-      const res = await api.post(`tenants/${tenantId}/invite`, { email: inviteEmail });
+      const res = await api.post(`tenants/${user.tenant_id}/invite`, { email: inviteEmail });
       toast.success(`Invite sent! Token: ${res.data.token}`);
       setInviteEmail('');
     } catch (err: any) {
@@ -125,11 +111,10 @@ const TenantEdit: React.FC = () => {
   };
 
   if (authLoading) return <div className="flex items-center justify-center h-screen"><LoadingSpinner /></div>;
-  if (!user || !has('platform.manage_tenants')) return <Navigate to='/' replace />;
   
   if (isLoading) {
     return (
-      <AdminPageContainer title={isNew ? 'Create Tenant' : 'Edit Tenant'}>
+      <AdminPageContainer title="Organization Settings">
         <div className="flex justify-center py-12">
           <LoadingSpinner size="lg" />
         </div>
@@ -139,17 +124,8 @@ const TenantEdit: React.FC = () => {
 
   return (
     <AdminPageContainer
-      title={isNew ? 'Create Tenant' : `Edit Tenant: ${tenantData.name || tenantId}`}
-      description={isNew ? 'Add a new tenant organization' : `Manage configuration for ${tenantId}`}
-      actions={
-        <button
-          onClick={() => navigate('/admin/tenants')}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <HiArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-      }
+      title="Organization Settings"
+      description="Manage your business profile and administrators"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -159,25 +135,11 @@ const TenantEdit: React.FC = () => {
             </div>
           )}
 
-          <AdminCard title="Tenant Details">
+          <AdminCard title="Business Profile">
             <form onSubmit={onSubmit} className="space-y-4">
-              {isNew && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tenant ID</label>
-                  <input
-                    value={tenantData.id}
-                    onChange={e => setTenantData({ ...tenantData, id: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="e.g., my-company"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Unique identifier for the tenant (cannot be changed later)</p>
-                </div>
-              )}
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
                   <input
                     {...register('name')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -271,41 +233,26 @@ const TenantEdit: React.FC = () => {
                   className="flex items-center justify-center w-full sm:w-auto px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <LoadingSpinner size="sm" color="white" /> : <HiSave className="w-4 h-4 mr-2" />}
-                  {isNew ? 'Create Tenant' : 'Save Changes'}
+                  Save Changes
                 </button>
               </div>
             </form>
           </AdminCard>
         </div>
 
-        {!isNew && (
-          <div className="space-y-6">
-            <AdminCard title="Administrators">
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    placeholder="User ID"
-                    value={newAdminId}
-                    onChange={e => setNewAdminId(Number(e.target.value) || '')}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                  <button 
-                    onClick={handleAssignAdmin}
-                    disabled={!newAdminId}
-                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <HiPlus className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  {tenantData.admin_ids.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No admins assigned</p>
-                  ) : (
-                    tenantData.admin_ids.map((id: number) => (
-                      <div key={id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium text-gray-700">User ID: {id}</span>
+        <div className="space-y-6">
+          <AdminCard title="Administrators">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {tenantData.admin_ids.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No admins assigned</p>
+                ) : (
+                  tenantData.admin_ids.map((id: number) => (
+                    <div key={id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">
+                        User ID: {id} {id === user?.id && '(You)'}
+                      </span>
+                      {id !== user?.id && (
                         <button
                           onClick={() => handleRemoveAdmin(id)}
                           className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
@@ -313,39 +260,39 @@ const TenantEdit: React.FC = () => {
                         >
                           <HiTrash className="w-4 h-4" />
                         </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
-            </AdminCard>
+            </div>
+          </AdminCard>
 
-            <AdminCard title="Invite Admin">
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">Send an email invitation to a new administrator.</p>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    placeholder="admin@example.com"
-                    value={inviteEmail}
-                    onChange={e => setInviteEmail(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                  <button 
-                    onClick={handleInvite}
-                    disabled={!inviteEmail || isInviting}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isInviting ? <LoadingSpinner size="sm" color="white" /> : <HiMail className="w-5 h-5" />}
-                  </button>
-                </div>
+          <AdminCard title="Invite Admin">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">Send an email invitation to a new administrator.</p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <button 
+                  onClick={handleInvite}
+                  disabled={!inviteEmail || isInviting}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isInviting ? <LoadingSpinner size="sm" color="white" /> : <HiMail className="w-5 h-5" />}
+                </button>
               </div>
-            </AdminCard>
-          </div>
-        )}
+            </div>
+          </AdminCard>
+        </div>
       </div>
     </AdminPageContainer>
   );
 };
 
-export default TenantEdit;
+export default OrganizationSettings;

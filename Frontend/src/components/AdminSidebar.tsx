@@ -62,7 +62,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
   }, [activeGroupKey, collapsed]);
 
   return (
-    <aside className="w-72 bg-white shadow-xl border-r border-gray-200 sticky top-0 h-screen overflow-y-auto flex flex-col">
+    <div className="h-full flex flex-col bg-white overflow-y-auto">
       {/* Mobile close button */}
       <div className="lg:hidden p-3 border-b border-gray-100">
         <button
@@ -168,30 +168,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
         })}
       </nav>
 
-      {/* User Info & Logout */}
+      {/* Footer / Version Info */}
       <div className="p-4 border-t border-gray-200 mt-auto">
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">A</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">Admin User</p>
-              <p className="text-xs text-gray-500">System Administrator</p>
-            </div>
-          </div>
+        <div className="text-center">
+          <p className="text-xs text-gray-400">v2.5.0 (Beta)</p>
         </div>
-        <button
-          onClick={() => { logout(); navigate('/login'); }}
-          className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-red-500/25 hover:scale-[1.02] group"
-        >
-          <svg className="mr-2 w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          Sign Out
-        </button>
       </div>
-    </aside>
+    </div>
   );
 };
 

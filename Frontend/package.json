@@ -13,7 +13,7 @@
     "build:minimal": "NODE_OPTIONS=\"--max-old-space-size=1024\" tsc -b && NODE_OPTIONS=\"--max-old-space-size=1024\" vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "node ./scripts/run-vitest.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "serve": "node serve.js",

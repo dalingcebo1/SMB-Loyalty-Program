@@ -38,13 +38,14 @@ interface Usage {
 }
 
 const FEATURE_CONFIG: Record<string, { label: string; icon: React.ElementType; priority: number }> = {
-  loyalty: { label: 'Loyalty Program', icon: FaGift, priority: 1 },
-  campaigns: { label: 'Marketing Campaigns', icon: FaBullhorn, priority: 2 },
-  analytics: { label: 'Analytics & Insights', icon: FaChartLine, priority: 3 },
-  multi_user: { label: 'Team Access', icon: FaUsers, priority: 4 },
-  custom_domain: { label: 'Custom Domain', icon: FaGlobe, priority: 5 },
-  white_label: { label: 'White Labeling', icon: FaPaintBrush, priority: 6 },
-  api_access: { label: 'API Access', icon: FaCode, priority: 7 },
+  loyalty: { label: 'Loyalty Customers', icon: FaGift, priority: 1 },
+  orders: { label: 'Monthly Orders', icon: FaCreditCard, priority: 2 },
+  campaigns: { label: 'Marketing Campaigns', icon: FaBullhorn, priority: 3 },
+  analytics: { label: 'Analytics & Insights', icon: FaChartLine, priority: 4 },
+  multi_user: { label: 'Team Access', icon: FaUsers, priority: 5 },
+  custom_domain: { label: 'Custom Domain', icon: FaGlobe, priority: 6 },
+  white_label: { label: 'White Labeling', icon: FaPaintBrush, priority: 7 },
+  api_access: { label: 'API Access', icon: FaCode, priority: 8 },
 };
 
 const formatFeatureDetails = (key: string, value: any): string | null => {

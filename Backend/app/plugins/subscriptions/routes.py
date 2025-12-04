@@ -6,12 +6,13 @@ from datetime import timedelta
 
 from app.core.database import get_db
 from app.core.tenant_context import get_tenant_context, TenantContext
-from app.core.plans import PLAN_REGISTRY, get_plan, FEATURE_LOYALTY, FEATURE_ANALYTICS
-from app.models import Tenant, Order, Redemption, Payment
+from app.core.plans import PLAN_REGISTRY, get_plan, FEATURE_LOYALTY, FEATURE_ANALYTICS, FEATURE_MULTI_USER
+from app.models import Tenant, Order, Redemption, Payment, User, tenant_admins
 from app.utils.time import utc_now
 from config import settings
 import stripe
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["subscriptions"])
@@ -154,6 +155,71 @@ def get_subscription_status(
         "stripe_customer_id": tenant.stripe_customer_id,
         "stripe_subscription_id": tenant.stripe_subscription_id
     }
+
+@router.get("/usage")
+def get_usage(
+    tenant_context: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db)
+):
+    """Get current usage metrics against plan limits."""
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    plan = get_plan(tenant.subscription_plan_id)
+    usage = []
+
+    # 1. Loyalty Customers
+    loyalty_config = plan.features.get(FEATURE_LOYALTY)
+    if loyalty_config:
+        customer_count = db.query(User).filter(
+            User.tenant_id == tenant.id,
+            User.role == "user"
+        ).count()
+        
+        limit_customers = loyalty_config.get("limit_customers")
+        usage.append({
+            "module": "loyalty", # Mapped to "Loyalty Program" in UI
+            "count": customer_count,
+            "limit": limit_customers
+        })
+
+        # 2. Monthly Orders
+        limit_orders = loyalty_config.get("limit_orders_per_month")
+        if limit_orders is not None:
+            # Count orders in current month
+            now = utc_now()
+            start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            
+            order_count = db.query(Order).filter(
+                Order.tenant_id == tenant.id,
+                Order.created_at >= start_of_month
+            ).count()
+            
+            usage.append({
+                "module": "orders",
+                "count": order_count,
+                "limit": limit_orders
+            })
+
+    # 3. Team Members (Multi-user)
+    multi_user_config = plan.features.get(FEATURE_MULTI_USER)
+    if multi_user_config:
+        # Count admins/staff
+        # Users in tenant_admins association
+        # We need to join with tenant_admins
+        # Or just count users with role != 'user' if that's how it works?
+        # The Tenant model has `admins` relationship.
+        admin_count = len(tenant.admins)
+        limit_users = multi_user_config.get("limit_users")
+        
+        usage.append({
+            "module": "multi_user",
+            "count": admin_count,
+            "limit": limit_users
+        })
+
+    return usage
 
 # ─── Webhook ──────────────────────────────────────────────────────────────
 

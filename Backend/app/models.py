@@ -10,6 +10,7 @@ from sqlalchemy import (
     Table,
     JSON,
     Index,
+    Float,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
@@ -67,6 +68,7 @@ class Tenant(Base):
 
     created_at     = Column(DateTime)
     rewards        = relationship("Reward", back_populates="tenant")
+    loyalty_program = relationship("LoyaltyProgram", back_populates="tenant", uselist=False, cascade="all, delete-orphan")
     # tenant-admin many-to-many
     admins         = relationship(
         "User",
@@ -164,6 +166,70 @@ class Reward(Base):
     tenant = relationship("Tenant", back_populates="rewards")
 
 
+class LoyaltyProgram(Base):
+    __tablename__ = "loyalty_programs"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), unique=True, nullable=False)
+    
+    # Program Configuration
+    name = Column(String, default="Loyalty Program")
+    currency_name = Column(String, default="Points")
+    
+    # Accrual: Points earned per unit of currency spent (e.g., 1 point per 100 cents)
+    # If accrual_ratio is 0.1, spending 1000 cents (R10) gives 100 points.
+    accrual_ratio = Column(Float, default=1.0) 
+    
+    # Redemption: Value of one point in cents (e.g., 1 point = 5 cents)
+    redemption_ratio = Column(Float, default=1.0)
+    
+    # Expiry Policy
+    points_expiry_days = Column(Integer, nullable=True) # None = no expiry
+    
+    # Tiers Configuration
+    tiers_enabled = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    tenant = relationship("Tenant", back_populates="loyalty_program")
+    tiers = relationship("LoyaltyTier", back_populates="program", cascade="all, delete-orphan")
+
+
+class LoyaltyTier(Base):
+    __tablename__ = "loyalty_tiers"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    program_id = Column(Integer, ForeignKey("loyalty_programs.id"), nullable=False)
+    
+    name = Column(String, nullable=False) # e.g., Bronze, Silver, Gold
+    min_points = Column(Integer, default=0) # Lifetime points required to reach this tier
+    multiplier = Column(Float, default=1.0) # Point accrual multiplier (e.g., 1.5x)
+    color = Column(String, default="#000000") # UI color
+    description = Column(String, nullable=True)
+    
+    program = relationship("LoyaltyProgram", back_populates="tiers")
+
+
+class LoyaltyTransaction(Base):
+    """Ledger for all point movements (Earn, Burn, Expire, Adjust)."""
+    __tablename__ = "loyalty_transactions"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    
+    type = Column(String, nullable=False) # EARN, REDEEM, EXPIRE, ADJUST, BONUS, TIER_UPGRADE
+    points = Column(Integer, nullable=False) # Positive (credit) or Negative (debit)
+    
+    # Audit trail
+    reference_type = Column(String, nullable=True) # 'order', 'manual', 'system'
+    reference_id = Column(String, nullable=True) # e.g., order_id
+    
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    tenant = relationship("Tenant")
+    user = relationship("User")
+
+
 class Order(Base):
     __tablename__ = "orders"
     # Existing DB uses integer primary key; keep in sync with current schema
@@ -210,10 +276,16 @@ class PointBalance(Base):
     tenant_id  = Column(String, ForeignKey("tenants.id"), nullable=False)
     user_id    = Column(Integer, ForeignKey("users.id"),    nullable=False)
     points     = Column(Integer, nullable=False)
+    
+    # New fields for advanced loyalty
+    lifetime_points = Column(Integer, default=0) # Total points ever earned (for tier calculation)
+    tier_id    = Column(Integer, ForeignKey("loyalty_tiers.id"), nullable=True)
+    
     updated_at = Column(DateTime)
 
     tenant = relationship("Tenant")
     user   = relationship("User")
+    tier   = relationship("LoyaltyTier")
 
 
 class Redemption(Base):

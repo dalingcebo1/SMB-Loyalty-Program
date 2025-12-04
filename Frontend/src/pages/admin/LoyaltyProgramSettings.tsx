@@ -1,36 +1,87 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { TenantConfigContext } from '../../config/TenantConfigProvider';
 import api from '../../api/api';
 import { useQueryClient } from '@tanstack/react-query';
+
+interface LoyaltyConfig {
+  points?: {
+    earningRate: number; // points per currency unit (e.g. 10 points per )
+    redemptionValue: number; // value of 1 point in cents (e.g. 1 cent)
+  };
+  stamps?: {
+    stampsPerReward: number;
+    rewardName: string;
+  };
+  cashback?: {
+    percentage: number; // e.g. 5 for 5%
+  };
+}
 
 const LoyaltyProgramSettings: React.FC = () => {
   const context = useContext(TenantConfigContext);
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Local state for the form, initialized from context
-  // Note: context might be undefined initially, so we handle that safely
+  // Local state
   const [selectedType, setSelectedType] = useState<string>('points');
+  const [config, setConfig] = useState<LoyaltyConfig>({
+    points: { earningRate: 10, redemptionValue: 1 },
+    stamps: { stampsPerReward: 10, rewardName: 'Free Coffee' },
+    cashback: { percentage: 5 }
+  });
+  const [fullTenantConfig, setFullTenantConfig] = useState<any>({});
 
-  // Update local state when context loads
-  React.useEffect(() => {
-    if (context?.loyaltyType) {
-      setSelectedType(context.loyaltyType);
+  // Fetch full tenant details to get the config
+  useEffect(() => {
+    const fetchTenantDetails = async () => {
+      if (!context?.tenantId) return;
+      try {
+        const { data } = await api.get(`/tenants/${context.tenantId}`);
+        setFullTenantConfig(data.config || {});
+        
+        if (data.loyalty_type) {
+          setSelectedType(data.loyalty_type);
+        }
+        
+        if (data.config?.loyalty) {
+          setConfig(prev => ({
+            ...prev,
+            ...data.config.loyalty
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch tenant details', err);
+        setMessage({ type: 'error', text: 'Failed to load current settings.' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (context?.tenantId) {
+      fetchTenantDetails();
     }
-  }, [context?.loyaltyType]);
+  }, [context?.tenantId]);
 
   if (!context) return null;
-  const { tenantId, loyaltyType, refresh } = context;
+  const { tenantId, refresh, vertical } = context;
 
   const handleSave = async () => {
     if (!tenantId) return;
     setSaving(true);
     setMessage(null);
     try {
+      const updatedConfig = {
+        ...fullTenantConfig,
+        loyalty: config
+      };
+
       await api.patch(`/tenants/${tenantId}`, {
-        loyalty_type: selectedType
+        loyalty_type: selectedType,
+        config: updatedConfig
       });
+      
       setMessage({ type: 'success', text: 'Loyalty program settings updated successfully.' });
       refresh(); // Refresh context to update global state
       // Also invalidate tenant-meta query to be sure
@@ -42,6 +93,17 @@ const LoyaltyProgramSettings: React.FC = () => {
       setSaving(false);
     }
   };
+
+  const getRecommendation = (type: string) => {
+    if (vertical === 'carwash' && type === 'stamps') return true;
+    if (vertical === 'retail' && type === 'points') return true;
+    if (vertical === 'dispensary' && type === 'points') return true;
+    return false;
+  };
+
+  if (loading) {
+    return <div className="p-6">Loading settings...</div>;
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -58,58 +120,145 @@ const LoyaltyProgramSettings: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Points Based Option */}
         <div 
-          className={`border rounded-lg p-6 cursor-pointer transition-all ${selectedType === 'points' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+          className={`border rounded-lg p-6 cursor-pointer transition-all relative ${selectedType === 'points' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
           onClick={() => setSelectedType('points')}
         >
+          {getRecommendation('points') && (
+            <span className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">Recommended</span>
+          )}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Points Based (Tiered)</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Points Based</h3>
             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedType === 'points' ? 'border-blue-500' : 'border-gray-300'}`}>
               {selectedType === 'points' && <div className="w-3 h-3 rounded-full bg-blue-500" />}
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-4">
-            Customers earn points for every purchase (e.g., 10 points per $1). Points can be redeemed for various rewards.
-            Best for businesses with variable transaction amounts.
+            Earn points per currency unit spent. Flexible redemption.
           </p>
-          <ul className="text-sm text-gray-500 list-disc list-inside space-y-1">
-            <li>Flexible earning rates</li>
-            <li>Multiple reward tiers</li>
-            <li>Encourages higher spend</li>
-          </ul>
         </div>
 
         {/* Stamps Based Option */}
         <div 
-          className={`border rounded-lg p-6 cursor-pointer transition-all ${selectedType === 'stamps' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+          className={`border rounded-lg p-6 cursor-pointer transition-all relative ${selectedType === 'stamps' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
           onClick={() => setSelectedType('stamps')}
         >
+          {getRecommendation('stamps') && (
+            <span className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">Recommended</span>
+          )}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Stamps Based (Milestone)</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Stamps Based</h3>
             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedType === 'stamps' ? 'border-blue-500' : 'border-gray-300'}`}>
               {selectedType === 'stamps' && <div className="w-3 h-3 rounded-full bg-blue-500" />}
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-4">
-            Customers earn a stamp for each visit or specific item purchased. Collect X stamps to get a free reward.
-            Best for businesses with repeat, fixed-price services (e.g., coffee, car wash).
+            Earn a stamp per visit/item. Simple milestone rewards.
           </p>
-          <ul className="text-sm text-gray-500 list-disc list-inside space-y-1">
-            <li>Simple and easy to understand</li>
-            <li>Visual progress tracking</li>
-            <li>Encourages repeat visits</li>
-          </ul>
         </div>
+
+        {/* Cashback Option */}
+        <div 
+          className={`border rounded-lg p-6 cursor-pointer transition-all relative ${selectedType === 'cashback' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+          onClick={() => setSelectedType('cashback')}
+        >
+           {getRecommendation('cashback') && (
+            <span className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">Recommended</span>
+          )}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Cashback</h3>
+            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedType === 'cashback' ? 'border-blue-500' : 'border-gray-300'}`}>
+              {selectedType === 'cashback' && <div className="w-3 h-3 rounded-full bg-blue-500" />}
+            </div>
+          </div>
+          <p className="text-gray-600 text-sm mb-4">
+            Earn a percentage back as store credit.
+          </p>
+        </div>
+      </div>
+
+      {/* Configuration Section */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          {selectedType === 'points' && 'Points Configuration'}
+          {selectedType === 'stamps' && 'Stamps Configuration'}
+          {selectedType === 'cashback' && 'Cashback Configuration'}
+        </h2>
+
+        {selectedType === 'points' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Earning Rate (Points per Currency Unit)</label>
+              <input
+                type="number"
+                value={config.points?.earningRate || 10}
+                onChange={(e) => setConfig({ ...config, points: { ...config.points!, earningRate: Number(e.target.value) } })}
+                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">How many points a customer earns for every 1 unit of currency spent.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Redemption Value (Cents per Point)</label>
+              <input
+                type="number"
+                value={config.points?.redemptionValue || 1}
+                onChange={(e) => setConfig({ ...config, points: { ...config.points!, redemptionValue: Number(e.target.value) } })}
+                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">The monetary value of a single point when redeemed (in cents).</p>
+            </div>
+          </div>
+        )}
+
+        {selectedType === 'stamps' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Stamps per Reward</label>
+              <input
+                type="number"
+                value={config.stamps?.stampsPerReward || 10}
+                onChange={(e) => setConfig({ ...config, stamps: { ...config.stamps!, stampsPerReward: Number(e.target.value) } })}
+                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">Number of stamps required to unlock the reward.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reward Name</label>
+              <input
+                type="text"
+                value={config.stamps?.rewardName || 'Free Item'}
+                onChange={(e) => setConfig({ ...config, stamps: { ...config.stamps!, rewardName: e.target.value } })}
+                className="w-full max-w-md border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">Description of the reward (e.g., "Free Coffee").</p>
+            </div>
+          </div>
+        )}
+
+        {selectedType === 'cashback' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cashback Percentage (%)</label>
+              <input
+                type="number"
+                value={config.cashback?.percentage || 5}
+                onChange={(e) => setConfig({ ...config, cashback: { ...config.cashback!, percentage: Number(e.target.value) } })}
+                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">Percentage of purchase amount returned as store credit.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-8 flex justify-end">
         <button
           onClick={handleSave}
-          disabled={saving || selectedType === loyaltyType}
+          disabled={saving}
           className={`px-6 py-2 rounded-md text-white font-medium transition-colors ${
-            saving || selectedType === loyaltyType
+            saving
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-blue-600 hover:bg-blue-700'
           }`}

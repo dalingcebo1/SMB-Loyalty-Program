@@ -16,6 +16,7 @@ interface TenantMetaResponse {
   branding: BrandingMap;
   name: string;
   loyalty_type: string;
+  loyalty?: any;
 }
 
 interface TenantConfigContextValue {
@@ -24,6 +25,7 @@ interface TenantConfigContextValue {
   tenantId?: string;
   vertical: Vertical;
   loyaltyType?: string;
+  loyalty?: any;
   moduleFlags: ModuleFlags;
   features: FeatureMap;
   branding: BrandingMap;
@@ -125,6 +127,7 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
     tenantId: meta?.tenant_id,
     vertical: meta?.vertical || 'carwash',
     loyaltyType: meta?.loyalty_type,
+    loyalty: meta?.loyalty,
     moduleFlags,
     features: meta?.features || {},
     branding: meta?.branding || {},

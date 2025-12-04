@@ -664,11 +664,17 @@ details.admin-collapsible[open] {
     border-color: rgba(100, 116, 139, 0.5);
   }
   
-  .admin-section-title {
+  .admin-section-title,
+  .admin-page-title {
     color: #f1f5f9;
   }
   
-  .admin-section-subtitle {
+  .admin-section-subtitle,
+  .admin-page-description {
     color: #94a3b8;
+  }
+
+  .admin-page-header {
+    border-bottom-color: rgba(71, 85, 105, 0.3);
   }
 }

@@ -29,27 +29,27 @@ interface AdminCardProps {
 
 const variantStyles = {
   default: {
-    card: 'bg-white border-gray-200',
-    iconBg: 'bg-gray-50',
-    iconColor: 'text-gray-500',
+    card: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+    iconBg: 'bg-gray-50 dark:bg-gray-700',
+    iconColor: 'text-gray-500 dark:text-gray-400',
   },
   primary: {
-    card: 'bg-white border-blue-100',
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-600',
+    card: 'bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-900',
+    iconBg: 'bg-blue-50 dark:bg-blue-900/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
   },
   success: {
-    card: 'bg-white border-green-200',
+    card: 'bg-white dark:bg-gray-800 border-green-200 dark:border-green-900',
     iconBg: 'bg-gradient-to-br from-green-500 to-green-600',
     iconColor: 'text-white',
   },
   warning: {
-    card: 'bg-white border-yellow-200',
+    card: 'bg-white dark:bg-gray-800 border-yellow-200 dark:border-yellow-900',
     iconBg: 'bg-gradient-to-br from-yellow-500 to-yellow-600',
     iconColor: 'text-white',
   },
   error: {
-    card: 'bg-white border-red-200',
+    card: 'bg-white dark:bg-gray-800 border-red-200 dark:border-red-900',
     iconBg: 'bg-gradient-to-br from-red-500 to-red-600',
     iconColor: 'text-white',
   },
@@ -105,7 +105,7 @@ export function AdminCard({
           <div className="flex-1 min-w-0">
             {title && (
               <h3
-                className="font-semibold text-gray-900 mb-0.5"
+                className="font-semibold text-gray-900 dark:text-white mb-0.5"
                 style={{
                   fontSize: 'var(--font-size-base)',
                   lineHeight: 'var(--line-height-snug)',
@@ -116,7 +116,7 @@ export function AdminCard({
             )}
             {description && (
               <p
-                className="text-gray-600"
+                className="text-gray-600 dark:text-gray-400"
                 style={{
                   fontSize: 'var(--font-size-xs)',
                   lineHeight: 'var(--line-height-normal)',
@@ -181,7 +181,7 @@ export function StatCard({
     >
       <div className="space-y-1">
         <p
-          className="text-gray-500 font-medium"
+          className="text-gray-500 dark:text-gray-400 font-medium"
           style={{
             fontSize: '0.75rem',
           }}
@@ -189,7 +189,7 @@ export function StatCard({
           {label}
         </p>
         <p
-          className="text-gray-900 font-bold stat-value"
+          className="text-gray-900 dark:text-white font-bold stat-value"
           style={{
             fontSize: 'var(--font-size-xl)',
             lineHeight: 'var(--line-height-tight)',
@@ -268,7 +268,7 @@ export function ActionCard({
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <h3
-            className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors"
+            className="font-semibold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors"
             style={{
               fontSize: 'var(--font-size-sm)',
               lineHeight: 'var(--line-height-snug)',
@@ -283,7 +283,7 @@ export function ActionCard({
           )}
         </div>
         <p
-          className="text-gray-600"
+          className="text-gray-600 dark:text-gray-400"
           style={{
             fontSize: '0.8125rem',
             lineHeight: '1.4',

@@ -90,6 +90,8 @@ const ProfileSettings: React.FC<{ user: any }> = ({ user }) => {
 
       await api.patch<ApiTenant>(`/tenants/${user.tenant_id}`, payload);
       toast.success('Organization settings updated successfully');
+      // Trigger global theme refresh in case name/theme_color changed
+      window.dispatchEvent(new Event('tenant-theme:refresh'));
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       const msg = error.response?.data?.detail || 'Save failed';
@@ -142,7 +144,7 @@ const ProfileSettings: React.FC<{ user: any }> = ({ user }) => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-4">
             <p className="text-red-700">{error}</p>
           </div>
         )}
@@ -151,19 +153,19 @@ const ProfileSettings: React.FC<{ user: any }> = ({ user }) => {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Name</label>
                 <input
                   {...register('name')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
-                {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
+                {errors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vertical Type</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vertical Type</label>
                 <select
                   {...register('vertical_type')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
                   <option value="carwash">Car Wash</option>
                   <option value="dispensary">Dispensary</option>
@@ -176,66 +178,66 @@ const ProfileSettings: React.FC<{ user: any }> = ({ user }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Loyalty Type</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Loyalty Type</label>
                 <select
                   {...register('loyalty_type')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
                   <option value="points">Points Based</option>
                   <option value="visits">Visit Based</option>
                   <option value="stamps">Stamp Card</option>
                 </select>
-                {errors.loyalty_type && <p className="mt-1 text-sm text-red-600">{errors.loyalty_type.message}</p>}
+                {errors.loyalty_type && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.loyalty_type.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Primary Domain</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Primary Domain</label>
                 <input
                   {...register('primary_domain')}
                   placeholder="e.g., loyalty.example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Theme Color</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Theme Color</label>
                 <div className="flex gap-2">
                   <input
                     type="color"
                     {...register('theme_color')}
-                    className="h-10 w-20 p-1 border border-gray-300 rounded-lg cursor-pointer"
+                    className="h-10 w-20 p-1 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer"
                   />
                   <input
                     type="text"
                     {...register('theme_color')}
                     placeholder="#000000"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo URL</label>
                 <input
                   {...register('logo_url')}
                   placeholder="https://..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
-                {errors.logo_url && <p className="mt-1 text-sm text-red-600">{errors.logo_url.message}</p>}
+                {errors.logo_url && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.logo_url.message}</p>}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Configuration (JSON)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Configuration (JSON)</label>
               <textarea
                 {...register('config')}
                 rows={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white font-mono text-sm"
                 placeholder="{}"
               />
-              <p className="mt-1 text-xs text-gray-500">Advanced configuration in JSON format</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Advanced configuration in JSON format</p>
             </div>
 
             <div className="pt-4">
@@ -257,17 +259,17 @@ const ProfileSettings: React.FC<{ user: any }> = ({ user }) => {
           <div className="space-y-4">
             <div className="space-y-2">
               {tenantData.admin_ids.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">No admins assigned</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No admins assigned</p>
               ) : (
                 tenantData.admin_ids.map((id: number) => (
-                  <div key={id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">
+                  <div key={id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       User ID: {id} {id === user?.id && '(You)'}
                     </span>
                     {id !== user?.id && (
                       <button
                         onClick={() => handleRemoveAdmin(id)}
-                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 dark:bg-red-900/20 rounded"
                         title="Remove admin"
                       >
                         <HiTrash className="w-4 h-4" />
@@ -289,7 +291,7 @@ const ProfileSettings: React.FC<{ user: any }> = ({ user }) => {
                 placeholder="admin@example.com"
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               />
               <button 
                 onClick={handleInvite}
@@ -366,6 +368,8 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
     try {
       await api.put(`/tenants/${tenantId}/branding`, form);
       toast.success('Branding settings updated successfully');
+      // Trigger global theme refresh so new colors/logos propagate immediately
+      window.dispatchEvent(new Event('tenant-theme:refresh'));
     } catch (err) {
       toast.error('Failed to save branding settings');
     } finally {
@@ -418,62 +422,62 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
   return (
     <form onSubmit={handleSave} className="space-y-6">
       {/* Identity Section */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <FaIdCard className="w-5 h-5 text-blue-600" />
+            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <FaIdCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Brand Identity</h2>
-              <p className="text-sm text-gray-500">Basic information about your business</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Brand Identity</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Basic information about your business</p>
             </div>
           </div>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Public Name
               </label>
               <input 
                 value={form.public_name} 
                 onChange={e => update('public_name', e.target.value)} 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors" 
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors dark:bg-gray-700 dark:text-white" 
                 placeholder="Your Business Name"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Short Name
               </label>
               <input 
                 value={form.short_name} 
                 onChange={e => update('short_name', e.target.value)} 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors" 
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors dark:bg-gray-700 dark:text-white" 
                 placeholder="Short Name"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Support Email
               </label>
               <input 
                 type="email" 
                 value={form.support_email} 
                 onChange={e => update('support_email', e.target.value)} 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors" 
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors dark:bg-gray-700 dark:text-white" 
                 placeholder="support@yourcompany.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Support Phone
               </label>
               <input 
                 value={form.support_phone} 
                 onChange={e => update('support_phone', e.target.value)} 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors" 
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors dark:bg-gray-700 dark:text-white" 
                 placeholder="+1 (555) 123-4567"
               />
             </div>
@@ -482,15 +486,15 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
       </div>
 
       {/* Colors Section */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-pink-50 rounded-lg">
-              <FaPalette className="w-5 h-5 text-pink-600" />
+            <div className="p-2 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
+              <FaPalette className="w-5 h-5 text-pink-600 dark:text-pink-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Brand Colors</h2>
-              <p className="text-sm text-gray-500">Define your color palette and theme</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Brand Colors</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Define your color palette and theme</p>
             </div>
           </div>
         </div>
@@ -498,7 +502,7 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {(['primary_color', 'secondary_color', 'accent_color'] as const).map(key => (
               <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                 </label>
                 <div className="space-y-3">
@@ -507,12 +511,12 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
                       type="color" 
                       value={form[key] || '#000000'} 
                       onChange={e => update(key, e.target.value)} 
-                      className="h-12 w-16 rounded-lg border border-gray-300 cursor-pointer"
+                      className="h-12 w-16 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer"
                     />
                     <input 
                       value={form[key]} 
                       onChange={e => update(key, e.target.value)} 
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors font-mono text-sm" 
+                      className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors dark:bg-gray-700 dark:text-white font-mono text-sm" 
                       placeholder="#000000"
                     />
                   </div>
@@ -522,15 +526,15 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
           </div>
           
           {/* Color Preview */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-3 mb-4">
-              <FaEye className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Color Preview</span>
+              <FaEye className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Color Preview</span>
             </div>
             <div key={previewKey} className="flex flex-wrap gap-4">
               {[
-                { label: 'Primary', value: form.primary_color, bg: 'bg-blue-50' },
-                { label: 'Secondary', value: form.secondary_color, bg: 'bg-gray-50' },
+                { label: 'Primary', value: form.primary_color, bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                { label: 'Secondary', value: form.secondary_color, bg: 'bg-gray-50 dark:bg-gray-900' },
                 { label: 'Accent', value: form.accent_color, bg: 'bg-purple-50' }
               ].map(color => (
                 <div key={color.label} className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${color.bg} border`}>
@@ -539,8 +543,8 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
                     style={{ backgroundColor: color.value || '#ffffff' }}
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{color.label}</div>
-                    <div className="text-xs text-gray-500 font-mono">{color.value || 'Not set'}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{color.label}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">{color.value || 'Not set'}</div>
                   </div>
                 </div>
               ))}
@@ -549,15 +553,15 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
         </div>
       </div>
       {/* Logos & Icons Section */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-50 rounded-lg">
-              <FaImage className="w-5 h-5 text-green-600" />
+            <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <FaImage className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Logos & Icons</h2>
-              <p className="text-sm text-gray-500">Upload or provide URLs for your brand assets</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Logos & Icons</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Upload or provide URLs for your brand assets</p>
             </div>
           </div>
         </div>
@@ -571,13 +575,13 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
               { key: 'app_icon_url', label: 'App Icon URL', placeholder: 'https://your-domain.com/app-icon.png' }
             ].map(field => (
               <div key={field.key}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {field.label}
                 </label>
                 <input 
                   value={form[field.key as keyof BrandingForm]} 
                   onChange={e => update(field.key as keyof BrandingForm, e.target.value)} 
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors" 
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors dark:bg-gray-700 dark:text-white" 
                   placeholder={field.placeholder}
                 />
               </div>
@@ -585,10 +589,10 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
           </div>
 
           {/* File Uploads */}
-          <div className="border-t border-gray-200 pt-6">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
             <div className="flex items-center space-x-3 mb-6">
-              <FaUpload className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Upload Files</span>
+              <FaUpload className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Files</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
@@ -597,8 +601,8 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
                 { key: 'favicon', label: 'Favicon', accept: 'image/*,.ico' },
                 { key: 'app_icon', label: 'App Icon', accept: 'image/*' }
               ].map(upload => (
-                <div key={upload.key} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                <div key={upload.key} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-gray-300 dark:border-gray-600 transition-colors dark:bg-gray-700 dark:text-white">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     {upload.label}
                   </label>
                   <div className="flex items-center space-x-3">
@@ -610,16 +614,16 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
                         onChange={e => handleFile(upload.key as 'logo_light'|'logo_dark'|'favicon'|'app_icon', e)}
                         className="sr-only"
                       />
-                      <div className="flex items-center justify-center px-4 py-3 border border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+                      <div className="flex items-center justify-center px-4 py-3 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-gray-400 transition-colors dark:bg-gray-700 dark:text-white">
                         {uploading === upload.key ? (
                           <div className="flex items-center space-x-2">
                             <LoadingSpinner size="sm" />
-                            <span className="text-sm text-gray-500">Uploading...</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Uploading...</span>
                           </div>
                         ) : (
                           <div className="flex items-center space-x-2">
                             <FaUpload className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm text-gray-500">Choose file</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Choose file</span>
                           </div>
                         )}
                       </div>
@@ -636,7 +640,7 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
           </div>
 
           {/* Asset Status */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { key: 'logo_light_url', label: 'Light Logo' },
@@ -658,23 +662,23 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
 
           {/* Upload Error */}
           {uploadError && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{uploadError}</p>
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600 dark:text-red-400">{uploadError}</p>
             </div>
           )}
 
           {/* Generated Variants */}
           {lastVariants && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-3 mb-4">
-                <FaEye className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Generated Variants</span>
+                <FaEye className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Generated Variants</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {Object.entries(lastVariants).map(([size, url]) => (
-                  <div key={size} className="flex flex-col items-center space-y-2 p-4 border border-gray-200 rounded-lg">
+                  <div key={size} className="flex flex-col items-center space-y-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <img src={url} alt={`${size}px`} className="w-12 h-12 object-contain rounded" />
-                    <span className="text-xs text-gray-500 font-medium">{size}px</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{size}px</span>
                   </div>
                 ))}
               </div>
@@ -713,14 +717,14 @@ const OrganizationSettings: React.FC = () => {
       title="My Business"
       description="Manage your business profile, branding, and administrators"
     >
-      <div className="mb-6 border-b border-gray-200">
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('profile')}
             className={`${
               activeTab === 'profile'
-                ? 'border-purple-500 text-purple-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:border-gray-600'
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
           >
             Business Profile
@@ -729,8 +733,8 @@ const OrganizationSettings: React.FC = () => {
             onClick={() => setActiveTab('branding')}
             className={`${
               activeTab === 'branding'
-                ? 'border-purple-500 text-purple-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:border-gray-600'
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
           >
             Branding & Appearance

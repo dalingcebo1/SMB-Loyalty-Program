@@ -105,7 +105,7 @@ const LoyaltyProgramSettings: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto overflow-x-hidden">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Loyalty Program Configuration</h1>
         <p className="text-gray-600 mt-2">
@@ -119,10 +119,10 @@ const LoyaltyProgramSettings: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
         {/* Points Based Option */}
         <div 
-          className={`border rounded-lg p-6 cursor-pointer transition-all relative ${selectedType === 'points' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+          className={`border rounded-lg p-4 md:p-6 cursor-pointer transition-all relative ${selectedType === 'points' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
           onClick={() => setSelectedType('points')}
         >
           {getRecommendation('points') && (
@@ -141,7 +141,7 @@ const LoyaltyProgramSettings: React.FC = () => {
 
         {/* Stamps Based Option */}
         <div 
-          className={`border rounded-lg p-6 cursor-pointer transition-all relative ${selectedType === 'stamps' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+          className={`border rounded-lg p-4 md:p-6 cursor-pointer transition-all relative ${selectedType === 'stamps' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
           onClick={() => setSelectedType('stamps')}
         >
           {getRecommendation('stamps') && (
@@ -160,7 +160,7 @@ const LoyaltyProgramSettings: React.FC = () => {
 
         {/* Cashback Option */}
         <div 
-          className={`border rounded-lg p-6 cursor-pointer transition-all relative ${selectedType === 'cashback' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+          className={`border rounded-lg p-4 md:p-6 cursor-pointer transition-all relative ${selectedType === 'cashback' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
           onClick={() => setSelectedType('cashback')}
         >
            {getRecommendation('cashback') && (
@@ -179,7 +179,7 @@ const LoyaltyProgramSettings: React.FC = () => {
       </div>
 
       {/* Configuration Section */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           {selectedType === 'points' && 'Points Program Configuration'}
           {selectedType === 'stamps' && 'Punch Card Configuration'}
@@ -194,7 +194,7 @@ const LoyaltyProgramSettings: React.FC = () => {
                 type="number"
                 value={config.points?.earningRate || 10}
                 onChange={(e) => setConfig({ ...config, points: { ...config.points!, earningRate: Number(e.target.value) } })}
-                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">The number of points a customer accrues for every 1 unit of currency spent (e.g., 10 points per R1).</p>
             </div>
@@ -204,7 +204,7 @@ const LoyaltyProgramSettings: React.FC = () => {
                 type="number"
                 value={config.points?.redemptionValue || 1}
                 onChange={(e) => setConfig({ ...config, points: { ...config.points!, redemptionValue: Number(e.target.value) } })}
-                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">The monetary value of a single point when redeemed (e.g., 1 point = 1 cent).</p>
             </div>
@@ -219,7 +219,7 @@ const LoyaltyProgramSettings: React.FC = () => {
                 type="number"
                 value={config.stamps?.stampsPerReward || 10}
                 onChange={(e) => setConfig({ ...config, stamps: { ...config.stamps!, stampsPerReward: Number(e.target.value) } })}
-                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">Number of stamps required to unlock the reward.</p>
             </div>
@@ -229,7 +229,7 @@ const LoyaltyProgramSettings: React.FC = () => {
                 type="text"
                 value={config.stamps?.rewardName || 'Free Item'}
                 onChange={(e) => setConfig({ ...config, stamps: { ...config.stamps!, rewardName: e.target.value } })}
-                className="w-full max-w-md border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">Description of the reward (e.g., "Free Coffee").</p>
             </div>
@@ -244,7 +244,7 @@ const LoyaltyProgramSettings: React.FC = () => {
                 type="number"
                 value={config.cashback?.percentage || 5}
                 onChange={(e) => setConfig({ ...config, cashback: { ...config.cashback!, percentage: Number(e.target.value) } })}
-                className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">Percentage of purchase amount returned as store credit.</p>
             </div>

@@ -138,7 +138,7 @@ const SubscriptionManagePageNew: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-8 overflow-x-hidden">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Subscription & Billing</h1>
@@ -156,9 +156,9 @@ const SubscriptionManagePageNew: React.FC = () => {
       </div>
 
       {/* Current Usage Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Current Usage</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {usage?.map((item) => {
             const percentage = item.limit ? (item.count / item.limit) * 100 : 0;
             const isNearLimit = percentage > 90;
@@ -201,7 +201,7 @@ const SubscriptionManagePageNew: React.FC = () => {
       </div>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
         {plans?.map((plan) => {
           const isCurrent = plan.id === currentPlanId;
           const isPopular = plan.id === 'pro';

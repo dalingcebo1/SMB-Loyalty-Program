@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { HiMenuAlt2, HiBell, HiSearch, HiUserCircle } from 'react-icons/hi';
+import { HiMenuAlt2, HiBell, HiSearch } from 'react-icons/hi';
 import { useAuth } from '../auth/AuthProvider';
 import { allAdminNavItems } from '../features/admin/nav/adminNavConfig';
 

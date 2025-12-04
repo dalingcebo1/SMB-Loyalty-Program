@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import { adminNavGroups, allAdminNavItems } from '../features/admin/nav/adminNavConfig';
 import { readJsonStorage } from '../utils/storage';
@@ -14,7 +13,6 @@ interface AdminSidebarProps {
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
-  const { logout } = useAuth();
   const { has } = useCapabilities();
   const navigate = useNavigate();
   const { pathname } = useLocation();

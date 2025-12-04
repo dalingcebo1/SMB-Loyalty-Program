@@ -5,6 +5,7 @@ Simple script to seed default tenant using raw SQL to avoid model mismatches.
 
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from sqlalchemy import create_engine, text
 
@@ -35,9 +36,11 @@ def seed_default_tenant_raw():
         # Insert default tenant using raw SQL to avoid ORM issues
         insert_sql = """
         INSERT INTO tenants (id, name, loyalty_type, vertical_type, primary_domain, config, created_at)
-        VALUES (:id, :name, :loyalty_type, :vertical_type, :primary_domain, :config, NOW())
-        ON CONFLICT (id) DO NOTHING
+        VALUES (:id, :name, :loyalty_type, :vertical_type, :primary_domain, :config, :created_at)
         """
+        # Note: ON CONFLICT is Postgres specific, but we checked existence above.
+        # For SQLite compatibility we omit ON CONFLICT or use INSERT OR IGNORE if needed,
+        # but the check above handles the common case.
         
         conn.execute(text(insert_sql), {
             "id": settings.default_tenant,
@@ -45,9 +48,14 @@ def seed_default_tenant_raw():
             "loyalty_type": "points",
             "vertical_type": "general",
             "primary_domain": "apismbloyaltyapp.redsky-09cfd59a.southafricanorth.azurecontainerapps.io",
-            "config": '{"theme_color": "#007bff"}'
+            "config": '{"theme_color": "#007bff"}',
+            "created_at": datetime.utcnow()
         })
-        
+        conn.commit()
+        print(f"✅ Created default tenant '{settings.default_tenant}'")
+
+if __name__ == "__main__":
+    seed_default_tenant_raw()
         conn.commit()
         
         print(f"✅ Created default tenant '{settings.default_tenant}'")

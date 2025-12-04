@@ -1036,6 +1036,7 @@ def _ensure_default_tenant(tenant_id: str):
     from sqlalchemy import select as _select
     from app.core.database import engine
     from models import Tenant
+    from datetime import datetime
     with _Session(bind=engine) as _db:
         exists = _db.execute(_select(Tenant).where(Tenant.id == tenant_id)).scalar_one_or_none()
         if exists:
@@ -1046,6 +1047,9 @@ def _ensure_default_tenant(tenant_id: str):
             loyalty_type="basic",
             vertical_type="carwash",
             config={"features": {}, "branding": {"primaryColor": "#3366ff"}},
+            created_at=datetime.utcnow(),
+            subscription_plan_id="free",
+            subscription_status="active"
         )
         _db.add(t)
         try:

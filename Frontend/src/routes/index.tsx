@@ -1,7 +1,8 @@
 // src/routes/index.tsx
 import React, { Suspense, lazy, ComponentType } from 'react';
 import { useRoutes, Navigate, Outlet, type RouteObject } from 'react-router-dom';
-import { moduleFlags } from '../config/modules';
+import { TenantConfigContext } from '../config/TenantConfigProvider';
+import { getModuleFlags } from '../config/modules';
 import { useAuth } from '../auth/AuthProvider';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import LoadingFallback from '../components/LoadingFallback';
@@ -81,7 +82,8 @@ const RequireStaff = lazy(() => import('../components/RequireStaff'));
 
 // Admin pages
 const AdminWelcome = lazy(() => import('../pages/admin/AdminWelcome'));
-const ModuleSettings = lazy(() => import('../pages/admin/ModuleSettings'));
+const Marketplace = lazy(() => import('../pages/admin/Marketplace'));
+const LoyaltyProgramSettings = lazy(() => import('../pages/admin/LoyaltyProgramSettings'));
 const AdminUserEdit = lazy(() => import('../pages/AdminUserEdit'));
 const TenantsList = lazy(() => import('../pages/admin/TenantsList'));
 const TenantEdit = lazy(() => import('../pages/admin/TenantEdit'));
@@ -125,6 +127,8 @@ function RequireAdmin() {
 
 const AppRoutes: React.FC = () => {
   // Feature flags
+  const tenantConfig = React.useContext(TenantConfigContext);
+  const moduleFlags = tenantConfig?.moduleFlags || getModuleFlags();
   const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
 
   const routes = [
@@ -194,7 +198,8 @@ const AppRoutes: React.FC = () => {
             { path: 'rate-limits', element: <AdminRateLimitEditor /> },
             { path: 'register-staff', element: <Navigate to='users-admin?registerStaff=1' replace /> },
             { path: 'users/:userId/edit', element: <AdminUserEdit /> },
-            { path: 'modules', element: <ModuleSettings /> },
+            { path: 'modules', element: <Marketplace /> },
+            { path: 'loyalty-settings', element: <LoyaltyProgramSettings /> },
             { path: 'customers', element: <CustomersAdmin /> },
             { path: 'customers/:id', element: <CustomerDetailPage /> },
             { path: 'reports', element: <ReportsAdmin /> },

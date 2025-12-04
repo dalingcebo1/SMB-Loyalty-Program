@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Tenant, User, VerticalType, TenantBranding
+from app.models import Tenant, User, VerticalType, TenantBranding, SubscriptionPlan
 from app.plugins.auth.routes import require_admin, get_current_user
 from app.services.tenant_settings import get_tenant_settings
+from app.core.modules import VERTICAL_EXTRA_MODULES
 from pydantic import BaseModel
 from typing import List, Optional
 import os, pathlib, shutil, io, hashlib
@@ -45,6 +46,12 @@ class TenantUpdate(BaseModel):
     theme_color: Optional[str] = None
     config: Optional[dict] = None
 
+class TenantFeatures(BaseModel):
+    plan_features: List[str]
+    vertical_features: List[str]
+    addon_features: List[str]
+    all_features: List[str]
+
 class TenantOut(BaseModel):
     id: str
     name: str
@@ -56,6 +63,7 @@ class TenantOut(BaseModel):
     theme_color: Optional[str]
     admin_ids: List[int]
     config: dict
+    features: TenantFeatures
 
 class AdminAssign(BaseModel):
     user_id: int
@@ -96,6 +104,39 @@ class BrandingAssetUploadOut(BaseModel):
     variants: Optional[dict] = None  # size label -> url
     etag: Optional[str] = None
 
+def _calculate_tenant_features(tenant: Tenant, db: Session) -> dict:
+    # 1. Get Plan Modules
+    config = tenant.config or {}
+    sub = config.get("subscription", {})
+    plan_id = sub.get("plan_id")
+    
+    plan_modules = []
+    if plan_id:
+        plan = db.get(SubscriptionPlan, plan_id)
+        if plan:
+            plan_modules = plan.modules or []
+    
+    # Fallback to Starter if no plan assigned (matching subscription logic)
+    if not plan_modules and not plan_id:
+        starter = db.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Starter").first()
+        if starter:
+            plan_modules = starter.modules or []
+
+    # 2. Vertical Extras
+    vertical_extras = VERTICAL_EXTRA_MODULES.get(tenant.vertical_type, [])
+
+    # 3. Overrides (Add-ons)
+    overrides = sub.get("overrides", {})
+    addon_features = [k for k, v in overrides.items() if v]
+
+    # 4. Construct result
+    return {
+        "plan_features": plan_modules,
+        "vertical_features": vertical_extras,
+        "addon_features": addon_features,
+        "all_features": list(set(plan_modules + vertical_extras + addon_features))
+    }
+
 # CRUD Endpoints
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 def create_tenant(payload: TenantCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -129,6 +170,7 @@ def create_tenant(payload: TenantCreate, db: Session = Depends(get_db), current:
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
         config=tenant.config or {},
+        features=_calculate_tenant_features(tenant, db),
     )
 
 # ─── Branding Endpoints ───────────────────────────────────────────────────
@@ -399,6 +441,7 @@ def list_tenants(db: Session = Depends(get_db)):
         theme_color=t.theme_color,
         admin_ids=[u.id for u in t.admins],
         config=t.config or {},
+        features=_calculate_tenant_features(t, db),
     ) for t in tenants]
 
 @router.get("/{tenant_id}", response_model=TenantOut)
@@ -417,6 +460,7 @@ def get_tenant(tenant_id: str, db: Session = Depends(get_db)):
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
         config=tenant.config or {},
+        features=_calculate_tenant_features(tenant, db),
     )
 
 @router.patch("/{tenant_id}", response_model=TenantOut)
@@ -457,6 +501,7 @@ def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(g
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
         config=tenant.config or {},
+        features=_calculate_tenant_features(tenant, db),
     )
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -507,6 +552,7 @@ def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
         config=tenant.config or {},
+        features=_calculate_tenant_features(tenant, db),
     )
 
 @router.delete("/{tenant_id}/admins/{user_id}", response_model=TenantOut)
@@ -533,6 +579,7 @@ def remove_admin(tenant_id: str, user_id: int, db: Session = Depends(get_db), cu
         theme_color=tenant.theme_color,
         admin_ids=[u.id for u in tenant.admins],
         config=tenant.config or {},
+        features=_calculate_tenant_features(tenant, db),
     )
  
 # --- Invite a client-admin to a newly provisioned tenant

@@ -2,6 +2,8 @@
 export { default as AdminWelcome } from './AdminWelcome';
 export { default as StaffRegisterForm } from './StaffRegisterForm';
 export { default as ModuleSettings } from './ModuleSettings';
+export { default as Marketplace } from './Marketplace';
+export { default as LoyaltyProgramSettings } from './LoyaltyProgramSettings';
 export { default as AdminUserEdit } from '../AdminUserEdit';
 export { default as TenantsList } from './TenantsList';
 export { default as TenantEdit } from './TenantEdit';

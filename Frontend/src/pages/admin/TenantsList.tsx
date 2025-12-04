@@ -32,14 +32,6 @@ const TenantsList: React.FC = () => {
     queryFn: () => api.get<ApiTenant[]>('/tenants/').then(res => res.data),
   });
 
-  // Auth guard
-  if (authLoading) {
-    return <div className="flex items-center justify-center h-screen"><LoadingSpinner /></div>;
-  }
-  if (!user || !has('platform.manage_tenants')) {
-    return <Navigate to="/admin" replace />;
-  }
-
   // Filter & paginate
   const filtered = useMemo(() => tenants.filter(t =>
     t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -57,6 +49,14 @@ const TenantsList: React.FC = () => {
     const withDomain = tenants.filter(t => t.primary_domain).length;
     return { total, verticals, withDomain };
   }, [tenants]);
+
+  // Auth guard
+  if (authLoading) {
+    return <div className="flex items-center justify-center h-screen"><LoadingSpinner /></div>;
+  }
+  if (!user || !has('platform.manage_tenants')) {
+    return <Navigate to="/admin" replace />;
+  }
 
   const getVerticalBadge = (vertical: string) => {
     const colors: Record<string, string> = {

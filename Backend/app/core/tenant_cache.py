@@ -57,7 +57,7 @@ def get_cached_tenant_meta(tenant_id: str, db: Session) -> Optional[Dict[str, An
         
         # Build metadata
         tenant_ctx = TenantContext(tenant)
-        meta = tenant_meta_dict(tenant_ctx)
+        meta = tenant_meta_dict(tenant_ctx, db=db)
         
         # Store in cache
         cache.set(cache_key, meta, ttl=CacheConfig.TENANT_META_TTL)
@@ -69,14 +69,14 @@ def get_cached_tenant_meta(tenant_id: str, db: Session) -> Optional[Dict[str, An
         logger.warning("Cache not initialized, falling back to direct DB query")
         tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
         if tenant:
-            return tenant_meta_dict(TenantContext(tenant))
+            return tenant_meta_dict(TenantContext(tenant), db=db)
         return None
     except Exception as e:
         logger.error(f"Error getting cached tenant meta: {e}", exc_info=True)
         # Fall back to direct DB query
         tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
         if tenant:
-            return tenant_meta_dict(TenantContext(tenant))
+            return tenant_meta_dict(TenantContext(tenant), db=db)
         return None
 
 

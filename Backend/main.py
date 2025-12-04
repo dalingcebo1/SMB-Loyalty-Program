@@ -788,7 +788,7 @@ def public_tenant_meta(request: Request, db: Session = Depends(get_db)):
         return resp
     # Expose tenant id to logging middleware (if present there)
     request.state.tenant_id = ctx.id
-    data = tenant_meta_dict(ctx)
+    data = tenant_meta_dict(ctx, db=db)
     etag = _etag_for(data)
     inm = request.headers.get('if-none-match')
     if inm == etag:

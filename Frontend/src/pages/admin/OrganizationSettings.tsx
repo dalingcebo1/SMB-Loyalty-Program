@@ -370,8 +370,8 @@ const BrandingSettings: React.FC<{ user: any }> = ({ user }) => {
       toast.success('Branding settings updated successfully');
       // Trigger global theme refresh so new colors/logos propagate immediately
       window.dispatchEvent(new Event('tenant-theme:refresh'));
-    } catch (err) {
-      toast.error('Failed to save branding settings');
+    } catch {
+      toast.error('Failed to update branding');
     } finally {
       setSaving(false);
     }

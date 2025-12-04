@@ -23,7 +23,9 @@ interface TenantConfigContextValue {
   error?: string;
   tenantId?: string;
   vertical: Vertical;
+  loyaltyType?: string;
   moduleFlags: ModuleFlags;
+  features: FeatureMap;
   branding: BrandingMap;
   refresh: () => void;
 }
@@ -82,8 +84,39 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const base = getModuleFlags();
     const vertical = meta?.vertical || 'carwash';
     const overrides = VERTICAL_FLAG_OVERRIDES[vertical] || {};
+    
+    // Map backend features to frontend flags
+    const backendFeatures = meta?.features || {};
+    const mappedFeatures: Partial<ModuleFlags> = {};
+    
+    // Mapping logic: Backend Module Key -> Frontend Flag
+    if (backendFeatures['loyalty']) mappedFeatures.enableLoyalty = true;
+    if (backendFeatures['orders']) mappedFeatures.enableOrders = true;
+    if (backendFeatures['billing']) mappedFeatures.enablePayments = true;
+    // 'core' usually implies users/auth are active
+    if (backendFeatures['core']) {
+        mappedFeatures.enableUsers = true;
+        mappedFeatures.usersAccount = true;
+    }
+    if (backendFeatures['inventory']) {
+        // If inventory module is present, maybe enable catalog?
+        mappedFeatures.enableCatalog = true;
+    }
+    
+    // If we have backend features, we might want to disable things that are NOT present?
+    // For now, let's just enable what is present, to avoid breaking existing setups that rely on defaults.
+    // But strictly speaking, if 'loyalty' is missing, enableLoyalty should be false.
+    
+    // Let's try to be stricter if backend features are populated (length > 0)
+    if (Object.keys(backendFeatures).length > 0) {
+        mappedFeatures.enableLoyalty = !!backendFeatures['loyalty'];
+        mappedFeatures.enableOrders = !!backendFeatures['orders'];
+        mappedFeatures.enablePayments = !!backendFeatures['billing'];
+        // ...
+    }
+
     const mergedFeatureFlags = applyFeatureDefaults(meta?.features || {});
-    return { ...base, ...overrides, ...mergedFeatureFlags } as ModuleFlags;
+    return { ...base, ...overrides, ...mergedFeatureFlags, ...mappedFeatures } as ModuleFlags;
   }, [meta]);
 
   const value: TenantConfigContextValue = {
@@ -91,7 +124,9 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
     error: error instanceof Error ? error.message : undefined,
     tenantId: meta?.tenant_id,
     vertical: meta?.vertical || 'carwash',
+    loyaltyType: meta?.loyalty_type,
     moduleFlags,
+    features: meta?.features || {},
     branding: meta?.branding || {},
     refresh: () => { refetch(); },
   };

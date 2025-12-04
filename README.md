@@ -13,6 +13,12 @@ We’re building a modern loyalty infrastructure that empowers small businesses 
 
 ## Recent Maintenance Highlights
 
+### December 4, 2025 - Feature Architecture Update
+- **Standard vs Opt-in Features**: Implemented a new architecture separating core configurable features from optional add-on modules.
+- **Marketplace**: Added a new Admin Marketplace (`/admin/modules`) for toggling add-on modules per tenant.
+- **Dynamic Feature Flags**: Frontend now dynamically adapts based on backend-calculated features (Plan + Vertical + Overrides).
+- **Loyalty Configuration**: Added specific settings for Loyalty Type (Points vs Stamps).
+
 ### November 30, 2025 - Critical Production Fixes
 - **Fixed Azure SWA routing**: Moved `staticwebapp.config.json` to `public/` directory for proper Vite build copying. Eliminates intermittent 404s on direct navigation.
 - **Fixed branding updates**: Added event listener to `TenantConfigProvider` to invalidate React Query cache on branding changes. Colors now update immediately without page refresh.

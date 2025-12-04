@@ -8,6 +8,7 @@ export interface NavItem {
   legacyPaths?: string[]; // optional historical paths to redirect from
   cap?: string;           // capability required
   roles?: string[];       // allowed roles fallback to admin/superadmin
+  feature?: keyof import('../../../config/modules').ModuleFlags; // feature flag required
 }
 
 export interface NavGroup {
@@ -18,8 +19,6 @@ export interface NavGroup {
   collapsible?: boolean;
   defaultCollapsed?: boolean;
 }
-
-import { moduleFlags } from '../../../config/modules';
 
 // Build groups dynamically so we can hide items when feature flags disable them
 export const adminNavGroups: NavGroup[] = [
@@ -50,16 +49,17 @@ export const adminNavGroups: NavGroup[] = [
     items: [
       { key: 'organization', label: 'My Business', path: '/admin/settings', cap: 'tenant.edit' },
       { key: 'tenants', label: 'Platform Tenants', path: '/admin/tenants', cap: 'platform.manage_tenants', legacyPaths: ['/admin/tenant'] },
-      { key: 'modules', label: 'Modules', path: '/admin/modules', cap: 'services.manage' },
-      { key: 'inventory', label: 'Inventory', path: '/admin/inventory', cap: 'services.manage' },
-      ...(moduleFlags.enableSubscription ? [ { key: 'subscription', label: 'Subscription', path: '/admin/subscription', cap: 'tenant.edit' } ] : []),
+      { key: 'modules', label: 'Marketplace', path: '/admin/modules', cap: 'services.manage' },
+      { key: 'loyalty-settings', label: 'Loyalty Settings', path: '/admin/loyalty-settings', cap: 'services.manage' },
+      { key: 'inventory', label: 'Inventory', path: '/admin/inventory', cap: 'services.manage', feature: 'enableCatalog' },
+      { key: 'subscription', label: 'Subscription', path: '/admin/subscription', cap: 'tenant.edit', feature: 'enableSubscription' },
     ],
   },
   {
     key: 'payments',
     title: 'Payments & Billing',
     items: [
-      { key: 'transactions', label: 'Transactions', path: '/admin/transactions', cap: 'payments.view' },
+      { key: 'transactions', label: 'Transactions', path: '/admin/transactions', cap: 'payments.view', feature: 'enablePayments' },
     ],
   },
   {

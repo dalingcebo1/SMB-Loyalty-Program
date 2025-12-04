@@ -1,8 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useContext } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
 import { adminNavGroups, allAdminNavItems } from '../features/admin/nav/adminNavConfig';
 import { readJsonStorage } from '../utils/storage';
+import { TenantConfigContext } from '../config/TenantConfigProvider';
+import { getModuleFlags } from '../config/modules';
 
 const STORAGE_KEY = 'admin_nav_collapsed_v1';
 
@@ -14,6 +16,8 @@ interface AdminSidebarProps {
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
   const { has } = useCapabilities();
+  const tenantConfig = useContext(TenantConfigContext);
+  const moduleFlags = tenantConfig?.moduleFlags || getModuleFlags();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState<CollapsedState>(() => readJsonStorage<CollapsedState>(STORAGE_KEY, {}));
@@ -97,7 +101,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
         {adminNavGroups.map(group => {
-          const groupItems = group.items.filter(i => !i.cap || has(i.cap));
+          const groupItems = group.items.filter(i => {
+            if (i.cap && !has(i.cap)) return false;
+            if (i.feature && !moduleFlags[i.feature]) return false;
+            return true;
+          });
           if (!groupItems.length) return null;
           const isCollapsed = collapsed[group.key] ?? group.defaultCollapsed ?? false;
           const groupActive = group.key === activeGroupKey; // single source of truth

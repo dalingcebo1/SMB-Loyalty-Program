@@ -17,8 +17,9 @@ from urllib.parse import urlparse
 from functools import cached_property
 
 from app.core.database import get_db
-from app.models import Tenant, VerticalType
+from app.models import Tenant, VerticalType, SubscriptionPlan
 from app.plugins.verticals.vertical_dispatch import dispatch
+from app.core.modules import VERTICAL_EXTRA_MODULES
 from config import settings
 
 
@@ -95,6 +96,40 @@ class TenantContext:
         if self.uses_schema_isolation():
             from app.core.schema_manager import set_search_path
             set_search_path(db, self.schema_name, include_public=True)
+
+
+def calculate_tenant_features(tenant: Tenant, db: Session | None = None) -> dict:
+    # 1. Get Plan Modules
+    config = tenant.config or {}
+    sub = config.get("subscription", {})
+    plan_id = sub.get("plan_id")
+    
+    plan_modules = []
+    if plan_id and db:
+        plan = db.get(SubscriptionPlan, plan_id)
+        if plan:
+            plan_modules = plan.modules or []
+    
+    # Fallback to Starter if no plan assigned (matching subscription logic)
+    if not plan_modules and not plan_id and db:
+        starter = db.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Starter").first()
+        if starter:
+            plan_modules = starter.modules or []
+
+    # 2. Vertical Extras
+    vertical_extras = VERTICAL_EXTRA_MODULES.get(tenant.vertical_type, [])
+
+    # 3. Overrides (Add-ons)
+    overrides = sub.get("overrides", {})
+    addon_features = [k for k, v in overrides.items() if v]
+
+    # 4. Construct result
+    return {
+        "plan_features": plan_modules,
+        "vertical_features": vertical_extras,
+        "addon_features": addon_features,
+        "all_features": list(set(plan_modules + vertical_extras + addon_features))
+    }
 
 
 async def get_tenant_context(
@@ -257,12 +292,21 @@ async def get_tenant_context(
 
 
 
-def tenant_meta_dict(ctx: TenantContext) -> dict:
+def tenant_meta_dict(ctx: TenantContext, db: Session | None = None) -> dict:
     cfg = ctx.tenant.config or {}
+    
+    # Calculate features dynamically if DB is available, otherwise fallback to config
+    if db:
+        features = calculate_tenant_features(ctx.tenant, db)
+        # Flatten for frontend compatibility (FeatureMap: {key: bool})
+        feature_map = {f: True for f in features["all_features"]}
+    else:
+        feature_map = cfg.get("features", {})
+
     meta = {
         "tenant_id": ctx.id,
         "vertical": ctx.vertical,
-        "features": cfg.get("features", {}),
+        "features": feature_map,
         "branding": cfg.get("branding", {}),
         "name": ctx.tenant.name,
         "loyalty_type": ctx.tenant.loyalty_type,

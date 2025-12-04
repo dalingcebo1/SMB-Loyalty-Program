@@ -28,29 +28,53 @@ const EMPTY_EXTRAS: ExtraItem[] = [];
 
 const toCents = (value: number) => Math.max(0, Math.round(Number(value || 0) * CENT_FACTOR));
 const centsToRand = (value: number) => Number((Number(value || 0) / CENT_FACTOR).toFixed(2));
-const priceMapToCents = (prices: Record<string, number>) =>
-  Object.fromEntries(
-    Object.entries(prices).map(([tier, amount]) => [tier, toCents(Number(amount))])
-  );
+
+// Helper to convert API price map to UI tiers array
+const priceMapToTiers = (priceMap: Record<string, number>) => {
+  return Object.entries(priceMap).map(([name, cents]) => ({
+    name,
+    price: centsToRand(cents).toString()
+  }));
+};
+
+// Helper to convert UI tiers array to API price map
+const tiersToPriceMap = (tiers: { name: string; price: string }[]) => {
+  const map: Record<string, number> = {};
+  tiers.forEach(t => {
+    if (t.name && t.price) {
+      map[t.name] = toCents(Number(t.price));
+    }
+  });
+  return map;
+};
 
 const InventoryPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ category: '', name: '', base_price: 0, loyalty_eligible: false });
-  const [extraForm, setExtraForm] = useState({ name: '', price_map: '{}' });
+  
+  // Service Form State
+  const [serviceForm, setServiceForm] = useState({ category: '', name: '', base_price: '', loyalty_eligible: false });
+  
+  // Extra Form State
+  const [extraFormName, setExtraFormName] = useState('');
+  const [extraFormTiers, setExtraFormTiers] = useState<{name: string, price: string}[]>([{name: 'Standard', price: ''}]);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // Filters
   const [serviceFilter, setServiceFilter] = useState('');
   const [extraFilter, setExtraFilter] = useState('');
+  
+  // Editing States
   const [editingService, setEditingService] = useState<number | null>(null);
-  const [editingServiceDraft, setEditingServiceDraft] = useState<Partial<ServiceItem>>({});
+  const [editingServiceDraft, setEditingServiceDraft] = useState<Partial<ServiceItem> & { base_price_display?: string }>({});
+  
   const [editingExtra, setEditingExtra] = useState<number | null>(null);
-  const [editingExtraDraft, setEditingExtraDraft] = useState<Partial<ExtraItem>>({});
-  // UI enhancement states
+  const [editingExtraDraftName, setEditingExtraDraftName] = useState('');
+  const [editingExtraDraftTiers, setEditingExtraDraftTiers] = useState<{name: string, price: string}[]>([]);
+
+  // UI States
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  const [serviceSort, setServiceSort] = useState<'name' | 'price' | 'category'>('category');
-  const [extraSort, setExtraSort] = useState<'name'>('name');
-  const [priceMapError, setPriceMapError] = useState<string | null>(null);
-  // Confirmation dialog states
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
     type: 'service' | 'extra';
@@ -68,6 +92,7 @@ const InventoryPage: React.FC = () => {
   );
   const formatCurrency = useCallback((cents: number) => currencyFormatter.format(cents / CENT_FACTOR), [currencyFormatter]);
 
+  // Queries
   const servicesQuery = useQuery<ServiceItem[]>({
     queryKey: ['inventory', 'services'],
     queryFn: async () => {
@@ -86,43 +111,38 @@ const InventoryPage: React.FC = () => {
     enabled: canManageInventory,
   });
 
-  const services = useMemo<ServiceItem[]>(
-    () => servicesQuery.data ?? EMPTY_SERVICES,
-    [servicesQuery.data]
-  );
-  const extras = useMemo<ExtraItem[]>(
-    () => extrasQuery.data ?? EMPTY_EXTRAS,
-    [extrasQuery.data]
-  );
+  const services = useMemo(() => servicesQuery.data ?? EMPTY_SERVICES, [servicesQuery.data]);
+  const extras = useMemo(() => extrasQuery.data ?? EMPTY_EXTRAS, [extrasQuery.data]);
+  
   const loading = servicesQuery.isFetching || extrasQuery.isFetching;
-  const loadError =
-    (servicesQuery.error instanceof Error ? servicesQuery.error.message : null) ||
-    (extrasQuery.error instanceof Error ? extrasQuery.error.message : null);
-  const displayError = error ?? loadError;
-  const { refetch: refetchServices } = servicesQuery;
-  const { refetch: refetchExtras } = extrasQuery;
+  const displayError = error || (servicesQuery.error as Error)?.message || (extrasQuery.error as Error)?.message;
 
   const refreshInventory = useCallback(() => {
     if (!canManageInventory) return;
-    refetchServices();
-    refetchExtras();
-  }, [canManageInventory, refetchServices, refetchExtras]);
+    servicesQuery.refetch();
+    extrasQuery.refetch();
+  }, [canManageInventory, servicesQuery, extrasQuery]);
+
+  // --- Service Actions ---
 
   async function createService(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
-      if (form.base_price < 0) throw new Error('Price must be >= 0');
+      const price = Number(serviceForm.base_price);
+      if (price < 0) throw new Error('Price must be >= 0');
+      
       const payload = {
-        category: form.category.trim(),
-        name: form.name.trim(),
-        base_price: toCents(form.base_price),
-        loyalty_eligible: form.loyalty_eligible,
+        category: serviceForm.category.trim(),
+        name: serviceForm.name.trim(),
+        base_price: toCents(price),
+        loyalty_eligible: serviceForm.loyalty_eligible,
       };
+      
       await api.post('/inventory/services', payload);
-      setForm({ category: '', name: '', base_price: 0, loyalty_eligible: false });
-      setSuccess('Service created');
+      setServiceForm({ category: '', name: '', base_price: '', loyalty_eligible: false });
+      setSuccess('Service created successfully');
       await queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] });
     } catch (err) {
       console.error('Create service failed', err);
@@ -135,12 +155,7 @@ const InventoryPage: React.FC = () => {
   async function deleteService(id: number) {
     const service = services.find(s => s.id === id);
     if (!service) return;
-    setDeleteConfirm({
-      isOpen: true,
-      type: 'service',
-      id,
-      name: service.name
-    });
+    setDeleteConfirm({ isOpen: true, type: 'service', id, name: service.name });
   }
 
   async function confirmDeleteService() {
@@ -161,33 +176,66 @@ const InventoryPage: React.FC = () => {
   function startEditService(s: ServiceItem) {
     setEditingService(s.id);
     setEditingServiceDraft({
-      id: s.id,
-      category: s.category,
-      name: s.name,
-      base_price: centsToRand(s.base_price),
-      loyalty_eligible: s.loyalty_eligible,
+      ...s,
+      base_price_display: centsToRand(s.base_price).toString()
     });
   }
-  function cancelEditService() { setEditingService(null); setEditingServiceDraft({}); }
+
   async function saveEditService() {
     if (editingService == null) return;
     setSubmitting(true);
     setError(null);
     try {
-      type ServiceUpdatePayload = Partial<Pick<ServiceItem, 'name' | 'category' | 'base_price' | 'loyalty_eligible'>>;
-      const payload: ServiceUpdatePayload = {};
-  if (editingServiceDraft.name !== undefined) payload.name = editingServiceDraft.name.trim();
-  if (editingServiceDraft.category !== undefined) payload.category = editingServiceDraft.category.trim();
-    if (editingServiceDraft.base_price !== undefined) payload.base_price = toCents(Number(editingServiceDraft.base_price));
-      if (editingServiceDraft.loyalty_eligible !== undefined) payload.loyalty_eligible = Boolean(editingServiceDraft.loyalty_eligible);
+      const payload: any = {};
+      if (editingServiceDraft.name) payload.name = editingServiceDraft.name.trim();
+      if (editingServiceDraft.category) payload.category = editingServiceDraft.category.trim();
+      if (editingServiceDraft.base_price_display !== undefined) {
+        payload.base_price = toCents(Number(editingServiceDraft.base_price_display));
+      }
+      if (editingServiceDraft.loyalty_eligible !== undefined) {
+        payload.loyalty_eligible = editingServiceDraft.loyalty_eligible;
+      }
 
       await api.put(`/inventory/services/${editingService}`, payload);
       setSuccess('Service updated');
-      setEditingService(null); setEditingServiceDraft({});
+      setEditingService(null);
+      setEditingServiceDraft({});
       await queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] });
     } catch {
       setError('Update failed');
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // --- Extra Actions ---
+
+  function addTier(isEditing: boolean) {
+    if (isEditing) {
+      setEditingExtraDraftTiers([...editingExtraDraftTiers, { name: '', price: '' }]);
+    } else {
+      setExtraFormTiers([...extraFormTiers, { name: '', price: '' }]);
+    }
+  }
+
+  function removeTier(index: number, isEditing: boolean) {
+    if (isEditing) {
+      setEditingExtraDraftTiers(editingExtraDraftTiers.filter((_, i) => i !== index));
+    } else {
+      setExtraFormTiers(extraFormTiers.filter((_, i) => i !== index));
+    }
+  }
+
+  function updateTier(index: number, field: 'name' | 'price', value: string, isEditing: boolean) {
+    if (isEditing) {
+      const newTiers = [...editingExtraDraftTiers];
+      newTiers[index] = { ...newTiers[index], [field]: value };
+      setEditingExtraDraftTiers(newTiers);
+    } else {
+      const newTiers = [...extraFormTiers];
+      newTiers[index] = { ...newTiers[index], [field]: value };
+      setExtraFormTiers(newTiers);
+    }
   }
 
   async function createExtra(e: React.FormEvent) {
@@ -195,51 +243,35 @@ const InventoryPage: React.FC = () => {
     setSubmitting(true);
     setError(null);
     try {
-      let map: Record<string, number> = {};
-      try {
-        const parsed = JSON.parse(extraForm.price_map);
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          setPriceMapError('JSON must be an object of {"tier": price}');
-          throw new Error('Invalid JSON shape');
-        }
-        const sanitized = Object.fromEntries(
-          Object.entries(parsed).map(([tier, amount]) => {
-            const numeric = Number(amount);
-            if (Number.isNaN(numeric)) {
-              throw new Error(`Invalid price for tier ${tier}`);
-            }
-            return [tier, numeric];
-          })
-        );
-        map = priceMapToCents(sanitized);
-        setPriceMapError(null);
-      } catch (parseErr) {
-        const message = parseErr instanceof Error && parseErr.message ? parseErr.message : 'Invalid JSON';
-        setPriceMapError(message);
-        throw new Error(message);
+      const priceMap = tiersToPriceMap(extraFormTiers);
+      if (Object.keys(priceMap).length === 0) {
+        throw new Error('At least one valid price tier is required');
       }
-      await api.post('/inventory/extras', { name: extraForm.name.trim(), price_map: map });
-      setExtraForm({ name: '', price_map: '{}' });
-      setSuccess('Extra created');
+      
+      await api.post('/inventory/extras', {
+        name: extraFormName.trim(),
+        price_map: priceMap
+      });
+      
+      setExtraFormName('');
+      setExtraFormTiers([{ name: 'Standard', price: '' }]);
+      setSuccess('Extra created successfully');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['inventory', 'extras'] }),
         queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] }),
       ]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create extra failed', err);
-      setError('Could not create extra');
-    } finally { setSubmitting(false); }
+      setError(err.message || 'Could not create extra');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function deleteExtra(id: number) {
     const extra = extras.find(x => x.id === id);
     if (!extra) return;
-    setDeleteConfirm({
-      isOpen: true,
-      type: 'extra',
-      id,
-      name: extra.name
-    });
+    setDeleteConfirm({ isOpen: true, type: 'extra', id, name: extra.name });
   }
 
   async function confirmDeleteExtra() {
@@ -259,54 +291,76 @@ const InventoryPage: React.FC = () => {
 
   function startEditExtra(x: ExtraItem) {
     setEditingExtra(x.id);
-    setEditingExtraDraft({ ...x, price_map: x.price_map });
+    setEditingExtraDraftName(x.name);
+    setEditingExtraDraftTiers(priceMapToTiers(x.price_map));
   }
-  function cancelEditExtra() { setEditingExtra(null); setEditingExtraDraft({}); }
+
   async function saveEditExtra() {
     if (editingExtra == null) return;
     setSubmitting(true);
     setError(null);
     try {
-      type ExtraUpdatePayload = { name?: string; price_map?: Record<string, number> };
-      const payload: ExtraUpdatePayload = {};
-  if (editingExtraDraft.name !== undefined) payload.name = (editingExtraDraft.name as string).trim();
-      if (editingExtraDraft.price_map !== undefined) payload.price_map = editingExtraDraft.price_map as Record<string, number>;
-      await api.put(`/inventory/extras/${editingExtra}`, payload);
+      const priceMap = tiersToPriceMap(editingExtraDraftTiers);
+      if (Object.keys(priceMap).length === 0) {
+        throw new Error('At least one valid price tier is required');
+      }
+
+      await api.put(`/inventory/extras/${editingExtra}`, {
+        name: editingExtraDraftName.trim(),
+        price_map: priceMap
+      });
+
       setSuccess('Extra updated');
-      setEditingExtra(null); setEditingExtraDraft({});
+      setEditingExtra(null);
+      setEditingExtraDraftName('');
+      setEditingExtraDraftTiers([]);
       await queryClient.invalidateQueries({ queryKey: ['inventory', 'extras'] });
-    } catch { setError('Update failed'); }
-    finally { setSubmitting(false); }
+    } catch (err: any) {
+      setError(err.message || 'Update failed');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  // Derived filtered lists
+  // --- Derived State ---
+
   const filteredServices = useMemo(() => services.filter(s => {
-    if (!serviceFilter) return true; return (s.name + s.category).toLowerCase().includes(serviceFilter.toLowerCase());
+    if (!serviceFilter) return true;
+    return (s.name + s.category).toLowerCase().includes(serviceFilter.toLowerCase());
   }), [services, serviceFilter]);
+
   const servicesByCategory = useMemo(() => {
     const map: Record<string, ServiceItem[]> = {};
-    filteredServices.forEach(s => { map[s.category] = map[s.category] || []; map[s.category].push(s); });
-    // sort services within each category
-    const sortFn = (a: ServiceItem, b: ServiceItem) => {
-      switch (serviceSort) {
-        case 'name': return a.name.localeCompare(b.name);
-        case 'price': return a.base_price - b.base_price;
-        case 'category': default: return a.name.localeCompare(b.name);
-      }
-    };
+    filteredServices.forEach(s => {
+      map[s.category] = map[s.category] || [];
+      map[s.category].push(s);
+    });
+    
+    const sortFn = (a: ServiceItem, b: ServiceItem) => a.name.localeCompare(b.name);
+
     Object.values(map).forEach(arr => arr.sort(sortFn));
     let entries = Object.entries(map);
-    if (serviceSort === 'category') entries = entries.sort((a,b)=> a[0].localeCompare(b[0]));
+    entries = entries.sort((a,b)=> a[0].localeCompare(b[0]));
     return entries;
-  }, [filteredServices, serviceSort]);
+  }, [filteredServices]);
+
+  const uniqueCategories = useMemo(() => {
+    return Array.from(new Set(services.map(s => s.category))).sort();
+  }, [services]);
+
   const filteredExtras = useMemo(() => {
     const list = extras.filter(x => !extraFilter || x.name.toLowerCase().includes(extraFilter.toLowerCase()));
-    if (extraSort === 'name') list.sort((a,b)=>a.name.localeCompare(b.name));
+    list.sort((a,b)=>a.name.localeCompare(b.name));
     return list;
-  }, [extras, extraFilter, extraSort]);
+  }, [extras, extraFilter]);
 
   // Auto dismiss success toast
-  useEffect(()=> { if (success) { const t = setTimeout(()=>setSuccess(null), 3000); return ()=>clearTimeout(t); }}, [success]);
+  useEffect(()=> { 
+    if (success) { 
+      const t = setTimeout(()=>setSuccess(null), 3000); 
+      return ()=>clearTimeout(t); 
+    }
+  }, [success]);
 
   function toggleCategory(cat: string) {
     setCollapsedCategories(prev => {
@@ -327,497 +381,431 @@ const InventoryPage: React.FC = () => {
   }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50'>
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8'>
-        {/* Enhanced Header */}
-        <div className='relative overflow-hidden bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-800 text-white rounded-2xl p-6 sm:p-8 shadow-xl'>
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
-          <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/5 rounded-full"></div>
-          <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/5 rounded-full"></div>
-          <div className="relative z-10">
-            <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-              <div>
-                <h1 className='text-3xl sm:text-4xl font-bold mb-2'>Inventory Management</h1>
-                <p className='text-teal-100 text-base sm:text-lg'>Manage your services and extras inventory</p>
-              </div>
-              <div className="flex items-center space-x-4">
-                {submitting && (
-                  <div className='flex items-center space-x-2 text-teal-200'>
-                    <LoadingSpinner size="sm" color="white" />
-                    <span className='text-sm'>Working…</span>
-                  </div>
-                )}
-                <div className="hidden sm:flex w-16 h-16 bg-white/10 rounded-full items-center justify-center backdrop-blur-sm">
-                  <svg className="w-8 h-8 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
-              </div>
+    <div className='min-h-screen bg-gray-50 pb-12'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8'>
+        
+        {/* Header */}
+        <div className='bg-white rounded-2xl p-8 shadow-sm border border-gray-100'>
+          <div className='flex flex-col md:flex-row md:items-center justify-between gap-6'>
+            <div>
+              <h1 className='text-3xl font-bold text-gray-900'>Inventory Management</h1>
+              <p className='text-gray-500 mt-1'>Manage your core services and extra add-ons</p>
             </div>
+            {(submitting || loading) && (
+              <div className='flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-full'>
+                <LoadingSpinner size="sm" color="blue" />
+                <span className='text-sm font-medium'>{submitting ? 'Saving changes...' : 'Loading data...'}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Status Messages */}
-        <div className="space-y-3">
+        {/* Notifications */}
+        <div className="space-y-4">
           {displayError && (
-            <div className='bg-red-50 border-l-4 border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-sm flex items-start space-x-3'>
-              <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+            <div className='bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r shadow-sm flex items-start gap-3'>
+              <span className="text-xl">⚠️</span>
               <div>
-                <h3 className="font-medium">Error</h3>
-                <p className="text-sm">{displayError}</p>
+                <h3 className="font-bold">Error</h3>
+                <p>{displayError}</p>
               </div>
             </div>
           )}
           {success && (
-            <div className='bg-green-50 border-l-4 border-green-400 text-green-700 px-6 py-4 rounded-lg shadow-sm flex items-start space-x-3'>
-              <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
+            <div className='bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-r shadow-sm flex items-start gap-3'>
+              <span className="text-xl">✅</span>
               <div>
-                <h3 className="font-medium">Success</h3>
-                <p className="text-sm">{success}</p>
-              </div>
-            </div>
-          )}
-          {loading && (
-            <div className='bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-6 py-4 rounded-lg shadow-sm flex items-start space-x-3'>
-              <LoadingSpinner size="sm" color="blue" />
-              <div>
-                <h3 className="font-medium">Loading</h3>
-                <p className="text-sm">Loading inventory data…</p>
+                <h3 className="font-bold">Success</h3>
+                <p>{success}</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Services Section */}
-        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className='bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-gray-100'>
-            <div className='flex flex-wrap items-center gap-4 justify-between'>
-              <div>
-                <h2 className='text-2xl font-bold text-gray-800 mb-1'>Services</h2>
-                <p className='text-gray-600'>Manage your service offerings</p>
-              </div>
-              <div className='flex flex-wrap items-center gap-4'>
-                <span className='text-sm text-gray-500 bg-white px-3 py-1 rounded-full border'>
-                  {filteredServices.length} {filteredServices.length === 1 ? 'service' : 'services'}
-                </span>
-                <input 
-                  className='border border-gray-300 px-4 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors' 
-                  placeholder='Filter services…' 
-                  value={serviceFilter} 
-                  onChange={e=>setServiceFilter(e.target.value)} 
-                />
-                <select 
-                  className='border border-gray-300 px-4 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors' 
-                  value={serviceSort} 
-                  onChange={e=>setServiceSort(e.target.value as 'name' | 'price' | 'category')}
-                >
-                  <option value='category'>Sort by Category</option>
-                  <option value='name'>Sort by Name</option>
-                  <option value='price'>Sort by Price</option>
-                </select>
-                <button 
-                  type='button' 
-                  onClick={refreshInventory} 
-                  className='text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors'
-                >
-                  Refresh
-                </button>
-              </div>
+        {/* CORE SERVICES SECTION */}
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Core Services</h2>
+              <p className="text-sm text-gray-500">Primary offerings available to customers</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input 
+                type="text"
+                placeholder="Filter services..."
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={serviceFilter}
+                onChange={e => setServiceFilter(e.target.value)}
+              />
+              <button onClick={refreshInventory} className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Refresh">
+                🔄
+              </button>
             </div>
           </div>
 
-          {/* Service Creation Form */}
-          <div className='p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-100'>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className='text-lg font-bold text-gray-800'>Add New Service</h3>
-              <div className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full border">
-                All fields required
+          {/* Add Service Form */}
+          <div className="p-6 border-b border-gray-100 bg-blue-50/30">
+            <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-4">Add New Service</h3>
+            <form onSubmit={createService} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+              <div className="md:col-span-3">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Category</label>
+                <input 
+                  list="categories"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. Wash Packages"
+                  value={serviceForm.category}
+                  onChange={e => setServiceForm({...serviceForm, category: e.target.value})}
+                  required
+                />
+                <datalist id="categories">
+                  {uniqueCategories.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
-            </div>
-            <form onSubmit={createService} className='space-y-4'>
-              <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
-                <div className='space-y-1'>
-                  <label className='block text-sm font-semibold text-gray-700'>Category</label>
-                  <input 
-                    className='w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400' 
-                    placeholder='e.g., Wash Packages' 
-                    value={form.category} 
-                    onChange={e=>setForm(f=>({...f, category:e.target.value}))} 
-                    required 
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <label className='block text-sm font-semibold text-gray-700'>Service Name</label>
-                  <input 
-                    className='w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400' 
-                    placeholder='e.g., Premium Wash' 
-                    value={form.name} 
-                    onChange={e=>setForm(f=>({...f, name:e.target.value}))} 
-                    required 
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <label className='block text-sm font-semibold text-gray-700'>Base Price (R)</label>
-                  <input 
-                    className='w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400' 
-                    min={0}
-                    step="0.01"
-                    type='number' 
-                    placeholder='0.00' 
-                    value={form.base_price} 
-                    onChange={e=>setForm(f=>({...f, base_price:Number(e.target.value)}))} 
-                    required 
-                  />
-                </div>
-                <div className='space-y-1 flex flex-col justify-end'>
-                  <label className='flex items-center space-x-3 p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors'>
-                    <input 
-                      type='checkbox' 
-                      className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5' 
-                      checked={form.loyalty_eligible} 
-                      onChange={e=>setForm(f=>({...f, loyalty_eligible:e.target.checked}))} 
-                    /> 
-                    <span className="text-sm font-medium text-gray-700">Loyalty Eligible</span>
-                  </label>
-                </div>
+              <div className="md:col-span-4">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Service Name</label>
+                <input 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. Premium Wash"
+                  value={serviceForm.name}
+                  onChange={e => setServiceForm({...serviceForm, name: e.target.value})}
+                  required
+                />
               </div>
-              <div className="flex justify-end">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Price (R)</label>
+                <input 
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0.00"
+                  value={serviceForm.base_price}
+                  onChange={e => setServiceForm({...serviceForm, base_price: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2 flex items-center pb-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    checked={serviceForm.loyalty_eligible}
+                    onChange={e => setServiceForm({...serviceForm, loyalty_eligible: e.target.checked})}
+                  />
+                  <span className="text-sm text-gray-700">Loyalty Eligible</span>
+                </label>
+              </div>
+              <div className="md:col-span-1">
                 <button 
-                  disabled={submitting || !form.name || !form.category || form.base_price < 0} 
-                  className='px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl disabled:hover:shadow-lg transform hover:scale-105 disabled:hover:scale-100'
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm disabled:opacity-50"
                 >
-                  <span className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Add Service
-                  </span>
+                  Add
                 </button>
               </div>
             </form>
           </div>
 
           {/* Services List */}
-          <div className='p-6 space-y-4'>
-            {servicesByCategory.map(([cat, list]) => (
-              <div key={cat} className='border border-gray-200 rounded-xl overflow-hidden'>
+          <div className="divide-y divide-gray-100">
+            {servicesByCategory.map(([category, items]) => (
+              <div key={category} className="bg-white">
                 <button 
-                  type='button' 
-                  onClick={()=>toggleCategory(cat)} 
-                  className='flex justify-between items-center w-full text-left p-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-200'
+                  onClick={() => toggleCategory(category)}
+                  className="w-full px-6 py-3 bg-gray-50/50 flex items-center justify-between hover:bg-gray-100 transition-colors text-left"
                 >
-                  <span className='font-semibold text-gray-800'>{cat}</span>
-                  <div className='flex items-center gap-2'>
-                    <span className='text-xs text-gray-500 bg-white px-2 py-1 rounded-full border'>{list.length}</span>
-                    <span className='text-gray-400 transition-transform duration-200'>{collapsedCategories.has(cat)?'▶':'▼'}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-gray-800">{category}</span>
+                    <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">{items.length}</span>
                   </div>
+                  <span className="text-gray-400">{collapsedCategories.has(category) ? 'Show' : 'Hide'}</span>
                 </button>
-                {!collapsedCategories.has(cat) && (
-                <div className='divide-y divide-gray-100'>
-                  {list.map(s => (
-                    <div key={s.id} className='p-4 hover:bg-gray-50 transition-colors'>
-                      {editingService === s.id ? (
-                        <div className='space-y-3'>
-                          <div className='grid grid-cols-1 md:grid-cols-4 gap-3'>
-                            <input 
-                              className='border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500' 
-                              placeholder='Service name'
-                              value={editingServiceDraft.name as string || ''} 
-                              onChange={e=>setEditingServiceDraft(d=>({...d, name:e.target.value}))} 
-                            />
-                            <input 
-                              className='border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500' 
-                              type='number' 
-                              placeholder='Price'
-                              value={editingServiceDraft.base_price as number || 0} 
-                              onChange={e=>setEditingServiceDraft(d=>({...d, base_price:Number(e.target.value)}))} 
-                            />
-                            <input 
-                              className='border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500' 
-                              placeholder='Category'
-                              value={editingServiceDraft.category as string || ''} 
-                              onChange={e=>setEditingServiceDraft(d=>({...d, category:e.target.value}))} 
-                            />
-                            <label className='inline-flex items-center justify-center gap-2 text-sm'>
+                
+                {!collapsedCategories.has(category) && (
+                  <div className="divide-y divide-gray-100">
+                    {items.map(service => (
+                      <div key={service.id} className="p-4 hover:bg-blue-50/10 transition-colors">
+                        {editingService === service.id ? (
+                          // Edit Mode
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <div className="md:col-span-3">
+                              <label className="text-xs text-gray-500 block mb-1">Category</label>
                               <input 
-                                type='checkbox' 
-                                className='rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-                                checked={!!editingServiceDraft.loyalty_eligible} 
-                                onChange={e=>setEditingServiceDraft(d=>({...d, loyalty_eligible:e.target.checked}))} 
-                              /> 
-                              Loyalty
-                            </label>
-                          </div>
-                          <div className='flex gap-2'>
-                            <button 
-                              type='button' 
-                              onClick={saveEditService} 
-                              className='px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium'
-                            >
-                              Save Changes
-                            </button>
-                            <button 
-                              type='button' 
-                              onClick={cancelEditService} 
-                              className='px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors'
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className='flex justify-between items-start'>
-                          <div className='flex-1'>
-                            <h4 className='font-semibold text-gray-900 text-lg'>{s.name}</h4>
-                            <div className='flex items-center gap-4 mt-1'>
-                              <span className='text-green-600 font-bold text-lg'>{formatCurrency(s.base_price)}</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                s.loyalty_eligible 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}>
-                                {s.loyalty_eligible ? 'Loyalty Eligible' : 'Standard'}
-                              </span>
+                                list="categories"
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                                value={editingServiceDraft.category}
+                                onChange={e => setEditingServiceDraft({...editingServiceDraft, category: e.target.value})}
+                              />
+                            </div>
+                            <div className="md:col-span-4">
+                              <label className="text-xs text-gray-500 block mb-1">Name</label>
+                              <input 
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                                value={editingServiceDraft.name}
+                                onChange={e => setEditingServiceDraft({...editingServiceDraft, name: e.target.value})}
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="text-xs text-gray-500 block mb-1">Price</label>
+                              <input 
+                                type="number"
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                                value={editingServiceDraft.base_price_display}
+                                onChange={e => setEditingServiceDraft({...editingServiceDraft, base_price_display: e.target.value})}
+                              />
+                            </div>
+                            <div className="md:col-span-1">
+                              <label className="text-xs text-gray-500 block mb-1">Loyalty</label>
+                              <input 
+                                type="checkbox"
+                                checked={editingServiceDraft.loyalty_eligible}
+                                onChange={e => setEditingServiceDraft({...editingServiceDraft, loyalty_eligible: e.target.checked})}
+                              />
+                            </div>
+                            <div className="md:col-span-2 flex gap-2 justify-end">
+                              <button onClick={saveEditService} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700">Save</button>
+                              <button onClick={() => setEditingService(null)} className="px-3 py-1.5 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400">Cancel</button>
                             </div>
                           </div>
-                          <div className='flex gap-2'>
-                            <button 
-                              onClick={()=>startEditService(s)} 
-                              className='px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium'
-                            >
-                              Edit
-                            </button>
-                            <button 
-                              onClick={()=>deleteService(s.id)} 
-                              className='px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium'
-                            >
-                              Delete
-                            </button>
+                        ) : (
+                          // View Mode
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div>
+                                <h4 className="font-medium text-gray-900">{service.name}</h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-green-600 font-bold">{formatCurrency(service.base_price)}</span>
+                                  {service.loyalty_eligible && (
+                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">Loyalty Eligible</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => startEditService(service)}
+                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Edit"
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                onClick={() => deleteService(service.id)}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             ))}
-            {filteredServices.length===0 && (
-              <div className='text-center py-12 text-gray-500'>
-                <div className='text-4xl mb-3'>📋</div>
-                <div className='text-lg font-medium mb-1'>No services found</div>
-                <div className='text-sm'>Add a service or adjust your filters</div>
+            {servicesByCategory.length === 0 && (
+              <div className="p-12 text-center text-gray-500">
+                <p className="text-lg">No services found.</p>
+                <p className="text-sm">Add your first service above.</p>
               </div>
             )}
           </div>
         </section>
 
-        {/* Extras Section */}
-        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className='bg-gradient-to-r from-purple-50 to-pink-50 p-6 border-b border-gray-100'>
-            <div className='flex flex-wrap items-center gap-4 justify-between'>
-              <div>
-                <h2 className='text-2xl font-bold text-gray-800 mb-1'>Extras</h2>
-                <p className='text-gray-600'>Manage additional service options</p>
-              </div>
-              <div className='flex flex-wrap items-center gap-4'>
-                <span className='text-sm text-gray-500 bg-white px-3 py-1 rounded-full border'>
-                  {filteredExtras.length} {filteredExtras.length === 1 ? 'extra' : 'extras'}
-                </span>
-                <input 
-                  className='border border-gray-300 px-4 py-2 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors' 
-                  placeholder='Filter extras…' 
-                  value={extraFilter} 
-                  onChange={e=>setExtraFilter(e.target.value)} 
-                />
-                <select 
-                  className='border border-gray-300 px-4 py-2 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors' 
-                  value={extraSort} 
-                  onChange={e=>setExtraSort(e.target.value as 'name')}
-                >
-                  <option value='name'>Sort by Name</option>
-                </select>
-                <button 
-                  type='button' 
-                  onClick={refreshInventory} 
-                  className='text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors'
-                >
-                  Refresh
-                </button>
-              </div>
+        {/* EXTRAS SECTION */}
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Extras & Add-ons</h2>
+              <p className="text-sm text-gray-500">Optional extras with tiered pricing</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input 
+                type="text"
+                placeholder="Filter extras..."
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                value={extraFilter}
+                onChange={e => setExtraFilter(e.target.value)}
+              />
             </div>
           </div>
 
-          {/* Extra Creation Form */}
-          <div className='p-6 bg-gray-50 border-b border-gray-100'>
-            <h3 className='font-semibold text-gray-800 mb-4'>Add New Extra</h3>
-            <form onSubmit={createExtra} className='space-y-4'>
-              <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>Extra Name</label>
-                  <input 
-                    className='w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors' 
-                    placeholder='e.g., Air Freshener, Wax Protection' 
-                    value={extraForm.name} 
-                    onChange={e=>setExtraForm(f=>({...f, name:e.target.value}))} 
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    Price Mapping (JSON)
-                    {priceMapError && <span className='text-red-600 text-xs ml-2'>- {priceMapError}</span>}
-                  </label>
-                  <textarea 
-                    className={`w-full border px-3 py-2 rounded-lg text-sm font-mono focus:ring-2 focus:border-purple-500 transition-colors h-20 ${
-                      priceMapError ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-500'
-                    }`} 
-                    placeholder='{"basic": 50.00, "premium": 80.00, "deluxe": 120.00}' 
-                    value={extraForm.price_map} 
-                    onChange={e=>{
-                      const val = e.target.value; 
-                      setExtraForm(f=>({...f, price_map:val}));
-                      try { 
-                        JSON.parse(val); 
-                        setPriceMapError(null); 
-                      } catch { 
-                        setPriceMapError('Invalid JSON format'); 
-                      }
-                    }} 
-                  />
-                  <div className='text-xs text-gray-500 mt-1'>
-                    Define prices (in Rands) for different service tiers. Example: {"{"}"basic": 50.00, "premium": 80.00{"}"}
-                  </div>
-                </div>
+          {/* Add Extra Form */}
+          <div className="p-6 border-b border-gray-100 bg-purple-50/30">
+            <h3 className="text-sm font-bold text-purple-900 uppercase tracking-wide mb-4">Add New Extra</h3>
+            <form onSubmit={createExtra} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Extra Name</label>
+                <input 
+                  className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="e.g. Air Freshener"
+                  value={extraFormName}
+                  onChange={e => setExtraFormName(e.target.value)}
+                  required
+                />
               </div>
-              <div className='flex gap-3'>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Pricing Tiers</label>
+                <div className="space-y-2">
+                  {extraFormTiers.map((tier, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <input 
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Tier Name (e.g. Standard)"
+                        value={tier.name}
+                        onChange={e => updateTier(idx, 'name', e.target.value, false)}
+                        required
+                      />
+                      <div className="relative w-32">
+                        <span className="absolute left-3 top-2 text-gray-500 text-sm">R</span>
+                        <input 
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="0.00"
+                          value={tier.price}
+                          onChange={e => updateTier(idx, 'price', e.target.value, false)}
+                          required
+                        />
+                      </div>
+                      {extraFormTiers.length > 1 && (
+                        <button 
+                          type="button" 
+                          onClick={() => removeTier(idx, false)}
+                          className="text-red-400 hover:text-red-600 p-2"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
                 <button 
-                  disabled={submitting || !!priceMapError} 
-                  className='px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 disabled:opacity-50 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 font-medium shadow-sm disabled:cursor-not-allowed'
+                  type="button"
+                  onClick={() => addTier(false)}
+                  className="mt-2 text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1"
                 >
-                  Add Extra
+                  + Add another tier
                 </button>
-                {priceMapError && (
-                  <div className='flex items-center text-red-600 text-sm'>
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    Please fix JSON format
-                  </div>
-                )}
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm disabled:opacity-50"
+                >
+                  Create Extra
+                </button>
               </div>
             </form>
           </div>
 
           {/* Extras List */}
-          <div className='p-6 space-y-4'>
-            {filteredExtras.map(x => (
-              <div key={x.id} className='border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors'>
-                {editingExtra === x.id ? (
-                  <div className='space-y-4'>
-                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-1'>Extra Name</label>
-                        <input 
-                          className='w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500' 
-                          value={editingExtraDraft.name as string || ''} 
-                          onChange={e=>setEditingExtraDraft(d=>({...d, name:e.target.value}))} 
-                        />
-                      </div>
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-1'>Price Mapping (JSON)</label>
-                        <textarea 
-                          className='w-full border border-gray-300 px-3 py-2 rounded-lg font-mono text-sm h-24 focus:ring-2 focus:ring-purple-500 focus:border-purple-500' 
-                          value={JSON.stringify(editingExtraDraft.price_map ?? {}, null, 2)} 
-                          onChange={e=>{
-                            try {
-                              const parsed = JSON.parse(e.target.value);
-                              if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
-                              const sanitized = Object.fromEntries(
-                                Object.entries(parsed).map(([tier, amount]) => {
-                                  const numeric = Number(amount);
-                                  if (Number.isNaN(numeric)) {
-                                    throw new Error(`Invalid price for tier ${tier}`);
-                                  }
-                                  return [tier, numeric];
-                                })
-                              );
-                              setEditingExtraDraft(d=>({...d, price_map: sanitized }));
-                            } catch {
-                              // Ignore parse errors while editing
-                            }
-                          }} 
-                        />
-                      </div>
+          <div className="divide-y divide-gray-100">
+            {filteredExtras.map(extra => (
+              <div key={extra.id} className="p-6 hover:bg-purple-50/10 transition-colors">
+                {editingExtra === extra.id ? (
+                  // Edit Mode
+                  <div className="space-y-4 bg-purple-50 p-4 rounded-lg border border-purple-100">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Name</label>
+                      <input 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        value={editingExtraDraftName}
+                        onChange={e => setEditingExtraDraftName(e.target.value)}
+                      />
                     </div>
-                    <div className='flex gap-2'>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Pricing Tiers</label>
+                      <div className="space-y-2">
+                        {editingExtraDraftTiers.map((tier, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <input 
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              value={tier.name}
+                              onChange={e => updateTier(idx, 'name', e.target.value, true)}
+                            />
+                            <div className="relative w-32">
+                              <span className="absolute left-3 top-2 text-gray-500 text-sm">R</span>
+                              <input 
+                                type="number"
+                                className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                value={tier.price}
+                                onChange={e => updateTier(idx, 'price', e.target.value, true)}
+                              />
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => removeTier(idx, true)}
+                              className="text-red-400 hover:text-red-600 p-2"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                       <button 
-                        type='button' 
-                        onClick={saveEditExtra} 
-                        className='px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium'
+                        type="button"
+                        onClick={() => addTier(true)}
+                        className="mt-2 text-sm text-purple-600 font-medium hover:text-purple-700"
                       >
-                        Save Changes
+                        + Add tier
                       </button>
-                      <button 
-                        type='button' 
-                        onClick={cancelEditExtra} 
-                        className='px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors'
-                      >
-                        Cancel
-                      </button>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <button onClick={saveEditExtra} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Save Changes</button>
+                      <button onClick={() => setEditingExtra(null)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium">Cancel</button>
                     </div>
                   </div>
                 ) : (
-                  <div className='flex justify-between items-start'>
-                    <div className='flex-1'>
-                      <h4 className='font-semibold text-gray-900 text-lg mb-2'>{x.name}</h4>
-                      <div className='space-y-1'>
-                        <div className='text-sm font-medium text-gray-700'>Pricing by Tier:</div>
-                        <div className='flex flex-wrap gap-2'>
-                          {Object.entries(x.price_map).map(([tier, price]) => (
-                            <span 
-                              key={tier} 
-                              className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800'
-                            >
-                              {tier}: {formatCurrency(Number(price))}
-                            </span>
-                          ))}
-                        </div>
+                  // View Mode
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-lg font-bold text-gray-900 mb-2">{extra.name}</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(extra.price_map).map(([tier, price]) => (
+                          <div key={tier} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium border border-purple-200">
+                            <span className="opacity-75 mr-1">{tier}:</span>
+                            <span className="font-bold">{formatCurrency(Number(price))}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className='flex gap-2 ml-4'>
+                    <div className="flex items-center gap-2">
                       <button 
-                        onClick={()=>startEditExtra(x)} 
-                        className='px-3 py-1 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors text-sm font-medium'
+                        onClick={() => startEditExtra(extra)}
+                        className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        title="Edit"
                       >
-                        Edit
+                        ✏️
                       </button>
                       <button 
-                        onClick={()=>deleteExtra(x.id)} 
-                        className='px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium'
+                        onClick={() => deleteExtra(extra.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete"
                       >
-                        Delete
+                        🗑️
                       </button>
                     </div>
                   </div>
                 )}
               </div>
             ))}
-            {filteredExtras.length===0 && (
-              <div className='text-center py-12 text-gray-500'>
-                <div className='text-4xl mb-3'>🎯</div>
-                <div className='text-lg font-medium mb-1'>No extras found</div>
-                <div className='text-sm'>Add an extra or adjust your filters</div>
+            {filteredExtras.length === 0 && (
+              <div className="p-12 text-center text-gray-500">
+                <p className="text-lg">No extras found.</p>
+                <p className="text-sm">Add your first extra above.</p>
               </div>
             )}
           </div>
         </section>
 
-        {/* Confirmation Dialog */}
         <ConfirmDialog
           isOpen={deleteConfirm.isOpen}
           title={`Delete ${deleteConfirm.type === 'service' ? 'Service' : 'Extra'}`}

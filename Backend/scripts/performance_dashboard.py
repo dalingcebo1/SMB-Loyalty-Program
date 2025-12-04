@@ -9,11 +9,12 @@ Usage:
 """
 
 import argparse
-import requests
+import requests  # type: ignore
 import time
 import sys
 from collections import defaultdict
 from datetime import datetime
+from typing import Dict, Any, cast, DefaultDict
 
 
 def clear_screen():
@@ -33,7 +34,7 @@ def fetch_metrics(url: str) -> dict:
 
 def parse_prometheus_metrics(text: str) -> dict:
     """Parse Prometheus text format metrics."""
-    metrics = defaultdict(lambda: defaultdict(float))
+    metrics: Dict[str, Any] = defaultdict(lambda: defaultdict(float))
     
     for line in text.split('\n'):
         line = line.strip()
@@ -47,21 +48,21 @@ def parse_prometheus_metrics(text: str) -> dict:
             if '{' in line:
                 # Has labels
                 name_part, rest = line.split('{', 1)
-                labels_part, value = rest.rsplit('}', 1)
-                value = float(value.strip())
+                labels_part, value_str = rest.rsplit('}', 1)
+                metric_value = float(value_str.strip())
                 
                 # Parse labels
-                labels = {}
+                labels: Dict[str, Any] = {}
                 for label in labels_part.split(','):
                     if '=' in label:
-                        key, val = label.split('=', 1)
-                        labels[key.strip()] = val.strip('"')
+                        key, label_val = label.split('=', 1)
+                        labels[key.strip()] = cast(Any, label_val.strip('"'))
                 
-                metrics[name_part][str(labels)] = value
+                metrics[name_part][str(labels)] = metric_value
             else:
                 # No labels
-                name, value = line.rsplit(None, 1)
-                metrics[name][''] = float(value)
+                name, value_str = line.rsplit(None, 1)
+                metrics[name][''] = float(value_str)  # type: ignore
         except (ValueError, IndexError):
             continue
     
@@ -103,7 +104,7 @@ def display_dashboard(metrics: dict):
     # Request rate (approximation - would need history for true rate)
     if http_total > 0:
         print(f"  Request Distribution:")
-        status_codes = defaultdict(int)
+        status_codes: Dict[str, int] = defaultdict(int)
         for labels_str, count in metrics.get('http_requests_total', {}).items():
             if 'status="' in labels_str:
                 # Extract status code
@@ -144,7 +145,7 @@ def display_dashboard(metrics: dict):
     if slow_total > 0:
         print("\n  Slow Queries by Endpoint:")
         slow_queries = metrics.get('database_slow_queries_total', {})
-        endpoint_totals = defaultdict(int)
+        endpoint_totals: Dict[str, int] = defaultdict(int)
         
         for labels_str, count in slow_queries.items():
             if 'endpoint="' in labels_str:

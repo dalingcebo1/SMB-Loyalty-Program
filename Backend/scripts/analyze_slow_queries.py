@@ -180,7 +180,7 @@ def analyze_queries(queries: List[Dict], top_n: int = 20) -> None:
     print(f"{'='*80}\n")
     
     table_pattern = re.compile(r'FROM\s+(\w+)|JOIN\s+(\w+)|UPDATE\s+(\w+)|INSERT\s+INTO\s+(\w+)', re.IGNORECASE)
-    table_counts = Counter()
+    table_counts: Counter[str] = Counter()
     
     for q in queries:
         matches = table_pattern.findall(q['statement'])

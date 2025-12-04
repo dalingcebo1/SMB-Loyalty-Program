@@ -28,11 +28,11 @@ def configure_logging():
     for h in list(root.handlers):
         root.removeHandler(h)
     if settings.environment == 'production':
-        handler = logging.StreamHandler(sys.stdout)
+        handler = logging.StreamHandler(sys.stderr)
         handler.setFormatter(JsonFormatter())
         root.addHandler(handler)
     else:
-        handler = logging.StreamHandler(sys.stdout)
+        handler = logging.StreamHandler(sys.stderr)
         handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
         root.addHandler(handler)
     root._structured_configured = True  # mypy: ignore dynamic attribute

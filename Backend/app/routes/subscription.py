@@ -1,28 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List, Optional
-from datetime import timedelta
-
 from app.core.database import get_db
 from app.core.tenant_context import get_tenant_context, TenantContext
-from app.core.plans import PLAN_REGISTRY, get_plan, FEATURE_LOYALTY, FEATURE_ANALYTICS
-from app.models import Tenant, Order, Redemption, Payment
-from app.utils.time import utc_now
+from app.core.plans import PLAN_REGISTRY, get_plan
+from app.models import Tenant
 from config import settings
 import stripe
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["subscriptions"])
+router = APIRouter(tags=["Subscription"])
 
-# Check for mock mode
-IS_MOCK_STRIPE = settings.stripe_secret_key == "mock" or settings.stripe_secret_key is None
-
-if settings.stripe_secret_key and not IS_MOCK_STRIPE:
+if settings.stripe_secret_key:
     stripe.api_key = settings.stripe_secret_key
-
-# ─── Plan & Subscription Endpoints ────────────────────────────────────────
 
 @router.get("/plans")
 def list_plans():
@@ -37,38 +27,31 @@ def create_checkout_session(
     tenant_context: TenantContext = Depends(get_tenant_context)
 ):
     """Create a Stripe Checkout Session for upgrading/downgrading."""
-    if not settings.stripe_secret_key and not IS_MOCK_STRIPE:
+    if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
     plan = get_plan(plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     
+    if plan.price_cents == 0:
+         # Handle free plan "upgrade" directly without Stripe if needed, 
+         # or just return success if they are already on it.
+         # For now, we assume free plan doesn't need checkout.
+         # But if they are downgrading to free, we might need to cancel subscription in Stripe.
+         # This logic can get complex. For MVP, let's focus on upgrading to paid.
+         pass
+
     tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-
-    # Mock Mode Handling
-    if IS_MOCK_STRIPE:
-        logger.info(f"MOCK STRIPE: Creating checkout session for plan {plan_id}")
-        # Simulate a successful checkout URL that redirects back to the app
-        # In a real mock, we might want to auto-upgrade the tenant here for testing convenience,
-        # but strictly speaking, the webhook should do it. 
-        # For dev convenience, let's auto-upgrade if it's a mock session.
-        tenant.subscription_plan_id = plan_id
-        tenant.subscription_status = 'active'
-        tenant.stripe_customer_id = f"cus_mock_{tenant.id}"
-        tenant.stripe_subscription_id = f"sub_mock_{plan_id}"
-        db.commit()
-        
-        return {"url": f"{settings.frontend_url}/admin/subscription?success=true&session_id=mock_session_123"}
 
     try:
         # Create or get customer
         customer_id = tenant.stripe_customer_id
         if not customer_id:
             customer = stripe.Customer.create(
-                email=f"admin@{tenant.primary_domain or tenant.id}.com", # Placeholder
+                email=f"admin@{tenant.primary_domain or tenant.id}.com", # Placeholder, ideally get from admin user
                 name=tenant.name,
                 metadata={"tenant_id": tenant.id}
             )
@@ -114,15 +97,10 @@ def create_portal_session(
     tenant_context: TenantContext = Depends(get_tenant_context)
 ):
     """Create a Stripe Customer Portal Session."""
-    if not settings.stripe_secret_key and not IS_MOCK_STRIPE:
+    if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
     tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
-    
-    # Mock Mode Handling
-    if IS_MOCK_STRIPE:
-        return {"url": f"{settings.frontend_url}/admin/subscription?portal=mock"}
-
     if not tenant or not tenant.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No billing account found")
 
@@ -135,27 +113,6 @@ def create_portal_session(
     except Exception as e:
         logger.error(f"Stripe error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/subscription-status")
-def get_subscription_status(
-    tenant_context: TenantContext = Depends(get_tenant_context),
-    db: Session = Depends(get_db)
-):
-    """Get current subscription status."""
-    tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
-    
-    plan = get_plan(tenant.subscription_plan_id)
-    
-    return {
-        "status": tenant.subscription_status,
-        "plan": plan.dict(),
-        "stripe_customer_id": tenant.stripe_customer_id,
-        "stripe_subscription_id": tenant.stripe_subscription_id
-    }
-
-# ─── Webhook ──────────────────────────────────────────────────────────────
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
@@ -201,6 +158,7 @@ def _handle_checkout_completed(session, db: Session):
             db.commit()
 
 def _handle_subscription_updated(subscription, db: Session):
+    # Logic to sync status (active, past_due, etc.)
     customer_id = subscription.get('customer')
     status = subscription.get('status')
     
@@ -214,51 +172,5 @@ def _handle_subscription_deleted(subscription, db: Session):
     tenant = db.query(Tenant).filter(Tenant.stripe_customer_id == customer_id).first()
     if tenant:
         tenant.subscription_status = 'canceled'
-        tenant.subscription_plan_id = 'free'
+        tenant.subscription_plan_id = 'free' # Revert to free
         db.commit()
-
-# ─── Usage & Limits ───────────────────────────────────────────────────────
-
-@router.get("/usage")
-def get_usage(
-    window: str = "30d",
-    tenant_context: TenantContext = Depends(get_tenant_context),
-    db: Session = Depends(get_db),
-):
-    """Compute module usage from real data."""
-    days = 30 if window.endswith("30d") else 7
-    start = utc_now() - timedelta(days=days)
-    tid = tenant_context.id
-
-    # Fetch limits from current plan
-    tenant = db.query(Tenant).filter(Tenant.id == tid).first()
-    plan = get_plan(tenant.subscription_plan_id)
-    
-    # Extract limits from plan features
-    loyalty_features = plan.features.get(FEATURE_LOYALTY, {})
-    if isinstance(loyalty_features, bool):
-        loyalty_features = {} # Should be dict if enabled, but handle bool case
-    
-    limit_orders = loyalty_features.get("limit_orders_per_month")
-    
-    # Orders (Core/Loyalty usage)
-    orders_q = db.query(func.count(Order.id)).filter(Order.created_at >= start)
-    orders_q = orders_q.filter((Order.tenant_id == tid))
-    core_count = orders_q.scalar() or 0
-
-    # Redemptions
-    red_q = db.query(func.count(Redemption.id)).filter(Redemption.created_at >= start)
-    red_q = red_q.filter(Redemption.tenant_id == tid)
-    loyalty_count = red_q.scalar() or 0
-
-    # Payments
-    pay_q = db.query(func.count(Payment.id)).filter(Payment.created_at >= start, Payment.status == "success")
-    tenant_order_ids = db.query(Order.id).filter((Order.tenant_id == tid)).subquery()
-    pay_q = pay_q.filter(Payment.order_id.in_(tenant_order_ids))
-    billing_count = pay_q.scalar() or 0
-
-    return [
-        {"module": "core", "count": core_count, "limit": limit_orders},
-        {"module": "loyalty", "count": loyalty_count, "limit": None}, # Add specific limit if needed
-        {"module": "billing", "count": billing_count, "limit": None},
-    ]

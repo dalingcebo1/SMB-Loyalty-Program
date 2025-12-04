@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     allowed_origin_regex: Optional[str] = Field(None, alias="ALLOWED_ORIGIN_REGEX")
     yoco_secret_key: str = Field("dev_yoco_secret", alias="YOCO_SECRET_KEY")
     yoco_webhook_secret: str = Field("dev_yoco_webhook_secret", alias="YOCO_WEBHOOK_SECRET")
+    
+    # Stripe Configuration
+    # Default to "mock" in development if not provided, to allow UI testing without keys.
+    stripe_secret_key: Optional[str] = Field("mock", alias="STRIPE_SECRET_KEY")
+    stripe_webhook_secret: Optional[str] = Field("mock", alias="STRIPE_WEBHOOK_SECRET")
+
     # NOTE: Workaround: env="SECRET_KEY" not being picked up in current pydantic_settings version for this specific name.
     # Using alias ensures population from environment variable SECRET_KEY (populate_by_name enabled implicitly for BaseSettings).
     loyalty_secret: str = Field("dev_loyalty_secret", alias="SECRET_KEY")

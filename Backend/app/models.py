@@ -58,6 +58,13 @@ class Tenant(Base):
     theme_color    = Column(String, nullable=True)
     # Arbitrary per-tenant configuration (feature flags, branding variants, etc.)
     config         = Column(JSON, nullable=False, default=dict)
+    
+    # Subscription & Billing
+    subscription_plan_id   = Column(String, default="free", nullable=False) # Maps to app.core.plans.PLAN_REGISTRY keys
+    subscription_status    = Column(String, default="active") # active, past_due, canceled, trial
+    stripe_customer_id     = Column(String, nullable=True, index=True)
+    stripe_subscription_id = Column(String, nullable=True, index=True)
+
     created_at     = Column(DateTime)
     rewards        = relationship("Reward", back_populates="tenant")
     # tenant-admin many-to-many

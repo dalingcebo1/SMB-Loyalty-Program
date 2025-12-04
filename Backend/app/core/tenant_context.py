@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.models import Tenant, VerticalType, SubscriptionPlan
 from app.plugins.verticals.vertical_dispatch import dispatch
 from app.core.modules import VERTICAL_EXTRA_MODULES
+from app.core.plans import PLAN_REGISTRY, get_plan
 from config import settings
 
 
@@ -99,27 +100,38 @@ class TenantContext:
 
 
 def calculate_tenant_features(tenant: Tenant, db: Session | None = None) -> dict:
-    # 1. Get Plan Modules
-    config = tenant.config or {}
-    sub = config.get("subscription", {})
-    plan_id = sub.get("plan_id")
+    # 1. Get Plan Features from Registry
+    # Use the new column if available, fallback to config for backward compat
+    plan_id = getattr(tenant, "subscription_plan_id", None)
+    if not plan_id:
+        config = tenant.config or {}
+        sub = config.get("subscription", {})
+        plan_id = sub.get("plan_id")
     
+    # Default to free if still missing
+    if not plan_id:
+        plan_id = "free"
+        
+    # If plan_id is an int (legacy DB ID), map it to string keys if possible or default to free
+    if isinstance(plan_id, int):
+        # Simple mapping for legacy IDs
+        legacy_map = {1: "free", 2: "pro", 3: "enterprise"}
+        plan_id = legacy_map.get(plan_id, "free")
+
+    plan = get_plan(str(plan_id))
+    
+    # Convert registry features to list of enabled keys
     plan_modules = []
-    if plan_id and db:
-        plan = db.get(SubscriptionPlan, plan_id)
-        if plan:
-            plan_modules = plan.modules or []
-    
-    # Fallback to Starter if no plan assigned (matching subscription logic)
-    if not plan_modules and not plan_id and db:
-        starter = db.query(SubscriptionPlan).filter(SubscriptionPlan.name == "Starter").first()
-        if starter:
-            plan_modules = starter.modules or []
+    for key, value in plan.features.items():
+        if value: # If boolean true or dict (truthy)
+            plan_modules.append(key)
 
     # 2. Vertical Extras
     vertical_extras = VERTICAL_EXTRA_MODULES.get(tenant.vertical_type, [])
 
     # 3. Overrides (Add-ons)
+    config = tenant.config or {}
+    sub = config.get("subscription", {})
     overrides = sub.get("overrides", {})
     addon_features = [k for k, v in overrides.items() if v]
 

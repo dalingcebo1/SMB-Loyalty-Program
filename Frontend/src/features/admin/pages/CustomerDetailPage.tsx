@@ -8,6 +8,8 @@ import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { toast } from 'react-toastify';
 import { formatCurrency } from '../../../utils/format';
+import { AdminPageContainer } from '../components/AdminGrid';
+import { AdminCard } from '../components/AdminCard';
 
 interface CustomerDetail {
   id: number;
@@ -154,26 +156,18 @@ const CustomerDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <AdminPageContainer
+      title={`${customer.first_name} ${customer.last_name}`}
+      description={`Customer ID: ${customer.id}`}
+      actions={
+        <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/admin/customers')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <FaArrowLeft className="w-4 h-4" />
-            Back to Customers
+            Back
           </button>
-          <div className="h-6 border-l border-gray-300" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {customer.first_name} {customer.last_name}
-            </h1>
-            <p className="text-gray-600">Customer ID: {customer.id}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
           {!isEditing ? (
             <button
               onClick={() => setIsEditing(true)}
@@ -209,14 +203,13 @@ const CustomerDetailPage: React.FC = () => {
             <HiOutlineRefresh className="w-4 h-4" />
           </button>
         </div>
-      </div>
-
+      }
+    >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Customer Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Basic Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Basic Information</h2>
+          <AdminCard title="Basic Information">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
@@ -285,15 +278,11 @@ const CustomerDetailPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </AdminCard>
 
           {/* Vehicles */}
           {customer.vehicles && customer.vehicles.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <FaCar className="w-5 h-5" />
-                Vehicles
-              </h2>
+            <AdminCard title="Vehicles" icon={<FaCar className="w-5 h-5" />}>
               <div className="grid gap-4">
                 {customer.vehicles.map((vehicle) => (
                   <div key={vehicle.id} className="border border-gray-200 rounded-lg p-4">
@@ -310,16 +299,12 @@ const CustomerDetailPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </AdminCard>
           )}
 
           {/* Recent Orders */}
           {customer.recent_orders && customer.recent_orders.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <FaShoppingCart className="w-5 h-5" />
-                Recent Orders
-              </h2>
+            <AdminCard title="Recent Orders" icon={<FaShoppingCart className="w-5 h-5" />}>
               <div className="space-y-4">
                 {customer.recent_orders.map((order) => (
                   <div key={order.id} className="border border-gray-200 rounded-lg p-4">
@@ -348,15 +333,14 @@ const CustomerDetailPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </AdminCard>
           )}
         </div>
 
         {/* Summary Sidebar */}
         <div className="space-y-6">
           {/* Statistics */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Customer Statistics</h2>
+          <AdminCard title="Customer Statistics">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Total Orders</span>
@@ -379,15 +363,11 @@ const CustomerDetailPage: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
+          </AdminCard>
 
           {/* Loyalty Summary */}
           {customer.loyalty_summary && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <FaGift className="w-5 h-5" />
-                Loyalty Program
-              </h2>
+            <AdminCard title="Loyalty Program" icon={<FaGift className="w-5 h-5" />}>
               <div className="space-y-4">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-blue-600">
@@ -424,11 +404,11 @@ const CustomerDetailPage: React.FC = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </AdminCard>
           )}
         </div>
       </div>
-    </div>
+    </AdminPageContainer>
   );
 };
 

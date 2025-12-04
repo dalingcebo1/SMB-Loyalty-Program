@@ -510,7 +510,7 @@ const InventoryPage: React.FC = () => {
                   onClick={()=>toggleCategory(cat)} 
                   className='flex justify-between items-center w-full text-left p-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-200'
                 >
-                  <span className='font-semibold text-gray-800 uppercase tracking-wide'>{cat}</span>
+                  <span className='font-semibold text-gray-800'>{cat}</span>
                   <div className='flex items-center gap-2'>
                     <span className='text-xs text-gray-500 bg-white px-2 py-1 rounded-full border'>{list.length}</span>
                     <span className='text-gray-400 transition-transform duration-200'>{collapsedCategories.has(cat)?'▶':'▼'}</span>

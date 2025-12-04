@@ -109,7 +109,7 @@ const PlanSelector: React.FC<{ tenantId: string; currentPlanName?: string }>=({ 
               </div>
 
               <div className="space-y-3 mb-8 text-left">
-                <p className="text-xs font-medium text-gray-700 uppercase tracking-wide mb-3">Includes:</p>
+                <p className="text-xs font-medium text-gray-700 mb-3">Includes:</p>
                 {plan.modules.slice(0, 4).map(module => (
                   <div key={module} className="flex items-center text-sm text-gray-600">
                     <svg className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

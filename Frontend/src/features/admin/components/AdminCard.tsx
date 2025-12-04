@@ -181,10 +181,9 @@ export function StatCard({
     >
       <div className="space-y-1">
         <p
-          className="text-gray-500 uppercase tracking-wide font-medium"
+          className="text-gray-500 font-medium"
           style={{
-            fontSize: '0.6875rem',
-            letterSpacing: '0.05em',
+            fontSize: '0.75rem',
           }}
         >
           {label}

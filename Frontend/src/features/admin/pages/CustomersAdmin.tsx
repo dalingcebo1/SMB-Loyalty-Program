@@ -7,6 +7,8 @@ import api from '../../../api/api';
 import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { formatCurrency } from '../../../utils/format';
+import { AdminPageContainer } from '../components/AdminGrid';
+import { AdminCard } from '../components/AdminCard';
 
 interface Customer {
   id: number;
@@ -133,13 +135,10 @@ const CustomersAdmin: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customer Management</h1>
-          <p className="text-gray-600">Manage and view customer information, orders, and loyalty data</p>
-        </div>
+    <AdminPageContainer
+      title="Customer Management"
+      description="Manage and view customer information, orders, and loyalty data"
+      actions={
         <button
           onClick={handleRefresh}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -147,10 +146,10 @@ const CustomersAdmin: React.FC = () => {
           <HiOutlineRefresh className="w-4 h-4" />
           Refresh
         </button>
-      </div>
-
+      }
+    >
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
+      <AdminCard className="mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
@@ -181,10 +180,10 @@ const CustomersAdmin: React.FC = () => {
             </select>
           </div>
         </div>
-      </div>
+      </AdminCard>
 
       {/* Results */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <AdminCard className="overflow-hidden p-0">
         {isLoading ? (
           <div className="p-8 text-center">
             <LoadingSpinner />
@@ -436,8 +435,8 @@ const CustomersAdmin: React.FC = () => {
             )}
           </>
         )}
-      </div>
-    </div>
+      </AdminCard>
+    </AdminPageContainer>
   );
 };
 

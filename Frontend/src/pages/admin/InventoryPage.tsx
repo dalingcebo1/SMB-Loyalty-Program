@@ -48,13 +48,30 @@ const tiersToPriceMap = (tiers: { name: string; price: string }[]) => {
   return map;
 };
 
+// Icons
+const Icons = {
+  Plus: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>,
+  Search: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
+  Trash: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+  Edit: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+  X: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+  Check: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+  ChevronDown: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>,
+  ChevronRight: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>,
+  Refresh: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+  AlertCircle: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  CheckCircle: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+};
+
 const InventoryPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   
   // Service Form State
+  const [isAddingService, setIsAddingService] = useState(false);
   const [serviceForm, setServiceForm] = useState({ category: '', name: '', base_price: '', loyalty_eligible: false });
   
   // Extra Form State
+  const [isAddingExtra, setIsAddingExtra] = useState(false);
   const [extraFormName, setExtraFormName] = useState('');
   const [extraFormTiers, setExtraFormTiers] = useState<{name: string, price: string}[]>([{name: 'Standard', price: ''}]);
 
@@ -143,6 +160,7 @@ const InventoryPage: React.FC = () => {
       await api.post('/inventory/services', payload);
       setServiceForm({ category: '', name: '', base_price: '', loyalty_eligible: false });
       setSuccess('Service created successfully');
+      setIsAddingService(false);
       await queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] });
     } catch (err) {
       console.error('Create service failed', err);
@@ -256,6 +274,7 @@ const InventoryPage: React.FC = () => {
       setExtraFormName('');
       setExtraFormTiers([{ name: 'Standard', price: '' }]);
       setSuccess('Extra created successfully');
+      setIsAddingExtra(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['inventory', 'extras'] }),
         queryClient.invalidateQueries({ queryKey: ['inventory', 'services'] }),
@@ -391,20 +410,29 @@ const InventoryPage: React.FC = () => {
               <h1 className='text-3xl font-bold text-gray-900'>Inventory Management</h1>
               <p className='text-gray-500 mt-1'>Manage your core services and extra add-ons</p>
             </div>
-            {(submitting || loading) && (
-              <div className='flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-full'>
-                <LoadingSpinner size="sm" color="blue" />
-                <span className='text-sm font-medium'>{submitting ? 'Saving changes...' : 'Loading data...'}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-4">
+              {(submitting || loading) && (
+                <div className='flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-full'>
+                  <LoadingSpinner size="sm" color="blue" />
+                  <span className='text-sm font-medium'>{submitting ? 'Saving...' : 'Loading...'}</span>
+                </div>
+              )}
+              <button 
+                onClick={refreshInventory}
+                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Refresh Data"
+              >
+                <Icons.Refresh />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Notifications */}
         <div className="space-y-4">
           {displayError && (
-            <div className='bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r shadow-sm flex items-start gap-3'>
-              <span className="text-xl">⚠️</span>
+            <div className='bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r shadow-sm flex items-start gap-3 animate-fade-in'>
+              <Icons.AlertCircle />
               <div>
                 <h3 className="font-bold">Error</h3>
                 <p>{displayError}</p>
@@ -412,8 +440,8 @@ const InventoryPage: React.FC = () => {
             </div>
           )}
           {success && (
-            <div className='bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-r shadow-sm flex items-start gap-3'>
-              <span className="text-xl">✅</span>
+            <div className='bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-r shadow-sm flex items-start gap-3 animate-fade-in'>
+              <Icons.CheckCircle />
               <div>
                 <h3 className="font-bold">Success</h3>
                 <p>{success}</p>
@@ -429,83 +457,98 @@ const InventoryPage: React.FC = () => {
               <h2 className="text-xl font-bold text-gray-900">Core Services</h2>
               <p className="text-sm text-gray-500">Primary offerings available to customers</p>
             </div>
-            <div className="flex items-center gap-3">
-              <input 
-                type="text"
-                placeholder="Filter services..."
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={serviceFilter}
-                onChange={e => setServiceFilter(e.target.value)}
-              />
-              <button onClick={refreshInventory} className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Refresh">
-                🔄
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <Icons.Search />
+                </div>
+                <input 
+                  type="text"
+                  placeholder="Filter services..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={serviceFilter}
+                  onChange={e => setServiceFilter(e.target.value)}
+                />
+              </div>
+              <button 
+                onClick={() => setIsAddingService(!isAddingService)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isAddingService 
+                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                }`}
+              >
+                {isAddingService ? <><Icons.X /> Cancel</> : <><Icons.Plus /> Add Service</>}
               </button>
             </div>
           </div>
 
-          {/* Add Service Form */}
-          <div className="p-6 border-b border-gray-100 bg-blue-50/30">
-            <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-4">Add New Service</h3>
-            <form onSubmit={createService} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-              <div className="md:col-span-3">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Category</label>
-                <input 
-                  list="categories"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g. Wash Packages"
-                  value={serviceForm.category}
-                  onChange={e => setServiceForm({...serviceForm, category: e.target.value})}
-                  required
-                />
-                <datalist id="categories">
-                  {uniqueCategories.map(c => <option key={c} value={c} />)}
-                </datalist>
-              </div>
-              <div className="md:col-span-4">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Service Name</label>
-                <input 
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g. Premium Wash"
-                  value={serviceForm.name}
-                  onChange={e => setServiceForm({...serviceForm, name: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Price (R)</label>
-                <input 
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0.00"
-                  value={serviceForm.base_price}
-                  onChange={e => setServiceForm({...serviceForm, base_price: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="md:col-span-2 flex items-center pb-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+          {/* Add Service Form (Collapsible) */}
+          {isAddingService && (
+            <div className="p-6 border-b border-gray-100 bg-blue-50/30 animate-slide-down">
+              <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-4">New Service Details</h3>
+              <form onSubmit={createService} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Category</label>
                   <input 
-                    type="checkbox"
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    checked={serviceForm.loyalty_eligible}
-                    onChange={e => setServiceForm({...serviceForm, loyalty_eligible: e.target.checked})}
+                    list="categories"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. Wash Packages"
+                    value={serviceForm.category}
+                    onChange={e => setServiceForm({...serviceForm, category: e.target.value})}
+                    required
+                    autoFocus
                   />
-                  <span className="text-sm text-gray-700">Loyalty Eligible</span>
-                </label>
-              </div>
-              <div className="md:col-span-1">
-                <button 
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm disabled:opacity-50"
-                >
-                  Add
-                </button>
-              </div>
-            </form>
-          </div>
+                  <datalist id="categories">
+                    {uniqueCategories.map(c => <option key={c} value={c} />)}
+                  </datalist>
+                </div>
+                <div className="md:col-span-4">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Service Name</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. Premium Wash"
+                    value={serviceForm.name}
+                    onChange={e => setServiceForm({...serviceForm, name: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Price (R)</label>
+                  <input 
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0.00"
+                    value={serviceForm.base_price}
+                    onChange={e => setServiceForm({...serviceForm, base_price: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2 flex items-center pb-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      checked={serviceForm.loyalty_eligible}
+                      onChange={e => setServiceForm({...serviceForm, loyalty_eligible: e.target.checked})}
+                    />
+                    <span className="text-sm text-gray-700">Loyalty Eligible</span>
+                  </label>
+                </div>
+                <div className="md:col-span-1">
+                  <button 
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm disabled:opacity-50 flex justify-center"
+                  >
+                    {submitting ? <LoadingSpinner size="sm" color="white" /> : 'Save'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {/* Services List */}
           <div className="divide-y divide-gray-100">
@@ -513,27 +556,29 @@ const InventoryPage: React.FC = () => {
               <div key={category} className="bg-white">
                 <button 
                   onClick={() => toggleCategory(category)}
-                  className="w-full px-6 py-3 bg-gray-50/50 flex items-center justify-between hover:bg-gray-100 transition-colors text-left"
+                  className="w-full px-6 py-3 bg-gray-50/50 flex items-center justify-between hover:bg-gray-100 transition-colors text-left group"
                 >
                   <div className="flex items-center gap-3">
+                    <span className="text-gray-400 group-hover:text-gray-600 transition-colors">
+                      {collapsedCategories.has(category) ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
+                    </span>
                     <span className="font-bold text-gray-800">{category}</span>
                     <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">{items.length}</span>
                   </div>
-                  <span className="text-gray-400">{collapsedCategories.has(category) ? 'Show' : 'Hide'}</span>
                 </button>
                 
                 {!collapsedCategories.has(category) && (
                   <div className="divide-y divide-gray-100">
                     {items.map(service => (
-                      <div key={service.id} className="p-4 hover:bg-blue-50/10 transition-colors">
+                      <div key={service.id} className="p-4 pl-12 hover:bg-blue-50/10 transition-colors">
                         {editingService === service.id ? (
                           // Edit Mode
-                          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-blue-50 p-4 rounded-lg border border-blue-100">
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-sm">
                             <div className="md:col-span-3">
                               <label className="text-xs text-gray-500 block mb-1">Category</label>
                               <input 
                                 list="categories"
-                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                                 value={editingServiceDraft.category}
                                 onChange={e => setEditingServiceDraft({...editingServiceDraft, category: e.target.value})}
                               />
@@ -541,7 +586,7 @@ const InventoryPage: React.FC = () => {
                             <div className="md:col-span-4">
                               <label className="text-xs text-gray-500 block mb-1">Name</label>
                               <input 
-                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                                 value={editingServiceDraft.name}
                                 onChange={e => setEditingServiceDraft({...editingServiceDraft, name: e.target.value})}
                               />
@@ -550,7 +595,7 @@ const InventoryPage: React.FC = () => {
                               <label className="text-xs text-gray-500 block mb-1">Price</label>
                               <input 
                                 type="number"
-                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                                 value={editingServiceDraft.base_price_display}
                                 onChange={e => setEditingServiceDraft({...editingServiceDraft, base_price_display: e.target.value})}
                               />
@@ -559,18 +604,23 @@ const InventoryPage: React.FC = () => {
                               <label className="text-xs text-gray-500 block mb-1">Loyalty</label>
                               <input 
                                 type="checkbox"
+                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                                 checked={editingServiceDraft.loyalty_eligible}
                                 onChange={e => setEditingServiceDraft({...editingServiceDraft, loyalty_eligible: e.target.checked})}
                               />
                             </div>
                             <div className="md:col-span-2 flex gap-2 justify-end">
-                              <button onClick={saveEditService} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700">Save</button>
-                              <button onClick={() => setEditingService(null)} className="px-3 py-1.5 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400">Cancel</button>
+                              <button onClick={saveEditService} className="p-2 bg-green-600 text-white rounded hover:bg-green-700" title="Save">
+                                <Icons.Check />
+                              </button>
+                              <button onClick={() => setEditingService(null)} className="p-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" title="Cancel">
+                                <Icons.X />
+                              </button>
                             </div>
                           </div>
                         ) : (
                           // View Mode
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between group">
                             <div className="flex items-center gap-4">
                               <div>
                                 <h4 className="font-medium text-gray-900">{service.name}</h4>
@@ -582,20 +632,20 @@ const InventoryPage: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={() => startEditService(service)}
                                 className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                 title="Edit"
                               >
-                                ✏️
+                                <Icons.Edit />
                               </button>
                               <button 
                                 onClick={() => deleteService(service.id)}
                                 className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                 title="Delete"
                               >
-                                🗑️
+                                <Icons.Trash />
                               </button>
                             </div>
                           </div>
@@ -608,8 +658,17 @@ const InventoryPage: React.FC = () => {
             ))}
             {servicesByCategory.length === 0 && (
               <div className="p-12 text-center text-gray-500">
-                <p className="text-lg">No services found.</p>
-                <p className="text-sm">Add your first service above.</p>
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                  <Icons.Search />
+                </div>
+                <p className="text-lg font-medium text-gray-900">No services found</p>
+                <p className="text-sm text-gray-500 mt-1">Try adjusting your search or add a new service.</p>
+                <button 
+                  onClick={() => setIsAddingService(true)}
+                  className="mt-4 text-blue-600 font-medium hover:text-blue-700"
+                >
+                  Add your first service
+                </button>
               </div>
             )}
           </div>
@@ -622,101 +681,120 @@ const InventoryPage: React.FC = () => {
               <h2 className="text-xl font-bold text-gray-900">Extras & Add-ons</h2>
               <p className="text-sm text-gray-500">Optional extras with tiered pricing</p>
             </div>
-            <div className="flex items-center gap-3">
-              <input 
-                type="text"
-                placeholder="Filter extras..."
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                value={extraFilter}
-                onChange={e => setExtraFilter(e.target.value)}
-              />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <Icons.Search />
+                </div>
+                <input 
+                  type="text"
+                  placeholder="Filter extras..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={extraFilter}
+                  onChange={e => setExtraFilter(e.target.value)}
+                />
+              </div>
+              <button 
+                onClick={() => setIsAddingExtra(!isAddingExtra)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isAddingExtra 
+                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
+                    : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm'
+                }`}
+              >
+                {isAddingExtra ? <><Icons.X /> Cancel</> : <><Icons.Plus /> Add Extra</>}
+              </button>
             </div>
           </div>
 
-          {/* Add Extra Form */}
-          <div className="p-6 border-b border-gray-100 bg-purple-50/30">
-            <h3 className="text-sm font-bold text-purple-900 uppercase tracking-wide mb-4">Add New Extra</h3>
-            <form onSubmit={createExtra} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Extra Name</label>
-                <input 
-                  className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="e.g. Air Freshener"
-                  value={extraFormName}
-                  onChange={e => setExtraFormName(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Pricing Tiers</label>
-                <div className="space-y-2">
-                  {extraFormTiers.map((tier, idx) => (
-                    <div key={idx} className="flex items-center gap-3">
-                      <input 
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Tier Name (e.g. Standard)"
-                        value={tier.name}
-                        onChange={e => updateTier(idx, 'name', e.target.value, false)}
-                        required
-                      />
-                      <div className="relative w-32">
-                        <span className="absolute left-3 top-2 text-gray-500 text-sm">R</span>
+          {/* Add Extra Form (Collapsible) */}
+          {isAddingExtra && (
+            <div className="p-6 border-b border-gray-100 bg-purple-50/30 animate-slide-down">
+              <h3 className="text-sm font-bold text-purple-900 uppercase tracking-wide mb-4">New Extra Details</h3>
+              <form onSubmit={createExtra} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Extra Name</label>
+                  <input 
+                    className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="e.g. Air Freshener"
+                    value={extraFormName}
+                    onChange={e => setExtraFormName(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Pricing Tiers</label>
+                  <div className="space-y-2">
+                    {extraFormTiers.map((tier, idx) => (
+                      <div key={idx} className="flex items-center gap-3 animate-fade-in">
                         <input 
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-                          placeholder="0.00"
-                          value={tier.price}
-                          onChange={e => updateTier(idx, 'price', e.target.value, false)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                          placeholder="Tier Name (e.g. Standard)"
+                          value={tier.name}
+                          onChange={e => updateTier(idx, 'name', e.target.value, false)}
                           required
                         />
+                        <div className="relative w-32">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">R</span>
+                          <input 
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                            placeholder="0.00"
+                            value={tier.price}
+                            onChange={e => updateTier(idx, 'price', e.target.value, false)}
+                            required
+                          />
+                        </div>
+                        {extraFormTiers.length > 1 && (
+                          <button 
+                            type="button" 
+                            onClick={() => removeTier(idx, false)}
+                            className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors"
+                            title="Remove Tier"
+                          >
+                            <Icons.Trash />
+                          </button>
+                        )}
                       </div>
-                      {extraFormTiers.length > 1 && (
-                        <button 
-                          type="button" 
-                          onClick={() => removeTier(idx, false)}
-                          className="text-red-400 hover:text-red-600 p-2"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => addTier(false)}
+                    className="mt-3 text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-purple-50 transition-colors"
+                  >
+                    <Icons.Plus /> Add another tier
+                  </button>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => addTier(false)}
-                  className="mt-2 text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1"
-                >
-                  + Add another tier
-                </button>
-              </div>
 
-              <div className="pt-2">
-                <button 
-                  type="submit"
-                  disabled={submitting}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm disabled:opacity-50"
-                >
-                  Create Extra
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="pt-2">
+                  <button 
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {submitting ? <LoadingSpinner size="sm" color="white" /> : 'Create Extra'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {/* Extras List */}
           <div className="divide-y divide-gray-100">
             {filteredExtras.map(extra => (
-              <div key={extra.id} className="p-6 hover:bg-purple-50/10 transition-colors">
+              <div key={extra.id} className="p-6 hover:bg-purple-50/10 transition-colors group">
                 {editingExtra === extra.id ? (
                   // Edit Mode
-                  <div className="space-y-4 bg-purple-50 p-4 rounded-lg border border-purple-100">
+                  <div className="space-y-4 bg-purple-50 p-4 rounded-lg border border-purple-100 shadow-sm">
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Name</label>
                       <input 
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         value={editingExtraDraftName}
                         onChange={e => setEditingExtraDraftName(e.target.value)}
                       />
@@ -727,7 +805,7 @@ const InventoryPage: React.FC = () => {
                         {editingExtraDraftTiers.map((tier, idx) => (
                           <div key={idx} className="flex items-center gap-3">
                             <input 
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
                               value={tier.name}
                               onChange={e => updateTier(idx, 'name', e.target.value, true)}
                             />
@@ -735,7 +813,7 @@ const InventoryPage: React.FC = () => {
                               <span className="absolute left-3 top-2 text-gray-500 text-sm">R</span>
                               <input 
                                 type="number"
-                                className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
                                 value={tier.price}
                                 onChange={e => updateTier(idx, 'price', e.target.value, true)}
                               />
@@ -743,9 +821,9 @@ const InventoryPage: React.FC = () => {
                             <button 
                               type="button" 
                               onClick={() => removeTier(idx, true)}
-                              className="text-red-400 hover:text-red-600 p-2"
+                              className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50"
                             >
-                              ✕
+                              <Icons.Trash />
                             </button>
                           </div>
                         ))}
@@ -753,14 +831,18 @@ const InventoryPage: React.FC = () => {
                       <button 
                         type="button"
                         onClick={() => addTier(true)}
-                        className="mt-2 text-sm text-purple-600 font-medium hover:text-purple-700"
+                        className="mt-2 text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1"
                       >
-                        + Add tier
+                        <Icons.Plus /> Add tier
                       </button>
                     </div>
                     <div className="flex gap-3 pt-2">
-                      <button onClick={saveEditExtra} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Save Changes</button>
-                      <button onClick={() => setEditingExtra(null)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium">Cancel</button>
+                      <button onClick={saveEditExtra} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2">
+                        <Icons.Check /> Save Changes
+                      </button>
+                      <button onClick={() => setEditingExtra(null)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium flex items-center gap-2">
+                        <Icons.X /> Cancel
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -777,20 +859,20 @@ const InventoryPage: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => startEditExtra(extra)}
                         className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                         title="Edit"
                       >
-                        ✏️
+                        <Icons.Edit />
                       </button>
                       <button 
                         onClick={() => deleteExtra(extra.id)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Delete"
                       >
-                        🗑️
+                        <Icons.Trash />
                       </button>
                     </div>
                   </div>
@@ -799,8 +881,17 @@ const InventoryPage: React.FC = () => {
             ))}
             {filteredExtras.length === 0 && (
               <div className="p-12 text-center text-gray-500">
-                <p className="text-lg">No extras found.</p>
-                <p className="text-sm">Add your first extra above.</p>
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                  <Icons.Search />
+                </div>
+                <p className="text-lg font-medium text-gray-900">No extras found</p>
+                <p className="text-sm text-gray-500 mt-1">Add optional extras to upsell your services.</p>
+                <button 
+                  onClick={() => setIsAddingExtra(true)}
+                  className="mt-4 text-purple-600 font-medium hover:text-purple-700"
+                >
+                  Add your first extra
+                </button>
               </div>
             )}
           </div>

@@ -21,6 +21,7 @@ const tenantConfigValue = {
   tenantId: 'test-tenant',
   vertical: 'carwash' as const,
   moduleFlags: getModuleFlags(),
+  features: {},
   branding: {},
   refresh: () => {},
 };

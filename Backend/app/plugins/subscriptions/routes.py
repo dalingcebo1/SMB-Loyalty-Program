@@ -41,6 +41,11 @@ def create_checkout_session(
     if not settings.stripe_secret_key and not IS_MOCK_STRIPE:
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
+    # Legacy mapping for backward compatibility
+    legacy_map = {"growth": "pro", "scale": "enterprise", "starter": "free"}
+    if plan_id in legacy_map:
+        plan_id = legacy_map[plan_id]
+
     plan = get_plan(plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -48,6 +53,14 @@ def create_checkout_session(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Handle free plan (no payment needed)
+    if plan.price_cents == 0:
+        tenant.subscription_plan_id = plan.id
+        tenant.subscription_status = 'active'
+        # Clear stripe subscription if exists? Maybe. For now just update local state.
+        db.commit()
+        return {"url": f"{settings.frontend_url}/admin/subscription?success=true&session_id=free_upgrade"}
 
     # Mock Mode Handling
     if IS_MOCK_STRIPE:

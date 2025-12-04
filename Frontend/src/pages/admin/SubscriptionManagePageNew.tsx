@@ -21,7 +21,8 @@ interface Plan {
   description: string;
   price_cents: number;
   currency: string;
-  features: Record<string, any>;
+  features?: Record<string, any>;
+  modules?: string[];
 }
 
 interface SubscriptionStatus {
@@ -205,8 +206,17 @@ const SubscriptionManagePageNew: React.FC = () => {
           const isCurrent = plan.id === currentPlanId;
           const isPopular = plan.id === 'pro';
 
+          // Handle case where features might be missing but modules are present (backend compatibility)
+          let features = plan.features || {};
+          if (Object.keys(features).length === 0 && plan.modules && Array.isArray(plan.modules)) {
+            features = plan.modules.reduce((acc, module) => {
+              acc[module] = true;
+              return acc;
+            }, {} as Record<string, any>);
+          }
+
           // Sort features by priority
-          const sortedFeatures = Object.entries(plan.features)
+          const sortedFeatures = Object.entries(features)
             .filter(([, value]) => value !== false)
             .sort(([keyA], [keyB]) => {
               const priorityA = FEATURE_CONFIG[keyA]?.priority || 99;

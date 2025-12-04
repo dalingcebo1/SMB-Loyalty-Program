@@ -89,7 +89,6 @@ const OrganizationSettings = lazy(() => import('../pages/admin/OrganizationSetti
 // Expanded new admin feature scaffold pages
 const AdminOverview = lazyWithRetry(() => import('../features/admin/pages/Overview'));
 const AdminUsers = lazyWithRetry(() => import('../features/admin/pages/UsersAdmin'));
-const BrandingPage = lazyWithRetry(() => import('../pages/admin/BrandingPage'));
 const InventoryPage = lazyWithRetry(() => import('../pages/admin/InventoryPage'));
 const AdminAuditLogs = lazyWithRetry(() => import('../features/admin/pages/AuditLogs'));
 const AdminJobsMonitor = lazyWithRetry(() => import('../features/admin/pages/JobsMonitor'));
@@ -187,7 +186,7 @@ const AppRoutes: React.FC = () => {
             { index: true, element: <AdminWelcome /> },
             { path: 'overview', element: <AdminOverview /> },
             { path: 'users-admin', element: <AdminUsers /> },
-            { path: 'branding', element: <BrandingPage /> },
+            { path: 'branding', element: <Navigate to="/admin/settings" replace /> },
             { path: 'inventory', element: <InventoryPage /> },
             { path: 'transactions', element: <TransactionsAdmin /> },
             { path: 'audit', element: <AdminAuditLogs /> },

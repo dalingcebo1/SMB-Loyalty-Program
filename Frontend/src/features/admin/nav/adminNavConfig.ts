@@ -48,9 +48,8 @@ export const adminNavGroups: NavGroup[] = [
     key: 'tenant-config',
     title: 'My Business',
     items: [
-      { key: 'organization', label: 'Organization', path: '/admin/settings', cap: 'tenant.edit' },
+      { key: 'organization', label: 'My Business', path: '/admin/settings', cap: 'tenant.edit' },
       { key: 'tenants', label: 'Platform Tenants', path: '/admin/tenants', cap: 'platform.manage_tenants', legacyPaths: ['/admin/tenant'] },
-      { key: 'branding', label: 'Branding', path: '/admin/branding', cap: 'tenant.edit' },
       { key: 'modules', label: 'Modules', path: '/admin/modules', cap: 'services.manage' },
       { key: 'inventory', label: 'Inventory', path: '/admin/inventory', cap: 'services.manage' },
       ...(moduleFlags.enableSubscription ? [ { key: 'subscription', label: 'Subscription', path: '/admin/subscription', cap: 'tenant.edit' } ] : []),

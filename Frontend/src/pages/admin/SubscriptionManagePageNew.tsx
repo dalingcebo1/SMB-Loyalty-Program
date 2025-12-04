@@ -298,7 +298,10 @@ const SubscriptionManagePageNew: React.FC = () => {
                       : 'bg-gray-900 text-white hover:bg-gray-800 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
                   }`}
                 >
-                  {isCurrent ? 'Active Plan' : 'Upgrade to ' + plan.name}
+                  {isCurrent 
+                    ? 'Active Plan' 
+                    : (plan.price_cents < (status?.plan?.price_cents || 0) ? 'Downgrade to ' : 'Upgrade to ') + plan.name
+                  }
                 </button>
               </div>
             </motion.div>

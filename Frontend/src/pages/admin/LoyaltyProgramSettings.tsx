@@ -129,13 +129,13 @@ const LoyaltyProgramSettings: React.FC = () => {
             <span className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">Recommended</span>
           )}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Points Based</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Points Program</h3>
             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedType === 'points' ? 'border-blue-500' : 'border-gray-300'}`}>
               {selectedType === 'points' && <div className="w-3 h-3 rounded-full bg-blue-500" />}
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-4">
-            Earn points per currency unit spent. Flexible redemption.
+            Customers accrue points based on spend. Points can be redeemed for discounts or rewards.
           </p>
         </div>
 
@@ -148,13 +148,13 @@ const LoyaltyProgramSettings: React.FC = () => {
             <span className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">Recommended</span>
           )}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Stamps Based</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Punch Card</h3>
             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedType === 'stamps' ? 'border-blue-500' : 'border-gray-300'}`}>
               {selectedType === 'stamps' && <div className="w-3 h-3 rounded-full bg-blue-500" />}
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-4">
-            Earn a stamp per visit/item. Simple milestone rewards.
+            Digital punch card. Customers earn a stamp per visit or item purchased. Unlock rewards at milestones.
           </p>
         </div>
 
@@ -173,7 +173,7 @@ const LoyaltyProgramSettings: React.FC = () => {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-4">
-            Earn a percentage back as store credit.
+            Simple percentage return. Customers earn a percentage of their spend back as store credit.
           </p>
         </div>
       </div>
@@ -181,32 +181,32 @@ const LoyaltyProgramSettings: React.FC = () => {
       {/* Configuration Section */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {selectedType === 'points' && 'Points Configuration'}
-          {selectedType === 'stamps' && 'Stamps Configuration'}
+          {selectedType === 'points' && 'Points Program Configuration'}
+          {selectedType === 'stamps' && 'Punch Card Configuration'}
           {selectedType === 'cashback' && 'Cashback Configuration'}
         </h2>
 
         {selectedType === 'points' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Earning Rate (Points per Currency Unit)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Accrual Ratio (Points per Unit)</label>
               <input
                 type="number"
                 value={config.points?.earningRate || 10}
                 onChange={(e) => setConfig({ ...config, points: { ...config.points!, earningRate: Number(e.target.value) } })}
                 className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
-              <p className="text-xs text-gray-500 mt-1">How many points a customer earns for every 1 unit of currency spent.</p>
+              <p className="text-xs text-gray-500 mt-1">The number of points a customer accrues for every 1 unit of currency spent (e.g., 10 points per R1).</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Redemption Value (Cents per Point)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Redemption Ratio (Cents per Point)</label>
               <input
                 type="number"
                 value={config.points?.redemptionValue || 1}
                 onChange={(e) => setConfig({ ...config, points: { ...config.points!, redemptionValue: Number(e.target.value) } })}
                 className="w-full max-w-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
-              <p className="text-xs text-gray-500 mt-1">The monetary value of a single point when redeemed (in cents).</p>
+              <p className="text-xs text-gray-500 mt-1">The monetary value of a single point when redeemed (e.g., 1 point = 1 cent).</p>
             </div>
           </div>
         )}

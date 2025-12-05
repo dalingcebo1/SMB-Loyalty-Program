@@ -961,7 +961,7 @@ def on_startup():
         logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
 
     # Initialize database query monitoring
-    if _settings.enable_metrics:
+    if _settings.enable_metrics_endpoint:
         try:
             from app.core.query_monitor import setup_query_monitoring
             setup_query_monitoring()

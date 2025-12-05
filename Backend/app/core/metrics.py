@@ -27,7 +27,27 @@ def _get_or_create_metric(metric_class, name, *args, **kwargs):
     # Pass custom registry
     if 'registry' not in kwargs:
         kwargs['registry'] = _metrics_registry
-    return metric_class(name, *args, **kwargs)
+    
+    try:
+        return metric_class(name, *args, **kwargs)
+    except ValueError as e:
+        # If metric already exists in registry, return the existing one
+        # This handles the "Duplicated timeseries" error during re-imports
+        if "Duplicated timeseries" in str(e):
+            # Iterate through registered collectors to find the matching one
+            for collector in _metrics_registry._collector_to_names.keys():
+                if hasattr(collector, '_name') and collector._name == name:
+                    return collector
+                # Info metrics often append '_info'
+                if hasattr(collector, '_name') and collector._name == f"{name}_info":
+                    return collector
+            
+            # If we can't find it but it says duplicated, it might be a race condition or weird state.
+            # In production, this shouldn't happen often unless we have circular imports.
+            # We will log and re-raise to be safe, but usually the loop above finds it.
+            logger.warning(f"Metric {name} reported as duplicate but not found in registry iteration.")
+            raise e
+        raise e
 
 # ============================================================================
 # REQUEST METRICS

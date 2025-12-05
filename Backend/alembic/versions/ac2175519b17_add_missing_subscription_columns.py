@@ -184,8 +184,15 @@ def upgrade() -> None:
     # Now add foreign key constraint
     op.create_foreign_key(None, 'redemptions', 'orders', ['order_id'], ['id'])
     op.create_index(op.f('ix_rewards_id'), 'rewards', ['id'], unique=False)
+    # Add service_id column to rewards if it doesn't exist
+    columns = [col['name'] for col in inspector.get_columns('rewards')]
+    if 'service_id' not in columns:
+        op.add_column('rewards', sa.Column('service_id', sa.Integer(), nullable=True))
+    # Now add foreign key constraint
     op.create_foreign_key(None, 'rewards', 'services', ['service_id'], ['id'])
-    op.drop_column('rewards', 'status')
+    # Only drop status column if it exists (might have been dropped in earlier migration)
+    if 'status' in columns:
+        op.drop_column('rewards', 'status')
     op.alter_column('services', 'loyalty_eligible',
                existing_type=sa.BOOLEAN(),
                nullable=True)
@@ -248,6 +255,10 @@ def downgrade() -> None:
                nullable=False)
     op.add_column('rewards', sa.Column('status', sa.VARCHAR(), autoincrement=False, nullable=True))
     op.drop_constraint(None, 'rewards', type_='foreignkey')
+    # Drop service_id column if it was added by this migration
+    columns = [col['name'] for col in inspector.get_columns('rewards')]
+    if 'service_id' in columns:
+        op.drop_column('rewards', 'service_id')
     safe_drop_index(op.f('ix_rewards_id'), 'rewards')
     op.drop_constraint(None, 'redemptions', type_='foreignkey')
     # Drop order_id column if it was added by this migration

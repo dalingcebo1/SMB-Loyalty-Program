@@ -202,15 +202,23 @@ A React Context provider that wraps the Staff App. It reads the `tenant.vertical
 ```text
 Backend/
   app/
-    models.py          <-- Tenant changes
+    models.py          <-- Tenant changes (vertical_type, config)
     plugins/
       __init__.py
       interface.py     <-- Base Class
       registry.py      <-- Factory
       carwash/
         plugin.py      <-- Logic
+        routes.py      <-- Carwash-specific endpoints
+      retail/
+        plugin.py      <-- Retail plugin
+        routes.py      <-- Retail-specific endpoints
       dispensary/
         plugin.py      <-- Logic
+      subscriptions/
+        routes.py      <-- Module management & permissions
+      auth/
+        routes.py      <-- get_current_user dependency
 
 Frontend/
   src/
@@ -222,4 +230,115 @@ Frontend/
           PinDisplay.tsx
         dispensary/
           DeliveryForm.tsx
+    pages/
+      admin/
+        Marketplace.tsx  <-- Module management UI
 ```
+
+## 8. Implementation Status (December 2025)
+
+### 8.1. Completed Features
+
+#### Backend Implementation
+- ✅ **Subscription Module Management API** (`Backend/app/plugins/subscriptions/routes.py`)
+  - `GET /api/subscriptions/modules` - Returns 8 modules (3 core, 2 verticals, 3 add-ons)
+  - `GET /api/subscriptions/tenants/{tenant_id}` - Returns tenant subscription with active modules
+  - `POST /api/subscriptions/tenants/{tenant_id}/override` - Permission-aware module toggle endpoint
+  
+- ✅ **Permission-Based Access Control**
+  - Three-tier permission model:
+    1. **Core Modules** (core, loyalty, analytics) - Cannot be disabled by anyone
+    2. **Vertical Modules** (carwash, retail, dispensary) - Superadmin only
+    3. **Add-on Modules** (sms_notifications, advanced_analytics, custom_branding) - Admin/Superadmin
+  
+- ✅ **Database Integration**
+  - Tenant model has `vertical_type` column for vertical identification
+  - Tenant model has `config` JSON column for feature flags and add-on state
+  - Module changes persist to appropriate DB fields based on module type
+
+- ✅ **Role-Based Security**
+  - Integrated with existing User.role system (user/staff/admin/developer/superadmin)
+  - Permission checks enforced server-side via `get_current_user` dependency
+  - Returns 403 Forbidden with descriptive messages for unauthorized actions
+
+#### Frontend Implementation
+- ✅ **Module Marketplace UI** (`Frontend/src/pages/admin/Marketplace.tsx`)
+  - Displays modules grouped by category (Platform, Verticals, Add-ons)
+  - Visual indicators for active vs available modules
+  - Permission-aware UI controls:
+    - Core modules show "Core Module (Always Active)" - no toggle
+    - Vertical modules show "Requires Super Admin" for non-superadmins
+    - Add-on modules fully toggleable with enable/disable buttons
+  
+- ✅ **Error Handling**
+  - Catches and displays 403 permission errors with user-friendly messages
+  - Toast notifications for success/failure states
+  - Loading states during module toggle operations
+
+- ✅ **Real-Time Updates**
+  - Refreshes tenant subscription state after module changes
+  - Invalidates global tenant config cache via `useTenantConfig().refresh()`
+  - Changes immediately reflected in UI
+
+### 8.2. Available Modules
+
+#### Platform Modules (Core - Always Active)
+1. **Core Platform** - Essential loyalty program functionality
+2. **Loyalty & Points** - Points accumulation and management
+3. **Analytics Dashboard** - Business insights and reporting
+
+#### Vertical Modules (Superadmin Only)
+4. **Car Wash Services** - PIN generation, bay management, service tracking
+5. **Retail POS** - Point-of-sale integration and inventory
+
+#### Add-on Modules (Admin/Superadmin)
+6. **SMS Notifications** - Automated customer messaging
+7. **Advanced Analytics** - Enhanced reporting and insights
+8. **Custom Branding** - White-label customization
+
+### 8.3. API Endpoints
+
+#### Module Management
+```
+GET    /api/subscriptions/modules
+       Returns list of all available modules
+
+GET    /api/subscriptions/tenants/{tenant_id}
+       Returns tenant subscription with active modules based on vertical_type and config
+
+POST   /api/subscriptions/tenants/{tenant_id}/override
+       Body: { "module_key": string, "enabled": boolean }
+       Toggles module state with permission checks
+       
+GET    /api/subscriptions/usage-metrics?window=30d
+       Returns usage metrics for current tenant
+```
+
+### 8.4. Deployment Information
+
+#### Dev Environment
+- **Backend**: `apismbloyaltyapp-dev.redsky-09cfd59a.southafricanorth.azurecontainerapps.io`
+- **Frontend**: `orange-pond-06eea490f.3.azurestaticapps.net`
+- **Database**: Azure PostgreSQL with Alembic migrations
+- **CORS**: Isolated to orange-pond domain only
+
+#### Production Environment  
+- **Backend**: `apismbloyaltyapp` (separate container app)
+- **Frontend**: `chaosx.co.za` (gray-river Static Web App)
+- **CORS**: Isolated to chaosx.co.za only
+
+### 8.5. Security Considerations
+
+1. **Server-Side Enforcement**: All permission checks happen on backend; frontend UI restrictions are for UX only
+2. **Role Hierarchy**: superadmin > developer > admin > staff > user
+3. **Immutable Core**: Core modules cannot be disabled to prevent tenant application breakage
+4. **Audit Trail**: All module changes should be logged (future enhancement)
+
+### 8.6. Known Issues & Future Work
+
+- [ ] Frontend may need updates if backend adds new module categories
+- [ ] Consider adding audit logging for module configuration changes
+- [ ] Module dependencies not yet implemented (e.g., SMS requires Core)
+- [ ] Module pricing/billing integration pending
+- [ ] Dispensary vertical plugin needs implementation
+- [ ] Extension slot components for vertical-specific UI not yet integrated

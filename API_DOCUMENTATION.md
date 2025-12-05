@@ -141,6 +141,51 @@ Response:
 - `POST /api/subscriptions/cancel-subscription` - Cancel subscription
 - `GET /api/subscriptions/subscription-status` - Get subscription status
 - `POST /api/subscriptions/webhook/yoco-subscription` - Subscription webhook
+- `GET /api/subscriptions/modules` - List all available modules (core, verticals, add-ons)
+- `GET /api/subscriptions/tenants/{tenant_id}` - Get tenant subscription with active modules
+- `POST /api/subscriptions/tenants/{tenant_id}/override` - Toggle module state (permission-aware)
+- `GET /api/subscriptions/usage-metrics?window=30d` - Get module usage metrics
+
+#### Module Management
+The platform supports modular architecture with three types of modules:
+
+**Core Modules** (always active, cannot be disabled):
+- `core` - Essential loyalty program functionality
+- `loyalty` - Points accumulation and management
+- `analytics` - Business insights and reporting
+
+**Vertical Modules** (superadmin only):
+- `carwash` - Car wash services with PIN generation and bay management
+- `retail` - Retail point-of-sale integration
+- `dispensary` - Dispensary-specific features (future)
+
+**Add-on Modules** (admin/superadmin):
+- `sms_notifications` - Automated customer messaging
+- `advanced_analytics` - Enhanced reporting
+- `custom_branding` - White-label customization
+
+#### Module Override Request
+```json
+POST /api/subscriptions/tenants/{tenant_id}/override
+{
+  "module_key": "sms_notifications",
+  "enabled": true
+}
+```
+
+**Permission Rules:**
+- Core modules: Cannot be disabled (returns 403)
+- Vertical modules: Requires `superadmin` role
+- Add-on modules: Requires `admin` or `superadmin` role
+
+**Response:**
+```json
+{
+  "status": "success",
+  "module": "sms_notifications",
+  "enabled": true
+}
+```
 
 ### Business Onboarding (`/api/onboarding`)
 - `POST /api/onboarding/create-business` - Create new business account

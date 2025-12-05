@@ -108,8 +108,9 @@ describe('PastOrders compact list', () => {
     const secondAmount = amountElements[1].textContent;
     
     // Should contain R (currency) and the numeric values (with comma decimal)
-    expect(firstAmount).toMatch(/R.*123[.,]45/);
-    expect(secondAmount).toMatch(/R.*223[.,]45/);
+    // Orders are rendered in reverse chronological order (most recent first)
+    expect(firstAmount).toMatch(/R.*223[.,]45/);
+    expect(secondAmount).toMatch(/R.*123[.,]45/);
   });
 
   it('opens minimal modal with essential details', async () => {

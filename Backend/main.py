@@ -348,6 +348,11 @@ if not allowed and settings.frontend_url:
         parts = _up.urlparse(settings.frontend_url)
         if parts.scheme and parts.netloc:
             allowed = [f"{parts.scheme}://{parts.netloc}"]
+            # Also allow the www subdomain if present, or bare domain if www
+            if parts.netloc.startswith('www.'):
+                allowed.append(f"{parts.scheme}://{parts.netloc[4:]}")
+            else:
+                allowed.append(f"{parts.scheme}://www.{parts.netloc}")
     except Exception:
         pass
 app.add_middleware(

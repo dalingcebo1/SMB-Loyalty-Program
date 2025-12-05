@@ -8,8 +8,8 @@
 - Resource Group: `SMB-Loyalty-Group`
 - **Backend API**: Azure Container Apps
   - Name: `apismbloyaltyapp-dev`
-  - URL: `apismbloyaltyapp-dev.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io`
-  - Environment: `mangoplant-11c2323f` (South Africa North)
+  - URL: `apismbloyaltyapp-dev.redsky-09cfd59a.southafricanorth.azurecontainerapps.io`
+  - Environment: `redsky-09cfd59a` (South Africa North)
   - Scaling: 0-10 replicas
 - Frontend: `SMBstaticwebapp` (Static Web Apps)
   - URL: `orange-pond-06eea490f.3.azurestaticapps.net`

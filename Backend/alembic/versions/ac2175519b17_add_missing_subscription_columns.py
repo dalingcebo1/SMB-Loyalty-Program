@@ -177,6 +177,11 @@ def upgrade() -> None:
     op.create_foreign_key(None, 'point_balances', 'loyalty_tiers', ['tier_id'], ['id'])
     safe_drop_index(op.f('ix_redemptions_tenant_created'), 'redemptions')
     safe_drop_index(op.f('ix_redemptions_tenant_redeemed'), 'redemptions', postgresql_where='(redeemed_at IS NOT NULL)')
+    # Add order_id column to redemptions if it doesn't exist
+    columns = [col['name'] for col in inspector.get_columns('redemptions')]
+    if 'order_id' not in columns:
+        op.add_column('redemptions', sa.Column('order_id', sa.Integer(), nullable=True))
+    # Now add foreign key constraint
     op.create_foreign_key(None, 'redemptions', 'orders', ['order_id'], ['id'])
     op.create_index(op.f('ix_rewards_id'), 'rewards', ['id'], unique=False)
     op.create_foreign_key(None, 'rewards', 'services', ['service_id'], ['id'])
@@ -245,6 +250,10 @@ def downgrade() -> None:
     op.drop_constraint(None, 'rewards', type_='foreignkey')
     safe_drop_index(op.f('ix_rewards_id'), 'rewards')
     op.drop_constraint(None, 'redemptions', type_='foreignkey')
+    # Drop order_id column if it was added by this migration
+    columns = [col['name'] for col in inspector.get_columns('redemptions')]
+    if 'order_id' in columns:
+        op.drop_column('redemptions', 'order_id')
     op.create_index(op.f('ix_redemptions_tenant_redeemed'), 'redemptions', ['tenant_id', 'created_at'], unique=False, postgresql_where='(redeemed_at IS NOT NULL)')
     op.create_index(op.f('ix_redemptions_tenant_created'), 'redemptions', ['tenant_id', 'created_at'], unique=False)
     op.drop_constraint(None, 'point_balances', type_='foreignkey')

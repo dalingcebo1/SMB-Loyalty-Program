@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import timedelta
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.tenant_context import get_tenant_context, TenantContext
 from app.core.plans import PLAN_REGISTRY, get_plan, FEATURE_LOYALTY, FEATURE_ANALYTICS, FEATURE_MULTI_USER
 from app.models import Tenant, Order, Redemption, Payment, User, tenant_admins
 from app.utils.time import utc_now
+from app.plugins.auth.dependencies import get_current_user
 from config import settings
 import stripe
 import logging
@@ -19,6 +21,11 @@ router = APIRouter(tags=["subscriptions"])
 
 # Check for mock mode
 IS_MOCK_STRIPE = settings.stripe_secret_key == "mock" or settings.stripe_secret_key is None
+
+# Request models
+class ModuleOverrideRequest(BaseModel):
+    module_key: str
+    enabled: bool
 
 # ─── Admin Management Endpoints (Stub Implementation) ─────────────────────
 # TODO: Replace stubs with full implementation when subscription management is complete
@@ -97,27 +104,42 @@ def list_modules():
 @router.get("/tenants/{tenant_id}")
 def get_tenant_subscription(
     tenant_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_tenant_context)
 ):
     """Get tenant's subscription plan and active modules.
     
-    Stub endpoint returning sample data for UI development.
-    TODO: Replace with actual tenant subscription data from database when
-    subscription management feature is fully implemented.
+    Returns modules based on tenant's actual vertical_type from database.
+    Core modules are always active and cannot be disabled.
     """
-    # Return sample response showing core modules and carwash vertical active
-    # This matches the default tenant configuration
+    from app.models import Tenant as TenantModel
+    
+    # Fetch actual tenant to get vertical_type
+    tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Core modules are always active
+    active_modules = ["core", "loyalty", "analytics"]
+    
+    # Add the tenant's vertical module
+    active_modules.append(tenant.vertical_type)
+    
+    # Check tenant config for optional add-ons
+    config = tenant.config or {}
+    if config.get("advanced_reporting_enabled"):
+        active_modules.append("advanced_reporting")
+    if config.get("marketing_automation_enabled"):
+        active_modules.append("marketing_automation")
+    if config.get("multi_location_enabled"):
+        active_modules.append("multi_location")
+    
     return {
         "plan": {
             "id": 0,
             "name": "Default Plan"
         },
-        "active_modules": [
-            "core",
-            "loyalty", 
-            "analytics",
-            "carwash"  # Default vertical for demo/dev
-        ],
+        "active_modules": active_modules,
         "subscription_status": "active"
     }
 
@@ -152,18 +174,71 @@ def assign_plan(
 @router.post("/tenants/{tenant_id}/override")
 def create_override(
     tenant_id: str,
-    module_id: str,
-    enabled: bool,
-    db: Session = Depends(get_db)
+    request: ModuleOverrideRequest,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_tenant_context),
+    current_user: User = Depends(get_current_user)
 ):
     """Create or update a module override for a tenant.
     
-    Stub endpoint to prevent 404 errors. Returns success message until
-    subscription management feature is fully implemented.
+    Only superadmin can modify core modules (core, loyalty, analytics).
+    Business admins can only enable/disable add-ons and their vertical.
     """
+    from app.models import Tenant as TenantModel
+    
+    module_key = request.module_key
+    enabled = request.enabled
+    
+    # Core modules cannot be disabled by anyone
+    CORE_MODULES = ["core", "loyalty", "analytics"]
+    if module_key in CORE_MODULES:
+        raise HTTPException(
+            status_code=403, 
+            detail="Core modules cannot be disabled. They are essential for platform operation."
+        )
+    
+    # Only superadmin can change vertical modules
+    VERTICAL_MODULES = ["carwash", "retail", "dispensary", "restaurant"]
+    if module_key in VERTICAL_MODULES:
+        if current_user.role != "superadmin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only superadmin can change vertical modules. Contact support to switch verticals."
+            )
+        # Changing vertical requires updating tenant.vertical_type
+        tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+        
+        if enabled:
+            tenant.vertical_type = module_key
+            db.commit()
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot disable a vertical module. Switch to a different vertical instead."
+            )
+    else:
+        # Add-on modules can be toggled by admin or superadmin
+        if current_user.role not in ["admin", "superadmin"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can manage add-on modules"
+            )
+        
+        tenant = db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+        
+        # Update tenant config with add-on status
+        config = tenant.config or {}
+        config[f"{module_key}_enabled"] = enabled
+        tenant.config = config
+        db.commit()
+    
     return {
         "success": True,
-        "message": "Module override feature is not yet fully implemented"
+        "message": f"Module {module_key} {'enabled' if enabled else 'disabled'} successfully"
     }
 
 if settings.stripe_secret_key and not IS_MOCK_STRIPE:

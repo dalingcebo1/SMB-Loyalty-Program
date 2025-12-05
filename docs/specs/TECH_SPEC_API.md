@@ -33,7 +33,7 @@
 ### 1.2 Base URL Structure
 ```
 Production:  https://api.{tenant-domain}/
-Development: https://dev-loyalty-backend.{region}.azurecontainerapps.io/
+Development: https://apismbloyaltyapp-dev.{region}.azurecontainerapps.io/
 ```
 
 ### 1.3 Request/Response Format

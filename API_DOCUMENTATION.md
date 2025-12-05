@@ -4,7 +4,7 @@
 The SMB Loyalty Program provides a comprehensive multi-tenant SaaS platform for small and medium businesses to manage customer loyalty programs, process orders, and handle payments.
 
 ## Base URL
-- Development: `https://dev-loyalty-backend.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io`
+- Development: `https://apismbloyaltyapp-dev.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io`
 - Production: `https://api.yourdomain.com` (to be configured)
 - Local: `http://localhost:8000`
 

@@ -6,9 +6,11 @@
 
 **Development Environment:**
 - Resource Group: `SMB-Loyalty-Group`
-- Backend: `apismbloyaltyapp-dev` (Container App)
-  - URL: `dev-loyalty-backend.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io`
-  - Environment: `smbloyalty-ca-env`
+- **Backend API**: Azure Container Apps
+  - Name: `apismbloyaltyapp-dev`
+  - URL: `apismbloyaltyapp-dev.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io`
+  - Environment: `mangoplant-11c2323f` (South Africa North)
+  - Scaling: 0-10 replicas
 - Frontend: `SMBstaticwebapp` (Static Web Apps)
   - URL: `orange-pond-06eea490f.3.azurestaticapps.net`
 - Database: Azure PostgreSQL Flexible Server

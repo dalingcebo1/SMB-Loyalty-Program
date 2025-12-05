@@ -26,7 +26,7 @@ jobs:
       actions: write
       contents: read
     env:
-      API_BASE_FALLBACK: https://dev-loyalty-backend.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io
+      API_BASE_FALLBACK: https://apismbloyaltyapp-dev.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io
     steps:
       - uses: actions/checkout@v4
         with:

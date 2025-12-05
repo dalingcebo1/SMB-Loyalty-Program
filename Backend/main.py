@@ -734,6 +734,8 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
         and (settings.environment == 'production' or settings.allow_default_tenant_fallback_non_prod)
     )
     
+    logger.info(f"Tenant resolution fallback check: allowed={fallback_allowed}, default_tenant={settings.default_tenant}, env={settings.environment}")
+
     if not fallback_allowed:
         logger.warning(
             "Public tenant resolution failed: fallback disabled",
@@ -747,6 +749,7 @@ def _resolve_public_tenant(request: Request, db: Session) -> Optional[TenantCont
     if fallback_allowed:
         try:
             t = db.query(_Tenant).filter_by(id=settings.default_tenant).first()
+            logger.info(f"Fallback tenant lookup result: {t}")
         except (ProgrammingError, OperationalError, DatabaseError) as exc:
             logger.warning(
                 "default tenant lookup failed; returning no-tenant",

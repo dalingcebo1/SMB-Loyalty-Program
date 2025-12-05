@@ -2,7 +2,7 @@ from config import settings
 import datetime
 import secrets
 import string
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 import jwt
 from fastapi import APIRouter, HTTPException, Depends, Query, status, Body, BackgroundTasks
@@ -15,6 +15,7 @@ from app.core.tenant_context import get_tenant_context, TenantContext
 from app.models import Tenant, User, VisitCount, Reward, Redemption, Order, Service, Extra, OrderItem
 from app.utils.qr import generate_qr_code
 from app.plugins.auth.routes import get_current_user
+from app.verticals import registry
 from .constants import REWARD_INTERVAL
 
 SECRET_KEY = settings.loyalty_secret
@@ -47,6 +48,15 @@ class PhoneIn(BaseModel):
 
 class RedeemIn(BaseModel):
     token: str
+
+class ClientAction(BaseModel):
+    type: str
+    payload: Dict[str, Any]
+
+class RedemptionResponse(BaseModel):
+    message: str
+    milestone: int
+    client_action: Optional[ClientAction] = None
 
 # ─── Helpers ────────────────────────────────────────────────────────────────────
 def _ensure_tenant(db: Session) -> Tenant:
@@ -346,7 +356,8 @@ def claim_reward(
 
 @router.post(
     "/redeem",
-    summary="Redeem a reward token"
+    summary="Redeem a reward token",
+    response_model=RedemptionResponse
 )
 def redeem(
     body: RedeemIn,
@@ -366,7 +377,23 @@ def redeem(
     redemption.redeemed_at = datetime.datetime.utcnow()
     db.commit()
 
-    return {"message": "Reward redeemed successfully", "milestone": redemption.milestone}
+    # Vertical Hook
+    client_action = None
+    tenant = db.query(Tenant).filter_by(id=redemption.tenant_id).first()
+    if tenant:
+        plugin = registry.get(tenant.vertical_type)
+        if plugin:
+            try:
+                client_action = plugin.on_redemption_success(db, redemption)
+            except Exception as e:
+                # Don't fail the redemption if the hook fails
+                print(f"Error in vertical hook: {e}")
+
+    return {
+        "message": "Reward redeemed successfully", 
+        "milestone": redemption.milestone,
+        "client_action": client_action
+    }
 
 @router.post(
     "/expire-redemptions",

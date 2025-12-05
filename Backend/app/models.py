@@ -27,6 +27,7 @@ class VerticalType(str, Enum):
             - Any validation lists (e.g. in create/update tenant schemas)
             - Frontend vertical mapping (TenantConfigProvider)
         """
+        retail = "retail"
         carwash = "carwash"
         dispensary = "dispensary"
         padel = "padel"

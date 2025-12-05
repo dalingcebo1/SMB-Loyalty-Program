@@ -179,3 +179,17 @@ class CarwashVertical(VerticalModule):
                 raise ValueError("Max queue size must be positive")
         
         return config
+
+    def on_redemption_success(self, db: Session, redemption: Any) -> Optional[Dict[str, Any]]:
+        """
+        After redemption, show the PIN to the staff member so they can verify it 
+        against the customer's app or POS.
+        """
+        return {
+            "type": "CARWASH_SHOW_PIN",
+            "payload": {
+                "pin": redemption.pin,
+                "reward_name": redemption.reward_name,
+                "instructions": "Verify this PIN in the POS or write it on the job card."
+            }
+        }

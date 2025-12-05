@@ -203,6 +203,28 @@ class VerticalModule(ABC):
             List[str]: Capability keys (e.g., ['carwash.process_orders'])
         """
         return []
+
+    def on_redemption_success(self, db: Session, redemption: Any) -> Optional[Dict[str, Any]]:
+        """
+        Hook called after a successful point redemption.
+        
+        Args:
+            db: Database session
+            redemption: The redemption model instance
+            
+        Returns:
+            Optional[Dict[str, Any]]: Client action to perform (e.g. {type: 'SHOW_PIN', payload: {...}})
+        """
+        return None
+
+    def get_custom_customer_fields(self) -> List[str]:
+        """
+        Returns list of extra fields required for this vertical's customers.
+        
+        Returns:
+            List[str]: Field names
+        """
+        return []
     
     def __repr__(self) -> str:
         return f"<VerticalModule: {self.vertical_key} - {self.display_name}>"

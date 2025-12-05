@@ -10,7 +10,7 @@ from app.core.tenant_context import get_tenant_context, TenantContext
 from app.core.plans import PLAN_REGISTRY, get_plan, FEATURE_LOYALTY, FEATURE_ANALYTICS, FEATURE_MULTI_USER
 from app.models import Tenant, Order, Redemption, Payment, User, tenant_admins
 from app.utils.time import utc_now
-from app.plugins.auth.dependencies import get_current_user
+from app.plugins.auth.routes import get_current_user
 from config import settings
 import stripe
 import logging

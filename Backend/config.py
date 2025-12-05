@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     reset_token_expire_seconds: int = 60 * 30
     sendgrid_api_key: Optional[str] = None
     reset_email_from: EmailStr = "no-reply@example.com"
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "https://orange-pond-06eea490f.3.azurestaticapps.net"
 
     # Additional configuration
     database_url: str = Field("sqlite:///./dev.db", alias="DATABASE_URL")

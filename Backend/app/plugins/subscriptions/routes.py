@@ -43,8 +43,12 @@ def get_tenant_subscription(
     subscription management feature is fully implemented.
     """
     # Return minimal response that frontend can handle gracefully
+    # Include a default plan object to prevent null reference errors
     return {
-        "plan": None,
+        "plan": {
+            "id": 0,
+            "name": "Default Plan"
+        },
         "active_modules": [],
         "subscription_status": "active"
     }

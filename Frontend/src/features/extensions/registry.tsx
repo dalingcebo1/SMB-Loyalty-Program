@@ -1,5 +1,4 @@
-import React from 'react';
-import { ExtensionComponent, ClientAction } from './types';
+import { ExtensionComponent } from './types';
 
 // Registry to hold the mapping of Action Type -> Component
 const registry: Record<string, ExtensionComponent> = {};

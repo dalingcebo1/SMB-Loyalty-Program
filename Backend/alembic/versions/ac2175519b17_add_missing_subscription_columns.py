@@ -152,6 +152,15 @@ def upgrade() -> None:
                existing_server_default=sa.text("''::character varying"))
     op.drop_index(op.f('ix_payments_created_at'), table_name='payments')
     op.drop_index(op.f('ix_payments_status_created_at'), table_name='payments')
+    # Add reference column if it doesn't exist (may already exist in some databases)
+    # Use batch operations to check and add column safely
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('payments')]
+    if 'reference' not in columns:
+        op.add_column('payments', sa.Column('reference', sa.String(), nullable=True))
+    # Now add unique constraint on reference column
     op.create_unique_constraint(None, 'payments', ['reference'])
     op.add_column('point_balances', sa.Column('lifetime_points', sa.Integer(), nullable=True))
     op.add_column('point_balances', sa.Column('tier_id', sa.Integer(), nullable=True))
@@ -222,6 +231,13 @@ def downgrade() -> None:
     op.drop_column('point_balances', 'tier_id')
     op.drop_column('point_balances', 'lifetime_points')
     op.drop_constraint(None, 'payments', type_='unique')
+    # Drop reference column if it was added by this migration
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('payments')]
+    if 'reference' in columns:
+        op.drop_column('payments', 'reference')
     op.create_index(op.f('ix_payments_status_created_at'), 'payments', ['status', 'created_at'], unique=False)
     op.create_index(op.f('ix_payments_created_at'), 'payments', ['created_at'], unique=False)
     op.alter_column('payments', 'method',

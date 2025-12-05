@@ -27,10 +27,72 @@ IS_MOCK_STRIPE = settings.stripe_secret_key == "mock" or settings.stripe_secret_
 def list_modules():
     """List all available modules/verticals.
     
-    Stub endpoint to prevent 404 errors. Returns empty list until
-    subscription management feature is fully implemented.
+    Stub endpoint returning sample module data for UI development.
+    TODO: Replace with database-driven module registry when subscription
+    management feature is fully implemented.
     """
-    return []
+    # Return sample modules matching vertical architecture
+    return [
+        # Core Platform Modules
+        {
+            "key": "core",
+            "name": "Core Platform",
+            "category": "Platform",
+            "description": "Essential business operations and user management",
+            "is_addon": False
+        },
+        {
+            "key": "loyalty",
+            "name": "Loyalty Program",
+            "category": "Platform",
+            "description": "Points, rewards, and customer retention features",
+            "is_addon": False
+        },
+        {
+            "key": "analytics",
+            "name": "Analytics & Insights",
+            "category": "Platform",
+            "description": "Business intelligence and reporting dashboards",
+            "is_addon": False
+        },
+        # Vertical Modules
+        {
+            "key": "carwash",
+            "name": "Car Wash Services",
+            "category": "Verticals",
+            "description": "Specialized features for car wash businesses including service packages and vehicle management",
+            "is_addon": False
+        },
+        {
+            "key": "retail",
+            "name": "Retail Operations",
+            "category": "Verticals",
+            "description": "Inventory management, product catalog, and retail-specific features",
+            "is_addon": False
+        },
+        # Add-on Modules
+        {
+            "key": "advanced_reporting",
+            "name": "Advanced Reporting",
+            "category": "Add-ons",
+            "description": "Custom reports, data exports, and advanced analytics",
+            "is_addon": True
+        },
+        {
+            "key": "marketing_automation",
+            "name": "Marketing Automation",
+            "category": "Add-ons",
+            "description": "Email campaigns, SMS notifications, and customer engagement tools",
+            "is_addon": True
+        },
+        {
+            "key": "multi_location",
+            "name": "Multi-Location Management",
+            "category": "Add-ons",
+            "description": "Manage multiple business locations from a single dashboard",
+            "is_addon": True
+        }
+    ]
 
 @router.get("/tenants/{tenant_id}")
 def get_tenant_subscription(
@@ -39,17 +101,23 @@ def get_tenant_subscription(
 ):
     """Get tenant's subscription plan and active modules.
     
-    Stub endpoint to prevent 404 errors. Returns minimal data until
+    Stub endpoint returning sample data for UI development.
+    TODO: Replace with actual tenant subscription data from database when
     subscription management feature is fully implemented.
     """
-    # Return minimal response that frontend can handle gracefully
-    # Include a default plan object to prevent null reference errors
+    # Return sample response showing core modules and carwash vertical active
+    # This matches the default tenant configuration
     return {
         "plan": {
             "id": 0,
             "name": "Default Plan"
         },
-        "active_modules": [],
+        "active_modules": [
+            "core",
+            "loyalty", 
+            "analytics",
+            "carwash"  # Default vertical for demo/dev
+        ],
         "subscription_status": "active"
     }
 

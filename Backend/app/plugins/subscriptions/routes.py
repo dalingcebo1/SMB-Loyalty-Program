@@ -20,6 +20,80 @@ router = APIRouter(tags=["subscriptions"])
 # Check for mock mode
 IS_MOCK_STRIPE = settings.stripe_secret_key == "mock" or settings.stripe_secret_key is None
 
+# ─── Admin Management Endpoints (Stub Implementation) ─────────────────────
+# TODO: Replace stubs with full implementation when subscription management is complete
+
+@router.get("/modules")
+def list_modules():
+    """List all available modules/verticals.
+    
+    Stub endpoint to prevent 404 errors. Returns empty list until
+    subscription management feature is fully implemented.
+    """
+    return []
+
+@router.get("/tenants/{tenant_id}")
+def get_tenant_subscription(
+    tenant_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get tenant's subscription plan and active modules.
+    
+    Stub endpoint to prevent 404 errors. Returns minimal data until
+    subscription management feature is fully implemented.
+    """
+    # Return minimal response that frontend can handle gracefully
+    return {
+        "plan": None,
+        "active_modules": [],
+        "subscription_status": "active"
+    }
+
+@router.get("/tenants/{tenant_id}/overrides")
+def get_tenant_overrides(
+    tenant_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get tenant's module overrides.
+    
+    Stub endpoint to prevent 404 errors. Returns empty list until
+    subscription management feature is fully implemented.
+    """
+    return []
+
+@router.post("/tenants/{tenant_id}/assign-plan")
+def assign_plan(
+    tenant_id: str,
+    plan_id: str,
+    db: Session = Depends(get_db)
+):
+    """Assign a subscription plan to a tenant.
+    
+    Stub endpoint to prevent 404 errors. Returns success message until
+    subscription management feature is fully implemented.
+    """
+    return {
+        "success": True,
+        "message": "Subscription management feature is not yet fully implemented"
+    }
+
+@router.post("/tenants/{tenant_id}/override")
+def create_override(
+    tenant_id: str,
+    module_id: str,
+    enabled: bool,
+    db: Session = Depends(get_db)
+):
+    """Create or update a module override for a tenant.
+    
+    Stub endpoint to prevent 404 errors. Returns success message until
+    subscription management feature is fully implemented.
+    """
+    return {
+        "success": True,
+        "message": "Module override feature is not yet fully implemented"
+    }
+
 if settings.stripe_secret_key and not IS_MOCK_STRIPE:
     stripe.api_key = settings.stripe_secret_key
 

@@ -622,6 +622,25 @@
         "title": "ChurnCandidate",
         "type": "object"
       },
+      "ClientAction": {
+        "properties": {
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "payload"
+        ],
+        "title": "ClientAction",
+        "type": "object"
+      },
       "CompleteInviteRequest": {
         "properties": {
           "email": {
@@ -1729,6 +1748,24 @@
         "title": "ManualVisitResponse",
         "type": "object"
       },
+      "ModuleOverrideRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "module_key": {
+            "title": "Module Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module_key",
+          "enabled"
+        ],
+        "title": "ModuleOverrideRequest",
+        "type": "object"
+      },
       "NotificationCreate": {
         "properties": {
           "action_url": {
@@ -2538,6 +2575,34 @@
           "token"
         ],
         "title": "RedeemIn",
+        "type": "object"
+      },
+      "RedemptionResponse": {
+        "properties": {
+          "client_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClientAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "milestone": {
+            "title": "Milestone",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "milestone"
+        ],
+        "title": "RedemptionResponse",
         "type": "object"
       },
       "RegisterUser": {
@@ -3782,6 +3847,7 @@
       "VerticalType": {
         "description": "Business verticals supported by the unified multi-tenant platform.\n\nNOTE: When adding a new vertical update:\n    - This enum\n    - Any validation lists (e.g. in create/update tenant schemas)\n    - Frontend vertical mapping (TenantConfigProvider)",
         "enum": [
+          "retail",
           "carwash",
           "dispensary",
           "padel",
@@ -6638,6 +6704,26 @@
         ]
       }
     },
+    "/api/billing/modules": {
+      "get": {
+        "description": "List all available modules/verticals.\n\nStub endpoint returning sample module data for UI development.\nTODO: Replace with database-driven module registry when subscription\nmanagement feature is fully implemented.",
+        "operationId": "list_modules_api_billing_modules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Modules",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
     "/api/billing/plans": {
       "get": {
         "description": "List all available subscription plans.",
@@ -6786,10 +6872,326 @@
         ]
       }
     },
+    "/api/billing/tenants/{tenant_id}": {
+      "get": {
+        "description": "Get tenant's subscription plan and active modules.\n\nReturns modules based on tenant's actual vertical_type from database.\nCore modules are always active and cannot be disabled.",
+        "operationId": "get_tenant_subscription_api_billing_tenants__tenant_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tenant Subscription",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/billing/tenants/{tenant_id}/assign-plan": {
+      "post": {
+        "description": "Assign a subscription plan to a tenant.\n\nStub endpoint to prevent 404 errors. Returns success message until\nsubscription management feature is fully implemented.",
+        "operationId": "assign_plan_api_billing_tenants__tenant_id__assign_plan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Plan",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/billing/tenants/{tenant_id}/override": {
+      "post": {
+        "description": "Create or update a module override for a tenant.\n\nOnly superadmin can modify core modules (core, loyalty, analytics).\nBusiness admins can only enable/disable add-ons and their vertical.",
+        "operationId": "create_override_api_billing_tenants__tenant_id__override_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleOverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Override",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/billing/tenants/{tenant_id}/overrides": {
+      "get": {
+        "description": "Get tenant's module overrides.\n\nStub endpoint to prevent 404 errors. Returns empty list until\nsubscription management feature is fully implemented.",
+        "operationId": "get_tenant_overrides_api_billing_tenants__tenant_id__overrides_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tenant Overrides",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
     "/api/billing/usage": {
       "get": {
-        "description": "Compute module usage from real data.",
+        "description": "Get current usage metrics against plan limits.",
         "operationId": "get_usage_api_billing_usage_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/billing/usage-metrics": {
+      "get": {
+        "description": "Compute module usage metrics from real data.",
+        "operationId": "get_usage_metrics_api_billing_usage_metrics_get",
         "parameters": [
           {
             "in": "query",
@@ -6854,7 +7256,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Usage",
+        "summary": "Get Usage Metrics",
         "tags": [
           "subscriptions"
         ]
@@ -8869,7 +9271,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -12409,6 +12813,26 @@
         ]
       }
     },
+    "/api/subscriptions/modules": {
+      "get": {
+        "description": "List all available modules/verticals.\n\nStub endpoint returning sample module data for UI development.\nTODO: Replace with database-driven module registry when subscription\nmanagement feature is fully implemented.",
+        "operationId": "list_modules_api_subscriptions_modules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Modules",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
     "/api/subscriptions/plans": {
       "get": {
         "description": "List all available subscription plans.",
@@ -12557,10 +12981,326 @@
         ]
       }
     },
+    "/api/subscriptions/tenants/{tenant_id}": {
+      "get": {
+        "description": "Get tenant's subscription plan and active modules.\n\nReturns modules based on tenant's actual vertical_type from database.\nCore modules are always active and cannot be disabled.",
+        "operationId": "get_tenant_subscription_api_subscriptions_tenants__tenant_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tenant Subscription",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/tenants/{tenant_id}/assign-plan": {
+      "post": {
+        "description": "Assign a subscription plan to a tenant.\n\nStub endpoint to prevent 404 errors. Returns success message until\nsubscription management feature is fully implemented.",
+        "operationId": "assign_plan_api_subscriptions_tenants__tenant_id__assign_plan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Plan",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/tenants/{tenant_id}/override": {
+      "post": {
+        "description": "Create or update a module override for a tenant.\n\nOnly superadmin can modify core modules (core, loyalty, analytics).\nBusiness admins can only enable/disable add-ons and their vertical.",
+        "operationId": "create_override_api_subscriptions_tenants__tenant_id__override_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleOverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Override",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/tenants/{tenant_id}/overrides": {
+      "get": {
+        "description": "Get tenant's module overrides.\n\nStub endpoint to prevent 404 errors. Returns empty list until\nsubscription management feature is fully implemented.",
+        "operationId": "get_tenant_overrides_api_subscriptions_tenants__tenant_id__overrides_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tenant Overrides",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
     "/api/subscriptions/usage": {
       "get": {
-        "description": "Compute module usage from real data.",
+        "description": "Get current usage metrics against plan limits.",
         "operationId": "get_usage_api_subscriptions_usage_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/usage-metrics": {
+      "get": {
+        "description": "Compute module usage metrics from real data.",
+        "operationId": "get_usage_metrics_api_subscriptions_usage_metrics_get",
         "parameters": [
           {
             "in": "query",
@@ -12625,7 +13365,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Usage",
+        "summary": "Get Usage Metrics",
         "tags": [
           "subscriptions"
         ]

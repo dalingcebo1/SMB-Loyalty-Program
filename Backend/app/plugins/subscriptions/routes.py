@@ -519,13 +519,13 @@ def _handle_subscription_deleted(subscription, db: Session):
 
 # ─── Usage & Limits ───────────────────────────────────────────────────────
 
-@router.get("/usage")
-def get_usage(
+@router.get("/usage-metrics")
+def get_usage_metrics(
     window: str = "30d",
     tenant_context: TenantContext = Depends(get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    """Compute module usage from real data."""
+    """Compute module usage metrics from real data."""
     days = 30 if window.endswith("30d") else 7
     start = utc_now() - timedelta(days=days)
     tid = tenant_context.id

@@ -28,13 +28,18 @@ def _get_or_create_metric(metric_class, name, *args, **kwargs):
     if 'registry' not in kwargs:
         kwargs['registry'] = _metrics_registry
     
+    # Determine the actual metric name(s) that would be registered
+    # Info metrics append '_info'
+    target_name = name
+    if hasattr(metric_class, '__name__') and metric_class.__name__ == 'Info' and not name.endswith('_info'):
+        target_name = f"{name}_info"
+
     # Check if metric already exists in registry BEFORE trying to create it
     # This avoids the ValueError entirely
-    for collector in _metrics_registry._collector_to_names.keys():
-        if hasattr(collector, '_name') and collector._name == name:
+    for collector, names in _metrics_registry._collector_to_names.items():
+        if target_name in names:
             return collector
-        # Info metrics often append '_info'
-        if hasattr(collector, '_name') and collector._name == f"{name}_info":
+        if name in names:
             return collector
 
     try:
@@ -42,10 +47,10 @@ def _get_or_create_metric(metric_class, name, *args, **kwargs):
     except ValueError as e:
         # Fallback for race conditions
         if "Duplicated timeseries" in str(e):
-             for collector in _metrics_registry._collector_to_names.keys():
-                if hasattr(collector, '_name') and collector._name == name:
+             for collector, names in _metrics_registry._collector_to_names.items():
+                if target_name in names:
                     return collector
-                if hasattr(collector, '_name') and collector._name == f"{name}_info":
+                if name in names:
                     return collector
         raise e
 
@@ -300,13 +305,6 @@ app_uptime_seconds = _get_or_create_metric(
     Gauge,
     'app_uptime_seconds',
     'Application uptime in seconds'
-)
-
-# Python version
-python_info = _get_or_create_metric(
-    Info,
-    'python',
-    'Python interpreter information'
 )
 
 # ============================================================================

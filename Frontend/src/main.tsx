@@ -19,6 +19,11 @@ import './api/fetchShim';
 // Bootstraps React app with prefetched analytics summary for instant rendering
 import { queryClient } from './api/queryClient';
 import { useTenantTheme } from './branding/useTenantTheme';
+import { initExtensions } from './features/extensions/init';
+
+// Initialize extensions
+initExtensions();
+
 export const RootWithTheme: React.FC = () => {
   // Hook triggers side-effects to inject CSS vars & favicon
   useTenantTheme();

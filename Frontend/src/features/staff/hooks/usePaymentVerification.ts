@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/api';
+import { ClientAction } from '../../extensions/types';
 
 export interface VerificationRecord {
   order_id: string | number;
@@ -27,6 +28,12 @@ export interface VerifiedPaymentDetails {
   available_vehicles?: { id: number; reg: string; make: string; model: string }[];
 }
 
+export interface RedemptionResponse {
+  message: string;
+  milestone: number;
+  client_action?: ClientAction;
+}
+
 export function useRecentVerifications(limit = 10, enabled = true) {
   return useQuery<VerificationRecord[], Error>({
     queryKey: ['payments','recent-verifications', limit],
@@ -52,3 +59,17 @@ export function useVerifyPayment() {
     }
   });
 }
+
+export function useRedeemReward() {
+  const qc = useQueryClient();
+  return useMutation<RedemptionResponse, Error, { token: string }>({
+    mutationFn: async ({ token }) => {
+      const { data } = await api.post('/loyalty/redeem', { token });
+      return data as RedemptionResponse;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments','recent-verifications'] });
+    }
+  });
+}
+

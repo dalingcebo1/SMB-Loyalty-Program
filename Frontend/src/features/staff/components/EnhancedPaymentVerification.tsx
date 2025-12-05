@@ -5,9 +5,11 @@ import { toast } from 'react-toastify';
 import api from '../../../api/api';
 import { useActiveWashes } from '../hooks/useActiveWashes';
 import { useStartWash } from '../hooks/useStartWash';
-import { useRecentVerifications, useVerifyPayment, VerifiedPaymentDetails, VerificationRecord } from '../hooks/usePaymentVerification';
+import { useRecentVerifications, useVerifyPayment, useRedeemReward, VerifiedPaymentDetails, VerificationRecord } from '../hooks/usePaymentVerification';
 import ConfirmDialog from '../../../components/ConfirmDialog';
 import { formatCurrency, formatRelativeTime, formatDateTime } from '../../../utils/format';
+import { ActionHandler } from '../../extensions/ActionHandler';
+import { ClientAction } from '../../extensions/types';
 
 const verificationStatusLabels: Record<string, string> = {
   success: 'Success',
@@ -28,6 +30,7 @@ const EnhancedPaymentVerification: React.FC = () => {
   const navigate = useNavigate();
   const [isScanning, setIsScanning] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<VerifiedPaymentDetails | null>(null);
+  const [clientAction, setClientAction] = useState<ClientAction | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ plate: '', make: '', model: '' });
@@ -158,16 +161,39 @@ const EnhancedPaymentVerification: React.FC = () => {
   };
 
   const verifyMutation = useVerifyPayment();
+  const redeemMutation = useRedeemReward();
+
   const verifyPayment = async (reference: string) => {
     setProcessingPayment(true);
     try {
-  const data = await verifyMutation.mutateAsync({ token: reference, type: 'ref' });
-  setSelectedPayment(data);
-      setShowConfirmDialog(true);
-      toast.success(data.status === 'already_redeemed' ? 'Payment already redeemed' : 'Payment verified successfully!');
+      // Try payment verification first
+      try {
+        const data = await verifyMutation.mutateAsync({ token: reference, type: 'ref' });
+        setSelectedPayment(data);
+        setShowConfirmDialog(true);
+        toast.success(data.status === 'already_redeemed' ? 'Payment already redeemed' : 'Payment verified successfully!');
+        return;
+      } catch (paymentError) {
+        // If payment verification fails, try reward redemption
+        // We assume reward tokens are JWTs (long strings)
+        if (reference.length > 20) {
+           try {
+             const data = await redeemMutation.mutateAsync({ token: reference });
+             toast.success(`Reward redeemed! Milestone: ${data.milestone}`);
+             if (data.client_action) {
+               setClientAction(data.client_action);
+             }
+             return;
+           } catch (redeemError) {
+             console.error('Redemption error:', redeemError);
+             // Fall through to generic error
+           }
+        }
+        throw paymentError;
+      }
     } catch (error) {
       console.error('Verification error:', error);
-      toast.error('Error during verification');
+      toast.error('Invalid payment or reward token');
     } finally {
       setProcessingPayment(false);
       setManualRef('');
@@ -673,6 +699,21 @@ const EnhancedPaymentVerification: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Handler Overlay */}
+      {clientAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 relative">
+             <ActionHandler action={clientAction} onComplete={() => setClientAction(null)} />
+             <button 
+               onClick={() => setClientAction(null)}
+               className="mt-4 w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+             >
+               Close
+             </button>
           </div>
         </div>
       )}

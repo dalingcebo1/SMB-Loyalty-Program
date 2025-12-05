@@ -9,10 +9,11 @@ vi.mock('../../api/api', () => ({
     interceptors: { request: { use: vi.fn(), eject: vi.fn() } },
     get: (url: string) => {
       if (url.startsWith('/orders/my-past-orders')) {
+        const now = Date.now();
         return Promise.resolve({
           data: [
-            { id: '1', created_at: new Date().toISOString(), amount: 12345, status: 'completed', service_name: 'Full Wash', extras: [] },
-            { id: '2', created_at: new Date().toISOString(), amount: 22345, status: 'pending', service_name: 'Express Wash', extras: [{ name: 'Wax' }, { name: 'Vacuum' }] }
+            { id: '1', created_at: new Date(now - 10000).toISOString(), amount: 12345, status: 'completed', service_name: 'Full Wash', extras: [] },
+            { id: '2', created_at: new Date(now).toISOString(), amount: 22345, status: 'pending', service_name: 'Express Wash', extras: [{ name: 'Wax' }, { name: 'Vacuum' }] }
           ]
         });
       }
@@ -108,8 +109,9 @@ describe('PastOrders compact list', () => {
     const secondAmount = amountElements[1].textContent;
     
     // Should contain R (currency) and the numeric values (with comma decimal)
-    expect(firstAmount).toMatch(/R.*123[.,]45/);
-    expect(secondAmount).toMatch(/R.*223[.,]45/);
+    // Orders are sorted by created_at descending, so order 2 (most recent) appears first
+    expect(firstAmount).toMatch(/R.*223[.,]45/);
+    expect(secondAmount).toMatch(/R.*123[.,]45/);
   });
 
   it('opens minimal modal with essential details', async () => {

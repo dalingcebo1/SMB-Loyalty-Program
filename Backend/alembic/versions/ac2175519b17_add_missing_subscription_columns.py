@@ -222,10 +222,12 @@ def downgrade() -> None:
     """Downgrade schema."""
     from sqlalchemy import inspect
     
+    # Create inspector once for reuse
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    
     # Helper function to safely drop indexes that may not exist
     def safe_drop_index(index_name, table_name, **kwargs):
-        conn = op.get_bind()
-        inspector = inspect(conn)
         indexes = [idx['name'] for idx in inspector.get_indexes(table_name)]
         if index_name in indexes:
             op.drop_index(index_name, table_name=table_name, **kwargs)
@@ -272,9 +274,6 @@ def downgrade() -> None:
     op.drop_column('point_balances', 'lifetime_points')
     op.drop_constraint(None, 'payments', type_='unique')
     # Drop reference column if it was added by this migration
-    from sqlalchemy import inspect
-    conn = op.get_bind()
-    inspector = inspect(conn)
     columns = [col['name'] for col in inspector.get_columns('payments')]
     if 'reference' in columns:
         op.drop_column('payments', 'reference')

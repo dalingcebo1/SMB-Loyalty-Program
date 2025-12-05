@@ -53,12 +53,6 @@ def seed_default_tenant_raw():
         })
         conn.commit()
         print(f"✅ Created default tenant '{settings.default_tenant}'")
-
-if __name__ == "__main__":
-    seed_default_tenant_raw()
-        conn.commit()
-        
-        print(f"✅ Created default tenant '{settings.default_tenant}'")
         print(f"   Name: Default Loyalty Program")
         print(f"   Primary Domain: apismbloyaltyapp.redsky-09cfd59a.southafricanorth.azurecontainerapps.io")
 

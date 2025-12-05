@@ -9,7 +9,7 @@ Provides car wash and detailing specific features:
 - QR code check-in
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter
 from sqlalchemy.orm import Session
 import logging

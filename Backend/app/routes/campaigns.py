@@ -1,0 +1,832 @@
+"""
+Marketing Campaign API Routes
+
+Create, manage, and send email/SMS campaigns with AI-powered content generation.
+"""
+from datetime import datetime
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_
+
+from app.core.database import get_db
+from app.core.tenant_context import get_tenant_context, TenantContext
+from app.models import User
+from app.plugins.auth.routes import get_current_user
+from app.external import get_twilio_service, get_sendgrid_service
+from app.vertical_models.campaigns import (
+    Campaign,
+    CampaignRecipient,
+    CustomerSegment,
+    CampaignType,
+    CampaignStatus,
+    SegmentType,
+)
+from app.services.ai_content import get_ai_generator, ContentType
+from app.services.customer_segmentation import CustomerSegmentationService
+
+router = APIRouter(prefix="/api/campaigns", tags=["Marketing Campaigns"])
+
+
+# === Pydantic Schemas ===
+
+
+class AIContentRequest(BaseModel):
+    """Request AI-generated content for marketing campaigns.
+    
+    Example:
+        ```json
+        {
+            "content_type": "email",
+            "prompt": "Promote 20% off winter sale ending this weekend",
+            "tone": "urgent",
+            "max_length": 500,
+            "customer_name": "John",
+            "offer_details": "Use code WINTER20 for 20% off all items until Sunday"
+        }
+        ```
+    """
+    content_type: ContentType = Field(
+        ..., 
+        description="Type of content to generate: 'email' or 'sms'"
+    )
+    prompt: str = Field(
+        ..., 
+        min_length=10, 
+        max_length=1000,
+        description="Natural language description of the campaign goal",
+        example="Promote 20% off winter sale ending this weekend"
+    )
+    tone: str = Field(
+        default="friendly", 
+        pattern="^(friendly|professional|urgent|casual|formal)$",
+        description="Tone of the message",
+        example="urgent"
+    )
+    max_length: int = Field(
+        default=500, 
+        ge=50, 
+        le=2000,
+        description="Maximum character length for the content",
+        example=500
+    )
+    customer_name: Optional[str] = Field(
+        None, 
+        description="Customer name for personalization",
+        example="John"
+    )
+    offer_details: Optional[str] = Field(
+        None,
+        description="Specific offer details to include",
+        example="Use code WINTER20 for 20% off all items"
+    )
+
+
+class AIContentResponse(BaseModel):
+    """AI-generated content response."""
+    subject: str
+    content: str
+    ai_generated: bool
+    provider: str
+    generated_at: str
+
+
+class CampaignCreate(BaseModel):
+    """Create new marketing campaign.
+    
+    Example Email Campaign:
+        ```json
+        {
+            "name": "Winter Sale 2026",
+            "campaign_type": "email",
+            "segment_type": "high_value",
+            "segment_config": {"min_total_spent": 1000},
+            "subject": "🎉 Exclusive 20% Off for Our VIP Customers",
+            "content": "<h1>Thank you for being a valued customer!</h1><p>Use code WINTER20...",
+            "ai_generated": true,
+            "ai_prompt": "Promote 20% off winter sale",
+            "scheduled_at": "2026-02-15T09:00:00Z"
+        }
+        ```
+    
+    Example SMS Campaign:
+        ```json
+        {
+            "name": "Flash Sale Alert",
+            "campaign_type": "sms",
+            "segment_type": "active",
+            "segment_config": {},
+            "content": "Flash Sale! 30% off all items for the next 3 hours. Shop now: https://shop.example.com/sale",
+            "ai_generated": false
+        }
+        ```
+    """
+    name: str = Field(
+        ..., 
+        min_length=1, 
+        max_length=200,
+        description="Campaign name for internal tracking",
+        example="Winter Sale 2026"
+    )
+    campaign_type: CampaignType = Field(
+        ...,
+        description="Campaign delivery method: 'email' or 'sms'"
+    )
+    segment_type: SegmentType = Field(
+        ...,
+        description="Customer segment: 'all', 'high_value', 'at_risk', 'active', 'dormant', 'recent'"
+    )
+    segment_config: dict = Field(
+        default_factory=dict,
+        description="Segment-specific configuration (e.g., {'min_total_spent': 1000})",
+        example={"min_total_spent": 1000}
+    )
+    subject: Optional[str] = Field(
+        None, 
+        max_length=300,
+        description="Email subject line (required for email campaigns)",
+        example="🎉 Exclusive 20% Off for Our VIP Customers"
+    )
+    content: str = Field(
+        ..., 
+        min_length=10,
+        description="Campaign message body (HTML for email, plain text for SMS)",
+        example="Thank you for being a valued customer! Use code WINTER20 for 20% off..."
+    )
+    ai_generated: bool = Field(
+        default=False,
+        description="Whether content was generated by AI"
+    )
+    ai_prompt: Optional[str] = Field(
+        None,
+        description="Original AI prompt used to generate content",
+        example="Promote 20% off winter sale ending this weekend"
+    )
+    scheduled_at: Optional[datetime] = Field(
+        None,
+        description="Schedule campaign for future sending (ISO 8601 format)",
+        example="2026-02-15T09:00:00Z"
+    )
+
+
+class CampaignUpdate(BaseModel):
+    """Update existing campaign."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    subject: Optional[str] = Field(None, max_length=300)
+    content: Optional[str] = None
+    segment_type: Optional[SegmentType] = None
+    segment_config: Optional[dict] = None
+    scheduled_at: Optional[datetime] = None
+    status: Optional[CampaignStatus] = None
+
+
+class CampaignResponse(BaseModel):
+    """Campaign response."""
+    id: int
+    tenant_id: str
+    name: str
+    campaign_type: str
+    status: str
+    segment_type: str
+    subject: Optional[str]
+    content: str
+    ai_generated: bool
+    scheduled_at: Optional[datetime]
+    sent_at: Optional[datetime]
+    total_recipients: int
+    sent_count: int
+    delivered_count: int
+    opened_count: int
+    clicked_count: int
+    open_rate: float
+    click_rate: float
+    delivery_rate: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SegmentPreviewResponse(BaseModel):
+    """Customer segment preview."""
+    segment_type: str
+    customer_count: int
+    preview_customers: List[dict]
+
+
+# === API Endpoints ===
+
+
+@router.post("/ai/generate", response_model=AIContentResponse)
+async def generate_ai_content(
+    request: AIContentRequest,
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate marketing content using AI.
+    
+    Uses AI providers (Groq, HuggingFace, or Ollama) to generate compelling
+    marketing messages for campaigns. Supports tone customization and personalization.
+    
+    **Available Tones:**
+    - `friendly`: Warm, conversational (default)
+    - `professional`: Business-like, formal
+    - `urgent`: Time-sensitive, action-oriented
+    - `casual`: Relaxed, informal
+    - `formal`: Very professional, corporate
+    
+    **Example Request:**
+    ```json
+    {
+        "content_type": "email",
+        "prompt": "Promote 20% off winter sale ending this weekend",
+        "tone": "urgent",
+        "max_length": 500,
+        "customer_name": "Sarah",
+        "offer_details": "Use code WINTER20 for 20% off all items until Sunday"
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+        "subject": "⏰ Last Chance: 20% Off Winter Sale Ends Sunday!",
+        "content": "Hi Sarah,\\n\\nDon't miss out! Our winter sale ends this Sunday...\\n\\nUse code WINTER20",
+        "ai_generated": true,
+        "provider": "groq",
+        "generated_at": "2026-02-06T10:30:00Z"
+    }
+    ```
+    
+    **Notes:**
+    - Content is automatically optimized for the selected channel (email/SMS)
+    - SMS content respects 160-character best practices
+    - Email content includes proper formatting and structure
+    - Personalization fields (customer_name, offer_details) are woven naturally into content
+    """
+    tenant = db.query(User).filter(User.tenant_id == tenant_ctx.tenant_id).first()
+    business_name = tenant_ctx.tenant_id if not tenant else tenant.name
+    business_type = tenant_ctx.vertical.value if tenant_ctx.vertical else "retail"
+    
+    generator = get_ai_generator()
+    result = await generator.generate_content(
+        content_type=request.content_type,
+        business_name=business_name,
+        business_type=business_type,
+        prompt=request.prompt,
+        max_length=request.max_length,
+        tone=request.tone,
+        customer_name=request.customer_name,
+        offer_details=request.offer_details,
+    )
+    
+    return AIContentResponse(**result)
+
+
+@router.post("/segments/preview", response_model=SegmentPreviewResponse)
+def preview_segment(
+    segment_type: SegmentType,
+    segment_config: dict = {},
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """
+    Preview customer segment before sending campaign.
+    
+    Returns the count and sample of customers matching the segment criteria.
+    Use this to validate your targeting before creating a campaign.
+    
+    **Segment Types:**
+    - `all`: All active customers
+    - `high_value`: Customers with high total spending (top 20% or configurable)
+    - `at_risk`: Previously active customers who haven't purchased recently
+    - `active`: Customers with recent purchase activity
+    - `dormant`: Customers who haven't purchased in a long time
+    - `recent`: Recently registered customers
+    
+    **Configuration Examples:**
+    
+    High-value customers (spent more than R1,000):
+    ```json
+    {
+        "segment_type": "high_value",
+        "segment_config": {"min_total_spent": 1000}
+    }
+    ```
+    
+    At-risk customers (no purchase in 90+ days):
+    ```json
+    {
+        "segment_type": "at_risk",
+        "segment_config": {"days_since_purchase": 90}
+    }
+    ```
+    
+    Recent customers (registered in last 7 days):
+    ```json
+    {
+        "segment_type": "recent",
+        "segment_config": {"days_lookback": 7}
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+        "segment_type": "high_value",
+        "customer_count": 145,
+        "preview_customers": [
+            {
+                "name": "Sarah Johnson",
+                "email": "sarah@example.com",
+                "phone": "+27821234567",
+                "total_spent": 2500.00,
+                "last_purchase": "2026-01-28"
+            }
+        ]
+    }
+    ```
+    """
+    segmentation = CustomerSegmentationService(db)
+    
+    count = segmentation.get_segment_count(tenant_ctx.tenant_id, segment_type, segment_config)
+    preview = segmentation.get_segment_preview(tenant_ctx.tenant_id, segment_type, segment_config, limit=10)
+    
+    return SegmentPreviewResponse(
+        segment_type=segment_type.value,
+        customer_count=count,
+        preview_customers=preview,
+    )
+
+
+@router.post("/", response_model=CampaignResponse)
+def create_campaign(
+    campaign_data: CampaignCreate,
+    current_user: User = Depends(get_current_user),
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """
+    Create new marketing campaign.
+    
+    Creates a campaign with customer segmentation and optional scheduling.
+    Campaign is created in DRAFT status and can be sent immediately or scheduled for later.
+    
+    **Workflow:**
+    1. Preview segment (POST `/segments/preview`) to validate targeting
+    2. Optionally generate AI content (POST `/ai/generate`)
+    3. Create campaign (this endpoint)
+    4. Send campaign (POST `/{id}/send`) or it sends automatically if scheduled
+    
+    **Email Campaign Example:**
+    ```json
+    {
+        "name": "VIP Customer Appreciation",
+        "campaign_type": "email",
+        "segment_type": "high_value",
+        "segment_config": {"min_total_spent": 1000},
+        "subject": "Thank You for Being a VIP Customer! 🎁",
+        "content": "<h1>You're Amazing!</h1><p>As a thank you, enjoy 25% off your next purchase...</p>",
+        "ai_generated": true,
+        "ai_prompt": "Thank VIP customers and offer 25% discount",
+        "scheduled_at": null
+    }
+    ```
+    
+    **SMS Campaign Example:**
+    ```json
+    {
+        "name": "Flash Sale Alert",
+        "campaign_type": "sms",
+        "segment_type": "active", 
+        "segment_config": {},
+        "content": "⚡ Flash Sale! 30% off for 3 hours only. Shop now: https://shop.example.com/flash",
+        "ai_generated": false
+    }
+    ```
+    
+    **Response:**
+    Returns the created campaign with calculated metrics (initially zero):
+    ```json
+    {
+        "id": 42,
+        "tenant_id": "tenant-123",
+        "name": "VIP Customer Appreciation",
+        "campaign_type": "email",
+        "status": "draft",
+        "segment_type": "high_value",
+        "subject": "Thank You for Being a VIP Customer! 🎁",
+        "content": "<h1>You're Amazing!</h1>...",
+        "ai_generated": true,
+        "total_recipients": 145,
+        "sent_count": 0,
+        "delivered_count": 0,
+        "opened_count": 0,
+        "clicked_count": 0,
+        "open_rate": 0.0,
+        "click_rate": 0.0,
+        "delivery_rate": 0.0,
+        "created_at": "2026-02-06T10:40:00Z"
+    }
+    ```
+    
+    **Next Steps:**
+    - Send immediately: `POST /api/campaigns/{id}/send`
+    - Schedule for later: Update with `scheduled_at` timestamp
+    - Edit draft: `PATCH /api/campaigns/{id}`
+    - View recipients: `GET /api/campaigns/{id}/recipients`
+    """
+    # Calculate recipient count
+    segmentation = CustomerSegmentationService(db)
+    recipient_count = segmentation.get_segment_count(
+        tenant_ctx.tenant_id,
+        campaign_data.segment_type,
+        campaign_data.segment_config
+    )
+    
+    #Create campaign
+    campaign = Campaign(
+        tenant_id=tenant_ctx.tenant_id,
+        name=campaign_data.name,
+        campaign_type=campaign_data.campaign_type,
+        status=CampaignStatus.DRAFT if campaign_data.scheduled_at else CampaignStatus.DRAFT,
+        segment_type=campaign_data.segment_type,
+        segment_config=campaign_data.segment_config,
+        subject=campaign_data.subject,
+        content=campaign_data.content,
+        ai_generated=campaign_data.ai_generated,
+        ai_prompt=campaign_data.ai_prompt,
+        scheduled_at=campaign_data.scheduled_at,
+        total_recipients=recipient_count,
+        sent_count=0,
+        delivered_count=0,
+        opened_count=0,
+        clicked_count=0,
+        failed_count=0,
+        created_by=current_user.id,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    
+    db.add(campaign)
+    db.commit()
+    db.refresh(campaign)
+    
+    return CampaignResponse(
+        id=campaign.id,
+        tenant_id=campaign.tenant_id,
+        name=campaign.name,
+        campaign_type=campaign.campaign_type.value,
+        status=campaign.status.value,
+        segment_type=campaign.segment_type.value,
+        subject=campaign.subject,
+        content=campaign.content,
+        ai_generated=campaign.ai_generated,
+        scheduled_at=campaign.scheduled_at,
+        sent_at=campaign.sent_at,
+        total_recipients=campaign.total_recipients,
+        sent_count=campaign.sent_count,
+        delivered_count=campaign.delivered_count,
+        opened_count=campaign.opened_count,
+        clicked_count=campaign.clicked_count,
+        open_rate=campaign.open_rate,
+        click_rate=campaign.click_rate,
+        delivery_rate=campaign.delivery_rate,
+        created_at=campaign.created_at,
+    )
+
+
+@router.get("/", response_model=List[CampaignResponse])
+def list_campaigns(
+    status: Optional[CampaignStatus] = Query(None),
+    campaign_type: Optional[CampaignType] = Query(None),
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """List all campaigns for tenant."""
+    query = db.query(Campaign).filter(
+        Campaign.tenant_id == tenant_ctx.tenant_id
+    )
+    
+    if status:
+        query = query.filter(Campaign.status == status)
+    
+    if campaign_type:
+        query = query.filter(Campaign.campaign_type == campaign_type)
+    
+    campaigns = query.order_by(Campaign.created_at.desc()).all()
+    
+    return [
+        CampaignResponse(
+            id=c.id,
+            tenant_id=c.tenant_id,
+            name=c.name,
+            campaign_type=c.campaign_type.value,
+            status=c.status.value,
+            segment_type=c.segment_type.value,
+            subject=c.subject,
+            content=c.content,
+            ai_generated=c.ai_generated,
+            scheduled_at=c.scheduled_at,
+            sent_at=c.sent_at,
+            total_recipients=c.total_recipients,
+            sent_count=c.sent_count,
+            delivered_count=c.delivered_count,
+            opened_count=c.opened_count,
+            clicked_count=c.clicked_count,
+            open_rate=c.open_rate,
+            click_rate=c.click_rate,
+            delivery_rate=c.delivery_rate,
+            created_at=c.created_at,
+        )
+        for c in campaigns
+    ]
+
+
+@router.get("/{campaign_id}", response_model=CampaignResponse)
+def get_campaign(
+    campaign_id: int,
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """Get campaign details."""
+    campaign = db.query(Campaign).filter(
+        Campaign.id == campaign_id,
+        Campaign.tenant_id == tenant_ctx.tenant_id,
+    ).first()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    return CampaignResponse(
+        id=campaign.id,
+        tenant_id=campaign.tenant_id,
+        name=campaign.name,
+        campaign_type=campaign.campaign_type.value,
+        status=campaign.status.value,
+        segment_type=campaign.segment_type.value,
+        subject=campaign.subject,
+        content=campaign.content,
+        ai_generated=campaign.ai_generated,
+        scheduled_at=campaign.scheduled_at,
+        sent_at=campaign.sent_at,
+        total_recipients=campaign.total_recipients,
+        sent_count=campaign.sent_count,
+        delivered_count=campaign.delivered_count,
+        opened_count=campaign.opened_count,
+        clicked_count=campaign.clicked_count,
+        open_rate=campaign.open_rate,
+        click_rate=campaign.click_rate,
+        delivery_rate=campaign.delivery_rate,
+        created_at=campaign.created_at,
+    )
+
+
+@router.patch("/{campaign_id}", response_model=CampaignResponse)
+def update_campaign(
+    campaign_id: int,
+    campaign_data: CampaignUpdate,
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """Update campaign (draft only)."""
+    campaign = db.query(Campaign).filter(
+        Campaign.id == campaign_id,
+        Campaign.tenant_id == tenant_ctx.tenant_id,
+    ).first()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign.status not in [CampaignStatus.DRAFT, CampaignStatus.SCHEDULED]:
+        raise HTTPException(status_code=400, detail="Can only edit draft or scheduled campaigns")
+    
+    # Update fields
+    update_data = campaign_data.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(campaign, field, value)
+    
+    campaign.updated_at = datetime.now()
+    
+    db.commit()
+    db.refresh(campaign)
+    
+    return CampaignResponse(
+        id=campaign.id,
+        tenant_id=campaign.tenant_id,
+        name=campaign.name,
+        campaign_type=campaign.campaign_type.value,
+        status=campaign.status.value,
+        segment_type=campaign.segment_type.value,
+        subject=campaign.subject,
+        content=campaign.content,
+        ai_generated=campaign.ai_generated,
+        scheduled_at=campaign.scheduled_at,
+        sent_at=campaign.sent_at,
+        total_recipients=campaign.total_recipients,
+        sent_count=campaign.sent_count,
+        delivered_count=campaign.delivered_count,
+        opened_count=campaign.opened_count,
+        clicked_count=campaign.clicked_count,
+        open_rate=campaign.open_rate,
+        click_rate=campaign.click_rate,
+        delivery_rate=campaign.delivery_rate,
+        created_at=campaign.created_at,
+    )
+
+
+@router.post("/{campaign_id}/send")
+async def send_campaign(
+    campaign_id: int,
+    background_tasks: BackgroundTasks,
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """Send campaign immediately."""
+    campaign = db.query(Campaign).filter(
+        Campaign.id == campaign_id,
+        Campaign.tenant_id == tenant_ctx.tenant_id,
+    ).first()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign.status not in [CampaignStatus.DRAFT, CampaignStatus.SCHEDULED]:
+        raise HTTPException(status_code=400, detail="Campaign already sent or cancelled")
+    
+    # Update status
+    campaign.status = CampaignStatus.SENDING
+    campaign.sent_at = datetime.now()
+    db.commit()
+    
+    # Queue sending in background
+    background_tasks.add_task(_send_campaign_task, campaign.id, db)
+    
+    return {"message": "Campaign sending started", "campaign_id": campaign.id}
+
+
+@router.delete("/{campaign_id}")
+def delete_campaign(
+    campaign_id: int,
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """Delete campaign (draft only)."""
+    campaign = db.query(Campaign).filter(
+        Campaign.id == campaign_id,
+        Campaign.tenant_id == tenant_ctx.tenant_id,
+    ).first()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign.status not in [CampaignStatus.DRAFT]:
+        raise HTTPException(status_code=400, detail="Can only delete draft campaigns")
+    
+    db.delete(campaign)
+    db.commit()
+    
+    return {"message": "Campaign deleted", "campaign_id": campaign_id}
+
+
+# === Background Tasks ===
+
+
+async def _send_campaign_task(campaign_id: int, db: Session):
+    """Send campaign to recipients (background task)."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        logger.error(f"Campaign {campaign_id} not found")
+        return
+    
+    # Get sending services
+    twilio = get_twilio_service()
+    sendgrid = get_sendgrid_service()
+    
+    # Validate we have the right provider for campaign type
+    if campaign.campaign_type == CampaignType.SMS and not twilio:
+        logger.error(f"Campaign {campaign_id} is SMS but Twilio not configured")
+        campaign.status = CampaignStatus.FAILED
+        db.commit()
+        return
+    
+    if campaign.campaign_type == CampaignType.EMAIL and not sendgrid:
+        logger.error(f"Campaign {campaign_id} is EMAIL but SendGrid not configured")
+        campaign.status = CampaignStatus.FAILED
+        db.commit()
+        return
+    
+    # Get segment customers
+    segmentation = CustomerSegmentationService(db)
+    customers = segmentation.get_segment_customers(
+        campaign.tenant_id,
+        campaign.segment_type,
+        campaign.segment_config
+    )
+    
+    sent = 0
+    failed = 0
+    delivered = 0
+    
+    logger.info(f"Sending campaign {campaign_id} to {len(customers)} recipients")
+    
+    for customer in customers:
+        try:
+            # Create recipient record
+            recipient = CampaignRecipient(
+                campaign_id=campaign.id,
+                customer_id=customer.id,
+                tenant_id=campaign.tenant_id,
+                recipient_email=customer.email,
+                recipient_phone=customer.phone,
+                sent_at=datetime.now(),
+                created_at=datetime.now(),
+            )
+            db.add(recipient)
+            db.flush()  # Get recipient ID
+            
+            # Send message based on campaign type
+            if campaign.campaign_type == CampaignType.SMS:
+                # Send SMS via Twilio
+                if not customer.phone:
+                    logger.warning(f"Customer {customer.id} has no phone number")
+                    failed += 1
+                    recipient.failed_at = datetime.now()
+                    recipient.error_message = "No phone number"
+                    continue
+                
+                result = twilio.send_sms(
+                    to_phone=customer.phone,
+                    message=campaign.content,
+                    callback_url=None  # TODO: Add webhook URL
+                )
+                
+                if result['success']:
+                    recipient.provider_message_id = result['message_sid']
+                    recipient.delivered_at = datetime.now()
+                    delivered += 1
+                    sent += 1
+                    logger.debug(f"SMS sent to {customer.phone[:8]}*** via Twilio")
+                else:
+                    recipient.failed_at = datetime.now()
+                    recipient.error_message = result['error']
+                    failed += 1
+                    logger.warning(f"SMS failed to {customer.phone[:8]}***: {result['error']}")
+                    
+            elif campaign.campaign_type == CampaignType.EMAIL:
+                # Send Email via SendGrid
+                if not customer.email:
+                    logger.warning(f"Customer {customer.id} has no email address")
+                    failed += 1
+                    recipient.failed_at = datetime.now()
+                    recipient.error_message = "No email address"
+                    continue
+                
+                result = sendgrid.send_email(
+                    to_email=customer.email,
+                    subject=campaign.subject or "Message from your business",
+                    html_content=campaign.content,
+                    to_name=f"{customer.first_name} {customer.last_name}".strip() or None
+                )
+                
+                if result['success']:
+                    recipient.provider_message_id = result['message_id']
+                    recipient.delivered_at = datetime.now()
+                    delivered += 1
+                    sent += 1
+                    logger.debug(f"Email sent to {customer.email} via SendGrid")
+                else:
+                    recipient.failed_at = datetime.now()
+                    recipient.error_message = result['error']
+                    failed += 1
+                    logger.warning(f"Email failed to {customer.email}: {result['error']}")
+            
+        except Exception as e:
+            failed += 1
+            logger.error(f"Error sending to customer {customer.id}: {str(e)}")
+            if 'recipient' in locals():
+                recipient.failed_at = datetime.now()
+                recipient.error_message = str(e)
+    
+    # Update campaign stats
+    campaign.total_recipients = len(customers)
+    campaign.sent_count = sent
+    campaign.failed_count = failed
+    campaign.delivered_count = delivered
+    campaign.status = CampaignStatus.SENT
+    
+    # Calculate rates
+    if campaign.sent_count > 0:
+        campaign.delivery_rate = (campaign.delivered_count / campaign.sent_count) * 100
+    
+    db.commit()
+    
+    logger.info(
+        f"Campaign {campaign_id} completed: "
+        f"{sent} sent, {delivered} delivered, {failed} failed"
+    )

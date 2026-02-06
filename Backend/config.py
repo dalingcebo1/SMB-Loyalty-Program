@@ -78,6 +78,53 @@ class Settings(BaseSettings):
     # Redis configuration for caching
     redis_url: Optional[str] = Field(None, alias="REDIS_URL")  # e.g., "redis://localhost:6379/0"
     enable_cache: bool = Field(True, alias="ENABLE_CACHE")  # Master switch for caching
+    
+    # External service providers
+    # Twilio SMS
+    twilio_account_sid: Optional[str] = Field(None, alias="TWILIO_ACCOUNT_SID")
+    twilio_auth_token: Optional[str] = Field(None, alias="TWILIO_AUTH_TOKEN")
+    twilio_phone_number: Optional[str] = Field(None, alias="TWILIO_PHONE_NUMBER")  # E. 164 format: +27XXXXXXXXX
+    
+    # SendGrid Email (migrating from old sendgrid_api_key)
+    sendgrid_from_email: Optional[str] = Field(None, alias="SENDGRID_FROM_EMAIL")
+    
+    # Convenience properties to access sendgrid with consistent naming
+    @property
+    def TWILIO_ACCOUNT_SID(self) -> Optional[str]:
+        return self.twilio_account_sid
+    
+    @property
+    def TWILIO_AUTH_TOKEN(self) -> Optional[str]:
+        return self.twilio_auth_token
+    
+    @property
+    def TWILIO_PHONE_NUMBER(self) -> Optional[str]:
+        return self.twilio_phone_number
+    
+    @property
+    def SENDGRID_API_KEY(self) -> Optional[str]:
+        return self.sendgrid_api_key
+    
+    @property
+    def SENDGRID_FROM_EMAIL(self) -> Optional[str]:
+        return self.sendgrid_from_email
+    
+    @property
+    def GROQ_API_KEY(self) -> Optional[str]:
+        return self.groq_api_key
+    
+    @property
+    def HUGGINGFACE_API_KEY(self) -> Optional[str]:
+        return self.huggingface_api_key
+    
+    @property
+    def OLLAMA_API_URL(self) -> Optional[str]:
+        return self.ollama_api_url
+    
+    # AI Content Generation
+    groq_api_key: Optional[str] = Field(None, alias="GROQ_API_KEY")
+    huggingface_api_key: Optional[str] = Field(None, alias="HUGGINGFACE_API_KEY")
+    ollama_api_url: Optional[str] = Field("http://localhost:11434", alias="OLLAMA_API_URL")
 
     def dangerous_allowed(self) -> bool:
         """Return True if destructive dev endpoints are permitted in this environment."""

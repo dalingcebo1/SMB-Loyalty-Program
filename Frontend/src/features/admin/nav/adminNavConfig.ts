@@ -119,6 +119,7 @@ export const adminNavGroups: NavGroup[] = [
       // Retail
       { key: 'retail-inventory', label: 'Retail Inventory', path: '/admin/retail/inventory', cap: 'services.manage', allowedVerticals: ['retail'] },
       { key: 'retail-pos', label: 'POS Terminal', path: '/admin/retail/pos', cap: 'services.manage', allowedVerticals: ['retail'] },
+      { key: 'retail-sales', label: 'Sales Reports', path: '/admin/retail/sales', cap: 'view_reports', allowedVerticals: ['retail'] },
       // Dispensary
       { key: 'dispensary-products', label: 'Products', path: '/admin/dispensary/products', cap: 'services.manage', allowedVerticals: ['dispensary'] },
       { key: 'dispensary-categories', label: 'Categories', path: '/admin/dispensary/categories', cap: 'services.manage', allowedVerticals: ['dispensary'] },

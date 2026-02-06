@@ -232,7 +232,7 @@ export default function BookingCalendar() {
   const timeSlots = useMemo(() => {
     const slots: string[] = [];
     for (let hour = 6; hour < 23; hour++) {
-      for (let minute of [0, 30]) {
+      for (const minute of [0, 30]) {
         slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
       }
     }

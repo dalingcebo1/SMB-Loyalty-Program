@@ -83,6 +83,9 @@ class Tenant(Base):
     branding       = relationship("TenantBranding", back_populates="tenant", uselist=False, cascade="all, delete-orphan")
     integrations   = relationship("TenantIntegration", back_populates="tenant", cascade="all, delete-orphan")
     domains        = relationship("TenantDomain", back_populates="tenant", cascade="all, delete-orphan")
+    invoices       = relationship("Invoice", back_populates="tenant", cascade="all, delete-orphan")
+    expenses       = relationship("Expense", back_populates="tenant", cascade="all, delete-orphan")
+    financial_years = relationship("FinancialYear", back_populates="tenant", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_tenants_vertical_domain", "vertical_type", "primary_domain"),
@@ -599,6 +602,12 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, Index
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+
+# Import beauty package and review models
+from app.vertical_models.beauty_packages import BeautyPackage, PackageBooking, package_services
+from app.vertical_models.beauty_reviews import ServiceReview, AppointmentReminder
+from app.vertical_models.campaigns import Campaign, CampaignRecipient, CustomerSegment, CampaignType, CampaignStatus, SegmentType
+from app.vertical_models.financial import Invoice, InvoiceLineItem, InvoiceStatus, Expense, ExpenseCategory, PaymentMethod, FinancialYear
 
 
 class Supplier(Base):

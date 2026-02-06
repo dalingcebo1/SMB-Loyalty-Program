@@ -140,7 +140,7 @@ export default function CustomerBooking() {
       player_count: playerCount,
       player_names: playerNames.filter((n) => n.trim()).join(', '),
       equipment_rentals: Object.entries(equipmentRentals)
-        .filter(([_, quantity]) => quantity > 0)
+        .filter(([, quantity]) => quantity > 0)
         .map(([equipment_id, quantity]) => ({
           equipment_id: parseInt(equipment_id),
           quantity,
@@ -483,7 +483,7 @@ export default function CustomerBooking() {
                 <h3 className="font-semibold text-gray-800 mb-2">Equipment Rentals</h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   {Object.entries(equipmentRentals)
-                    .filter(([_, quantity]) => quantity > 0)
+                    .filter(([, quantity]) => quantity > 0)
                     .map(([id, quantity]) => {
                       const item = equipment.find((e: Equipment) => e.id === parseInt(id));
                       return (

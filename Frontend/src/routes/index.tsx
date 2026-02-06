@@ -110,6 +110,7 @@ const BillingSettings = lazy(() => import('../features/admin/pages/BillingSettin
 // Retail vertical pages
 const RetailInventoryDashboard = lazy(() => import('../features/retail/pages/InventoryDashboard'));
 const POSTerminal = lazy(() => import('../features/retail/pages/POSTerminal'));
+const RetailSalesReports = lazy(() => import('../features/retail/pages/SalesReports'));
 // Dispensary vertical pages
 const DispensaryProductManagement = lazy(() => import('../features/dispensary/pages/ProductManagement'));
 const DispensaryCategoryManagement = lazy(() => import('../features/dispensary/pages/CategoryManagement'));
@@ -243,6 +244,7 @@ const AppRoutes: React.FC = () => {
             // Retail vertical routes
             { path: 'retail/inventory', element: <RetailInventoryDashboard /> },
             { path: 'retail/pos', element: <POSTerminal /> },
+            { path: 'retail/sales', element: <RetailSalesReports /> },
             // Dispensary vertical routes
             { path: 'dispensary/products', element: <DispensaryProductManagement /> },
             { path: 'dispensary/categories', element: <DispensaryCategoryManagement /> },

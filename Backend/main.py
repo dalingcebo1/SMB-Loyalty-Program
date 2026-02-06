@@ -49,6 +49,9 @@ from app.routes.beauty import router as beauty_router
 from app.routes.padel import router as padel_router
 from app.routes.flowershop import router as flowershop_router
 from app.routes.dispensary import router as dispensary_router
+from app.routes.campaigns import router as campaigns_router
+from app.routes.financial import router as financial_router
+from app.routes.providers import router as providers_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 
 # Conditional import for verticals (may not be available in all test contexts)
@@ -75,10 +78,216 @@ from app.models import TenantBranding
 import os
 import tempfile
 
+# === OpenAPI Configuration ===
+tags_metadata = [
+    {
+        "name": "Authentication",
+        "description": "User authentication, login, registration, and token management. "
+                      "Supports tenant-specific authentication with JWT tokens.",
+    },
+    {
+        "name": "Users",
+        "description": "User management endpoints for creating, updating, and retrieving user accounts. "
+                      "Supports role-based access control (Admin, Staff, Manager, Customer).",
+    },
+    {
+        "name": "Tenants",
+        "description": "Multi-tenant organization management. Each tenant has isolated data, branding, "
+                      "and configuration. Essential for white-label deployments.",
+    },
+    {
+        "name": "Catalog",
+        "description": "Product and service catalog management. Create products with variants, pricing, "
+                      "inventory tracking, and category organization.",
+    },
+    {
+        "name": "Loyalty",
+        "description": "Points-based loyalty program with tiers, rewards, and redemption tracking. "
+                      "Includes automated point accrual rules and tier progression.",
+    },
+    {
+        "name": "Orders",
+        "description": "Order processing and management. Create orders, track status, apply discounts, "
+                      "and manage fulfillment workflows.",
+    },
+    {
+        "name": "Payments",
+        "description": "Payment processing with Stripe integration. Handle payments, refunds, "
+                      "payment methods, and transaction history.",
+    },
+    {
+        "name": "Marketing Campaigns",
+        "description": "**NEW**: Email and SMS marketing campaigns with AI-powered content generation. "
+                      "Features customer segmentation, bulk sending, and delivery tracking. "
+                      "Integrates with Twilio (SMS) and SendGrid (Email). Supports automated campaigns "
+                      "based on customer behavior (RFM analysis).",
+        "externalDocs": {
+            "description": "Campaign Implementation Guide",
+            "url": "https://github.com/dalingcebo1/SMB-Loyalty-Program/blob/main/PHASE_5_WEEK_11_COMPLETE.md"
+        },
+    },
+    {
+        "name": "Financial",
+        "description": "**NEW**: Financial management tools including invoicing, expense tracking, "
+                      "and profit & loss reporting. Generate and send invoices, record payments, "
+                      "track expenses by category, and view financial health metrics. "
+                      "Supports multi-currency with locale-specific formatting.",
+        "externalDocs": {
+            "description": "Financial Tools Documentation",
+            "url": "https://github.com/dalingcebo1/SMB-Loyalty-Program/blob/main/PHASE_5_WEEK_11_COMPLETE.md"
+        },
+    },
+    {
+        "name": "Providers",
+        "description": "**NEW**: External provider integration health checks and webhooks. "
+                      "Monitor Twilio (SMS) and SendGrid (Email) status, handle delivery callbacks, "
+                      "and test provider configurations. Includes development endpoints for testing.",
+    },
+    {
+        "name": "Analytics",
+        "description": "Business intelligence and reporting. Track metrics, user activity, "
+                      "sales performance, and customer engagement.",
+    },
+    {
+        "name": "Admin",
+        "description": "Administrative endpoints for system management, user administration, "
+                      "and configuration. Restricted to admin roles.",
+    },
+    {
+        "name": "Inventory",
+        "description": "Stock level management with low-stock alerts, restock tracking, "
+                      "and inventory adjustments.",
+    },
+    {
+        "name": "Subscriptions",
+        "description": "Recurring subscription management with Stripe. Create plans, "
+                      "manage subscriptions, and handle billing.",
+    },
+    {
+        "name": "Reports",
+        "description": "Generate comprehensive business reports including sales, revenue, "
+                      "customer retention, and inventory summaries.",
+    },
+    {
+        "name": "Notifications",
+        "description": "Push notifications, email alerts, and in-app messaging system.",
+    },
+    {
+        "name": "Customers",
+        "description": "Customer profile management, purchase history, and relationship tracking.",
+    },
+    {
+        "name": "Health",
+        "description": "System health checks, readiness probes, and status monitoring endpoints. "
+                      "Used by orchestrators and monitoring systems.",
+    },
+    {
+        "name": "Verticals",
+        "description": "Industry-specific endpoints for Retail, Beauty/Salon, Padel, Flower Shop, "
+                      "and Cannabis Dispensary verticals. Each vertical has specialized features.",
+    },
+]
+
 app = FastAPI(
-    title="SMB Loyalty Program",
-    version="0.1",
+    title="SMB Loyalty Program API",
+    version="2.0.0",
+    description="""
+## Multi-Tenant Loyalty & Business Management Platform
+
+The SMB Loyalty Program is a comprehensive SaaS platform for small and medium businesses 
+to manage loyalty programs, customer relationships, marketing campaigns, and financial operations.
+
+### Key Features
+
+**🎯 Core Platform**
+- Multi-tenant architecture with data isolation
+- Role-based access control (Admin, Staff, Manager, Customer)
+- Points-based loyalty system with tier management
+- Order processing and payment integration (Stripe)
+
+**📧 Marketing & Communication** (Phase 5)
+- AI-powered email/SMS campaigns (Groq, HuggingFace, Ollama)
+- Customer segmentation (RFM analysis, behavioral targeting)
+- Bulk sending with personalization (Twilio, SendGrid)
+- Delivery tracking and engagement metrics
+
+**💰 Financial Management** (Phase 5)
+- Invoice generation and payment tracking
+- Expense management by category
+- Profit & Loss reporting with date filtering
+- Multi-currency support with ZAR localization
+
+**🏢 Industry Verticals**
+- Retail: Inventory, POS, stock management
+- Beauty/Salon: Appointment booking, service packages
+- Padel: Court reservations, member management
+- Flower Shop: Orders, delivery tracking, occasions
+- Cannabis Dispensary: Compliance tracking, batch management
+
+### Authentication
+
+All authenticated endpoints require a JWT Bearer token:
+
+```bash
+curl -X GET "https://api.example.com/api/campaigns" \\
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Get a token**:
+```bash
+curl -X POST "https://api.example.com/api/auth/login" \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"user@example.com","password":"password123"}'
+```
+
+### Rate Limits
+
+- **Authenticated**: 100 requests/minute per user
+- **Unauthenticated**: 20 requests/minute per IP
+- **Bulk Operations**: 10 requests/minute per tenant
+
+Rate limit headers are included in responses:
+- `X-RateLimit-Limit`: Maximum requests per window
+- `X-RateLimit-Remaining`: Requests remaining
+- `Retry-After`: Seconds until reset (when rate limited)
+
+### Common Response Codes
+
+- `200 OK`: Successful request
+- `201 Created`: Resource created successfully
+- `400 Bad Request`: Invalid input or validation error
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Insufficient permissions
+- `404 Not Found`: Resource not found
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Unexpected server error
+
+### Webhooks
+
+The platform supports webhooks from external providers:
+- **Twilio**: SMS delivery status at `/api/providers/webhooks/twilio/status`
+- **SendGrid**: Email events at `/api/providers/webhooks/sendgrid/events`
+- **Stripe**: Payment events at `/webhooks/stripe`
+
+### Support
+
+- **Documentation**: [GitHub Repository](https://github.com/dalingcebo1/SMB-Loyalty-Program)
+- **API Issues**: Create a GitHub issue
+- **Developer Guide**: See DEVELOPER_SETUP_GUIDE.md
+    """,
     openapi_url="/api/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=tags_metadata,
+    contact={
+        "name": "SMB Loyalty Platform Team",
+        "url": "https://github.com/dalingcebo1/SMB-Loyalty-Program",
+        "email": "support@example.com",
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
 )  # allow automatic redirects on trailing slash
 
 # Configure logging (JSON in production, human readable elsewhere)
@@ -569,6 +778,9 @@ router_mounts = [
     ("/api",           padel_router),  # Padel court booking system
     ("/api",           flowershop_router),  # Flower shop orders and delivery
     ("/api",           dispensary_router),  # Cannabis dispensary compliance system
+    ("",              campaigns_router),   # Marketing campaigns (email/SMS) with AI content
+    ("/api",           financial_router),  # Financial tools (invoices, expenses, P&L)
+    ("/api/providers", providers_router),  # External provider health checks and webhooks
 ]
 # Conditionally include dev router outside production
 if settings.environment != 'production':

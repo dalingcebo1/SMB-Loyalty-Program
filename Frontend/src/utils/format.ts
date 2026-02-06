@@ -55,3 +55,9 @@ export function formatRelativeTime(timestamp: string | number | Date): string {
 export function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
+
+// Format date as "Jan 15, 2026" or similar
+export function formatDate(dateString: string | Date): string {
+  const d = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}

@@ -99,6 +99,21 @@ def create_order(
     - Retry payment pin generation on race-condition unique collisions
     - Return clearer 500 only for unexpected errors
     """
+    # 0. Check transaction limit for the tenant
+    from app.services.usage_tracker import get_usage_tracker
+    
+    tenant_id = getattr(user, 'tenant_id', 'default')
+    tracker = get_usage_tracker(db)
+    limit_check = tracker.check_limit(tenant_id, "transactions")
+    
+    if limit_check["exceeded"]:
+        limit = limit_check['limit']
+        detail = (
+            f"Monthly transaction limit reached. Your plan allows {limit} "
+            "transactions per month. Please upgrade your plan."
+        )
+        raise HTTPException(status_code=402, detail=detail)
+    
     # 1. Validate service
     svc = db.query(Service).filter(Service.id == req.service_id).first()
     if not svc:

@@ -65,6 +65,8 @@ interface AdminPageContainerProps {
   description?: string;
   /** Action buttons/elements to show in header */
   actions?: ReactNode;
+  /** Breadcrumb navigation (optional) */
+  breadcrumbs?: ReactNode;
   /** Page content */
   children: ReactNode;
   /** Additional CSS classes */
@@ -75,11 +77,15 @@ export function AdminPageContainer({
   title,
   description,
   actions,
+  breadcrumbs,
   children,
   className = '',
 }: AdminPageContainerProps) {
   return (
     <div className={`admin-page ${className}`}>
+      {/* Breadcrumbs */}
+      {breadcrumbs && <div className="mb-4">{breadcrumbs}</div>}
+      
       {/* Page Header */}
       <div className="admin-page-header">
         <div className="flex-1 min-w-0 space-y-1">

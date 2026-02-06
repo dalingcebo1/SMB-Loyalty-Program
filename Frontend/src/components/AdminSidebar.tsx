@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useContext } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useCapabilities } from '../features/admin/hooks/useCapabilities';
+import { useVerticalFeatures } from '../contexts/VerticalContext';
 import { adminNavGroups, allAdminNavItems } from '../features/admin/nav/adminNavConfig';
 import { readJsonStorage } from '../utils/storage';
 import { TenantConfigContext } from '../config/TenantConfigProvider';
@@ -16,6 +17,7 @@ interface AdminSidebarProps {
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
   const { has } = useCapabilities();
+  const { hasFeature, features } = useVerticalFeatures();
   const tenantConfig = useContext(TenantConfigContext);
   const moduleFlags = tenantConfig?.moduleFlags || getModuleFlags();
   const navigate = useNavigate();
@@ -102,8 +104,17 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
       <nav className="flex-1 p-3 space-y-1">
         {adminNavGroups.map(group => {
           const groupItems = group.items.filter(i => {
+            // Capability check
             if (i.cap && !has(i.cap)) return false;
+            // Feature flag check
             if (i.feature && !moduleFlags[i.feature]) return false;
+            // Vertical feature check
+            if (i.requiredVerticalFeature && !hasFeature(i.requiredVerticalFeature)) return false;
+            // Allowed verticals check
+            if (i.allowedVerticals && i.allowedVerticals.length > 0) {
+              const verticalKey = (features as any).verticalKey || tenantConfig?.vertical || 'carwash';
+              if (!i.allowedVerticals.includes(verticalKey)) return false;
+            }
             return true;
           });
           if (!groupItems.length) return null;

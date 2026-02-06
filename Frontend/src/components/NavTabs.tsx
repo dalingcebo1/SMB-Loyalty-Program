@@ -44,7 +44,19 @@ const NavTabs: React.FC = () => {
     // Regular consumer / admin (admin keeps consumer view plus staff dashboard link if needed)
     navOptions = [
       ...(enableOrders ? [{ to: '/', label: 'Home', icon: <FaHome /> }] : []),
-  ...(enableOrders ? [{ to: '/order', label: vertical === 'flowershop' ? 'Order Flowers' : vertical === 'padel' ? 'Book Court' : vertical === 'beauty' ? 'Book Service' : vertical === 'dispensary' ? 'Order Products' : 'Book Service', icon: <FaClipboardList /> }] : []),
+      // Vertical-specific ordering/booking links
+      ...(enableOrders && vertical === 'dispensary' 
+        ? [{ to: '/dispensary', label: 'Shop Products', icon: <FaClipboardList /> }] 
+        : enableOrders && vertical === 'flowershop'
+        ? [{ to: '/order', label: 'Order Flowers', icon: <FaClipboardList /> }]
+        : enableOrders && vertical === 'padel'
+        ? [{ to: '/order', label: 'Book Court', icon: <FaClipboardList /> }]
+        : enableOrders && vertical === 'beauty'
+        ? [{ to: '/order', label: 'Book Service', icon: <FaClipboardList /> }]
+        : enableOrders
+        ? [{ to: '/order', label: 'Book Service', icon: <FaClipboardList /> }]
+        : []
+      ),
       ...(enableLoyalty ? [{ to: '/myloyalty', label: 'My Rewards', icon: <FaGift /> }] : []),
       ...(enableOrders ? [{ to: '/past-orders', label: 'Order History', icon: <FaHistory /> }] : []),
       ...(enableUsers ? [{ to: '/account', label: 'Account', icon: <FaUser /> }] : []),

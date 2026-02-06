@@ -75,3 +75,42 @@ PLAN_REGISTRY: Dict[str, PlanConfig] = {
 
 def get_plan(plan_id: str) -> PlanConfig:
     return PLAN_REGISTRY.get(plan_id, PLAN_REGISTRY["free"])
+
+
+def get_plan_limits(plan_id: str) -> Dict[str, int | None]:
+    """
+    Extract resource limits from plan configuration.
+    
+    Args:
+        plan_id: Plan identifier ('free', 'pro', 'enterprise')
+        
+    Returns:
+        Dict mapping resource names to limits:
+        {
+            'customers': 100,
+            'transactions': 500,
+            'users': 1
+        }
+        Returns empty dict if plan not found.
+    """
+    plan = PLAN_REGISTRY.get(plan_id)
+    if not plan:
+        return {}
+    
+    limits = {}
+    
+    # Extract customer limit from loyalty feature
+    loyalty_config = plan.features.get(FEATURE_LOYALTY)
+    if isinstance(loyalty_config, dict):
+        if "limit_customers" in loyalty_config:
+            limits["customers"] = loyalty_config["limit_customers"]
+        if "limit_orders_per_month" in loyalty_config:
+            limits["transactions"] = loyalty_config["limit_orders_per_month"]
+    
+    # Extract user limit from multi_user feature
+    multi_user_config = plan.features.get(FEATURE_MULTI_USER)
+    if isinstance(multi_user_config, dict):
+        if "limit_users" in multi_user_config:
+            limits["users"] = multi_user_config["limit_users"]
+    
+    return limits

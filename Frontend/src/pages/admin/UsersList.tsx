@@ -11,6 +11,8 @@ import { FixedSizeList as List, type ListChildComponentProps } from 'react-windo
 import ContentLoader from 'react-content-loader';
 import Modal from 'react-modal';
 import { notifySuccessKey, notifyErrorKey } from '../../utils/notifications';
+import { useCapabilities } from '../../features/admin/hooks/useCapabilities';
+import { AdminPageContainer } from '../../features/admin/components/AdminGrid';
 
 // API user shape
 interface ApiUser {
@@ -157,8 +159,9 @@ const UsersList: React.FC = () => {
   const itemData = useMemo(() => ({ users: usersList, onEdit: handleEdit, onDelete: handleDelete }), [usersList, handleEdit, handleDelete]);
 
   // Early returns after all hooks are declared
+  const { has } = useCapabilities();
   if (authLoading) return <PageLayout loading>{null}</PageLayout>;
-  if (!user || user.role !== 'admin') return <Navigate to='/' replace />;
+  if (!user || !has('users.role.update')) return <Navigate to='/' replace />;
 
   // memoized skeleton row
   const LoadingRow = memo(() => (
@@ -206,36 +209,40 @@ const UsersList: React.FC = () => {
   });
 
   return (
-    <PageLayout>
-      <h1 className="text-2xl font-bold mb-4">Users</h1>
+    <AdminPageContainer
+      title="Users"
+      description="Manage user accounts and permissions"
+      actions={
+        <button
+          onClick={() => refetch()}
+          disabled={isLoading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          {isLoading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      }
+    >
       {/* Toolbar: filter + sort */}
-      <div className="flex mb-4 items-center">
+      <div className="flex mb-4 items-center gap-2">
         {/* search input */}
         <input
           aria-label="Filter users"
           placeholder="Search users..."
           value={searchTerm}
           onChange={handleSearchChange}
-          className="border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded flex-1 mr-2"
+          className="border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded flex-1"
         />
         <select
           aria-label="Sort users"
           value={sortKey}
           onChange={handleSortChange}
-          className="border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded mr-2"
+          className="border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
         >
           <option value="first_name">First Name</option>
           <option value="last_name">Last Name</option>
           <option value="email">Email</option>
           <option value="role">Role</option>
         </select>
-        <button
-          onClick={() => refetch()}
-          disabled={isLoading}
-          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isLoading ? 'Refreshing…' : 'Refresh'}
-        </button>
       </div>
       {/* Error banner */}
       {isError && showErrorBanner && (
@@ -374,7 +381,7 @@ const UsersList: React.FC = () => {
           </div>
         </Modal>
       )}
-    </PageLayout>
+    </AdminPageContainer>
   );
 };
 

@@ -6,6 +6,7 @@ import api from '../../../api/api';
 import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { formatCurrency as formatCurrencyZAR } from '../../../utils/format';
+import { AdminPageContainer } from '../components/AdminGrid';
 
 interface BusinessSummary {
   total_revenue: number;
@@ -123,25 +124,22 @@ const ReportsAdmin: React.FC = () => {
   // Check permissions
   if (!hasCapability('view_reports')) {
     return (
-      <div className="p-6">
+      <AdminPageContainer title="Access Denied" description="">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-700">You don't have permission to view business reports.</p>
         </div>
-      </div>
+      </AdminPageContainer>
     );
   }
 
   const isLoading = summaryLoading || revenueLoading || serviceLoading || loyaltyLoading || segmentLoading;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Business Reports</h1>
-          <p className="text-gray-600">Analytics and insights for your business performance</p>
-        </div>
-        <div className="flex items-center gap-4">
+    <AdminPageContainer
+      title="Business Reports"
+      description="Analytics and insights for your business performance"
+      actions={
+        <>
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
@@ -159,8 +157,9 @@ const ReportsAdmin: React.FC = () => {
             <HiOutlineRefresh className="w-4 h-4" />
             Refresh
           </button>
-        </div>
-      </div>
+        </>
+      }
+    >
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
@@ -381,7 +380,7 @@ const ReportsAdmin: React.FC = () => {
           </div>
         </>
       )}
-    </div>
+    </AdminPageContainer>
   );
 };
 

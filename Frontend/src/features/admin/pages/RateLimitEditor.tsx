@@ -1,64 +1,83 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useCapabilities } from '../hooks/useCapabilities';
 import api from '../../../api/api';
+import { AdminPageContainer } from '../components/AdminGrid';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface RLState { overrides: Record<string, { capacity: number; per_seconds: number }>; bans: string[] }
 
 const RateLimitEditor: React.FC = () => {
   const { has } = useCapabilities();
-  const [state, setState] = useState<RLState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({ scope: '', capacity: '60', per: '60' });
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  // Fetch rate limits
+  const { data: state, isLoading: loading, error: queryError } = useQuery<RLState>({
+    queryKey: ['admin-rate-limits'],
+    queryFn: async () => {
       const res = await api.get('/admin/rate-limits');
       const bans = res.data.bans || [];
-      setState({ overrides: res.data.overrides || {}, bans });
-    } catch (e) {
-      interface ErrLike { response?: { data?: { detail?: string } } }
-      const maybe = e as ErrLike;
-      setError(maybe.response?.data?.detail || 'Failed to load');
-    } finally { setLoading(false); }
-  };
+      return { overrides: res.data.overrides || {}, bans };
+    },
+    enabled: has('rate_limit.edit'),
+    staleTime: 60000,
+  });
 
-  useEffect(() => { if (has('rate_limit.edit')) load(); }, [has]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mutation to add override
+  const addMutation = useMutation({
+    mutationFn: async (data: { scope: string; capacity: number; per_seconds: number }) => {
+      await api.post('/admin/rate-limits', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-rate-limits'] });
+      setForm({ scope: '', capacity: '60', per: '60' });
+      setError(null);
+    },
+    onError: () => {
+      setError('Failed to save override');
+    },
+  });
+
+  // Mutation to delete override
+  const deleteMutation = useMutation({
+    mutationFn: async (scope: string) => {
+      await api.delete(`/admin/rate-limits/${scope}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-rate-limits'] });
+    },
+  });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-  await api.post('/admin/rate-limits', { scope: form.scope, capacity: Number(form.capacity), per_seconds: Number(form.per) });
-      await load();
-    } catch { setError('Failed to save override'); }
+    addMutation.mutate({
+      scope: form.scope,
+      capacity: Number(form.capacity),
+      per_seconds: Number(form.per),
+    });
   };
 
-  const del = async (scope: string) => { await api.delete(`/admin/rate-limits/${scope}`); await load(); };
+  const del = async (scope: string) => {
+    deleteMutation.mutate(scope);
+  };
 
   if (!has('rate_limit.edit')) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <div className="text-red-600 font-medium">Access Denied</div>
-          <div className="text-sm text-red-500 mt-1">Missing capability: rate_limit.edit</div>
-        </div>
+    <AdminPageContainer title="Access Denied" description="">
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-600 font-medium">Access Denied</div>
+        <div className="text-sm text-red-500 mt-1">Missing capability: rate_limit.edit</div>
       </div>
-    </div>
+    </AdminPageContainer>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 rounded-2xl p-6 text-white shadow-lg">
-          <div className="relative z-10">
-            <h1 className="text-3xl font-bold tracking-tight">Rate Limit Configuration</h1>
-            <p className="mt-1 text-purple-100">Manage rate limiting overrides and IP bans</p>
-          </div>
-          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
-        </div>
+    <AdminPageContainer
+      title="Rate Limit Configuration"
+      description="Manage rate limiting overrides and IP bans"
+    >
+      <div className="space-y-6">
         <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl flex items-center justify-center">
@@ -122,9 +141,9 @@ const RateLimitEditor: React.FC = () => {
           </div>
         )}
 
-        {error && (
+        {(error || queryError) && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="text-red-600 font-medium text-sm">{error}</div>
+            <div className="text-red-600 font-medium text-sm">{error || (queryError instanceof Error ? queryError.message : 'Failed to load rate limits')}</div>
           </div>
         )}
 
@@ -215,7 +234,7 @@ const RateLimitEditor: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </AdminPageContainer>
   );
 };
 

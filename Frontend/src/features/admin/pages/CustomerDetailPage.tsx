@@ -10,6 +10,7 @@ import { toast } from 'react-toastify';
 import { formatCurrency } from '../../../utils/format';
 import { AdminPageContainer } from '../components/AdminGrid';
 import { AdminCard } from '../components/AdminCard';
+import { Breadcrumb } from '../components/Breadcrumb';
 
 interface CustomerDetail {
   id: number;
@@ -159,6 +160,14 @@ const CustomerDetailPage: React.FC = () => {
     <AdminPageContainer
       title={`${customer.first_name} ${customer.last_name}`}
       description={`Customer ID: ${customer.id}`}
+      breadcrumbs={
+        <Breadcrumb
+          items={[
+            { label: 'Customers', href: '/admin/customers' },
+            { label: `${customer.first_name} ${customer.last_name}` },
+          ]}
+        />
+      }
       actions={
         <div className="flex items-center gap-2">
           <button

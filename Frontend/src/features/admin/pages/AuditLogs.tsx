@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { useCapabilities } from '../hooks/useCapabilities';
+import { AdminPageContainer } from '../components/AdminGrid';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import api from '../../../api/api';
 
 interface AuditEvent {
   id: number;
@@ -17,59 +20,33 @@ interface AuditResponse {
 
 const AuditLogs: React.FC = () => {
   const { has } = useCapabilities();
-  const [events, setEvents] = useState<AuditEvent[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [beforeId, setBeforeId] = useState<number | null>(null);
 
-  const fetchAuditLogs = useCallback(async (reset = false) => {
-    if (loading) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const url = new URL('/api/admin/audit', window.location.origin);
-      url.searchParams.set('limit', '50');
-      if (!reset && beforeId) {
-        url.searchParams.set('before_id', beforeId.toString());
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery<AuditResponse>({
+    queryKey: ['admin-audit-logs'],
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: '50' });
+      if (pageParam) {
+        params.set('before_id', pageParam.toString());
       }
-      
-      const token = localStorage.getItem('token');
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch audit logs: ${response.status}`);
-      }
-      
-      const data: AuditResponse = await response.json();
-      
-      if (reset) {
-        setEvents(data.events);
-      } else {
-        setEvents(prev => [...prev, ...data.events]);
-      }
-      
-      setHasMore(!!data.next_before_id);
-      setBeforeId(data.next_before_id || null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load audit logs');
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, beforeId]);
+      const res = await api.get(`/admin/audit?${params.toString()}`);
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => lastPage.next_before_id ?? undefined,
+    initialPageParam: undefined as number | undefined,
+    enabled: has('audit.view'),
+    staleTime: 60000, // 1 minute
+  });
 
-  useEffect(() => {
-    if (has('audit.view')) {
-      fetchAuditLogs(true);
-    }
-  }, [has, fetchAuditLogs]);
+  const events = data?.pages.flatMap(page => page.events) ?? [];
+  const loading = isFetching && !isFetchingNextPage;
 
   const formatDateTime = (isoString: string) => {
     return new Date(isoString).toLocaleString();
@@ -82,41 +59,33 @@ const AuditLogs: React.FC = () => {
 
   if (!has('audit.view')) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-            <div className="text-red-600 font-medium">Access Denied</div>
-            <div className="text-sm text-red-500 mt-1">Missing capability: audit.view</div>
-          </div>
+      <AdminPageContainer title="Access Denied" description="">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+          <div className="text-red-600 font-medium">Access Denied</div>
+          <div className="text-sm text-red-500 mt-1">Missing capability: audit.view</div>
         </div>
-      </div>
+      </AdminPageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-700 to-rose-700 rounded-2xl p-6 text-white shadow-lg">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
-              <p className="mt-1 text-red-100">Administrative actions and security events</p>
-            </div>
-            <button
-              onClick={() => fetchAuditLogs(true)}
-              disabled={loading}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg font-medium transition-colors backdrop-blur-sm"
-            >
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </button>
-          </div>
-          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
-        </div>
+    <AdminPageContainer
+      title="Audit Logs"
+      description="Administrative actions and security events"
+      actions={
+        <button
+          onClick={() => refetch()}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+        >
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      }
+    >
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="text-red-600 font-medium text-sm">{error}</div>
+            <div className="text-red-600 font-medium text-sm">{error instanceof Error ? error.message : 'Failed to load audit logs'}</div>
           </div>
         )}
 
@@ -187,14 +156,21 @@ const AuditLogs: React.FC = () => {
             </table>
           </div>
 
-          {hasMore && (
+          {hasNextPage && (
             <div className="px-6 py-4 border-t bg-gray-50/50">
               <button
-                onClick={() => fetchAuditLogs(false)}
-                disabled={loading}
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
                 className="w-full px-4 py-3 text-sm bg-white hover:bg-gray-50 disabled:opacity-50 rounded-lg border border-gray-200 font-medium transition-colors"
               >
-                {loading ? 'Loading...' : 'Load More Events'}
+                {isFetchingNextPage ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                    Loading...
+                  </span>
+                ) : (
+                  'Load More Events'
+                )}
               </button>
             </div>
           )}
@@ -203,12 +179,11 @@ const AuditLogs: React.FC = () => {
         {events.length > 0 && (
           <div className="text-center">
             <div className="inline-flex items-center px-4 py-2 bg-white/80 rounded-full text-xs text-gray-600 border border-gray-200">
-              Showing {events.length} events{hasMore ? ' (more available)' : ''}
+              Showing {events.length} events{hasNextPage ? ' (more available)' : ''}
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </AdminPageContainer>
   );
 };
 

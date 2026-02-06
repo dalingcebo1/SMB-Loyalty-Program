@@ -1,10 +1,10 @@
-// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
 import { TenantConfigProvider } from './config/TenantConfigProvider';
+import { VerticalProvider } from './contexts/VerticalContext';
 import ErrorBoundary from "./components/ErrorBoundary";
 // api import removed: unused
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -102,13 +102,15 @@ async function bootstrap() {
       <BrowserRouter future={ROUTER_FUTURE_FLAGS}>
         <QueryClientProvider client={queryClient}>
           <TenantConfigProvider>
-            <AuthProvider>
-              <ToastProvider>
-                <ErrorBoundary>
-                  <RootWithTheme />
-                </ErrorBoundary>
-              </ToastProvider>
-            </AuthProvider>
+            <VerticalProvider>
+              <AuthProvider>
+                <ToastProvider>
+                  <ErrorBoundary>
+                    <RootWithTheme />
+                  </ErrorBoundary>
+                </ToastProvider>
+              </AuthProvider>
+            </VerticalProvider>
           </TenantConfigProvider>
         </QueryClientProvider>
       </BrowserRouter>

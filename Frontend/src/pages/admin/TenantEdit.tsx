@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { tenantSchema, TenantForm } from '../../schemas';
 import { AdminPageContainer } from '../../features/admin/components/AdminGrid';
 import { AdminCard } from '../../features/admin/components/AdminCard';
+import { Breadcrumb } from '../../features/admin/components/Breadcrumb';
 import { HiSave, HiTrash, HiPlus, HiArrowLeft, HiMail } from 'react-icons/hi';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-toastify';
@@ -141,6 +142,14 @@ const TenantEdit: React.FC = () => {
     <AdminPageContainer
       title={isNew ? 'Create Tenant' : `Edit Tenant: ${tenantData.name || tenantId}`}
       description={isNew ? 'Add a new tenant organization' : `Manage configuration for ${tenantId}`}
+      breadcrumbs={
+        <Breadcrumb
+          items={[
+            { label: 'Tenants', href: '/admin/tenants' },
+            { label: isNew ? 'Create' : tenantData.name || 'Edit' },
+          ]}
+        />
+      }
       actions={
         <button
           onClick={() => navigate('/admin/tenants')}

@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { TenantConfigContext } from '../../config/TenantConfigProvider';
 import api from '../../api/api';
 import { useQueryClient } from '@tanstack/react-query';
+import { AdminPageContainer } from '../../features/admin/components/AdminGrid';
 
 interface LoyaltyConfig {
   points?: {
@@ -101,18 +102,31 @@ const LoyaltyProgramSettings: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-6">Loading settings...</div>;
+    return (
+      <AdminPageContainer title="Loading..." description="">
+        <div className="p-6">Loading settings...</div>
+      </AdminPageContainer>
+    );
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto overflow-x-hidden">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Loyalty Program Configuration</h1>
-        <p className="text-gray-600 mt-2">
-          Choose the core loyalty mechanism for your business. This setting determines how customers earn and redeem rewards.
-        </p>
-      </div>
-
+    <AdminPageContainer
+      title="Loyalty Program Configuration"
+      description="Choose the core loyalty mechanism for your business. This setting determines how customers earn and redeem rewards."
+      actions={
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={`px-6 py-2 text-white rounded-lg transition-colors ${
+            saving
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      }
+    >
       {message && (
         <div className={`p-4 mb-6 rounded-md ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
           {message.text}
@@ -251,21 +265,7 @@ const LoyaltyProgramSettings: React.FC = () => {
           </div>
         )}
       </div>
-
-      <div className="mt-8 flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`px-6 py-2 rounded-md text-white font-medium transition-colors ${
-            saving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-        >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
-    </div>
+    </AdminPageContainer>
   );
 };
 

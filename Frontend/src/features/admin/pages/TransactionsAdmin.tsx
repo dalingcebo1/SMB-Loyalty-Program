@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { HiOutlineRefresh } from 'react-icons/hi';
+import { HiOutlineRefresh, HiOutlineDownload } from 'react-icons/hi';
 import api from '../../../api/api';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useCapabilities } from '../hooks/useCapabilities';
@@ -202,6 +202,66 @@ const TransactionsAdmin: React.FC = () => {
     }
   }, [page, computedTotalPages, isLoading]);
 
+  const exportToCSV = () => {
+    if (!items || items.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // CSV header
+    const headers = [
+      'Payment ID',
+      'Order ID',
+      'Customer Name',
+      'Customer Email',
+      'Service',
+      'Amount',
+      'Status',
+      'Method',
+      'Source',
+      'Card Brand',
+      'Reference',
+      'Transaction ID',
+      'Created At',
+    ];
+
+    // CSV rows
+    const rows = items.map((item) => {
+      const customerName = [item.customer.first_name, item.customer.last_name]
+        .filter(Boolean)
+        .join(' ') || 'Unknown';
+      
+      return [
+        item.payment.id,
+        item.order.id || '',
+        customerName,
+        item.customer.email || '',
+        item.service.name || '',
+        item.payment.amount_cents ? (item.payment.amount_cents / 100).toFixed(2) : '0.00',
+        item.payment.status || '',
+        item.payment.method || '',
+        item.payment.source || '',
+        item.payment.card_brand || '',
+        item.payment.reference || '',
+        item.payment.transaction_id || '',
+        item.payment.created_at || '',
+      ];
+    });
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
   const resetFilters = () => {
     setStatusFilter('');
     setMethodFilter('');
@@ -239,6 +299,15 @@ const TransactionsAdmin: React.FC = () => {
               <p className="mt-1 text-blue-100">Review all payment activity across your tenant with real-time filters.</p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={exportToCSV}
+                disabled={isLoading || !items || items.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/30 disabled:opacity-60 transition"
+                title="Export current page to CSV"
+              >
+                <HiOutlineDownload />
+                <span>Export CSV</span>
+              </button>
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}

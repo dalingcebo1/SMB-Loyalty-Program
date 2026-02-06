@@ -32,7 +32,7 @@ def warm_startup_caches() -> int:
     
     try:
         # Get all active tenants
-        active_tenants = db.query(Tenant).filter_by(is_active=True).all()
+        active_tenants = db.query(Tenant).filter_by(subscription_status="active").all()
         logger.info(f"Warming caches for {len(active_tenants)} active tenants")
         
         # Warm tenant caches
@@ -169,7 +169,7 @@ def warm_all_tenant_caches() -> Dict[str, Any]:
     """
     db = SessionLocal()
     try:
-        tenants = db.query(Tenant).filter_by(is_active=True).all()
+        tenants = db.query(Tenant).filter_by(subscription_status="active").all()
         
         success_count = 0
         failure_count = 0
@@ -216,7 +216,7 @@ def warm_high_traffic_tenants(limit: int = 10) -> Dict[str, Any]:
         high_traffic_tenants = (
             db.query(Tenant)
             .join(Order, Tenant.id == Order.tenant_id)
-            .filter(Tenant.is_active == True)
+            .filter(Tenant.subscription_status == "active")
             .group_by(Tenant.id)
             .order_by(desc(func.count(Order.id)))
             .limit(limit)
@@ -291,7 +291,7 @@ def get_cache_warming_stats() -> Dict[str, Any]:
     db = SessionLocal()
     try:
         # Count active tenants
-        active_tenant_count = db.query(Tenant).filter_by(is_active=True).count()
+        active_tenant_count = db.query(Tenant).filter_by(subscription_status="active").count()
         
         # Get cache stats
         cache_stats = cache.get_stats()

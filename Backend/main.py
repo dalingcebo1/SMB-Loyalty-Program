@@ -25,6 +25,7 @@ from app.plugins.orders.routes  import router as orders_router
 from app.plugins.payments.routes import router as payments_router
 from app.plugins.tenants.routes import router as tenants_router
 from app.plugins.subscriptions import router as subscriptions_router
+from app.plugins.subscriptions import webhooks_router as stripe_webhooks_router
 from app.plugins.dev            import router as dev_router
 from app.plugins.analytics.routes import router as analytics_router
 from app.plugins.admin.routes import router as admin_router
@@ -41,6 +42,13 @@ from app.routes.cache import router as cache_router
 from app.routes.tenant_domains import router as tenant_domains_router
 from app.routes.domain_verification import router as domain_verification_router
 from app.routes.metrics import router as metrics_router
+from app.routes.usage import router as usage_router
+from app.routes.retail import router as retail_router
+from app.routes.pos import router as pos_router
+from app.routes.beauty import router as beauty_router
+from app.routes.padel import router as padel_router
+from app.routes.flowershop import router as flowershop_router
+from app.routes.dispensary import router as dispensary_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 
 # Conditional import for verticals (may not be available in all test contexts)
@@ -509,6 +517,12 @@ class GlobalAPIRateLimitMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(GlobalAPIRateLimitMiddleware)
 
+# ─── Usage Limiter Middleware ──────────────────────────────────────────────
+# Track usage and enforce plan limits (optional - we also check at endpoint level)
+# Disabled for now in favor of endpoint-specific checks for clearer error messages
+# from app.middleware.usage_limiter import UsageLimiterMiddleware
+# app.add_middleware(UsageLimiterMiddleware)
+
 # ─── Prometheus Metrics Middleware ─────────────────────────────────────────
 # Track request/response metrics for observability
 if settings.enable_metrics_endpoint:
@@ -532,6 +546,7 @@ router_mounts = [
     ("/api/tenants",   tenants_router),
     ("/api/inventory", inventory_router),
     ("/api/subscriptions", subscriptions_router),
+    ("", stripe_webhooks_router),  # Stripe webhooks at /webhooks/stripe
     ("/api/billing",   subscriptions_router),  # billing endpoints live in same router
     ("/api",           analytics_router),  # analytics_router already has internal prefix
     ("/api",           admin_router),
@@ -547,6 +562,13 @@ router_mounts = [
     ("",               metrics_router),  # Prometheus metrics endpoint
     ("",               domain_verification_router),  # Domain verification endpoints
     ("/api",           tenant_domains_router),
+    ("/api",           usage_router),  # Usage tracking and limits
+    ("/api",           retail_router),  # Retail inventory management
+    ("",               pos_router),  # POS sales system (prefix inside router)
+    ("",               beauty_router),  # Beauty/salon appointment booking
+    ("/api",           padel_router),  # Padel court booking system
+    ("/api",           flowershop_router),  # Flower shop orders and delivery
+    ("/api",           dispensary_router),  # Cannabis dispensary compliance system
 ]
 # Conditionally include dev router outside production
 if settings.environment != 'production':

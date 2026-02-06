@@ -96,13 +96,37 @@ const AdminAuditLogs = lazyWithRetry(() => import('../features/admin/pages/Audit
 const AdminJobsMonitor = lazyWithRetry(() => import('../features/admin/pages/JobsMonitor'));
 const AdminRateLimitEditor = lazyWithRetry(() => import('../features/admin/pages/RateLimitEditor'));
 const TransactionsAdmin = lazyWithRetry(() => import('../features/admin/pages/TransactionsAdmin'));
+const TransactionDetail = lazy(() => import('../features/admin/pages/TransactionDetail'));
 // New admin pages for MVP
 const CustomersAdmin = lazy(() => import('../features/admin/pages/CustomersAdmin'));
 const CustomerDetailPage = lazy(() => import('../features/admin/pages/CustomerDetailPage'));
 const ReportsAdmin = lazy(() => import('../features/admin/pages/ReportsAdmin'));
+const AnalyticsAdmin = lazy(() => import('../features/admin/pages/AnalyticsAdmin'));
 const NotificationsAdmin = lazy(() => import('../features/admin/pages/NotificationsAdmin'));
 // New subscription management stub (replaces removed usage page)
 const SubscriptionManagePage = lazy(() => import('../pages/admin/SubscriptionManagePageNew'));
+// Billing and usage page
+const BillingSettings = lazy(() => import('../features/admin/pages/BillingSettings'));
+// Retail vertical pages
+const RetailInventoryDashboard = lazy(() => import('../features/retail/pages/InventoryDashboard'));
+const POSTerminal = lazy(() => import('../features/retail/pages/POSTerminal'));
+// Dispensary vertical pages
+const DispensaryProductManagement = lazy(() => import('../features/dispensary/pages/ProductManagement'));
+const DispensaryCategoryManagement = lazy(() => import('../features/dispensary/pages/CategoryManagement'));
+const DispensaryVerificationManagement = lazy(() => import('../features/dispensary/pages/VerificationManagement'));
+const DispensarySalesReports = lazy(() => import('../features/dispensary/pages/SalesReports'));
+const DispensaryProductCatalog = lazy(() => import('../features/dispensary/pages/ProductCatalog'));
+// Padel vertical pages
+const PadelCourtManagement = lazy(() => import('../features/padel/pages/CourtManagement'));
+const PadelBookingCalendar = lazy(() => import('../features/padel/pages/BookingCalendar'));
+const PadelCustomerBooking = lazy(() => import('../features/padel/pages/CustomerBooking'));
+// Beauty vertical pages
+const BeautyServiceManagement = lazy(() => import('../features/beauty/pages/ServiceManagement'));
+const BeautyStylistManagement = lazy(() => import('../features/beauty/pages/StylistManagement'));
+const BeautyAppointmentCalendar = lazy(() => import('../features/beauty/pages/AppointmentCalendar'));
+const BeautyCustomerBooking = lazy(() => import('../features/beauty/pages/CustomerBooking'));
+// Flowershop vertical pages
+const FlowershopProductCatalog = lazy(() => import('../features/flowershop/pages/ProductCatalog'));
 // Enhanced user profile
 
 // Route guards
@@ -160,6 +184,11 @@ const AppRoutes: React.FC = () => {
             enableUsers && { path: '/account', element: <Account /> },
             enableUsers && { path: '/profile', element: <EnhancedProfile /> },
             enableOrders && { path: '/past-orders', element: <PastOrders /> },
+            // Vertical-specific customer pages
+            { path: '/dispensary', element: <DispensaryProductCatalog /> },
+            { path: '/padel/book', element: <PadelCustomerBooking /> },
+            { path: '/beauty/book', element: <BeautyCustomerBooking /> },
+            { path: '/flowershop', element: <FlowershopProductCatalog /> },
           ].filter(Boolean),
         },
         // Staff Routes: now strictly staff only; admins redirected to /admin
@@ -193,6 +222,7 @@ const AppRoutes: React.FC = () => {
             { path: 'branding', element: <Navigate to="/admin/settings" replace /> },
             { path: 'inventory', element: <InventoryPage /> },
             { path: 'transactions', element: <TransactionsAdmin /> },
+            { path: 'transactions/:id', element: <TransactionDetail /> },
             { path: 'audit', element: <AdminAuditLogs /> },
             { path: 'jobs', element: <AdminJobsMonitor /> },
             { path: 'rate-limits', element: <AdminRateLimitEditor /> },
@@ -203,11 +233,28 @@ const AppRoutes: React.FC = () => {
             { path: 'customers', element: <CustomersAdmin /> },
             { path: 'customers/:id', element: <CustomerDetailPage /> },
             { path: 'reports', element: <ReportsAdmin /> },
+            { path: 'analytics', element: <AnalyticsAdmin /> },
             { path: 'notifications', element: <NotificationsAdmin /> },
             { path: 'settings', element: <OrganizationSettings /> },
+            { path: 'billing', element: <BillingSettings /> },
             { path: 'tenants', element: <TenantsList /> },
             { path: 'tenants/:tenantId/edit', element: <TenantEdit /> },
             { path: 'subscription', element: moduleFlags.enableSubscription ? <SubscriptionManagePage /> : <Navigate to='/admin' replace /> },
+            // Retail vertical routes
+            { path: 'retail/inventory', element: <RetailInventoryDashboard /> },
+            { path: 'retail/pos', element: <POSTerminal /> },
+            // Dispensary vertical routes
+            { path: 'dispensary/products', element: <DispensaryProductManagement /> },
+            { path: 'dispensary/categories', element: <DispensaryCategoryManagement /> },
+            { path: 'dispensary/verifications', element: <DispensaryVerificationManagement /> },
+            { path: 'dispensary/sales', element: <DispensarySalesReports /> },
+            // Padel vertical routes
+            { path: 'padel/courts', element: <PadelCourtManagement /> },
+            { path: 'padel/bookings', element: <PadelBookingCalendar /> },
+            // Beauty vertical routes
+            { path: 'beauty/services', element: <BeautyServiceManagement /> },
+            { path: 'beauty/stylists', element: <BeautyStylistManagement /> },
+            { path: 'beauty/appointments', element: <BeautyAppointmentCalendar /> },
             // Embed staff feature pages under /admin/staff/* so admins can access unified UI superset
             { path: 'staff/dashboard', element: <ModernStaffDashboard /> },
             { path: 'staff/vehicle-manager', element: <VehicleManager /> },

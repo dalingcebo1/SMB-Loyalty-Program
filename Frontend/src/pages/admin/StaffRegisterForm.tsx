@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { notifySuccessKey, notifyErrorKey } from "../../utils/notifications";
 import PageLayout from '../../components/PageLayout';
 import { Navigate } from "react-router-dom";
+import { useCapabilities } from "../../features/admin/hooks/useCapabilities";
 
 const StaffRegisterForm: React.FC = () => {
   const { user, loading } = useAuth();
@@ -16,9 +17,10 @@ const StaffRegisterForm: React.FC = () => {
     tenantId: "default",
   });
   const [loadingSubmit, setLoading] = useState(false);
+  const { has } = useCapabilities();
   
   if (loading) return <PageLayout loading>{null}</PageLayout>;
-  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
+  if (!user || !has('users.invite')) return <Navigate to="/" replace />;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });

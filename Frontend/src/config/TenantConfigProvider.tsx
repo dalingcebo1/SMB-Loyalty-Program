@@ -163,3 +163,12 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 // Hook moved to separate file to satisfy fast-refresh constraint.
 export { TenantConfigContext };
+
+// Custom hook to access tenant configuration
+export function useTenant(): TenantConfigContextValue {
+  const context = React.useContext(TenantConfigContext);
+  if (!context) {
+    throw new Error('useTenant must be used within a TenantConfigProvider');
+  }
+  return context;
+}

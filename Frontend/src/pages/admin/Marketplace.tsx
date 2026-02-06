@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../auth/AuthProvider';
 import api from '../../api/api';
 import PageLayout from '../../components/PageLayout';
-import { HiShoppingBag, HiCheck, HiPlus } from 'react-icons/hi';
+import { HiCheck, HiPlus } from 'react-icons/hi';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useTenantConfig } from '../../config/useTenantConfig';
+import { useCapabilities } from '../../features/admin/hooks/useCapabilities';
+import { AdminPageContainer } from '../../features/admin/components/AdminGrid';
 
 interface ModuleDef {
   key: string;
@@ -27,6 +29,7 @@ interface SubscriptionStatus {
 const Marketplace: React.FC = () => {
   const { user } = useAuth();
   const { refresh } = useTenantConfig();
+  const { has } = useCapabilities();
   const [modules, setModules] = useState<ModuleDef[]>([]);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +38,7 @@ const Marketplace: React.FC = () => {
   // Define module categories for permission checks
   const CORE_MODULES = ['core', 'loyalty', 'analytics'];
   const VERTICAL_MODULES = ['carwash', 'retail', 'dispensary'];
-  const isSuperAdmin = user?.role === 'superadmin';
+  const isSuperAdmin = has('platform.manage_tenants');
 
   useEffect(() => {
     if (!user?.tenant_id) return;
@@ -99,23 +102,11 @@ const Marketplace: React.FC = () => {
   const isActive = (key: string) => subStatus?.active_modules.includes(key);
 
   return (
-    <PageLayout>
+    <AdminPageContainer
+      title="Module Marketplace"
+      description={`Current Plan: ${subStatus?.plan.name || 'Loading...'}`}
+    >
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <HiShoppingBag className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Marketplace</h1>
-              <p className="text-gray-600">
-                Current Plan: <span className="font-semibold text-purple-600">{subStatus?.plan.name}</span>
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Categories */}
         {Object.entries(grouped).map(([category, mods]) => (
           <div key={category} className="space-y-4">
@@ -197,7 +188,7 @@ const Marketplace: React.FC = () => {
           </div>
         ))}
       </div>
-    </PageLayout>
+    </AdminPageContainer>
   );
 };
 

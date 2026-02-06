@@ -258,7 +258,7 @@ def _role_capabilities(role: str) -> List[str]:
     base = {
         'user': ['loyalty.view','orders.create','orders.view_own'],
         'staff': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update'],
-        'admin': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced','audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view'],
+        'admin': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced','audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view','platform.manage_tenants','manage_customers','view_reports','manage_notifications'],
         'developer': ['dev.tools','jobs.view','jobs.retry','audit.view','rate_limit.edit'],
         'superadmin': ['*']
     }
@@ -294,12 +294,28 @@ def require_capability(cap: str):
 def signup(req: SignupRequest, db: Session = Depends(get_db)):
     if db.query(User).filter_by(email=req.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check customer limit for the tenant (default tenant for now)
+    from app.services.usage_tracker import get_usage_tracker
+    
+    tenant_id = "default"  # TODO: Extract from request/subdomain in multi-tenant mode
+    tracker = get_usage_tracker(db)
+    limit_check = tracker.check_limit(tenant_id, "customers")
+    
+    if limit_check["exceeded"]:
+        limit = limit_check['limit']
+        detail = (
+            f"Customer limit reached. Your plan allows {limit} customers. "
+            "Please upgrade your plan to add more."
+        )
+        raise HTTPException(status_code=402, detail=detail)
+    
     user = User(
         email=req.email,
         hashed_password=get_password_hash(req.password),
         onboarded=False,
         created_at=datetime.utcnow(),
-        tenant_id="default",
+        tenant_id=tenant_id,
     )
     db.add(user)
     db.commit()

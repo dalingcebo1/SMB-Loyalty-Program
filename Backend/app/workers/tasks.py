@@ -242,7 +242,7 @@ def generate_daily_analytics(self) -> Dict[str, Any]:
         from app.services.analytics_service import AnalyticsService
         
         # Get all active tenants
-        tenants = self.db.query(Tenant).filter_by(is_active=True).all()
+        tenants = self.db.query(Tenant).filter_by(subscription_status="active").all()
         
         analytics_service = AnalyticsService(self.db)
         processed = 0
@@ -328,7 +328,7 @@ def sync_tenant_caches(self) -> Dict[str, Any]:
         Summary of cache warming
     """
     try:
-        tenants = self.db.query(Tenant).filter_by(is_active=True).all()
+        tenants = self.db.query(Tenant).filter_by(subscription_status="active").all()
         
         warmed = 0
         failed = 0

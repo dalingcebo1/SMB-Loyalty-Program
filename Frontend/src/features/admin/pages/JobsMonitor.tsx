@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useCapabilities } from '../hooks/useCapabilities';
 import api from '../../../api/api';
+import { AdminPageContainer } from '../components/AdminGrid';
 
 interface JobRecord { id: string; name: string; status?: string; payload?: unknown; attempts?: number }
 interface JobsSnapshot { queue: Record<string, unknown>; recent: JobRecord[]; dead: JobRecord[] }
@@ -31,53 +32,45 @@ const JobsMonitor: React.FC = () => {
   };
 
   if (!has('jobs.view')) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <div className="text-red-600 font-medium">Access Denied</div>
-          <div className="text-sm text-red-500 mt-1">Missing capability: jobs.view</div>
-        </div>
+    <AdminPageContainer title="Access Denied" description="">
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-600 font-medium">Access Denied</div>
+        <div className="text-sm text-red-500 mt-1">Missing capability: jobs.view</div>
       </div>
-    </div>
+    </AdminPageContainer>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 via-orange-700 to-amber-700 rounded-2xl p-6 text-white shadow-lg">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Jobs Monitor</h1>
-              <p className="mt-1 text-orange-100">Track background job queue health and retry failures</p>
-            </div>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg font-medium transition-colors backdrop-blur-sm"
-            >
-              {loading ? 'Loading…' : 'Refresh'}
-            </button>
-          </div>
-          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_60%)]" />
+    <AdminPageContainer
+      title="Jobs Monitor"
+      description="Track background job queue health and retry failures"
+      actions={
+        <button
+          onClick={load}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+        >
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
+      }
+    >
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="text-red-600 font-medium text-sm">{error}</div>
         </div>
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="text-red-600 font-medium text-sm">{error}</div>
-          </div>
-        )}
+      )}
 
-        {loading && !data && (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex items-center gap-3 text-gray-500">
-              <div className="animate-spin w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
-              <span className="text-sm font-medium">Loading jobs…</span>
-            </div>
+      {loading && !data && (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-3 text-gray-500">
+            <div className="animate-spin w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+            <span className="text-sm font-medium">Loading jobs…</span>
           </div>
-        )}
+        </div>
+      )}
 
-        {data && (
-          <div className="grid gap-6 lg:grid-cols-2">
+      {data && (
+        <div className="grid gap-6 lg:grid-cols-2">
             <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
@@ -142,8 +135,7 @@ const JobsMonitor: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </AdminPageContainer>
   );
 };
 

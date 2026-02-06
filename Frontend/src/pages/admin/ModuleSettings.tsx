@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { Navigate } from 'react-router-dom';
 import PageLayout from '../../components/PageLayout';
 import { HiCog } from 'react-icons/hi';
+import { useCapabilities } from '../../features/admin/hooks/useCapabilities';
 
 const moduleGroups: Array<{ 
   title: string; 
@@ -77,8 +78,9 @@ const ModuleSettings: React.FC = () => {
     setFlagsState(getModuleFlags());
   }, []);
 
+  const { has } = useCapabilities();
   if (loading) return <PageLayout loading>{null}</PageLayout>;
-  if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
+  if (!user || !has('config.version.view')) return <Navigate to="/" replace />;
 
   const handleChange = (key: keyof ModuleFlags) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const updated = { ...flags, [key]: e.target.checked };

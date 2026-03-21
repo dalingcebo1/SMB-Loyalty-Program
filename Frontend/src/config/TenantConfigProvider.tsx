@@ -17,6 +17,7 @@ interface TenantMetaResponse {
   name: string;
   loyalty_type: string;
   loyalty?: any;
+  onboarding_completed?: boolean;
 }
 
 interface TenantConfigContextValue {
@@ -29,6 +30,7 @@ interface TenantConfigContextValue {
   moduleFlags: ModuleFlags;
   features: FeatureMap;
   branding: BrandingMap;
+  onboardingCompleted?: boolean;
   refresh: () => void;
 }
 
@@ -131,6 +133,7 @@ export const TenantConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
     moduleFlags,
     features: meta?.features || {},
     branding: meta?.branding || {},
+    onboardingCompleted: meta?.onboarding_completed,
     refresh: () => { refetch(); },
   };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import api from '../../api/api';
 import { useForm } from 'react-hook-form';
@@ -6,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { tenantSchema, TenantForm } from '../../schemas';
 import { AdminPageContainer } from '../../features/admin/components/AdminGrid';
 import { AdminCard } from '../../features/admin/components/AdminCard';
-import { HiSave, HiTrash, HiMail } from 'react-icons/hi';
+import { HiSave, HiTrash, HiMail, HiCog } from 'react-icons/hi';
 import { FaPalette, FaImage, FaIdCard, FaUpload, FaCheck, FaTimes, FaEye } from 'react-icons/fa';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-toastify';
@@ -301,6 +302,19 @@ const ProfileSettings: React.FC<{ user: any }> = ({ user }) => {
                 {isInviting ? <LoadingSpinner size="sm" color="white" /> : <HiMail className="w-5 h-5" />}
               </button>
             </div>
+          </div>
+        </AdminCard>
+
+        <AdminCard title="Setup Wizard">
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">Re-run the onboarding wizard to update your business info, branding, verticals, and loyalty settings.</p>
+            <Link
+              to="/admin/onboarding"
+              className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <HiCog className="w-4 h-4 mr-2" />
+              Re-run Setup Wizard
+            </Link>
           </div>
         </AdminCard>
       </div>

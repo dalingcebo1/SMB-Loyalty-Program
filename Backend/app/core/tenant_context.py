@@ -323,6 +323,7 @@ def tenant_meta_dict(ctx: TenantContext, db: Session | None = None) -> dict:
         "name": ctx.tenant.name,
         "loyalty_type": ctx.tenant.loyalty_type,
         "loyalty": cfg.get("loyalty", {}),
+        "onboarding_completed": bool(getattr(ctx.tenant, "onboarding_completed", False)),
     }
     # Allow vertical plugins to decorate meta in-place (legacy dispatch system)
     try:  # defensive: plugin errors shouldn't break core endpoint

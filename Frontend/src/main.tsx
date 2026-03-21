@@ -87,11 +87,10 @@ if (typeof window !== 'undefined') {
     }
   });
 
+  // Register VitePWA service worker on load
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.getRegistrations()
-        .then(registrations => Promise.all(registrations.map(reg => reg.unregister().catch(() => false))))
-        .catch(() => undefined);
+      navigator.serviceWorker.register('/sw.js').catch(() => undefined);
     }, { once: true });
   }
 }

@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.core.tenant_context import get_tenant_context, TenantContext
 from app.models import Tenant, User
 from app.plugins.auth.routes import get_current_user
+from app.services.export_service import generate_csv, generate_pdf_report
 from app.services.financial import (
     ExpenseService,
     FinancialReportService,
@@ -395,6 +396,53 @@ async def list_invoices(
     return invoices
 
 
+@router.get("/invoices/export")
+def export_invoices(
+    format: str = Query("csv", description="Export format: csv"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export invoices as CSV."""
+    query = db.query(Invoice).filter(Invoice.tenant_id == current_user.tenant_id)
+
+    if status:
+        query = query.filter(Invoice.status == status)
+
+    invoices = query.order_by(Invoice.created_at.desc()).all()
+
+    columns = [
+        ("invoice_number", "Invoice #"),
+        ("customer_name", "Customer"),
+        ("customer_email", "Email"),
+        ("issue_date", "Issue Date"),
+        ("due_date", "Due Date"),
+        ("status", "Status"),
+        ("subtotal", "Subtotal (ZAR)"),
+        ("tax", "Tax (ZAR)"),
+        ("discount", "Discount (ZAR)"),
+        ("total", "Total (ZAR)"),
+    ]
+
+    export_rows = []
+    for inv in invoices:
+        export_rows.append({
+            "invoice_number": inv.invoice_number or "",
+            "customer_name": inv.customer_name or "",
+            "customer_email": inv.customer_email or "",
+            "issue_date": inv.issue_date.isoformat() if inv.issue_date else "",
+            "due_date": inv.due_date.isoformat() if inv.due_date else "",
+            "status": inv.status.value if inv.status else "",
+            "subtotal": f"{(inv.subtotal_cents or 0) / 100:.2f}",
+            "tax": f"{(inv.tax_cents or 0) / 100:.2f}",
+            "discount": f"{(inv.discount_cents or 0) / 100:.2f}",
+            "total": f"{(inv.total_cents or 0) / 100:.2f}",
+        })
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return generate_csv(export_rows, columns, f"invoices_{today}.csv")
+
+
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice(
     invoice_id: int,
@@ -612,6 +660,49 @@ async def list_expenses(
     return expenses
 
 
+@router.get("/expenses/export")
+def export_expenses(
+    format: str = Query("csv", description="Export format: csv"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export expenses as CSV."""
+    query = db.query(Expense).filter(Expense.tenant_id == current_user.tenant_id)
+
+    if category:
+        query = query.filter(Expense.category == category)
+
+    expenses = query.order_by(Expense.expense_date.desc()).all()
+
+    columns = [
+        ("expense_date", "Date"),
+        ("description", "Description"),
+        ("category", "Category"),
+        ("vendor_name", "Vendor"),
+        ("payment_method", "Payment Method"),
+        ("amount", "Amount (ZAR)"),
+        ("is_tax_deductible", "Tax Deductible"),
+        ("is_approved", "Approved"),
+    ]
+
+    export_rows = []
+    for exp in expenses:
+        export_rows.append({
+            "expense_date": exp.expense_date.isoformat() if exp.expense_date else "",
+            "description": exp.description or "",
+            "category": exp.category.value if exp.category else "",
+            "vendor_name": exp.vendor_name or "",
+            "payment_method": exp.payment_method.value if exp.payment_method else "",
+            "amount": f"{(exp.amount_cents or 0) / 100:.2f}",
+            "is_tax_deductible": "Yes" if exp.is_tax_deductible else "No",
+            "is_approved": "Yes" if exp.is_approved else "No",
+        })
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return generate_csv(export_rows, columns, f"expenses_{today}.csv")
+
+
 @router.get("/expenses/{expense_id}", response_model=ExpenseResponse)
 async def get_expense(
     expense_id: int,
@@ -733,6 +824,92 @@ async def get_profit_and_loss(
     except Exception as e:
         logger.error(f"Error generating P&L report: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/reports/profit-loss/export")
+def export_profit_loss(
+    format: str = Query("pdf", description="Export format: pdf or csv"),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export Profit & Loss report as PDF or CSV."""
+    report_service = FinancialReportService(db)
+
+    effective_start = start_date or date.today().replace(month=1, day=1)
+    effective_end = end_date or date.today()
+
+    try:
+        report = report_service.get_profit_and_loss(
+            tenant_id=current_user.tenant_id,
+            start_date=effective_start,
+            end_date=effective_end,
+        )
+    except Exception:
+        # Fall back to empty report if the underlying service encounters an error
+        report = {
+            "revenue": {"total_revenue_cents": 0},
+            "expenses": {"total_expenses_cents": 0},
+            "gross_profit_cents": 0,
+            "net_profit_cents": 0,
+            "profit_margin": 0,
+        }
+
+    revenue = report.get("revenue", {})
+    expenses = report.get("expenses", {})
+
+    rows: list[dict] = []
+
+    # Revenue lines
+    for key, value in revenue.items():
+        if key == "total_revenue_cents":
+            continue
+        label = key.replace("_cents", "").replace("_", " ").title()
+        rows.append({"category": f"Revenue: {label}", "amount": f"{value / 100:.2f}"})
+
+    rows.append({"category": "Total Revenue", "amount": f"{revenue.get('total_revenue_cents', 0) / 100:.2f}"})
+    rows.append({"category": "", "amount": ""})
+
+    # Expense lines
+    for key, value in expenses.items():
+        if key == "total_expenses_cents":
+            continue
+        label = key.replace("_cents", "").replace("_", " ").title()
+        rows.append({"category": f"Expense: {label}", "amount": f"{value / 100:.2f}"})
+
+    rows.append({"category": "Total Expenses", "amount": f"{expenses.get('total_expenses_cents', 0) / 100:.2f}"})
+    rows.append({"category": "", "amount": ""})
+
+    gross_profit = report.get("gross_profit_cents", 0)
+    net_profit = report.get("net_profit_cents", 0)
+    margin = report.get("profit_margin", 0)
+
+    rows.append({"category": "Gross Profit", "amount": f"{gross_profit / 100:.2f}"})
+    rows.append({"category": "Net Profit", "amount": f"{net_profit / 100:.2f}"})
+    rows.append({"category": "Profit Margin", "amount": f"{margin:.2f}%"})
+
+    columns = [("category", "Category"), ("amount", "Amount (ZAR)")]
+    date_range = f"{effective_start.isoformat()} to {effective_end.isoformat()}"
+    filename_base = f"profit_loss_{effective_start.isoformat()}_{effective_end.isoformat()}"
+
+    if format == "csv":
+        return generate_csv(rows, columns, f"{filename_base}.csv")
+
+    # Default: PDF
+    totals = {
+        "category": "Net Profit",
+        "amount": f"{net_profit / 100:.2f}",
+    }
+    return generate_pdf_report(
+        title="Profit & Loss Report",
+        subtitle=date_range,
+        columns=columns,
+        rows=rows,
+        totals=totals,
+        filename=f"{filename_base}.pdf",
+        business_name="",
+    )
 
 
 @router.get("/reports/monthly-comparison", response_model=List[MonthlyComparisonResponse])

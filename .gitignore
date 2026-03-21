@@ -17,3 +17,4 @@ venv/
 
 # Ephemeral AI/working docs (not for commit)
 docs/DEPLOYMENT_FLOW_DEV_TO_PROD.md
+node_modules/

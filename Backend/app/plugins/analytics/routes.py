@@ -5,7 +5,7 @@ from sqlalchemy import func, cast, Date
 from app.core.database import get_db
 from app.models import User, Payment, PointBalance, Redemption, Reward, VisitCount, Order
 from datetime import datetime, timedelta, date
-from app.plugins.auth.routes import require_admin, require_staff
+from app.plugins.auth.routes import require_admin, require_staff, get_current_user
 
 from .schemas import (
     AnalyticsSummaryResponse,
@@ -19,6 +19,7 @@ from .schemas import (
 )
 from app.models import AggregatedCustomerMetrics
 from app.analytics.refresh_customers import refresh_customer_metrics
+from app.services.export_service import generate_csv
 """Analytics router.
 
 All read-only analytics endpoints should be accessible to staff (and admins).
@@ -989,3 +990,54 @@ Insights:
         return unique_insights[:5]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Insight generation error: {e}")
+
+
+@router.get("/loyalty/export")
+def export_loyalty(
+    format: str = Query("csv", description="Export format: csv"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export loyalty members as CSV."""
+    rows = (
+        db.query(
+            User.email,
+            User.first_name,
+            User.last_name,
+            User.phone,
+            User.created_at,
+            func.coalesce(PointBalance.points, 0).label("points"),
+            func.coalesce(VisitCount.count, 0).label("visits"),
+        )
+        .outerjoin(PointBalance, PointBalance.user_id == User.id)
+        .outerjoin(VisitCount, VisitCount.user_id == User.id)
+        .filter(User.role == "user")
+        .filter(User.tenant_id == current_user.tenant_id)
+        .order_by(User.created_at.desc())
+        .all()
+    )
+
+    columns = [
+        ("email", "Email"),
+        ("first_name", "First Name"),
+        ("last_name", "Last Name"),
+        ("phone", "Phone"),
+        ("points", "Loyalty Points"),
+        ("visits", "Visit Count"),
+        ("created_at", "Member Since"),
+    ]
+
+    export_rows = []
+    for row in rows:
+        export_rows.append({
+            "email": row.email or "",
+            "first_name": row.first_name or "",
+            "last_name": row.last_name or "",
+            "phone": row.phone or "",
+            "points": int(row.points or 0),
+            "visits": int(row.visits or 0),
+            "created_at": row.created_at.strftime("%Y-%m-%d") if row.created_at else "",
+        })
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return generate_csv(export_rows, columns, f"loyalty_members_{today}.csv")

@@ -5,6 +5,7 @@ import api from '../../../api/api';
 import { AdminPageContainer } from '../components/AdminGrid';
 import { formatCents } from '../../../utils/format';
 import LoadingSpinner from '../../../components/LoadingSpinner';
+import ExportButton from '../components/ExportButton';
 
 interface ProfitAndLoss {
   revenue: Record<string, number>;
@@ -140,6 +141,22 @@ const ProfitLossReport: React.FC = () => {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <ExportButton
+              endpoint="/reports/profit-loss/export"
+              params={{ start_date: startDate, end_date: endDate }}
+              format="csv"
+              label="Export CSV"
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+            />
+            <ExportButton
+              endpoint="/reports/profit-loss/export"
+              params={{ start_date: startDate, end_date: endDate }}
+              format="pdf"
+              label="Export PDF"
+              className="bg-blue-600 text-white hover:bg-blue-700"
             />
           </div>
         </div>

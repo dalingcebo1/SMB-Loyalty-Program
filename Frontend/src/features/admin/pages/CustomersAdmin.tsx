@@ -9,6 +9,7 @@ import LoadingSpinner from '../../../components/LoadingSpinner';
 import { formatCurrency } from '../../../utils/format';
 import { AdminPageContainer } from '../components/AdminGrid';
 import { AdminCard } from '../components/AdminCard';
+import ExportButton from '../components/ExportButton';
 
 interface Customer {
   id: number;
@@ -139,13 +140,21 @@ const CustomersAdmin: React.FC = () => {
       title="Customer Management"
       description="Manage and view customer information, orders, and loyalty data"
       actions={
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <HiOutlineRefresh className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/customers/export"
+            format="csv"
+            label="Export CSV"
+            className="bg-green-600 text-white hover:bg-green-700"
+          />
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <HiOutlineRefresh className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
       }
     >
       {/* Search and Filters */}

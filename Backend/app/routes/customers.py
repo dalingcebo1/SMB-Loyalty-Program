@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.models import (Order, PointBalance, Redemption, Service, User,
                         Vehicle)
 from app.plugins.auth.routes import get_current_user
+from app.services.export_service import generate_csv
 
 router = APIRouter()
 
@@ -208,6 +209,85 @@ router.add_api_route(
     response_model=CustomerListResponse,
     methods=["GET"],
 )
+
+
+@router.get("/export")
+async def export_customers(
+    format: str = Query("csv", description="Export format: csv"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export all customers as CSV."""
+    _require_admin_or_staff(current_user)
+
+    orders_subq = (
+        db.query(
+            Order.user_id.label("user_id"),
+            func.count(Order.id).label("order_count"),
+            func.coalesce(func.sum(Order.amount), 0).label("total_spent_cents"),
+        )
+        .filter(Order.tenant_id == current_user.tenant_id)
+        .group_by(Order.user_id)
+        .subquery()
+    )
+
+    balances_subq = (
+        db.query(
+            PointBalance.user_id.label("user_id"),
+            func.coalesce(PointBalance.points, 0).label("points"),
+        )
+        .filter(PointBalance.tenant_id == current_user.tenant_id)
+        .subquery()
+    )
+
+    query = (
+        db.query(
+            User.email,
+            User.first_name,
+            User.last_name,
+            User.phone,
+            User.role,
+            User.created_at,
+            func.coalesce(orders_subq.c.order_count, 0).label("order_count"),
+            func.coalesce(orders_subq.c.total_spent_cents, 0).label("total_spent_cents"),
+            func.coalesce(balances_subq.c.points, 0).label("loyalty_points"),
+        )
+        .outerjoin(orders_subq, orders_subq.c.user_id == User.id)
+        .outerjoin(balances_subq, balances_subq.c.user_id == User.id)
+        .filter(User.tenant_id == current_user.tenant_id)
+        .order_by(User.created_at.desc())
+    )
+
+    rows = query.all()
+
+    columns = [
+        ("email", "Email"),
+        ("first_name", "First Name"),
+        ("last_name", "Last Name"),
+        ("phone", "Phone"),
+        ("role", "Role"),
+        ("created_at", "Registered"),
+        ("order_count", "Orders"),
+        ("total_spent", "Total Spent (ZAR)"),
+        ("loyalty_points", "Loyalty Points"),
+    ]
+
+    export_rows = []
+    for row in rows:
+        export_rows.append({
+            "email": row.email or "",
+            "first_name": row.first_name or "",
+            "last_name": row.last_name or "",
+            "phone": row.phone or "",
+            "role": row.role or "",
+            "created_at": row.created_at.strftime("%Y-%m-%d") if row.created_at else "",
+            "order_count": int(row.order_count or 0),
+            "total_spent": f"{(row.total_spent_cents or 0) / 100:.2f}",
+            "loyalty_points": int(row.loyalty_points or 0),
+        })
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return generate_csv(export_rows, columns, f"customers_{today}.csv")
 
 
 @router.get("/{customer_id}", response_model=CustomerDetailResponse)

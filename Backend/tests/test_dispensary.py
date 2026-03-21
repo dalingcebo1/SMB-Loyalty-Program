@@ -19,6 +19,83 @@ from app.models import (
     DispensaryProduct,
     DispensaryCustomerVerification,
 )
+from app.plugins.auth.routes import create_access_token
+from app.services.tenant_settings import get_tenant_settings
+from config import settings
+
+
+# ─── Local fixtures bridging to existing test infrastructure ────────────────
+
+@pytest.fixture
+def db(db_session):
+    """Alias db_session as db for this module."""
+    return db_session
+
+
+@pytest.fixture
+def basic_tenant(db_session):
+    """Provide a tenant for dispensary tests."""
+    tenant = db_session.query(Tenant).filter_by(id=settings.default_tenant).first()
+    if not tenant:
+        tenant = Tenant(
+            id=settings.default_tenant,
+            name="Test Dispensary Tenant",
+            loyalty_type="basic",
+            vertical_type="dispensary",
+            created_at=datetime.utcnow(),
+            config={},
+        )
+        db_session.add(tenant)
+        db_session.commit()
+        db_session.refresh(tenant)
+    # Clean dispensary tables between tests to avoid unique constraint violations
+    db_session.query(DispensaryCustomerVerification).delete()
+    db_session.query(DispensaryProduct).delete()
+    db_session.query(DispensaryProductCategory).delete()
+    db_session.commit()
+    return tenant
+
+
+@pytest.fixture
+def staff_token_headers(db_session, basic_tenant):
+    """Provide auth headers for a staff user."""
+    user = db_session.query(User).filter_by(email="dispensary-staff@test.com").first()
+    if not user:
+        user = User(
+            email="dispensary-staff@test.com",
+            tenant_id=basic_tenant.id,
+            role="staff",
+            onboarded=True,
+            created_at=datetime.utcnow(),
+            first_name="Staff",
+            last_name="User",
+            phone="0000000000",
+        )
+        db_session.add(user)
+        db_session.commit()
+    ts = get_tenant_settings(basic_tenant)
+    token = create_access_token(user.email, tenant_settings=ts)
+    return {"Authorization": f"Bearer {token}", "X-Tenant-ID": basic_tenant.id}
+
+
+@pytest.fixture
+def basic_user(db_session, basic_tenant):
+    """Provide a regular customer user for dispensary tests."""
+    user = db_session.query(User).filter_by(email="dispensary-customer@test.com").first()
+    if not user:
+        user = User(
+            email="dispensary-customer@test.com",
+            tenant_id=basic_tenant.id,
+            role="user",
+            onboarded=True,
+            created_at=datetime.utcnow(),
+            first_name="Customer",
+            last_name="User",
+            phone="0000000001",
+        )
+        db_session.add(user)
+        db_session.commit()
+    return user
 
 
 def test_create_category(db: Session, client: TestClient, staff_token_headers: dict, basic_tenant: Tenant):
@@ -75,9 +152,9 @@ def test_list_categories(db: Session, client: TestClient, staff_token_headers: d
         db.add(cat)
     db.commit()
     
-    # List all categories
+    # List all categories (active_only defaults to true, use false to get all)
     response = client.get(
-        "/api/dispensary/categories",
+        "/api/dispensary/categories?active_only=false",
         headers=staff_token_headers
     )
     assert response.status_code == 200
@@ -472,6 +549,7 @@ def test_create_sale(db: Session, client: TestClient, staff_token_headers: dict,
     
     data = {
         "customer_id": basic_user.id,
+        "staff_id": staff_user.id,
         "sale_date": datetime.utcnow().isoformat(),
         "payment_method": "card",
         "items": [
@@ -492,7 +570,9 @@ def test_create_sale(db: Session, client: TestClient, staff_token_headers: dict,
     assert response.status_code == 201
     result = response.json()
     assert result["customer_id"] == basic_user.id
-    assert result["total_amount_cents"] == 30000
+    # 2 items × 15000 cents = 30000 subtotal, plus 15% tax = 34500 total
+    assert result["subtotal_cents"] == 30000
+    assert result["total_cents"] == result["subtotal_cents"] + result.get("tax_cents", 0)
     assert len(result["items"]) == 1
 
 

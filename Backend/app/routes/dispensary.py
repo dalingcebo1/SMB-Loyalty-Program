@@ -309,7 +309,7 @@ def create_category(
 ):
     """Create a new dispensary product category."""
     category = DispensaryProductCategory(
-        tenant_id=tenant_ctx.tenant_id,
+        tenant_id=tenant_ctx.id,
         **category_data.dict()
     )
     db.add(category)
@@ -326,7 +326,7 @@ def get_categories(
 ):
     """Get all dispensary categories for the tenant."""
     query = db.query(DispensaryProductCategory).filter(
-        DispensaryProductCategory.tenant_id == tenant_ctx.tenant_id
+        DispensaryProductCategory.tenant_id == tenant_ctx.id
     )
     
     if active_only:
@@ -345,7 +345,7 @@ def get_category(
     """Get a specific category by ID."""
     category = db.query(DispensaryProductCategory).filter(
         DispensaryProductCategory.id == category_id,
-        DispensaryProductCategory.tenant_id == tenant_ctx.tenant_id
+        DispensaryProductCategory.tenant_id == tenant_ctx.id
     ).first()
     
     if not category:
@@ -364,7 +364,7 @@ def update_category(
     """Update a category."""
     category = db.query(DispensaryProductCategory).filter(
         DispensaryProductCategory.id == category_id,
-        DispensaryProductCategory.tenant_id == tenant_ctx.tenant_id
+        DispensaryProductCategory.tenant_id == tenant_ctx.id
     ).first()
     
     if not category:
@@ -387,7 +387,7 @@ def delete_category(
     """Delete a category (soft delete by setting active=False)."""
     category = db.query(DispensaryProductCategory).filter(
         DispensaryProductCategory.id == category_id,
-        DispensaryProductCategory.tenant_id == tenant_ctx.tenant_id
+        DispensaryProductCategory.tenant_id == tenant_ctx.id
     ).first()
     
     if not category:
@@ -411,14 +411,14 @@ def create_product(
     # Verify category exists
     category = db.query(DispensaryProductCategory).filter(
         DispensaryProductCategory.id == product_data.category_id,
-        DispensaryProductCategory.tenant_id == tenant_ctx.tenant_id
+        DispensaryProductCategory.tenant_id == tenant_ctx.id
     ).first()
     
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     
     product = DispensaryProduct(
-        tenant_id=tenant_ctx.tenant_id,
+        tenant_id=tenant_ctx.id,
         **product_data.dict()
     )
     db.add(product)
@@ -446,7 +446,7 @@ def get_products(
     query = db.query(DispensaryProduct).options(
         joinedload(DispensaryProduct.category)
     ).filter(
-        DispensaryProduct.tenant_id == tenant_ctx.tenant_id
+        DispensaryProduct.tenant_id == tenant_ctx.id
     )
     
     if category_id is not None:
@@ -493,7 +493,7 @@ def get_product(
         joinedload(DispensaryProduct.category)
     ).filter(
         DispensaryProduct.id == product_id,
-        DispensaryProduct.tenant_id == tenant_ctx.tenant_id
+        DispensaryProduct.tenant_id == tenant_ctx.id
     ).first()
     
     if not product:
@@ -516,7 +516,7 @@ def update_product(
         joinedload(DispensaryProduct.category)
     ).filter(
         DispensaryProduct.id == product_id,
-        DispensaryProduct.tenant_id == tenant_ctx.tenant_id
+        DispensaryProduct.tenant_id == tenant_ctx.id
     ).first()
     
     if not product:
@@ -526,7 +526,7 @@ def update_product(
     if product_data.category_id is not None:
         category = db.query(DispensaryProductCategory).filter(
             DispensaryProductCategory.id == product_data.category_id,
-            DispensaryProductCategory.tenant_id == tenant_ctx.tenant_id
+            DispensaryProductCategory.tenant_id == tenant_ctx.id
         ).first()
         
         if not category:
@@ -552,7 +552,7 @@ def delete_product(
     """Delete a product (soft delete by setting active=False)."""
     product = db.query(DispensaryProduct).filter(
         DispensaryProduct.id == product_id,
-        DispensaryProduct.tenant_id == tenant_ctx.tenant_id
+        DispensaryProduct.tenant_id == tenant_ctx.id
     ).first()
     
     if not product:
@@ -575,7 +575,7 @@ def create_verification(
     """Create or update customer verification record."""
     # Check if verification already exists
     existing = db.query(DispensaryCustomerVerification).filter(
-        DispensaryCustomerVerification.tenant_id == tenant_ctx.tenant_id,
+        DispensaryCustomerVerification.tenant_id == tenant_ctx.id,
         DispensaryCustomerVerification.customer_id == verification_data.customer_id
     ).first()
     
@@ -593,7 +593,7 @@ def create_verification(
     # Set verification timestamps
     now = datetime.utcnow()
     verification = DispensaryCustomerVerification(
-        tenant_id=tenant_ctx.tenant_id,
+        tenant_id=tenant_ctx.id,
         **verification_data.dict()
     )
     
@@ -621,7 +621,7 @@ def list_verifications(
 ):
     """List all customer verification records (admin only)."""
     query = db.query(DispensaryCustomerVerification).filter(
-        DispensaryCustomerVerification.tenant_id == tenant_ctx.tenant_id
+        DispensaryCustomerVerification.tenant_id == tenant_ctx.id
     )
     
     if status:
@@ -651,7 +651,7 @@ def get_verification(
 ):
     """Get customer verification status."""
     verification = db.query(DispensaryCustomerVerification).filter(
-        DispensaryCustomerVerification.tenant_id == tenant_ctx.tenant_id,
+        DispensaryCustomerVerification.tenant_id == tenant_ctx.id,
         DispensaryCustomerVerification.customer_id == customer_id
     ).first()
     
@@ -673,7 +673,7 @@ def update_verification(
 ):
     """Update customer verification record."""
     verification = db.query(DispensaryCustomerVerification).filter(
-        DispensaryCustomerVerification.tenant_id == tenant_ctx.tenant_id,
+        DispensaryCustomerVerification.tenant_id == tenant_ctx.id,
         DispensaryCustomerVerification.customer_id == customer_id
     ).first()
     
@@ -714,7 +714,7 @@ def get_purchase_limits(
     
     # Get or create purchase limit tracking
     limit_tracking = db.query(DispensaryPurchaseLimitTracking).filter(
-        DispensaryPurchaseLimitTracking.tenant_id == tenant_ctx.tenant_id,
+        DispensaryPurchaseLimitTracking.tenant_id == tenant_ctx.id,
         DispensaryPurchaseLimitTracking.customer_id == customer_id,
         DispensaryPurchaseLimitTracking.current_day == today
     ).first()
@@ -722,7 +722,7 @@ def get_purchase_limits(
     if not limit_tracking:
         # Create new tracking record for today
         limit_tracking = DispensaryPurchaseLimitTracking(
-            tenant_id=tenant_ctx.tenant_id,
+            tenant_id=tenant_ctx.id,
             customer_id=customer_id,
             current_day=today,
             current_month=current_month,
@@ -796,7 +796,6 @@ def award_loyalty_points_for_sale(
     # Get active loyalty program
     program = db.query(LoyaltyProgram).filter(
         LoyaltyProgram.tenant_id == tenant_id,
-        LoyaltyProgram.program_status == "active"
     ).first()
     
     if not program:
@@ -811,30 +810,28 @@ def award_loyalty_points_for_sale(
     # Get or create point balance
     balance = db.query(PointBalance).filter(
         PointBalance.tenant_id == tenant_id,
-        PointBalance.customer_id == customer_id
+        PointBalance.user_id == customer_id
     ).first()
     
     if not balance:
         balance = PointBalance(
             tenant_id=tenant_id,
-            customer_id=customer_id,
-            program_id=program.id,
-            current_points=0,
+            user_id=customer_id,
+            points=0,
             lifetime_points=0
         )
         db.add(balance)
         db.flush()
     
     # Update balance
-    balance.current_points += points
+    balance.points += points
     balance.lifetime_points += points
     
     # Create loyalty transaction
     transaction = LoyaltyTransaction(
         tenant_id=tenant_id,
-        customer_id=customer_id,
-        program_id=program.id,
-        transaction_type="earn",
+        user_id=customer_id,
+        type="EARN",
         points=points,
         description=f"Earned from dispensary sale {sale_number}",
         reference_type="dispensary_sale",
@@ -854,7 +851,7 @@ def create_sale(
     """Process a dispensary sale with compliance checks."""
     # 1. Verify customer verification status
     verification = db.query(DispensaryCustomerVerification).filter(
-        DispensaryCustomerVerification.tenant_id == tenant_ctx.tenant_id,
+        DispensaryCustomerVerification.tenant_id == tenant_ctx.id,
         DispensaryCustomerVerification.customer_id == sale_data.customer_id,
         DispensaryCustomerVerification.age_verified == True,
         DispensaryCustomerVerification.verification_status == "verified"
@@ -886,7 +883,7 @@ def create_sale(
     for item in sale_data.items:
         product = db.query(DispensaryProduct).filter(
             DispensaryProduct.id == item.product_id,
-            DispensaryProduct.tenant_id == tenant_ctx.tenant_id,
+            DispensaryProduct.tenant_id == tenant_ctx.id,
             DispensaryProduct.active == True
         ).first()
         
@@ -920,14 +917,14 @@ def create_sale(
     # 3. Check purchase limits
     current_month = today.strftime("%Y-%m")
     limit_tracking = db.query(DispensaryPurchaseLimitTracking).filter(
-        DispensaryPurchaseLimitTracking.tenant_id == tenant_ctx.tenant_id,
+        DispensaryPurchaseLimitTracking.tenant_id == tenant_ctx.id,
         DispensaryPurchaseLimitTracking.customer_id == sale_data.customer_id,
         DispensaryPurchaseLimitTracking.current_day == today
     ).first()
     
     if not limit_tracking:
         limit_tracking = DispensaryPurchaseLimitTracking(
-            tenant_id=tenant_ctx.tenant_id,
+            tenant_id=tenant_ctx.id,
             customer_id=sale_data.customer_id,
             current_day=today,
             current_month=current_month,
@@ -963,7 +960,7 @@ def create_sale(
     # 5. Create sale record
     sale_number = generate_sale_number()
     sale = DispensarySale(
-        tenant_id=tenant_ctx.tenant_id,
+        tenant_id=tenant_ctx.id,
         customer_id=sale_data.customer_id,
         verification_id=verification.id,
         sale_number=sale_number,
@@ -1015,7 +1012,7 @@ def create_sale(
     # 8. Award loyalty points
     points = award_loyalty_points_for_sale(
         db=db,
-        tenant_id=tenant_ctx.tenant_id,
+        tenant_id=tenant_ctx.id,
         customer_id=sale_data.customer_id,
         sale_id=sale.id,
         total_cents=total_cents,
@@ -1052,7 +1049,7 @@ def get_sales(
 ):
     """Get dispensary sales with optional filters."""
     query = db.query(DispensarySale).filter(
-        DispensarySale.tenant_id == tenant_ctx.tenant_id
+        DispensarySale.tenant_id == tenant_ctx.id
     )
     
     if customer_id:
@@ -1090,7 +1087,7 @@ def get_sale(
     """Get a specific sale by ID."""
     sale = db.query(DispensarySale).filter(
         DispensarySale.id == sale_id,
-        DispensarySale.tenant_id == tenant_ctx.tenant_id
+        DispensarySale.tenant_id == tenant_ctx.id
     ).first()
     
     if not sale:
@@ -1120,7 +1117,7 @@ def get_compliance_sales_report(
 ):
     """Generate compliance sales report for regulatory requirements."""
     sales = db.query(DispensarySale).filter(
-        DispensarySale.tenant_id == tenant_ctx.tenant_id,
+        DispensarySale.tenant_id == tenant_ctx.id,
         DispensarySale.sale_date >= start_date,
         DispensarySale.sale_date <= end_date
     ).all()

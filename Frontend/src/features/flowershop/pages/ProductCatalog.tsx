@@ -90,6 +90,13 @@ declare global {
           callback: (result: YocoResult) => void;
         }) => void;
       };
+      popup: (options: {
+        amountInCents: number;
+        currency: string;
+        name: string;
+        description: string;
+        callback: (result: YocoResult) => void;
+      }) => void;
     };
   }
 }

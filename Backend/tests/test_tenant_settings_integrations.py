@@ -5,6 +5,7 @@ import pytest
 
 from app.models import Tenant, TenantIntegration
 from app.services.tenant_settings import TenantSettingsService
+from app.services import tenant_settings as _ts_module
 
 
 # Use a unique tenant id per test module to avoid collisions when tests rerun
@@ -63,7 +64,7 @@ def test_email_settings_prefer_integration(db_session, tenant_with_integrations,
         calls.setdefault(descriptor.vault_name or "fallback", []).append(descriptor.fallback)
         return descriptor.fallback
 
-    monkeypatch.setattr("app.services.tenant_settings.secret_vault.get_secret", fake_get_secret)
+    monkeypatch.setattr(_ts_module.secret_vault, "get_secret", fake_get_secret)
 
     service = TenantSettingsService(tenant_with_integrations)
     email = service.email
@@ -76,7 +77,7 @@ def test_email_settings_prefer_integration(db_session, tenant_with_integrations,
 
 def test_payment_settings_prefer_integration(db_session, tenant_with_integrations, monkeypatch):
     monkeypatch.setattr(
-        "app.services.tenant_settings.secret_vault.get_secret",
+        _ts_module.secret_vault, "get_secret",
         lambda descriptor: descriptor.fallback,
     )
 

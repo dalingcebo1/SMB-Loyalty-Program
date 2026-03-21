@@ -5,6 +5,9 @@ This folder contains a concise, maintained pack of documentation meant for contr
 Included:
 - `CHECKLIST.md` — quick onboarding and contribution checklist
 - `STREAMLINE_SUMMARY.md` — summary of documentation structure and recommended canonical docs
+- `BRANCH_MANAGEMENT.md` — branch strategy, cleanup procedures, and protection recommendations
+- `OPERATIONS_RUNBOOK.md` — operational procedures and maintenance guides
+- `DEV_DEPLOYMENT_RUNBOOK.md` — development environment deployment guide
 
 Guidelines:
 - Keep `docs/` as the canonical set for user-facing and developer-facing docs.

@@ -4,22 +4,48 @@ updates:
     directory: "/Backend"
     schedule:
       interval: "weekly"
+    target-branch: "develop"
     labels: ["deps", "backend"]
     open-pull-requests-limit: 5
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "psycopg2-binary"
     ignore:
       - dependency-name: "psycopg2-binary"
         versions: [">=3.0.0"]
+
   - package-ecosystem: "npm"
     directory: "/Frontend"
     schedule:
       interval: "weekly"
+    target-branch: "develop"
     labels: ["deps", "frontend"]
     open-pull-requests-limit: 5
+    groups:
+      npm-production:
+        dependency-type: "production"
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "typescript"
+      npm-development:
+        dependency-type: "development"
+        patterns:
+          - "*"
     ignore:
       - dependency-name: "typescript"
         versions: [">=6.0.0"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    target-branch: "develop"
     labels: ["deps", "ci"]
+    groups:
+      github-actions:
+        patterns:
+          - "*"

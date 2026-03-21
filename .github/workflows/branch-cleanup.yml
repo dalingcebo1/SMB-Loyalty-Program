@@ -1,0 +1,121 @@
+name: Branch Cleanup (Stale Branches)
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (list only, do not delete)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      days_stale:
+        description: 'Days since last commit to consider branch stale'
+        required: false
+        default: '30'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Identify stale branches
+        id: stale
+        env:
+          DAYS_STALE: ${{ inputs.days_stale || '30' }}
+          DRY_RUN: ${{ inputs.dry_run || 'true' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          
+          echo "## Stale Branch Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Protected branches that should never be deleted
+          PROTECTED="main develop"
+          
+          # Get all remote branches
+          git fetch --all --prune
+          
+          # Calculate cutoff date
+          cutoff_date=$(date -d "$DAYS_STALE days ago" +%s)
+          
+          stale_branches=()
+          
+          echo "| Branch | Last Commit | Days Old | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------------|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          for branch in $(git branch -r --format='%(refname:short)' | grep -v HEAD | sed 's|origin/||'); do
+            # Skip protected branches
+            if echo "$PROTECTED" | grep -qw "$branch"; then
+              continue
+            fi
+            
+            # Skip current PR branches (copilot/*)
+            if [[ "$branch" == copilot/* ]]; then
+              continue
+            fi
+            
+            # Get last commit date
+            last_commit=$(git log -1 --format=%ct "origin/$branch" 2>/dev/null || echo "0")
+            last_commit_date=$(git log -1 --format=%ci "origin/$branch" 2>/dev/null || echo "unknown")
+            days_old=$(( ($(date +%s) - last_commit) / 86400 ))
+            
+            if [ "$last_commit" -lt "$cutoff_date" ]; then
+              stale_branches+=("$branch")
+              echo "| \`$branch\` | $last_commit_date | $days_old | 🔴 Stale |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total stale branches:** ${#stale_branches[@]}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ ${#stale_branches[@]} -eq 0 ]; then
+            echo "No stale branches found (older than $DAYS_STALE days)."
+            echo "stale_count=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "stale_count=${#stale_branches[@]}" >> $GITHUB_OUTPUT
+          printf '%s\n' "${stale_branches[@]}" > /tmp/stale_branches.txt
+          
+          if [ "$DRY_RUN" = "false" ]; then
+            echo "### Branches Deleted" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            for branch in "${stale_branches[@]}"; do
+              echo "Deleting branch: $branch"
+              if git push origin --delete "$branch" 2>/dev/null; then
+                echo "- ✅ \`$branch\`" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "- ❌ \`$branch\` (failed or has open PR)" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            echo "### Dry Run Mode" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Set \`dry_run: false\` to actually delete these branches." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Report summary
+        if: steps.stale.outputs.stale_count != '0'
+        run: |
+          echo "Found ${{ steps.stale.outputs.stale_count }} stale branches"
+          if [ -f /tmp/stale_branches.txt ]; then
+            echo "Stale branches:"
+            cat /tmp/stale_branches.txt
+          fi

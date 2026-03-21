@@ -32,8 +32,11 @@ export default defineConfig({
     ...(process.env.NODE_ENV === 'development' ? [
       visualizer({ filename: 'bundle-stats.html', open: false, gzipSize: true, brotliSize: true }) as unknown as PluginOption
     ] : []),
-    // PWA support for offline caching
+    // PWA support — disabled to prevent build failures with latest plugin version.
+    // The selfDestroying:true config only unregisters old service workers;
+    // public/sw.js handles that statically without the plugin.
     VitePWA({
+      disable: true,
       registerType: 'autoUpdate',
       selfDestroying: true,
       workbox: {

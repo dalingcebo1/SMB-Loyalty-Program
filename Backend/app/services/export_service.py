@@ -33,7 +33,7 @@ def generate_csv(
 
     for row in rows:
         writer.writerow([
-            str(row.get(key, "") if row.get(key) is not None else "")
+            str(row.get(key) if row.get(key) is not None else "")
             for key, _ in columns
         ])
 
@@ -84,7 +84,7 @@ def generate_pdf_report(
 
     for row in rows:
         table_data.append([
-            str(row.get(key, "") if row.get(key) is not None else "")
+            str(row.get(key) if row.get(key) is not None else "")
             for key, _ in columns
         ])
 

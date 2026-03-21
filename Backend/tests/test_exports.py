@@ -264,7 +264,7 @@ def test_generate_csv_with_bom():
             else:
                 result += chunk.encode("utf-8")
         return result
-    content = asyncio.get_event_loop().run_until_complete(_read()) if asyncio.get_event_loop().is_running() else asyncio.run(_read())
+    content = asyncio.run(_read())
     text = content.decode("utf-8")
 
     assert text.startswith("\ufeff")

@@ -56,7 +56,8 @@ const ExportButton: React.FC<ExportButtonProps> = ({
       const filename = filenameMatch?.[1] || `export_${new Date().toISOString().split('T')[0]}.${fallbackExt}`;
 
       // Create download link
-      const blob = new Blob([response.data]);
+      const contentType = response.headers['content-type'] || 'application/octet-stream';
+      const blob = new Blob([response.data], { type: contentType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

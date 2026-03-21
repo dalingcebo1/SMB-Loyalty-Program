@@ -1,0 +1,234 @@
+name: "Frontend: Deploy Dev (Azure SWA)"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - develop
+      - "feature/**"
+      - "test/**"
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/frontend-deploy-dev.yml'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      vite_api_base_url:
+        description: "Override VITE_API_BASE_URL for dev (e.g., https://dev-api.example.com)"
+        required: false
+        type: string
+
+env:
+  # Fallback API base URL if no secrets/variables are set
+  DEV_API_BASE_FALLBACK: https://apismbloyaltyapp-dev.mangoplant-11c2323f.southafricanorth.azurecontainerapps.io
+
+jobs:
+  build_and_deploy:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Dev Frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Upsert VITE_API_BASE_URL_DEV from manual input (optional)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.vite_api_base_url != ''
+        uses: actions/github-script@v7
+        env:
+          VITE_API_BASE_URL_DEV_IN: ${{ github.event.inputs.vite_api_base_url }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const value = process.env.VITE_API_BASE_URL_DEV_IN;
+            if (value && String(value).trim().length > 0) {
+              core.info(`Setting repository variable VITE_API_BASE_URL_DEV=${value}`);
+              await github.request('PUT /repos/{owner}/{repo}/actions/variables/{name}', {
+                owner,
+                repo,
+                name: 'VITE_API_BASE_URL_DEV',
+                value: String(value),
+              });
+            } else {
+              core.info('No VITE_API_BASE_URL_DEV provided; skipping.');
+            }
+
+      - name: Resolve API base URL
+        id: resolve-api
+        run: |
+          API_BASE="${{ github.event.inputs.vite_api_base_url || secrets.CA_PUBLIC_API_URL_DEV || secrets.CA_PUBLIC_API_URL || vars.VITE_API_BASE_URL_DEV || vars.VITE_API_BASE_URL }}"
+          if [ -z "$API_BASE" ]; then
+            API_BASE="${DEV_API_BASE_FALLBACK}"
+            echo "::warning::Using fallback API base URL: $API_BASE"
+          fi
+          echo "api_base=$API_BASE" >> "$GITHUB_OUTPUT"
+          echo "Resolved API base URL: $API_BASE"
+
+      - name: Sanity check dev build env (VITE_* presence)
+        run: |
+          echo "VITE_API_BASE_URL_DEV=${VITE_API_BASE_URL_DEV:+Set}"
+          echo "VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID:-Missing}"
+          echo "VITE_YOCO_PUBLIC_KEY=${VITE_YOCO_PUBLIC_KEY:+Set}"
+        env:
+          VITE_API_BASE_URL_DEV: ${{ steps.resolve-api.outputs.api_base }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_YOCO_PUBLIC_KEY: ${{ vars.VITE_YOCO_PUBLIC_KEY_DEV || vars.VITE_YOCO_PUBLIC_KEY || secrets.VITE_YOCO_PUBLIC_KEY_DEV || secrets.VITE_YOCO_PUBLIC_KEY }}
+
+      - name: Write production env override for Vite
+        run: |
+          API_BASE="${{ steps.resolve-api.outputs.api_base }}"
+          if [ -z "$API_BASE" ]; then
+            echo "::warning::API base empty; leaving Frontend/.env.production untouched.";
+          else
+            {
+              printf 'VITE_API_BASE_URL=%s\n' "$API_BASE"
+              printf 'VITE_API_BASE_URL_DEV=%s\n' "$API_BASE"
+            } > Frontend/.env.production
+            echo "Wrote Frontend/.env.production with API base $API_BASE";
+          fi
+
+      - name: Validate deployment prerequisites
+        id: prereq
+        run: |
+          can_deploy=true
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::warning::Missing secret AZURE_STATIC_WEB_APPS_API_TOKEN_DEV. Will build assets but skip deploy.";
+            can_deploy=false
+          fi
+          echo "can_deploy=$can_deploy" >> "$GITHUB_OUTPUT"
+        env:
+          DEPLOY_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ORANGE_POND_06EEA490F }}
+
+      - name: Remove yarn.lock to avoid Yarn engine conflicts
+        run: rm -f Frontend/yarn.lock || true
+
+      - name: Install dependencies
+        run: cd Frontend && npm ci
+
+      - name: Build frontend
+        run: cd Frontend && npm run build
+        env:
+          VITE_API_BASE_URL: ${{ steps.resolve-api.outputs.api_base }}
+          VITE_API_BASE_URL_DEV: ${{ steps.resolve-api.outputs.api_base }}
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY_DEV || vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY_DEV || secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN_DEV || vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID_DEV || vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID_DEV || secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET_DEV || vars.VITE_FIREBASE_STORAGE_BUCKET || secrets.VITE_FIREBASE_STORAGE_BUCKET_DEV || secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID_DEV || vars.VITE_FIREBASE_MESSAGING_SENDER_ID || secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_DEV || secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID_DEV || vars.VITE_FIREBASE_APP_ID || secrets.VITE_FIREBASE_APP_ID_DEV || secrets.VITE_FIREBASE_APP_ID }}
+          VITE_YOCO_PUBLIC_KEY: ${{ vars.VITE_YOCO_PUBLIC_KEY_DEV || vars.VITE_YOCO_PUBLIC_KEY || secrets.VITE_YOCO_PUBLIC_KEY_DEV || secrets.VITE_YOCO_PUBLIC_KEY }}
+          VITE_APP_VERSION: ${{ github.sha }}
+
+      - name: Verify built assets
+        run: |
+          cd Frontend/dist
+          echo "Verifying dist contents..."
+          if [ ! -f index.html ]; then
+            echo "::error::index.html missing in dist; build likely failed."
+            exit 1
+          fi
+          echo "Dist file list:"; ls -1 | sed 's/^/ - /'
+          
+          # Check for API base in bundle
+          API_BASE="${{ steps.resolve-api.outputs.api_base }}"
+          if [ -n "$API_BASE" ]; then
+            echo "Checking for API base string: $API_BASE"
+            if grep -R --include='*.js' -q "$API_BASE" .; then
+              echo "API base found in JS bundle."
+            else
+              echo "::warning::API base '$API_BASE' not found in JS bundle; may be loaded dynamically."
+            fi
+          fi
+          
+          # Check for localhost references (should not be present)
+          if grep -R --include='*.js' -q "127.0.0.1:8000\|localhost:8000" .; then
+            echo "::error::Found localhost API references in built assets!"
+            exit 1
+          fi
+          
+          # Check for Azure placeholder content
+          if grep -q "Congratulations" index.html; then
+            echo "::error::Azure placeholder content detected in index.html"
+            exit 1
+          fi
+
+      - name: Remove node_modules before deploy
+        run: rm -rf Frontend/node_modules || true
+
+      - name: Upload build artifact (skip deploy path)
+        if: steps.prereq.outputs.can_deploy != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-frontend-dist-${{ github.sha }}
+          path: Frontend/dist
+          if-no-files-found: error
+
+      - name: Deploy to Azure Static Web Apps (Dev)
+        id: deploy-dev
+        if: steps.prereq.outputs.can_deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ORANGE_POND_06EEA490F }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          skip_app_build: true
+          skip_api_build: true
+          app_location: "Frontend/dist"
+          api_location: ""
+          output_location: ""
+
+      - name: Cleanup old dev artifacts (keep latest 5)
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prefix = 'dev-frontend-dist-';
+            const keep = 5;
+            const all = await github.paginate(github.rest.actions.listArtifactsForRepo, { owner, repo, per_page: 100 });
+            const targets = all.filter(a => a.name && a.name.startsWith(prefix))
+              .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+            core.info(`Found ${targets.length} dev artifacts with prefix ${prefix}. Keeping newest ${keep}.`);
+            for (const art of targets.slice(keep)) {
+              try {
+                await github.rest.actions.deleteArtifact({ owner, repo, artifact_id: art.id });
+                core.info(`Deleted artifact ${art.name} (id=${art.id}) created ${art.created_at}`);
+              } catch (e) {
+                core.warning(`Failed to delete artifact ${art.name} (${art.id}): ${e.message}`);
+              }
+            }
+
+  close_pull_request:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ORANGE_POND_06EEA490F }}
+          app_location: "Frontend/dist"
+          output_location: ""
+          action: "close"

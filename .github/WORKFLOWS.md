@@ -1,54 +1,127 @@
 # CI/CD Workflows
 
-This repository deploys on Azure. We removed legacy AWS pipelines and kept a focused set of workflows for CI, releases, and Azure deploys.
+This repository deploys on Azure with separate dev and production environments.
+
+## Workflow Naming Convention
+
+All workflows follow a consistent naming pattern:
+- `{component}-{action}-{environment}.yml`
+- Examples: `backend-deploy-prod.yml`, `frontend-deploy-dev.yml`, `backend-ci.yml`
 
 ## Overview
 
-- Backend CI and Quality
-  - `backend-ci.yml`: Lint, type-check, run tests (push/PR to `Backend/**`)
-  - `backend-quality.yml`: Enhanced PR checks (ruff, mypy, migration drift, pip-audit, coverage gate)
-  - `backend-trivy-scan.yml`: Container image vulnerability scanning for PRs
-- Frontend CI
-  - `frontend-ci.yml`: Install, test, and build Frontend on push/PR
-- E2E and Smoke
-  - `e2e-tests.yml`: Local ephemeral stack, runs Cypress against preview servers
-  - `post-deploy-smoke.yml`: Manual smoke checks against a provided API URL
-- Releases
-  - `release-backend.yml`: Build and push backend image to GHCR on `v*.*.*` tags
-  - `release-frontend.yml`: Build and push frontend image to GHCR on `v*.*.*` tags
-- Azure Deployments
-  - `backend-azure-containerapps.yml`: Builds via ACR Build and deploys the backend to Azure Container Apps. Optional Alembic run and health checks.
-  - `backend-migrate.yml`: Manually run Alembic migrations inside the running Container App.
-  - `containerapp-configure-env.yml`: Manually set and update environment variables on the Container App.
-  
-  Ringfenced health strategy:
-  - Health checks run from inside the Container App using `az containerapp exec` to curl `http://localhost:8000/health/ready-lite`. This avoids hitting the public ingress when the backend is ringfenced.
-  - External smoke tests run only when `CA_PUBLIC_API_URL` secret is configured. If not provided, smoke tests are skipped.
-- Static Web Apps (Frontend)
-  - `azure-static-web-apps-*.yml`: Builds the frontend using npm and deploys to Azure Static Web Apps.
+### CI (Quality Gates)
 
-## Removed/Disabled
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| `backend-ci.yml` | Lint (ruff), type-check (mypy), tests, coverage | Push/PR to `Backend/**` |
+| `frontend-ci.yml` | Install, test, build | Push/PR to `Frontend/**` |
+| `e2e-tests.yml` | Cypress E2E tests against ephemeral stack | Push/PR to `main` |
 
-- `deploy.yml`: DISABLED legacy AWS (S3 + Elastic Beanstalk). Kept as a no-op manual file with a notice.
-- `frontend-azure-swa.yml`: Removed (empty). SWA deployments are handled by `azure-static-web-apps-*.yml`.
-- `ci.yml`: Removed (duplicate of backend CI).
+### Deployment - Dev
 
-## Triggers
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| `backend-deploy-dev.yml` | Deploy backend to Azure Container Apps (dev) | Push to `develop`/`feature/**`/`test/**` |
+| `frontend-deploy-dev.yml` | Deploy frontend to Azure Static Web Apps (dev) | Push to `develop`/`feature/**`/`test/**` |
 
-- CI (push/PR): `backend-ci.yml`, `frontend-ci.yml`, `backend-quality.yml`, `backend-trivy-scan.yml`, `e2e-tests.yml`
-- Release (tags): `release-backend.yml`, `release-frontend.yml`
-- Deploy (push to main): `backend-azure-containerapps.yml`, `azure-static-web-apps-*.yml`
-- Manual: `backend-migrate.yml`, `containerapp-configure-env.yml`, `post-deploy-smoke.yml`, `deploy.yml` (disabled)
+### Deployment - Production
 
-Notes:
-- SWA build uses `VITE_API_BASE_URL` from `CA_PUBLIC_API_URL` secret. Set this to an approved public domain. If unset, frontend may not be able to call the API.
-- The dev SWA build prefers `CA_PUBLIC_API_URL_DEV` (and the repo dispatch input) before falling back to any `VITE_API_BASE_URL_DEV` variable, so keep that secret pointed at the dev backend instead of localhost.
-- E2E workflow applies Alembic migrations and sets `ENVIRONMENT=production` before starting the backend to avoid automatic table creation and enforce the real schema.
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| `backend-deploy-prod.yml` | Deploy backend to Azure Container Apps (prod) | Push to `main` |
+| `frontend-deploy-prod.yml` | Deploy frontend to Azure Static Web Apps (prod) | Push to `main` |
 
-## Contributor tips
+### Operations (Manual)
 
-- Backend tests use Postgres in CI. Ensure DB migrations run locally with `alembic -c Backend/alembic.ini upgrade head` before pushing.
-- Frontend builds use Node 18/20 and npm. Keep `package-lock.json` up to date.
-- For Azure Container Apps secrets, update repository secrets prefixed with `CA_...`.
-- Tag a release (`vX.Y.Z`) to publish images to GHCR.
-- E2E runs headlessly with `xvfb`; if tests fail on CI, replicate locally with `npm run cypress:run`.
+| Workflow | Purpose |
+|----------|---------|
+| `backend-migrate.yml` | Run Alembic migrations (supports dev/prod selection) |
+| `backend-db-bootstrap.yml` | Bootstrap database and run migrations (supports dev/prod) |
+
+### Security
+
+| Workflow | Purpose |
+|----------|---------|
+| `codeql.yml` | SAST (Static Application Security Testing) |
+| `secret-scan.yml` | Secret detection in commits |
+
+## Environment Selection
+
+The migration and bootstrap workflows now support environment selection:
+
+```yaml
+inputs:
+  environment:
+    type: choice
+    options:
+      - dev   # Uses apismbloyaltyapp-dev
+      - prod  # Uses apismbloyaltyapp
+  containerapp_name:
+    description: "Override Container App name (optional)"
+    default: ""  # If provided, overrides environment-based naming
+```
+
+**Note:** If you provide a custom `containerapp_name`, it will be used regardless of the environment selection. Leave it empty to use the environment-based defaults.
+
+## Ringfenced Health Strategy
+
+Health checks run from inside the Container App using `az containerapp exec` to curl `http://localhost:8000/health/ready-lite`. This avoids hitting the public ingress when the backend is ringfenced.
+
+External smoke tests run only when `CA_PUBLIC_API_URL` secret is configured.
+
+## Action Version Standards
+
+All workflows use these standardized versions:
+- `actions/checkout@v4`
+- `actions/setup-python@v5`
+- `actions/setup-node@v4`
+- `actions/upload-artifact@v4`
+- `azure/login@v2`
+- Node.js: 20 (LTS)
+- Python: 3.11
+
+## Removed Workflows
+
+These workflows have been removed during cleanup:
+- `ci.yml` - Duplicate of `backend-ci.yml`
+- `deploy.yml` - Legacy AWS deployment (we use Azure only)
+- `azure-static-web-apps-dev.yml` - Consolidated into `frontend-deploy-dev.yml`
+- `azure-static-web-apps-orange-pond-*.yml` - Consolidated into `frontend-deploy-dev.yml`
+
+## Secrets & Variables
+
+### Backend (Container Apps)
+
+Secrets follow this priority order: `CA_*_DEV` → `*_DEV` → `CA_*` → `*`
+
+| Secret | Purpose |
+|--------|---------|
+| `CA_DATABASE_URL` / `CA_DATABASE_URL_DEV` | PostgreSQL connection string |
+| `CA_JWT_SECRET` / `CA_JWT_SECRET_DEV` | JWT signing key |
+| `CA_SECRET_KEY` / `CA_SECRET_KEY_DEV` | App secret key |
+| `CA_ALLOWED_ORIGINS` / `CA_ALLOWED_ORIGINS_DEV` | CORS origins |
+
+### Frontend (Static Web Apps)
+
+| Variable/Secret | Purpose |
+|-----------------|---------|
+| `VITE_API_BASE_URL` / `VITE_API_BASE_URL_DEV` | API base URL |
+| `VITE_FIREBASE_*` / `VITE_FIREBASE_*_DEV` | Firebase config |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN_*` | SWA deployment tokens |
+
+## Contributor Tips
+
+1. **Backend tests** use Postgres in CI. Run migrations locally before pushing:
+   ```bash
+   alembic -c Backend/alembic.ini upgrade head
+   ```
+
+2. **Frontend builds** use Node 20 and npm. Keep `package-lock.json` updated.
+
+3. **Releases**: Tag with `vX.Y.Z` to publish images to GHCR.
+
+4. **E2E tests** run headlessly with `xvfb`. Replicate locally with:
+   ```bash
+   npm run cypress:run
+   ```

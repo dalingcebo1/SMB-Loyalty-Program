@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -6,6 +6,7 @@ from app.models import Tenant, User, VerticalType, TenantBranding, SubscriptionP
 from app.plugins.auth.routes import require_admin, get_current_user
 from app.services.tenant_settings import get_tenant_settings
 from app.core.modules import VERTICAL_EXTRA_MODULES
+from app.utils.request_origin import get_request_origin
 from pydantic import BaseModel
 from typing import List, Optional
 import os, pathlib, shutil, io, hashlib
@@ -591,7 +592,7 @@ class InviteOut(BaseModel):
     expires_at: datetime
 
 @router.post("/{tenant_id}/invite", response_model=InviteOut)
-def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+def invite_tenant_admin(tenant_id: str, payload: TenantInvite, request: Request, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     """Generate a one-time invite token and email it to the client-admin"""
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     if not tenant:
@@ -600,6 +601,7 @@ def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Dep
     tenant_settings = get_tenant_settings(tenant)
     auth_settings = tenant_settings.auth
     email_settings = tenant_settings.email
+    origin = get_request_origin(request)
 
     expires = datetime.utcnow() + timedelta(seconds=auth_settings.reset_token_expire_seconds)
     invite = InviteToken(
@@ -615,7 +617,7 @@ def invite_tenant_admin(tenant_id: str, payload: TenantInvite, db: Session = Dep
     # Send invitation email if configured
     if email_settings.provider == "sendgrid" and email_settings.sendgrid_api_key:
         client = SendGridAPIClient(email_settings.sendgrid_api_key)
-        link = tenant_settings.build_frontend_url(f"onboarding/invite?token={token}")
+        link = tenant_settings.build_frontend_url(f"onboarding/invite?token={token}", origin=origin)
         mail = Mail(
             from_email=email_settings.from_email,
             to_emails=payload.email,

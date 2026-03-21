@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, List, Callable, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
@@ -19,6 +19,7 @@ from config import settings
 from app.core.database import get_db
 from app.models import User, VisitCount, Vehicle
 from app.services.tenant_settings import TenantSettingsService, get_tenant_settings
+from app.utils.request_origin import get_request_origin
 from utils.firebase_admin import admin_auth
 from app.plugins.loyalty.constants import REWARD_INTERVAL
 
@@ -583,13 +584,14 @@ def reset_password(req: PasswordResetRequest, db: Session = Depends(get_db)):
     return {"message": "Password reset successful"}
 
 @router.post("/request-password-reset")
-def request_password_reset(req: PasswordResetEmailRequest, db: Session = Depends(get_db)):
+def request_password_reset(req: PasswordResetEmailRequest, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter_by(email=req.email).first()
     if user:
+        origin = get_request_origin(request)
         token, tenant_settings = _issue_reset_token(user, db)
         if tenant_settings:
             email_settings = tenant_settings.email
-            reset_link = tenant_settings.build_frontend_url(f"reset-password?token={token}")
+            reset_link = tenant_settings.build_frontend_url(f"reset-password?token={token}", origin=origin)
             if email_settings.provider == "sendgrid" and email_settings.sendgrid_api_key:
                 msg = Mail(
                     from_email=email_settings.from_email,
@@ -604,7 +606,8 @@ def request_password_reset(req: PasswordResetEmailRequest, db: Session = Depends
                 except Exception:
                     pass
         else:
-            reset_link = f"{settings.frontend_url}/reset-password?token={token}"
+            base = origin or settings.frontend_url
+            reset_link = f"{base.rstrip('/')}/reset-password?token={token}"
             if settings.sendgrid_api_key:
                 msg = Mail(
                     from_email=settings.reset_email_from,

@@ -1,16 +1,32 @@
-name: Backend Migrate (Alembic)
+name: "Backend: Migrate (Alembic)"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
       resource_group:
         description: Azure Resource Group
-        required: true
+        required: false
         default: SMB-Loyalty-Group
       containerapp_name:
-        description: Container App name
-        required: true
-        default: apismbloyaltyapp
+        description: "Container App name (leave empty to use default based on environment)"
+        required: false
+        default: ""
       timeout_seconds:
         description: Max seconds to wait for successful health after migration
         required: false
@@ -19,10 +35,26 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine Container App name
+        id: resolve
+        run: |
+          ENV="${{ inputs.environment }}"
+          CUSTOM_APP="${{ inputs.containerapp_name }}"
+          if [ -n "$CUSTOM_APP" ]; then
+            APP_NAME="$CUSTOM_APP"
+          elif [ "$ENV" = "dev" ]; then
+            APP_NAME="apismbloyaltyapp-dev"
+          else
+            APP_NAME="apismbloyaltyapp"
+          fi
+          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
+          echo "Resolved Container App: $APP_NAME (environment: $ENV)"
+
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
@@ -33,28 +65,45 @@ jobs:
       - name: Install Container Apps extension
         run: az extension add --name containerapp --upgrade
 
+      - name: Verify Container App exists
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ steps.resolve.outputs.app_name }}
+        run: |
+          set -euo pipefail
+          echo "Verifying Container App '$APP' exists in resource group '$RG'"
+          if ! az containerapp show -g "$RG" -n "$APP" --query name -o tsv > /dev/null 2>&1; then
+            echo "::error::Container App '$APP' not found in resource group '$RG'"
+            exit 1
+          fi
+          echo "Container App verified: $APP"
+
       - name: Run Alembic upgrade head
         env:
           RG: ${{ inputs.resource_group }}
-          APP: ${{ inputs.containerapp_name }}
+          APP: ${{ steps.resolve.outputs.app_name }}
         run: |
           set -euo pipefail
           echo "Executing alembic upgrade head inside container app: $APP"
           az containerapp exec -g "$RG" -n "$APP" --command "alembic -c alembic.ini upgrade head" || {
-            echo 'Alembic upgrade failed'; exit 1; }
+            echo "::error::Alembic upgrade failed"
+            exit 1
+          }
+          echo "Alembic upgrade completed"
 
       - name: Show current heads
         env:
           RG: ${{ inputs.resource_group }}
-          APP: ${{ inputs.containerapp_name }}
+          APP: ${{ steps.resolve.outputs.app_name }}
         run: |
           set -euo pipefail
+          echo "Current Alembic heads:"
           az containerapp exec -g "$RG" -n "$APP" --command "alembic -c alembic.ini heads" || true
 
       - name: Post-migration health check
         env:
           RG: ${{ inputs.resource_group }}
-          APP: ${{ inputs.containerapp_name }}
+          APP: ${{ steps.resolve.outputs.app_name }}
           TIMEOUT: ${{ inputs.timeout_seconds }}
         run: |
           set -euo pipefail
@@ -63,14 +112,14 @@ jobs:
           ok=false
           while [ $SECONDS -lt $end ]; do
             if az containerapp exec -g "$RG" -n "$APP" \
-              --command "sh -lc 'code=\$(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/health/ready || echo 000); echo health:\ $code; [ \"$code\" = 200 ]'"; then
+              --command "sh -lc 'code=\$(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/health/ready || echo 000); echo health:\ \$code; [ \"\$code\" = 200 ]'"; then
               ok=true
               break
             fi
             sleep 5
           done
           if [ "$ok" = false ]; then
-            echo "Health check (internal) failed after migration" >&2
+            echo "::error::Health check (internal) failed after migration"
             exit 1
           fi
           echo "Migration complete and health OK (internal)"

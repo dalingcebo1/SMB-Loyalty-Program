@@ -1,0 +1,380 @@
+name: "Backend: Deploy Prod (Azure Container Apps)"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/backend-deploy-prod.yml'
+  workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: "Run Alembic upgrade head after deploy (true/false)"
+        required: false
+        default: 'false'
+      health_retry_seconds:
+        description: "Max seconds to wait for /health/ready=200"
+        required: false
+        default: '90'
+      run_seed_all:
+        description: "Run Backend/seed_all.py inside the container after deploy (true/false)"
+        required: false
+        default: 'true'
+      seed_reset:
+        description: "Drop/recreate tables before seeding (USE WITH EXTREME CAUTION)"
+        required: false
+        default: 'false'
+
+env:
+  AZURE_RESOURCE_GROUP: SMB-Loyalty-Group
+  CONTAINERAPP_NAME: apismbloyaltyapp
+  ACR_NAME: smblpcontainerregistry
+  IMAGE_NAME: smb-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies for smoke tests
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r Backend/dev-requirements.txt
+
+      - name: Run backend readiness smoke tests
+        run: |
+          set -euo pipefail
+          cd Backend
+          DATABASE_URL=sqlite:///./dev.db pytest tests/test_health_endpoints.py tests/test_auth.py -q
+
+      - name: Azure login (OIDC)
+        id: azure_login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Azure Container Apps extension
+        run: az extension add --name containerapp --upgrade
+
+      - name: Prepare Container Apps exec helper
+        run: |
+          set -euo pipefail
+          cat <<'PY' >/tmp/az_containerapp_exec.py
+          import argparse
+          import os
+          import pty
+          import sys
+
+          parser = argparse.ArgumentParser(description="Run az containerapp exec with a pseudo-TTY")
+          parser.add_argument("--container", dest="container")
+          parser.add_argument("--revision", dest="revision")
+          parser.add_argument("remote_command", help="Command to execute inside the container app")
+          args = parser.parse_args()
+
+          cmd = [
+              "az",
+              "containerapp",
+              "exec",
+              "-g",
+              os.environ["AZURE_RESOURCE_GROUP"],
+              "-n",
+              os.environ["CONTAINERAPP_NAME"],
+          ]
+          if args.container:
+              cmd += ["--container", args.container]
+          if args.revision:
+              cmd += ["--revision", args.revision]
+          cmd += ["--command", args.remote_command]
+
+          status = pty.spawn(cmd)
+          if status is None:
+              sys.exit(0)
+          try:
+              exit_code = os.waitstatus_to_exitcode(status)
+          except AttributeError:
+              exit_code = status >> 8
+          sys.exit(exit_code)
+          PY
+          chmod +x /tmp/az_containerapp_exec.py
+
+      - name: Build and push image to ACR (remote)
+        run: |
+          set -euo pipefail
+          echo "Building $ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }} from Backend/Dockerfile"
+          az acr build \
+            -r "$ACR_NAME" \
+            -t "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}" \
+            -f Backend/Dockerfile Backend
+
+      - name: Deploy image & set env vars (direct update)
+        run: |
+          set -euo pipefail
+          echo "Resolving backend environment values from secrets/variables (with fallbacks)"
+
+          # Resolve values with priority order: CA_* secret -> non-CA secret -> repo variable (where sensible)
+          res() { var="$1"; shift; for name in "$@"; do v="${!name:-}"; [ -n "$v" ] && { echo "$v"; return; }; done; echo ""; }
+
+          # Export GitHub Actions secrets/vars into the shell (only the ones we may use)
+          # Note: GHA already exposes them to expressions; here we mirror into shell vars safely.
+          export S_CA_DATABASE_URL='${{ secrets.CA_DATABASE_URL }}'
+          export S_DATABASE_URL='${{ secrets.DATABASE_URL }}'
+          export S_CA_ALLOWED_ORIGINS='${{ secrets.CA_ALLOWED_ORIGINS }}'
+          export S_ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}'
+          export S_CA_FRONTEND_URL='${{ secrets.CA_FRONTEND_URL }}'
+          export S_FRONTEND_URL='${{ secrets.FRONTEND_URL }}'
+          export S_CA_JWT_SECRET='${{ secrets.CA_JWT_SECRET }}'
+          export S_JWT_SECRET='${{ secrets.JWT_SECRET }}'
+          export S_CA_RESET_SECRET='${{ secrets.CA_RESET_SECRET }}'
+          export S_RESET_SECRET='${{ secrets.RESET_SECRET }}'
+          export S_CA_SECRET_KEY='${{ secrets.CA_SECRET_KEY }}'
+          export S_SECRET_KEY='${{ secrets.SECRET_KEY }}'
+          export S_CA_SENTRY_DSN='${{ secrets.CA_SENTRY_DSN }}'
+          export S_SENTRY_DSN='${{ secrets.SENTRY_DSN }}'
+          export S_CA_YOCO_SECRET_KEY='${{ secrets.CA_YOCO_SECRET_KEY }}'
+          export S_YOCO_SECRET_KEY='${{ secrets.YOCO_SECRET_KEY }}'
+          export S_CA_YOCO_WEBHOOK_SECRET='${{ secrets.CA_YOCO_WEBHOOK_SECRET }}'
+          export S_YOCO_WEBHOOK_SECRET='${{ secrets.YOCO_WEBHOOK_SECRET }}'
+          export S_CA_FIREBASE_CREDENTIALS_JSON='${{ secrets.CA_FIREBASE_CREDENTIALS_JSON }}'
+          export S_FIREBASE_CREDENTIALS_JSON='${{ secrets.FIREBASE_CREDENTIALS_JSON }}'
+          export S_CA_FIREBASE_PROJECT_ID='${{ secrets.CA_FIREBASE_PROJECT_ID }}'
+          export V_VITE_FIREBASE_PROJECT_ID='${{ vars.VITE_FIREBASE_PROJECT_ID }}'
+          export S_VITE_FIREBASE_PROJECT_ID='${{ secrets.VITE_FIREBASE_PROJECT_ID }}'
+          export S_CA_DEFAULT_TENANT='${{ secrets.CA_DEFAULT_TENANT }}'
+          export S_DEFAULT_TENANT='${{ secrets.DEFAULT_TENANT }}'
+          export V_DEFAULT_TENANT='${{ vars.DEFAULT_TENANT }}'
+
+          RESOLVED_DATABASE_URL=$(res db S_CA_DATABASE_URL S_DATABASE_URL)
+          RESOLVED_ALLOWED_ORIGINS=$(res ao S_CA_ALLOWED_ORIGINS S_ALLOWED_ORIGINS)
+          RESOLVED_FRONTEND_URL=$(res fe S_CA_FRONTEND_URL S_FRONTEND_URL)
+          RESOLVED_JWT_SECRET=$(res js S_CA_JWT_SECRET S_JWT_SECRET)
+          RESOLVED_RESET_SECRET=$(res rs S_CA_RESET_SECRET S_RESET_SECRET)
+          RESOLVED_SECRET_KEY=$(res sk S_CA_SECRET_KEY S_SECRET_KEY)
+          RESOLVED_SENTRY_DSN=$(res sd S_CA_SENTRY_DSN S_SENTRY_DSN)
+          RESOLVED_YOCO_SECRET_KEY=$(res ys S_CA_YOCO_SECRET_KEY S_YOCO_SECRET_KEY)
+          RESOLVED_YOCO_WEBHOOK_SECRET=$(res yw S_CA_YOCO_WEBHOOK_SECRET S_YOCO_WEBHOOK_SECRET)
+          RESOLVED_FIREBASE_CREDENTIALS_JSON=$(res fj S_CA_FIREBASE_CREDENTIALS_JSON S_FIREBASE_CREDENTIALS_JSON)
+          RESOLVED_FIREBASE_PROJECT_ID=$(res fp S_CA_FIREBASE_PROJECT_ID V_VITE_FIREBASE_PROJECT_ID S_VITE_FIREBASE_PROJECT_ID)
+          RESOLVED_DEFAULT_TENANT=$(res dt S_CA_DEFAULT_TENANT S_DEFAULT_TENANT V_DEFAULT_TENANT)
+          if [ -z "$RESOLVED_DEFAULT_TENANT" ]; then RESOLVED_DEFAULT_TENANT="default"; fi
+
+          echo "Diagnostics (Set/Missing only; values masked):"
+          for k in RESOLVED_DATABASE_URL RESOLVED_ALLOWED_ORIGINS RESOLVED_FRONTEND_URL RESOLVED_SECRET_KEY RESOLVED_JWT_SECRET RESOLVED_RESET_SECRET RESOLVED_SENTRY_DSN RESOLVED_YOCO_SECRET_KEY RESOLVED_YOCO_WEBHOOK_SECRET RESOLVED_FIREBASE_CREDENTIALS_JSON RESOLVED_FIREBASE_PROJECT_ID RESOLVED_DEFAULT_TENANT; do
+            if [ -n "${!k}" ]; then echo " - $k: set"; else echo " - $k: MISSING"; fi
+          done
+
+          secret_args=()
+          [ -n "$RESOLVED_SECRET_KEY" ] && secret_args+=("secretkey=$RESOLVED_SECRET_KEY")
+          [ -n "$RESOLVED_JWT_SECRET" ] && secret_args+=("jwtsecretkey=$RESOLVED_JWT_SECRET")
+          [ -n "$RESOLVED_RESET_SECRET" ] && secret_args+=("resetsecretkey=$RESOLVED_RESET_SECRET")
+
+          if [ ${#secret_args[@]} -gt 0 ]; then
+            echo "Updating Container App secrets"
+            az containerapp secret set \
+              -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+              --secrets "${secret_args[@]}"
+          fi
+
+          # Production hard checks: prevent deploying with an invalid DB URL
+          ENVIRONMENT=production
+          if [ "$ENVIRONMENT" = "production" ]; then
+            du="$RESOLVED_DATABASE_URL"
+            bad=false
+            if [ -z "$du" ]; then
+              echo "ERROR: DATABASE_URL not provided in production" >&2; bad=true;
+            fi
+            # Disallow sqlite in production
+            if echo "$du" | grep -qi '^sqlite'; then
+              echo "ERROR: DATABASE_URL points to sqlite; not allowed in production" >&2; bad=true;
+            fi
+            # Disallow obvious placeholders
+            if echo "$du" | grep -Eq 'HOST|USERNAME|PASSWORD|DBNAME|<|>' ; then
+              echo "ERROR: DATABASE_URL contains placeholder values (HOST/USERNAME/etc). Please set a real Postgres URL." >&2; bad=true;
+            fi
+            # Require postgres scheme
+            if ! echo "$du" | grep -Eq '^postgres(ql)?(\+psycopg2)?:\/\/'; then
+              echo "ERROR: DATABASE_URL must be a postgres URL (postgres:// or postgresql://)" >&2; bad=true;
+            fi
+            if [ "$bad" = true ]; then
+              exit 1
+            fi
+          fi
+
+          echo "Deploying image via az containerapp update (secret refs + env)"
+          # Build dynamic env var list including only non-empty values to avoid clobbering with blanks
+          env_args=(
+            "SECRET_KEY=secretref:secretkey"
+            "JWT_SECRET=secretref:jwtsecretkey"
+            "RESET_SECRET=secretref:resetsecretkey"
+            "ENVIRONMENT=production"
+          )
+          [ -n "$RESOLVED_DATABASE_URL" ] && env_args+=( "DATABASE_URL=$RESOLVED_DATABASE_URL" )
+          [ -n "$RESOLVED_ALLOWED_ORIGINS" ] && env_args+=( "ALLOWED_ORIGINS=$RESOLVED_ALLOWED_ORIGINS" )
+          [ -n "$RESOLVED_FRONTEND_URL" ] && env_args+=( "FRONTEND_URL=$RESOLVED_FRONTEND_URL" )
+          [ -n "$RESOLVED_SENTRY_DSN" ] && env_args+=( "SENTRY_DSN=$RESOLVED_SENTRY_DSN" )
+          [ -n "$RESOLVED_YOCO_SECRET_KEY" ] && env_args+=( "YOCO_SECRET_KEY=$RESOLVED_YOCO_SECRET_KEY" )
+          [ -n "$RESOLVED_YOCO_WEBHOOK_SECRET" ] && env_args+=( "YOCO_WEBHOOK_SECRET=$RESOLVED_YOCO_WEBHOOK_SECRET" )
+          [ -n "$RESOLVED_FIREBASE_CREDENTIALS_JSON" ] && env_args+=( "FIREBASE_CREDENTIALS_JSON=$RESOLVED_FIREBASE_CREDENTIALS_JSON" )
+          [ -n "$RESOLVED_FIREBASE_PROJECT_ID" ] && env_args+=( "FIREBASE_PROJECT_ID=$RESOLVED_FIREBASE_PROJECT_ID" )
+          [ -n "$RESOLVED_DEFAULT_TENANT" ] && env_args+=( "DEFAULT_TENANT=$RESOLVED_DEFAULT_TENANT" )
+
+          az containerapp update \
+            -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+            --image "${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --set-env-vars "${env_args[@]}"
+          echo "Container App update submitted"
+
+      - name: Wait for new revision to be ready
+        run: |
+          set -euo pipefail
+          echo "Waiting for latest revision to be provisioned and ready"
+          start=$SECONDS
+          timeout=120
+          
+          latest=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)
+          echo "Latest revision: $latest"
+          
+          while true; do
+            show_values=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" \
+              --query "[properties.latestReadyRevisionName, properties.replicasSummary.running, properties.provisioningState]" \
+              -o tsv 2>/dev/null | tr '\n' ' ' || true)
+            if [ -z "$show_values" ]; then
+              ready="unknown"
+              app_running="0"
+              app_state="unknown"
+            else
+              read -r ready app_running app_state <<<"$show_values"
+            fi
+
+            ready=${ready:-unknown}
+            app_running=${app_running:-0}
+            app_state=${app_state:-unknown}
+            if [ "$app_running" = "None" ]; then app_running=0; fi
+
+            rev_state=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --query properties.provisioningState -o tsv 2>/dev/null || echo unknown)
+            rev_running=$(az containerapp revision show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --query properties.runningState -o tsv 2>/dev/null || echo unknown)
+            echo "Revision $latest ready=$ready (app state=$app_state) revProvisioning=$rev_state revRunningState=$rev_running replicasRunning=$app_running"
+
+            if [ "$ready" = "$latest" ]; then
+              echo "Revision $latest is running successfully"
+              break
+            fi
+            
+            if [ $(( SECONDS - start )) -gt $timeout ]; then
+              echo "Timed out waiting for revision $latest after $timeout seconds" >&2
+              echo "Current state: $state, replicas: $replicas" >&2
+              exit 1
+            fi
+            
+            sleep 5
+          done
+          
+          echo "LATEST_REVISION=$latest" >> $GITHUB_ENV
+
+      - name: Output app URL
+        run: |
+          fqdn=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "API URL: https://$fqdn"
+          echo "FQDN=$fqdn" >> $GITHUB_ENV
+
+      - name: Run Alembic migrations (optional)
+        if: ${{ inputs.run_migrations == 'true' }}
+        run: |
+          echo "Running Alembic migrations inside container app..."
+          python /tmp/az_containerapp_exec.py "alembic -c alembic.ini upgrade head"
+          echo "Migrations complete"
+
+      - name: Seed baseline data (optional)
+        if: ${{ inputs.run_seed_all != 'false' }}
+        run: |
+          set -euo pipefail
+          seed_args="--force-update"
+          if [ '${{ inputs.seed_reset }}' = 'true' ]; then
+            echo "WARNING: --reset requested; dropping all tables before seeding." >&2
+            seed_args="$seed_args --reset"
+          fi
+          echo "Running Backend/seed_all.py $seed_args inside container"
+          python /tmp/az_containerapp_exec.py "bash -c \"cd /app && python seed_all.py $seed_args\""
+          echo "Seeding complete"
+
+      - name: Health check (ready-lite + diagnostics)
+        run: |
+          set -euo pipefail
+          echo "Waiting for internal /health/ready-lite via az containerapp exec (ringfence-safe) ..."
+          retry_seconds='${{ inputs.health_retry_seconds }}'
+          if [ -z "$retry_seconds" ]; then retry_seconds=90; fi
+          if ! echo "$retry_seconds" | grep -Eq '^[0-9]+$'; then retry_seconds=90; fi
+          end=$(( SECONDS + retry_seconds ))
+          ok=false
+          attempt=0
+          while [ $SECONDS -lt $end ]; do
+            attempt=$((attempt+1))
+            # Run curl inside the running container to avoid public ingress/ringfence
+            if python /tmp/az_containerapp_exec.py "bash -c \"code=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health/ready-lite || echo 000); echo ready-lite: \$code; [ \"\$code\" = 200 ]\""; then
+              ok=true
+              break
+            fi
+            if [ $attempt -eq 1 ]; then
+              echo "First attempt failed; container may still be starting. Retrying..."
+            fi
+            sleep 5
+          done
+          if [ "$ok" = false ]; then
+            echo "ready-lite check (internal) failed" >&2; exit 1; fi
+          echo "ready-lite OK (internal)"
+          # Optional: surface deep readiness and startup via internal checks (non-fatal)
+          python /tmp/az_containerapp_exec.py "bash -c \"curl -s -o /dev/null -w 'deep=%{http_code}\\n' http://localhost:8000/health/ready || true\"" || true
+          python /tmp/az_containerapp_exec.py "bash -c \"curl -s -o /dev/null -w 'startup=%{http_code}\\n' http://localhost:8000/health/startup || true\"" || true
+
+      - name: DB connectivity check (internal public endpoint)
+        run: |
+          set -euo pipefail
+          echo "Checking DB connectivity via internal call to /api/public/tenant-meta (expects 200/304/404, not 5xx) ..."
+          # Use explicit header to exercise DB lookup; 404 is acceptable if tenant doesn't exist
+          python /tmp/az_containerapp_exec.py "bash -c \"code=\$(curl -s -H 'X-Tenant-ID: ${DEFAULT_TENANT:-default}' -o /dev/null -w '%{http_code}' http://localhost:8000/api/public/tenant-meta || echo 000); echo tenant-meta: \$code; case \"\$code\" in 5*) exit 1 ;; *) exit 0 ;; esac\""
+          echo "DB connectivity appears OK (no 5xx from tenant-meta)."
+
+      - name: Post-deploy smoke tests
+        run: |
+          set -euo pipefail
+          chmod +x scripts/post_deploy_smoke.sh || true
+          PUBLIC_API_URL='${{ secrets.CA_PUBLIC_API_URL }}'
+          if [ -n "$PUBLIC_API_URL" ]; then
+            echo "Running external smoke tests against CA_PUBLIC_API_URL=$PUBLIC_API_URL"
+            export API_BASE="$PUBLIC_API_URL"
+            ./scripts/post_deploy_smoke.sh
+            echo "Smoke tests passed"
+          else
+            echo "No CA_PUBLIC_API_URL provided; skipping external smoke tests due to backend ringfencing."
+          fi
+
+      - name: Fetch latest container logs on failure
+        if: failure() && steps.azure_login.outcome == 'success'
+        run: |
+          echo "Collecting most recent logs for troubleshooting..."
+          latest=${LATEST_REVISION:-$(az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --query properties.latestRevisionName -o tsv)}
+          if [ -n "$latest" ]; then
+            az containerapp logs show -g "$AZURE_RESOURCE_GROUP" -n "$CONTAINERAPP_NAME" --revision "$latest" --tail 200 || true
+          else
+            echo "No revision name available to fetch logs." >&2
+          fi

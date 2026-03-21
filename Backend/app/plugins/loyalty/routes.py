@@ -1,5 +1,6 @@
 from config import settings
 import datetime
+import logging
 import secrets
 import string
 from typing import Optional, List, Dict, Any
@@ -12,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
 from app.core.tenant_context import get_tenant_context, TenantContext
+from app.services.event_bus import get_event_bus
 from app.models import Tenant, User, VisitCount, Reward, Redemption, Order, Service, Extra, OrderItem
 from app.utils.qr import generate_qr_code
 from app.plugins.auth.routes import get_current_user
@@ -22,6 +24,8 @@ SECRET_KEY = settings.loyalty_secret
 DEFAULT_TENANT = settings.default_tenant
 
 EXPIRY_DAYS = 10     # days until voucher expiry
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", dependencies=[Depends(get_current_user)], tags=["loyalty"])
 
@@ -318,6 +322,20 @@ def log_visit(
                 visit_count=visits,
                 reward_title=base.title,
             )
+        # Publish loyalty milestone event for real-time UI update
+        try:
+            get_event_bus().publish(
+                tenant_id=usr.tenant_id or "default",
+                event_type="loyalty_milestone",
+                data={
+                    "user_id": usr.id,
+                    "milestone": milestone,
+                    "reward": base.title,
+                    "total_visits": visits,
+                },
+            )
+        except Exception as exc:
+            _logger.debug("SSE publish failed for loyalty milestone (user %s): %s", usr.id, exc)
     return {"message": "Visit logged", "total_visits": visits, "reward_issued": reward_issued}
 
 @router.post(

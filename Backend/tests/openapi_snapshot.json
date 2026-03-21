@@ -32770,6 +32770,56 @@
         ]
       }
     },
+    "/api/stream/events": {
+      "get": {
+        "description": "SSE endpoint for real-time tenant-scoped events.\n\nRequires a valid JWT bearer token (via header or ``?token=`` query\nparameter).  Events are scoped to the authenticated user's tenant.",
+        "operationId": "stream_events_api_stream_events_get",
+        "parameters": [
+          {
+            "description": "JWT bearer token (for EventSource which cannot set headers)",
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT bearer token (for EventSource which cannot set headers)",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Events",
+        "tags": [
+          "Stream"
+        ]
+      }
+    },
     "/api/subscriptions/checkout-session": {
       "post": {
         "description": "Create a Stripe Checkout Session for upgrading/downgrading.",

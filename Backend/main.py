@@ -52,6 +52,7 @@ from app.routes.dispensary import router as dispensary_router
 from app.routes.campaigns import router as campaigns_router
 from app.routes.financial import router as financial_router
 from app.routes.providers import router as providers_router
+from app.routes.stream import router as stream_router
 from app.core.tenant_context import get_tenant_context, tenant_meta_dict, TenantContext
 
 # Conditional import for verticals (may not be available in all test contexts)
@@ -781,6 +782,7 @@ router_mounts = [
     ("",              campaigns_router),   # Marketing campaigns (email/SMS) with AI content
     ("/api",           financial_router),  # Financial tools (invoices, expenses, P&L)
     ("/api/providers", providers_router),  # External provider health checks and webhooks
+    ("/api/stream",    stream_router),      # Server-Sent Events for real-time updates
 ]
 # Conditionally include dev router outside production
 if settings.environment != 'production':

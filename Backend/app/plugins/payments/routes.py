@@ -1,4 +1,5 @@
 # Payments plugin routes (migrated from Backend/routes/payments.py)
+import logging
 import os
 import hmac
 import hashlib
@@ -17,6 +18,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.database import get_db
+from app.services.event_bus import get_event_bus
 from app.models import (
     Order,
     OrderVehicle,
@@ -111,6 +113,8 @@ def optional_current_user(authorization: Optional[str] = Header(default=None, al
         return None
 
 limiter = Limiter(key_func=get_remote_address)
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="", 
@@ -411,6 +415,14 @@ def verify_payment(
     if not already:
         order.order_redeemed_at = datetime.utcnow()
         db.commit()
+        try:
+            get_event_bus().publish(
+                tenant_id=getattr(order, "tenant_id", None) or "default",
+                event_type="payment_verified",
+                data={"order_id": str(order.id)},
+            )
+        except Exception as exc:
+            _logger.debug("SSE publish failed for payment verification (order %s): %s", order.id, exc)
 
     resp = {
         "status": "already_redeemed" if already else "ok",
@@ -526,6 +538,14 @@ def verify_pos(
         order.status = 'paid'
         _log_visit_for_paid_order(db, order)
     db.commit()
+    try:
+        get_event_bus().publish(
+            tenant_id=getattr(order, "tenant_id", None) or "default",
+            event_type="payment_verified",
+            data={"order_id": str(order.id)},
+        )
+    except Exception as exc:
+        _logger.debug("SSE publish failed for POS verification (order %s): %s", order.id, exc)
     return {"status": "ok", "type": "pos", "order_id": order.id}
 
 @router.get("/recent-verifications")

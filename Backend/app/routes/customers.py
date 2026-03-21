@@ -286,8 +286,7 @@ async def export_customers(
             "loyalty_points": int(row.loyalty_points or 0),
         })
 
-    from datetime import datetime as _dt
-    today = _dt.utcnow().strftime("%Y-%m-%d")
+    today = datetime.utcnow().strftime("%Y-%m-%d")
     return generate_csv(export_rows, columns, f"customers_{today}.csv")
 
 

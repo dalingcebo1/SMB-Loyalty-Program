@@ -995,6 +995,7 @@ Insights:
 @router.get("/loyalty/export")
 def export_loyalty(
     format: str = Query("csv", description="Export format: csv"),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ):
     """Export loyalty members as CSV."""
@@ -1011,6 +1012,7 @@ def export_loyalty(
         .outerjoin(PointBalance, PointBalance.user_id == User.id)
         .outerjoin(VisitCount, VisitCount.user_id == User.id)
         .filter(User.role == "user")
+        .filter(User.tenant_id == current_user.tenant_id)
         .order_by(User.created_at.desc())
         .all()
     )

@@ -439,7 +439,7 @@ def export_invoices(
             "total": f"{(inv.total_cents or 0) / 100:.2f}",
         })
 
-    today = date.today().isoformat()
+    today = datetime.utcnow().strftime("%Y-%m-%d")
     return generate_csv(export_rows, columns, f"invoices_{today}.csv")
 
 
@@ -699,7 +699,7 @@ def export_expenses(
             "is_approved": "Yes" if exp.is_approved else "No",
         })
 
-    today = date.today().isoformat()
+    today = datetime.utcnow().strftime("%Y-%m-%d")
     return generate_csv(export_rows, columns, f"expenses_{today}.csv")
 
 

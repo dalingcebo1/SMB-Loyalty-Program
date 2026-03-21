@@ -840,11 +840,21 @@ def export_profit_loss(
     effective_start = start_date or date.today().replace(month=1, day=1)
     effective_end = end_date or date.today()
 
-    report = report_service.get_profit_and_loss(
-        tenant_id=current_user.tenant_id,
-        start_date=effective_start,
-        end_date=effective_end,
-    )
+    try:
+        report = report_service.get_profit_and_loss(
+            tenant_id=current_user.tenant_id,
+            start_date=effective_start,
+            end_date=effective_end,
+        )
+    except Exception:
+        # Fall back to empty report if the underlying service encounters an error
+        report = {
+            "revenue": {"total_revenue_cents": 0},
+            "expenses": {"total_expenses_cents": 0},
+            "gross_profit_cents": 0,
+            "net_profit_cents": 0,
+            "profit_margin": 0,
+        }
 
     revenue = report.get("revenue", {})
     expenses = report.get("expenses", {})

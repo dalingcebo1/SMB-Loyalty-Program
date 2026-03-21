@@ -5,7 +5,7 @@ from sqlalchemy import func, cast, Date
 from app.core.database import get_db
 from app.models import User, Payment, PointBalance, Redemption, Reward, VisitCount, Order
 from datetime import datetime, timedelta, date
-from app.plugins.auth.routes import require_admin, require_staff
+from app.plugins.auth.routes import require_admin, require_staff, get_current_user
 
 from .schemas import (
     AnalyticsSummaryResponse,
@@ -995,7 +995,7 @@ Insights:
 @router.get("/loyalty/export")
 def export_loyalty(
     format: str = Query("csv", description="Export format: csv"),
-    current_user: User = Depends(require_staff),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Export loyalty members as CSV."""

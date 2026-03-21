@@ -9,97 +9,78 @@ interface ServiceWorkerState {
 }
 
 /**
- * Phase 4: Service Worker registration hook
- * 
- * Registers service worker for offline support and provides
- * state about SW status and network connectivity.
+ * Tracks the state of the VitePWA-managed service worker and network
+ * connectivity.  Registration is handled by VitePWA's `registerType:
+ * 'autoUpdate'` in `vite.config.ts` – this hook only observes.
  */
 export function useServiceWorker() {
   const [state, setState] = useState<ServiceWorkerState>({
-    isSupported: 'serviceWorker' in navigator,
+    isSupported: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
     isRegistered: false,
-    isOnline: navigator.onLine,
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
     updateAvailable: false,
   });
 
   useEffect(() => {
-    if (!state.isSupported) {
-      console.log('[SW] Service Worker not supported');
-      return;
+    if (!state.isSupported) return;
+
+    // Check if a service worker is already controlling the page
+    if (navigator.serviceWorker.controller) {
+      setState((prev) => ({ ...prev, isRegistered: true }));
     }
 
-    // Register service worker
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('[SW] Service Worker registered:', registration);
-        setState((prev) => ({ ...prev, isRegistered: true }));
+    const onControllerChange = () => {
+      setState((prev) => ({ ...prev, isRegistered: true }));
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 
-        // Check for updates
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
+    // Listen for the VitePWA-registered SW becoming active
+    navigator.serviceWorker.ready.then((registration) => {
+      setState((prev) => ({ ...prev, isRegistered: true }));
 
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New service worker available
-              setState((prev) => ({ ...prev, updateAvailable: true }));
-              console.log('[SW] New version available');
-            }
-          });
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            setState((prev) => ({ ...prev, updateAvailable: true }));
+          }
         });
-
-        // Check for updates periodically
-        setInterval(() => {
-          registration.update();
-        }, 60 * 60 * 1000); // Check every hour
-      })
-      .catch((error) => {
-        console.error('[SW] Service Worker registration failed:', error);
       });
+    });
 
-    // Listen for online/offline events
-    const handleOnline = () => {
-      console.log('[SW] App is online');
-      setState((prev) => ({ ...prev, isOnline: true }));
-    };
-
-    const handleOffline = () => {
-      console.log('[SW] App is offline');
-      setState((prev) => ({ ...prev, isOnline: false }));
-    };
-
+    // Online / offline tracking
+    const handleOnline = () => setState((prev) => ({ ...prev, isOnline: true }));
+    const handleOffline = () => setState((prev) => ({ ...prev, isOnline: false }));
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
     };
   }, [state.isSupported]);
 
-  /**
-   * Activate waiting service worker (apply update)
-   */
+  /** Tell the waiting SW to skip waiting and take control. */
   const applyUpdate = () => {
-    if (!navigator.serviceWorker.controller) return;
-
-    navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-    window.location.reload();
+    navigator.serviceWorker.ready.then((reg) => {
+      if (reg.waiting) {
+        // Wait for the new worker to take control before reloading
+        const onControllerChange = () => {
+          navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+          window.location.reload();
+        };
+        navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    });
   };
 
-  /**
-   * Clear service worker cache
-   */
+  /** Ask the active SW to clear its caches. */
   const clearCache = () => {
-    if (!navigator.serviceWorker.controller) return;
-
-    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+    navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_CACHE' });
   };
 
-  return {
-    ...state,
-    applyUpdate,
-    clearCache,
-  };
+  return { ...state, applyUpdate, clearCache };
 }

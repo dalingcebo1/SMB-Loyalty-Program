@@ -7,12 +7,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
 from typing import Dict, Any
+import logging
 import os
 import sys
 
 from app.core.database import get_db, engine
 from config import settings
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 PROCESS_START = datetime.utcnow()
 
@@ -223,8 +226,10 @@ async def readiness_check(
                 r.ping()
                 redis_status = "healthy"
             except Exception as re:  # pragma: no cover - env dependent
-                redis_status = f"unhealthy: {re}"  # degrade readiness if Redis explicitly required
-                raise RuntimeError(f"Redis not reachable: {re}")
+                # Redis is optional (used for rate limiting); an unreachable Redis degrades
+                # gracefully rather than marking the whole service as not ready.
+                logger.warning("Redis health check failed (non-fatal): %s", re)
+                redis_status = f"degraded: {re}"
         
         resp = {
             "status": "ready",

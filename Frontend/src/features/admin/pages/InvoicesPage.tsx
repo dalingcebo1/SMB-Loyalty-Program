@@ -18,6 +18,7 @@ import {
   FaChevronUp,
 } from 'react-icons/fa';
 import { HiOutlineRefresh } from 'react-icons/hi';
+import ExportButton from '../components/ExportButton';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -300,6 +301,13 @@ const InvoicesPage: React.FC = () => {
       description="Create, send, and track customer invoices"
       actions={
         <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/invoices/export"
+            params={statusFilter ? { status: statusFilter } : {}}
+            format="csv"
+            label="Export CSV"
+            className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+          />
           <button
             onClick={() => queryClient.invalidateQueries({ queryKey: ['invoices'] })}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"

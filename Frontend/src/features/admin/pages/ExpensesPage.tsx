@@ -14,6 +14,7 @@ import {
   FaReceipt,
 } from 'react-icons/fa';
 import { HiOutlineRefresh } from 'react-icons/hi';
+import ExportButton from '../components/ExportButton';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -261,6 +262,13 @@ const ExpensesPage: React.FC = () => {
       description="Track and manage business expenses"
       actions={
         <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/expenses/export"
+            params={categoryFilter ? { category: categoryFilter } : {}}
+            format="csv"
+            label="Export CSV"
+            className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+          />
           <button
             onClick={() => queryClient.invalidateQueries({ queryKey: ['expenses'] })}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"

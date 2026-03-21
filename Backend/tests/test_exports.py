@@ -72,11 +72,11 @@ def _make_token(db: Session, email: str) -> str:
 
 
 def _seed_transaction(db: Session, user: User, amount_cents: int, status: str = "success") -> Payment:
-    if not db.query(Service).first():
-        svc = Service(name="Basic Wash", category="wash", base_price=1000, loyalty_eligible=True)
-        db.add(svc)
-        db.flush()
     service = db.query(Service).first()
+    if not service:
+        service = Service(name="Export Test Wash", category="wash", base_price=1000, loyalty_eligible=True)
+        db.add(service)
+        db.flush()
     order = Order(
         service_id=service.id,
         quantity=1,

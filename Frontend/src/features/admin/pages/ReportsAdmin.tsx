@@ -7,6 +7,7 @@ import { useCapabilities } from '../hooks/useCapabilities';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { formatCurrency as formatCurrencyZAR } from '../../../utils/format';
 import { AdminPageContainer } from '../components/AdminGrid';
+import ExportButton from '../components/ExportButton';
 
 interface BusinessSummary {
   total_revenue: number;
@@ -140,6 +141,12 @@ const ReportsAdmin: React.FC = () => {
       description="Analytics and insights for your business performance"
       actions={
         <>
+          <ExportButton
+            endpoint="/analytics/loyalty/export"
+            format="csv"
+            label="Export Loyalty CSV"
+            className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+          />
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}

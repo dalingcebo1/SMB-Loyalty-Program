@@ -106,19 +106,19 @@ class TestSSEEndpoint:
     def _client(self, db_session):
         """Client fixture with auth overrides for SSE tests."""
         app_instance = _get_main().app
-        from app.plugins.auth.routes import get_current_user
+        from app.routes.stream import _get_current_user_sse
         from app.models import User
 
         def override_get_db():
             yield db_session
 
-        def override_get_current_user():
+        def override_get_current_user_sse():
             return db_session.query(User).first()
 
         app_instance.dependency_overrides[get_db] = override_get_db
-        app_instance.dependency_overrides[get_current_user] = override_get_current_user
+        app_instance.dependency_overrides[_get_current_user_sse] = override_get_current_user_sse
         yield TestClient(app_instance)
-        app_instance.dependency_overrides.pop(get_current_user, None)
+        app_instance.dependency_overrides.pop(_get_current_user_sse, None)
 
     def test_event_generator_yields_sse_format(self):
         """The internal generator should produce valid SSE frames."""

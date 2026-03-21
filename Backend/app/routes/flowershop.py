@@ -11,11 +11,15 @@ Handles flower shop operations including:
 
 from datetime import date, datetime, timedelta
 from typing import List, Optional
+import requests as http_requests
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from pydantic import BaseModel, Field, validate_email
 import logging
+
+from config import settings
+from app.services.tenant_settings import get_tenant_settings
 
 from app.core.database import get_db
 from app.core.tenant_context import TenantContext, get_tenant_context
@@ -26,6 +30,7 @@ from app.models import (
     FlowerOrder,
     FlowerOrderItem,
     DeliverySlot,
+    Tenant,
     User,
     LoyaltyTransaction,
     PointBalance,
@@ -273,6 +278,19 @@ class DeliverySlotResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# Payment Schemas
+class FlowerOrderPayRequest(BaseModel):
+    token: str  # Yoco payment token from SDK popup
+
+
+class FlowerOrderPayResponse(BaseModel):
+    order_id: int
+    order_number: str
+    payment_status: str
+    total_cents: int
+    message: str
 
 
 # ============================================================================
@@ -647,7 +665,7 @@ def generate_order_number(tenant_id: str, db: Session) -> str:
 
 def award_loyalty_points_for_order(order: FlowerOrder, db: Session, tenant_ctx: TenantContext):
     """Award loyalty points when order is delivered (1 point per R10)."""
-    tenant_id = tenant_ctx.tenant_id
+    tenant_id = tenant_ctx.id
     
     # Calculate points (1 point per R10 spent, similar to other verticals)
     points_to_award = order.total_cents // 1000  # 1000 cents = R10
@@ -658,11 +676,11 @@ def award_loyalty_points_for_order(order: FlowerOrder, db: Session, tenant_ctx: 
     # Create loyalty transaction
     transaction = LoyaltyTransaction(
         tenant_id=tenant_id,
-        customer_id=order.customer_id,
+        user_id=order.customer_id,
         points=points_to_award,
-        transaction_type="earn",
+        type="EARN",
         reference_type="flower_order",
-        reference_id=order.id,
+        reference_id=str(order.id),
         description=f"Flower order {order.order_number}"
     )
     db.add(transaction)
@@ -674,15 +692,15 @@ def award_loyalty_points_for_order(order: FlowerOrder, db: Session, tenant_ctx: 
     ).first()
     
     if balance:
-        balance.current_balance += points_to_award
-        balance.lifetime_earned += points_to_award
+        balance.points += points_to_award
+        balance.lifetime_points += points_to_award
         balance.updated_at = func.now()
     else:
         balance = PointBalance(
             tenant_id=tenant_id,
             user_id=order.customer_id,
-            current_balance=points_to_award,
-            lifetime_earned=points_to_award,
+            points=points_to_award,
+            lifetime_points=points_to_award,
         )
         db.add(balance)
     
@@ -990,6 +1008,121 @@ def update_order(
     }
     
     return OrderResponse(**response_data)
+
+
+# ============================================================================
+# Payment Endpoints
+# ============================================================================
+
+def _get_yoco_secret_for_tenant(tenant_id: str, db: Session) -> str:
+    """Resolve Yoco secret key for a tenant (per-tenant or global fallback)."""
+    tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    if tenant:
+        ts = get_tenant_settings(tenant)
+        if ts and ts.payment and ts.payment.secret_key:
+            return ts.payment.secret_key
+    return settings.yoco_secret_key
+
+
+@router.post("/orders/{order_id}/pay", response_model=FlowerOrderPayResponse)
+def pay_flower_order(
+    order_id: int,
+    pay_request: FlowerOrderPayRequest,
+    db: Session = Depends(get_db),
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+):
+    """Process Yoco card payment for a flower order.
+
+    Accepts a Yoco token from the frontend SDK popup, charges the order total
+    via the Yoco API, and updates payment_status accordingly.  On success the
+    order is moved to ``confirmed`` and loyalty points are awarded immediately.
+    """
+    tenant_id = tenant_ctx.id
+
+    order = db.query(FlowerOrder).filter(
+        FlowerOrder.id == order_id,
+        FlowerOrder.tenant_id == tenant_id,
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.payment_status == "paid":
+        raise HTTPException(status_code=400, detail="Order already paid")
+
+    if order.payment_method != "card":
+        raise HTTPException(
+            status_code=400,
+            detail="Yoco payment is only available for card orders",
+        )
+
+    secret_key = _get_yoco_secret_for_tenant(tenant_id, db)
+    if not secret_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Payment provider credentials not configured",
+        )
+
+    # Call Yoco charge API
+    headers = {
+        "X-Auth-Secret-Key": secret_key,
+        "Content-Type": "application/json",
+    }
+    yoco_payload = {
+        "token": pay_request.token,
+        "amountInCents": order.total_cents,
+        "currency": "ZAR",
+    }
+
+    try:
+        resp = http_requests.post(
+            "https://online.yoco.com/v1/charges/",
+            json=yoco_payload,
+            headers=headers,
+            timeout=15,
+        )
+    except Exception as e:
+        logger.error(f"Could not reach Yoco for order {order_id}: {e}")
+        raise HTTPException(status_code=502, detail=f"Could not reach Yoco: {e}")
+
+    yoco_data = resp.json()
+    charge_id = yoco_data.get("chargeId") or yoco_data.get("id")
+    charge_status = yoco_data.get("status")
+
+    if resp.status_code not in (200, 201) or charge_status != "successful":
+        # Payment failed
+        order.payment_status = "failed"
+        order.payment_reference = charge_id
+        db.commit()
+        detail = yoco_data.get("error", {}).get("message", "Yoco payment failed")
+        logger.warning(f"Yoco payment failed for order {order_id}: {detail}")
+        raise HTTPException(status_code=400, detail=detail)
+
+    # Payment successful
+    order.payment_status = "paid"
+    order.payment_reference = charge_id
+    order.status = "confirmed"
+    order.confirmed_at = func.now()
+
+    # Award loyalty points on successful payment
+    if order.loyalty_points_awarded == 0:
+        award_loyalty_points_for_order(order, db, tenant_ctx)
+
+    db.commit()
+    db.refresh(order)
+
+    logger.info(
+        f"Yoco payment successful for order {order.order_number} "
+        f"(charge {charge_id})"
+    )
+
+    return FlowerOrderPayResponse(
+        order_id=order.id,
+        order_number=order.order_number,
+        payment_status=order.payment_status,
+        total_cents=order.total_cents,
+        message="Payment successful",
+    )
 
 
 # ============================================================================

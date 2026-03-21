@@ -264,7 +264,8 @@ const OnboardingWizard: React.FC = () => {
 
         {/* Re-access hint */}
         <p className="text-center text-xs text-gray-400 mt-6">
-          You can re-access this wizard later from Admin &gt; Settings.
+          You can re-run this wizard later from <strong>Admin &gt; Onboarding</strong> (
+          <code className="text-xs">/admin/onboarding</code>).
         </p>
       </div>
     </div>

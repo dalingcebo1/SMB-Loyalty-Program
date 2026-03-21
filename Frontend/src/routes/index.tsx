@@ -113,7 +113,7 @@ const InvoicesPage = lazyWithRetry(() => import('../features/admin/pages/Invoice
 const ExpensesPage = lazyWithRetry(() => import('../features/admin/pages/ExpensesPage'));
 const ProfitLossReport = lazyWithRetry(() => import('../features/admin/pages/ProfitLossReport'));
 // Onboarding wizard
-const OnboardingWizard = lazy(() => import('../features/admin/pages/OnboardingWizard'));
+const OnboardingWizard = lazyWithRetry(() => import('../features/admin/pages/OnboardingWizard'));
 // Retail vertical pages
 const RetailInventoryDashboard = lazy(() => import('../features/retail/pages/InventoryDashboard'));
 const POSTerminal = lazy(() => import('../features/retail/pages/POSTerminal'));

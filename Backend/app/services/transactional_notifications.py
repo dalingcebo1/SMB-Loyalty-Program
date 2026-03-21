@@ -11,8 +11,8 @@ All monetary values arrive as integer *cents* and are formatted to ZAR
 """
 
 import logging
-from datetime import date, time, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date, time
+from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 

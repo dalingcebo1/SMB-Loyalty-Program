@@ -647,7 +647,7 @@ def create_appointment(
             to_email=customer.email,
             to_name=customer.first_name or "Customer",
             tenant_id=tenant_ctx.tenant_id,
-            stylist_name=stylist.name if hasattr(stylist, "name") else "Your Stylist",
+            stylist_name=stylist.name,
             service_name=service.name,
             appointment_date=appointment.appointment_date,
             start_time=appointment.start_time,

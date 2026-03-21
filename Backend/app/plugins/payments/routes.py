@@ -206,9 +206,14 @@ def charge_yoco(
         try:
             order_items = db.query(OrderItem).filter_by(order_id=orderId).all()
             if order_items:
+                service_ids = [oi.service_id for oi in order_items if oi.service_id]
+                services_by_id = {}
+                if service_ids:
+                    services = db.query(Service).filter(Service.id.in_(service_ids)).all()
+                    services_by_id = {s.id: s for s in services}
                 parts = []
                 for oi in order_items:
-                    svc = db.query(Service).filter_by(id=oi.service_id).first() if oi.service_id else None
+                    svc = services_by_id.get(oi.service_id)
                     name = svc.name if svc else f"Item #{oi.id}"
                     parts.append(name)
                 items_summary = ", ".join(parts)

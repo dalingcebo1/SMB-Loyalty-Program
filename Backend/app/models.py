@@ -1058,7 +1058,7 @@ class Appointment(Base):
     deposit_paid_cents = Column(Integer, default=0)
     
     # Status: pending, confirmed, in_progress, completed, cancelled, no_show
-    status = Column(String(20), nullable=False, default="pending", index=True)
+    status = Column(String(20), nullable=False, default="pending")
     
     # Notes
     customer_notes = Column(Text)  # Customer's special requests
@@ -1380,12 +1380,12 @@ class FlowerOrder(Base):
     customer_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Order details
-    order_number = Column(String(50), unique=True, nullable=False, index=True)
+    order_number = Column(String(50), unique=True, nullable=False)
     order_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Delivery details
     delivery_type = Column(String(20), nullable=False)  # delivery, pickup
-    delivery_date = Column(Date, nullable=False, index=True)
+    delivery_date = Column(Date, nullable=False)
     delivery_time_slot = Column(String(50))  # "9AM-12PM", "12PM-3PM", "3PM-6PM"
     
     # Recipient information

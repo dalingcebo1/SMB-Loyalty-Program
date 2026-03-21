@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFi
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Tenant, User, VerticalType, TenantBranding, SubscriptionPlan
+from app.models import Tenant, User, VerticalType, TenantBranding, SubscriptionPlan, LoyaltyProgram, Service
 from app.plugins.auth.routes import require_admin, get_current_user
 from app.services.tenant_settings import get_tenant_settings
 from app.core.modules import VERTICAL_EXTRA_MODULES
@@ -64,6 +64,7 @@ class TenantOut(BaseModel):
     theme_color: Optional[str]
     admin_ids: List[int]
     config: dict
+    onboarding_completed: bool
     features: TenantFeatures
 
 class AdminAssign(BaseModel):
@@ -138,6 +139,24 @@ def _calculate_tenant_features(tenant: Tenant, db: Session) -> dict:
         "all_features": list(set(plan_modules + vertical_extras + addon_features))
     }
 
+
+def _build_tenant_out(tenant: Tenant, db: Session) -> TenantOut:
+    """Helper to build a consistent TenantOut from a Tenant model."""
+    return TenantOut(
+        id=tenant.id,
+        name=tenant.name,
+        loyalty_type=tenant.loyalty_type,
+        vertical_type=tenant.vertical_type,
+        primary_domain=tenant.primary_domain,
+        subdomain=tenant.subdomain,
+        logo_url=tenant.logo_url,
+        theme_color=tenant.theme_color,
+        admin_ids=[u.id for u in tenant.admins],
+        config=tenant.config or {},
+        onboarding_completed=bool(tenant.onboarding_completed),
+        features=_calculate_tenant_features(tenant, db),
+    )
+
 # CRUD Endpoints
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 def create_tenant(payload: TenantCreate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -160,19 +179,7 @@ def create_tenant(payload: TenantCreate, db: Session = Depends(get_db), current:
     db.refresh(tenant)
     record('tenant.create', tenant_id=tenant.id, user_id=current.id, details={'name': tenant.name})
     flush(db)
-    return TenantOut(
-        id=tenant.id,
-        name=tenant.name,
-        loyalty_type=tenant.loyalty_type,
-        vertical_type=tenant.vertical_type,
-        primary_domain=tenant.primary_domain,
-        subdomain=tenant.subdomain,
-        logo_url=tenant.logo_url,
-        theme_color=tenant.theme_color,
-        admin_ids=[u.id for u in tenant.admins],
-        config=tenant.config or {},
-        features=_calculate_tenant_features(tenant, db),
-    )
+    return _build_tenant_out(tenant, db)
 
 # ─── Branding Endpoints ───────────────────────────────────────────────────
 @router.get('/{tenant_id}/branding', response_model=BrandingOut)
@@ -431,38 +438,14 @@ def list_branding_assets(tenant_id: str, db: Session = Depends(get_db), current:
 @router.get("", response_model=List[TenantOut])
 def list_tenants(db: Session = Depends(get_db)):
     tenants = db.query(Tenant).all()
-    return [TenantOut(
-        id=t.id,
-        name=t.name,
-        loyalty_type=t.loyalty_type,
-        vertical_type=t.vertical_type,
-        primary_domain=t.primary_domain,
-        subdomain=t.subdomain,
-        logo_url=t.logo_url,
-        theme_color=t.theme_color,
-        admin_ids=[u.id for u in t.admins],
-        config=t.config or {},
-        features=_calculate_tenant_features(t, db),
-    ) for t in tenants]
+    return [_build_tenant_out(t, db) for t in tenants]
 
 @router.get("/{tenant_id}", response_model=TenantOut)
 def get_tenant(tenant_id: str, db: Session = Depends(get_db)):
     tenant = db.query(Tenant).filter_by(id=tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    return TenantOut(
-        id=tenant.id,
-        name=tenant.name,
-        loyalty_type=tenant.loyalty_type,
-        vertical_type=tenant.vertical_type,
-        primary_domain=tenant.primary_domain,
-        subdomain=tenant.subdomain,
-        logo_url=tenant.logo_url,
-        theme_color=tenant.theme_color,
-        admin_ids=[u.id for u in tenant.admins],
-        config=tenant.config or {},
-        features=_calculate_tenant_features(tenant, db),
-    )
+    return _build_tenant_out(tenant, db)
 
 @router.patch("/{tenant_id}", response_model=TenantOut)
 def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -491,19 +474,7 @@ def update_tenant(tenant_id: str, payload: TenantUpdate, db: Session = Depends(g
     db.refresh(tenant)
     record('tenant.update', tenant_id=tenant.id, user_id=current.id, details={'fields': list(data.keys())})
     flush(db)
-    return TenantOut(
-        id=tenant.id,
-        name=tenant.name,
-        loyalty_type=tenant.loyalty_type,
-        vertical_type=tenant.vertical_type,
-        primary_domain=tenant.primary_domain,
-        subdomain=tenant.subdomain,
-        logo_url=tenant.logo_url,
-        theme_color=tenant.theme_color,
-        admin_ids=[u.id for u in tenant.admins],
-        config=tenant.config or {},
-        features=_calculate_tenant_features(tenant, db),
-    )
+    return _build_tenant_out(tenant, db)
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tenant(tenant_id: str, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -542,19 +513,7 @@ def assign_admin(tenant_id: str, payload: AdminAssign, db: Session = Depends(get
     db.refresh(tenant)
     record('tenant.assign_admin', tenant_id=tenant.id, user_id=current.id, details={'assigned_user_id': payload.user_id})
     flush(db)
-    return TenantOut(
-        id=tenant.id,
-        name=tenant.name,
-        loyalty_type=tenant.loyalty_type,
-        vertical_type=tenant.vertical_type,
-        primary_domain=tenant.primary_domain,
-        subdomain=tenant.subdomain,
-        logo_url=tenant.logo_url,
-        theme_color=tenant.theme_color,
-        admin_ids=[u.id for u in tenant.admins],
-        config=tenant.config or {},
-        features=_calculate_tenant_features(tenant, db),
-    )
+    return _build_tenant_out(tenant, db)
 
 @router.delete("/{tenant_id}/admins/{user_id}", response_model=TenantOut)
 def remove_admin(tenant_id: str, user_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -569,19 +528,175 @@ def remove_admin(tenant_id: str, user_id: int, db: Session = Depends(get_db), cu
     db.refresh(tenant)
     record('tenant.remove_admin', tenant_id=tenant.id, user_id=current.id, details={'removed_user_id': user_id})
     flush(db)
-    return TenantOut(
-        id=tenant.id,
-        name=tenant.name,
-        loyalty_type=tenant.loyalty_type,
-        vertical_type=tenant.vertical_type,
-        primary_domain=tenant.primary_domain,
-        subdomain=tenant.subdomain,
-        logo_url=tenant.logo_url,
-        theme_color=tenant.theme_color,
-        admin_ids=[u.id for u in tenant.admins],
-        config=tenant.config or {},
-        features=_calculate_tenant_features(tenant, db),
+    return _build_tenant_out(tenant, db)
+
+# --- Onboarding Wizard (bulk update) ────────────────────────────────────────
+
+class OnboardingBrandingPayload(BaseModel):
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    tagline: Optional[str] = None
+
+class OnboardingLoyaltyPayload(BaseModel):
+    points_per_rand: Optional[float] = None
+    visit_milestone: Optional[int] = None
+    reward_description: Optional[str] = None
+
+class OnboardingServiceItem(BaseModel):
+    name: str
+    price_cents: int
+
+class OnboardingTeamInvite(BaseModel):
+    email: EmailStr
+
+class OnboardingPayload(BaseModel):
+    """Composite payload for the onboarding wizard."""
+    # Step 1 — Business Info
+    business_name: Optional[str] = None
+    business_type: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    # Step 2 — Branding
+    branding: Optional[OnboardingBrandingPayload] = None
+    # Step 3 — Verticals
+    verticals: Optional[List[str]] = None
+    # Step 4 — Loyalty Program
+    loyalty: Optional[OnboardingLoyaltyPayload] = None
+    # Step 5 — Services / Products
+    services: Optional[List[OnboardingServiceItem]] = None
+    # Step 6 — Team Invites
+    team_invites: Optional[List[OnboardingTeamInvite]] = None
+
+
+@router.patch("/{tenant_id}/onboarding")
+def complete_onboarding(
+    tenant_id: str,
+    payload: OnboardingPayload,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """Bulk-update tenant settings from the onboarding wizard.
+
+    Accepts business info, branding, selected verticals, loyalty config,
+    initial services, and team invite emails in one call. Marks the tenant
+    as onboarding-complete on success.
+    """
+    tenant = db.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Step 1 — Business Info
+    if payload.business_name is not None:
+        tenant.name = payload.business_name
+    if payload.business_type is not None:
+        # Map to vertical_type if it's a valid VerticalType
+        try:
+            tenant.vertical_type = VerticalType(payload.business_type).value
+        except ValueError:
+            pass  # Keep existing vertical_type if not a valid enum
+    if payload.phone or payload.email or payload.address:
+        config = dict(tenant.config or {})
+        if payload.phone:
+            config["business_phone"] = payload.phone
+        if payload.email:
+            config["business_email"] = payload.email
+        if payload.address:
+            config["business_address"] = payload.address
+        tenant.config = config
+
+    # Step 2 — Branding
+    if payload.branding:
+        branding = db.query(TenantBranding).filter_by(tenant_id=tenant_id).first()
+        if not branding:
+            branding = TenantBranding(tenant_id=tenant_id)
+            db.add(branding)
+        b = payload.branding
+        if b.logo_url is not None:
+            branding.logo_light_url = b.logo_url
+            tenant.logo_url = b.logo_url
+        if b.primary_color is not None:
+            branding.primary_color = b.primary_color
+            tenant.theme_color = b.primary_color
+        if b.secondary_color is not None:
+            branding.secondary_color = b.secondary_color
+        if b.tagline is not None:
+            extra = dict(branding.extra or {})
+            extra["tagline"] = b.tagline
+            branding.extra = extra
+
+    # Step 3 — Verticals
+    if payload.verticals:
+        tenant.vertical_features = {v: True for v in payload.verticals}
+        # Set the primary vertical to the first in the list
+        if payload.verticals:
+            try:
+                tenant.vertical_type = VerticalType(payload.verticals[0]).value
+            except ValueError:
+                pass
+
+    # Step 4 — Loyalty Program
+    if payload.loyalty:
+        lp = db.query(LoyaltyProgram).filter_by(tenant_id=tenant_id).first()
+        if not lp:
+            lp = LoyaltyProgram(tenant_id=tenant_id)
+            db.add(lp)
+        loy = payload.loyalty
+        if loy.points_per_rand is not None:
+            lp.accrual_ratio = loy.points_per_rand
+        if loy.reward_description is not None:
+            lp.name = loy.reward_description
+        # Store visit_milestone in tenant config
+        if loy.visit_milestone is not None:
+            config = dict(tenant.config or {})
+            config["visit_milestone"] = loy.visit_milestone
+            tenant.config = config
+
+    # Step 5 — Services / Products
+    if payload.services:
+        for svc in payload.services:
+            service = Service(
+                category="general",
+                name=svc.name,
+                base_price=svc.price_cents,
+                loyalty_eligible=True,
+            )
+            db.add(service)
+
+    # Step 6 — Team Invites (store emails; actual invite sending deferred)
+    team_emails = []
+    if payload.team_invites:
+        for invite in payload.team_invites:
+            team_emails.append(invite.email)
+
+    # Mark onboarding complete
+    tenant.onboarding_completed = True
+    config = dict(tenant.config or {})
+    onboarding = config.get("onboarding", {})
+    onboarding["completed"] = True
+    onboarding["completed_at"] = datetime.utcnow().isoformat()
+    config["onboarding"] = onboarding
+    tenant.config = config
+
+    db.commit()
+    db.refresh(tenant)
+
+    record(
+        "tenant.onboarding.complete",
+        tenant_id=tenant.id,
+        user_id=current.id,
+        details={"team_invites": team_emails},
     )
+    flush(db)
+
+    return {
+        "success": True,
+        "message": "Onboarding completed successfully",
+        "tenant": _build_tenant_out(tenant, db),
+        "team_invites": team_emails,
+    }
+
  
 # --- Invite a client-admin to a newly provisioned tenant
 class TenantInvite(BaseModel):

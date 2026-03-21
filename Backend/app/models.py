@@ -65,6 +65,9 @@ class Tenant(Base):
     # Arbitrary per-tenant configuration (feature flags, branding variants, etc.)
     config         = Column(JSON, nullable=False, default=dict)
     
+    # Onboarding wizard completion flag
+    onboarding_completed = Column(Boolean, default=False, nullable=False, server_default="0")
+
     # Subscription & Billing
     subscription_plan_id   = Column(String, default="free", nullable=False) # Maps to app.core.plans.PLAN_REGISTRY keys
     subscription_status    = Column(String, default="active") # active, past_due, canceled, trial

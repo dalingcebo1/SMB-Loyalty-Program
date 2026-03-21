@@ -68,6 +68,16 @@ export const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'financial',
+    title: 'Financial',
+    items: [
+      { key: 'financial-dashboard', label: 'Financial Overview', path: '/admin/financial', cap: 'manage-finances' },
+      { key: 'invoices', label: 'Invoices', path: '/admin/financial/invoices', cap: 'manage-finances' },
+      { key: 'expenses', label: 'Expenses', path: '/admin/financial/expenses', cap: 'manage-finances' },
+      { key: 'profit-loss', label: 'Profit & Loss', path: '/admin/financial/profit-loss', cap: 'manage-finances' },
+    ],
+  },
+  {
     key: 'staff-ops',
     title: 'Staff Operations',
     items: [

@@ -107,6 +107,11 @@ const NotificationsAdmin = lazy(() => import('../features/admin/pages/Notificati
 const SubscriptionManagePage = lazy(() => import('../pages/admin/SubscriptionManagePageNew'));
 // Billing and usage page
 const BillingSettings = lazy(() => import('../features/admin/pages/BillingSettings'));
+// Financial admin pages
+const FinancialDashboard = lazyWithRetry(() => import('../features/admin/pages/FinancialDashboard'));
+const InvoicesPage = lazyWithRetry(() => import('../features/admin/pages/InvoicesPage'));
+const ExpensesPage = lazyWithRetry(() => import('../features/admin/pages/ExpensesPage'));
+const ProfitLossReport = lazyWithRetry(() => import('../features/admin/pages/ProfitLossReport'));
 // Retail vertical pages
 const RetailInventoryDashboard = lazy(() => import('../features/retail/pages/InventoryDashboard'));
 const POSTerminal = lazy(() => import('../features/retail/pages/POSTerminal'));
@@ -238,6 +243,11 @@ const AppRoutes: React.FC = () => {
             { path: 'notifications', element: <NotificationsAdmin /> },
             { path: 'settings', element: <OrganizationSettings /> },
             { path: 'billing', element: <BillingSettings /> },
+            // Financial routes
+            { path: 'financial', element: <FinancialDashboard /> },
+            { path: 'financial/invoices', element: <InvoicesPage /> },
+            { path: 'financial/expenses', element: <ExpensesPage /> },
+            { path: 'financial/profit-loss', element: <ProfitLossReport /> },
             { path: 'tenants', element: <TenantsList /> },
             { path: 'tenants/:tenantId/edit', element: <TenantEdit /> },
             { path: 'subscription', element: moduleFlags.enableSubscription ? <SubscriptionManagePage /> : <Navigate to='/admin' replace /> },

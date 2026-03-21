@@ -570,6 +570,8 @@ def test_create_sale(db: Session, client: TestClient, staff_token_headers: dict,
     assert response.status_code == 201
     result = response.json()
     assert result["customer_id"] == basic_user.id
+    # 2 items × 15000 cents = 30000 subtotal, plus 15% tax = 34500 total
+    assert result["subtotal_cents"] == 30000
     assert result["total_cents"] == result["subtotal_cents"] + result.get("tax_cents", 0)
     assert len(result["items"]) == 1
 

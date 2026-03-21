@@ -29,7 +29,9 @@ from app.plugins.orders.schemas import (
     OrderDetailResponse,
     AssignVehicleRequest,
 )
- 
+
+_logger = logging.getLogger(__name__)
+
 def _build_order_response(order, next_action_url: str = None):
     """Serialize Order to OrderDetailResponse-compatible dict."""
     # Provide BOTH legacy snake_case and new camelCase keys for maximum compatibility.
@@ -163,8 +165,8 @@ def create_order(
                     event_type="new_notification",
                     data={"order_id": str(new_order.id), "message": "New order placed"},
                 )
-            except Exception:
-                pass  # Non-critical: don't block order creation
+            except Exception as exc:
+                _logger.debug("SSE publish failed for new order %s: %s", new_order.id, exc)
             return OrderCreateResponse(
                 order_id=str(new_order.id),  # keep response as string for backward compat
                 qr_data=str(new_order.id),
@@ -400,8 +402,8 @@ def start_wash(order_id: str, db: Session = Depends(get_db)):
             event_type="order_status_changed",
             data={"order_id": str(order.id), "new_status": "in_progress"},
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.debug("SSE publish failed for order %s: %s", order.id, exc)
     # return standardized order detail response
     return _build_order_response(order)
 
@@ -430,8 +432,8 @@ def complete_wash(order_id: str, db: Session = Depends(get_db)):
             event_type="order_status_changed",
             data={"order_id": str(order.id), "new_status": "completed"},
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.debug("SSE publish failed for order %s: %s", order.id, exc)
 
     # Trigger async background processing (notifications, loyalty points)
     try:
@@ -468,7 +470,7 @@ def redeem_order(order_id: str, db: Session = Depends(get_db)):
             event_type="order_status_changed",
             data={"order_id": str(order.id), "new_status": "paid"},
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.debug("SSE publish failed for order %s: %s", order.id, exc)
     # return standardized order detail response
     return _build_order_response(order)

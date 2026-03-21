@@ -1,4 +1,5 @@
 # Payments plugin routes (migrated from Backend/routes/payments.py)
+import logging
 import os
 import hmac
 import hashlib
@@ -112,6 +113,8 @@ def optional_current_user(authorization: Optional[str] = Header(default=None, al
         return None
 
 limiter = Limiter(key_func=get_remote_address)
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="", 
@@ -418,8 +421,8 @@ def verify_payment(
                 event_type="payment_verified",
                 data={"order_id": str(order.id)},
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.debug("SSE publish failed for payment verification (order %s): %s", order.id, exc)
 
     resp = {
         "status": "already_redeemed" if already else "ok",
@@ -541,8 +544,8 @@ def verify_pos(
             event_type="payment_verified",
             data={"order_id": str(order.id)},
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.debug("SSE publish failed for POS verification (order %s): %s", order.id, exc)
     return {"status": "ok", "type": "pos", "order_id": order.id}
 
 @router.get("/recent-verifications")

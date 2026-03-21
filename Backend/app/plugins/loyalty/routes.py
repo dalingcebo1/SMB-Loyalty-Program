@@ -1,5 +1,6 @@
 from config import settings
 import datetime
+import logging
 import secrets
 import string
 from typing import Optional, List, Dict, Any
@@ -23,6 +24,8 @@ SECRET_KEY = settings.loyalty_secret
 DEFAULT_TENANT = settings.default_tenant
 
 EXPIRY_DAYS = 10     # days until voucher expiry
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", dependencies=[Depends(get_current_user)], tags=["loyalty"])
 
@@ -331,8 +334,8 @@ def log_visit(
                     "total_visits": visits,
                 },
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.debug("SSE publish failed for loyalty milestone (user %s): %s", usr.id, exc)
     return {"message": "Visit logged", "total_visits": visits, "reward_issued": reward_issued}
 
 @router.post(

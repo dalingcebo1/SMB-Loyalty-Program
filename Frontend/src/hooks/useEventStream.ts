@@ -151,8 +151,8 @@ export function useEventStream() {
       try {
         const payload: SSEPayload = JSON.parse(event.data);
         handleEvent(payload);
-      } catch {
-        // Malformed payload — ignore
+      } catch (err) {
+        track('sse_parse_error', { error: String(err) });
       }
     };
 
@@ -168,8 +168,8 @@ export function useEventStream() {
         try {
           const payload: SSEPayload = JSON.parse(event.data);
           handleEvent(payload);
-        } catch {
-          // Malformed payload — ignore
+        } catch (err) {
+          track('sse_parse_error', { type: eventType, error: String(err) });
         }
       }) as EventListener);
     }

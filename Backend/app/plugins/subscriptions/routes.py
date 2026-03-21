@@ -11,6 +11,7 @@ from app.core.plans import PLAN_REGISTRY, get_plan, FEATURE_LOYALTY, FEATURE_ANA
 from app.models import Tenant, Order, Redemption, Payment, User, tenant_admins
 from app.utils.time import utc_now
 from app.plugins.auth.routes import get_current_user
+from app.utils.request_origin import get_request_origin
 from config import settings
 import stripe
 import logging
@@ -275,13 +276,17 @@ def create_checkout_session(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
+    # Derive frontend base URL from the request origin so redirects land on
+    # the same domain the user is browsing (dev SWA, custom domain, etc.)
+    frontend_base = (get_request_origin(request) or settings.frontend_url).rstrip("/")
+
     # Handle free plan (no payment needed)
     if plan.price_cents == 0:
         tenant.subscription_plan_id = plan.id
         tenant.subscription_status = 'active'
         # Clear stripe subscription if exists? Maybe. For now just update local state.
         db.commit()
-        return {"url": f"{settings.frontend_url}/admin/billing?status=success&session_id=free_upgrade"}
+        return {"url": f"{frontend_base}/admin/billing?status=success&session_id=free_upgrade"}
 
     # Mock Mode Handling
     if IS_MOCK_STRIPE:
@@ -296,7 +301,7 @@ def create_checkout_session(
         tenant.stripe_subscription_id = f"sub_mock_{plan_id}"
         db.commit()
         
-        return {"url": f"{settings.frontend_url}/admin/billing?status=success&session_id=mock_session_123"}
+        return {"url": f"{frontend_base}/admin/billing?status=success&session_id=mock_session_123"}
 
     try:
         # Create or get customer
@@ -330,8 +335,8 @@ def create_checkout_session(
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url=f"{settings.frontend_url}/admin/billing?status=success&session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{settings.frontend_url}/admin/billing?status=cancelled",
+            success_url=f"{frontend_base}/admin/billing?status=success&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{frontend_base}/admin/billing?status=cancelled",
             metadata={
                 "tenant_id": tenant.id,
                 "plan_id": plan_id
@@ -354,9 +359,12 @@ def create_portal_session(
 
     tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
     
+    # Derive frontend base URL from request origin
+    frontend_base = (get_request_origin(request) or settings.frontend_url).rstrip("/")
+
     # Mock Mode Handling
     if IS_MOCK_STRIPE:
-        return {"url": f"{settings.frontend_url}/admin/subscription?portal=mock"}
+        return {"url": f"{frontend_base}/admin/subscription?portal=mock"}
 
     if not tenant or not tenant.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No billing account found")
@@ -364,7 +372,7 @@ def create_portal_session(
     try:
         portal_session = stripe.billing_portal.Session.create(
             customer=tenant.stripe_customer_id,
-            return_url=f"{settings.frontend_url}/admin/subscription",
+            return_url=f"{frontend_base}/admin/subscription",
         )
         return {"url": portal_session.url}
     except Exception as e:

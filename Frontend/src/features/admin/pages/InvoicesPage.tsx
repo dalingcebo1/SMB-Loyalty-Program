@@ -64,6 +64,8 @@ interface FormLineItem {
 
 const EMPTY_LINE_ITEM: FormLineItem = { description: '', quantity: '1', unit_price: '' };
 
+const DEFAULT_VAT_RATE = 15;
+
 const STATUS_BADGE: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 border border-gray-200',
   sent: 'bg-blue-100 text-blue-700 border border-blue-200',
@@ -162,7 +164,7 @@ const InvoicesPage: React.FC = () => {
             quantity: Number(li.quantity) || 1,
             unit_price_cents: toCents(li.unit_price),
           })),
-        tax_rate: 15,
+        tax_rate: DEFAULT_VAT_RATE,
         discount_cents: 0,
         due_days: Number(dueDays) || 30,
         notes: notes || undefined,
@@ -243,7 +245,7 @@ const InvoicesPage: React.FC = () => {
       const price = toCents(li.unit_price);
       sub += qty * price;
     }
-    const tax = Math.round(sub * 0.15);
+    const tax = Math.round(sub * (DEFAULT_VAT_RATE / 100));
     return { subtotalCents: sub, taxCents: tax, totalCents: sub + tax };
   }, [lineItems]);
 
@@ -690,7 +692,7 @@ const InvoicesPage: React.FC = () => {
                       <span>{formatCents(subtotalCents)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">VAT (15%)</span>
+                      <span className="text-gray-500">VAT ({DEFAULT_VAT_RATE}%)</span>
                       <span>{formatCents(taxCents)}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1">

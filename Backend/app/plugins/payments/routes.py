@@ -8,7 +8,7 @@ import jwt
 from datetime import datetime, timedelta
 import time
 from config import settings
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Header, Body, Query, Response
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session, joinedload, subqueryload
@@ -126,6 +126,7 @@ class YocoChargeRequest(BaseModel):
 @router.post("/charge")
 def charge_yoco(
     payload: YocoChargeRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     token = payload.token
@@ -196,6 +197,40 @@ def charge_yoco(
     # Log visit immediately upon first successful payment
     _log_visit_for_paid_order(db, order)
     db.commit()
+
+    # Send payment receipt email
+    customer = db.query(User).filter(User.id == order.user_id).first()
+    if customer and customer.email:
+        from app.services.transactional_notifications import send_payment_receipt
+        items_summary = ""
+        try:
+            order_items = db.query(OrderItem).filter_by(order_id=orderId).all()
+            if order_items:
+                service_ids = [oi.service_id for oi in order_items if oi.service_id]
+                services_by_id = {}
+                if service_ids:
+                    services = db.query(Service).filter(Service.id.in_(service_ids)).all()
+                    services_by_id = {s.id: s for s in services}
+                parts = []
+                for oi in order_items:
+                    svc = services_by_id.get(oi.service_id)
+                    name = svc.name if svc else f"Item #{oi.id}"
+                    parts.append(name)
+                items_summary = ", ".join(parts)
+        except Exception:
+            pass
+        background_tasks.add_task(
+            send_payment_receipt,
+            db,
+            to_email=customer.email,
+            to_name=customer.first_name or "Customer",
+            tenant_id=getattr(order, "tenant_id", "default"),
+            order_id=orderId,
+            payment_reference=charge_id or "",
+            amount_cents=amount,
+            items_summary=items_summary,
+        )
+
     return {"message": "Payment successful", "order_id": orderId, "payment_id": payment.id}
 
 @router.post("/webhook/yoco")

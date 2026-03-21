@@ -4,7 +4,7 @@ Handles services, stylists, availability, and appointments.
 """
 from datetime import date, datetime, time, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
@@ -547,6 +547,7 @@ def list_appointments(
 @router.post("/appointments", response_model=AppointmentResponse, status_code=201)
 def create_appointment(
     appointment: AppointmentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
@@ -636,6 +637,22 @@ def create_appointment(
     db.add(db_appointment)
     db.commit()
     db.refresh(db_appointment)
+
+    # Send appointment confirmation email
+    if customer.email:
+        from app.services.transactional_notifications import send_beauty_appointment_confirmation
+        background_tasks.add_task(
+            send_beauty_appointment_confirmation,
+            db,
+            to_email=customer.email,
+            to_name=customer.first_name or "Customer",
+            tenant_id=tenant_ctx.tenant_id,
+            stylist_name=stylist.name,
+            service_name=service.name,
+            appointment_date=appointment.appointment_date,
+            start_time=appointment.start_time,
+        )
+
     return db_appointment
 
 

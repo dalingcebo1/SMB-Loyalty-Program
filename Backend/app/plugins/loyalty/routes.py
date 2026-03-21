@@ -272,6 +272,7 @@ def register_user(
 )
 def log_visit(
     body: PhoneIn,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     usr = (
@@ -305,6 +306,18 @@ def log_visit(
             "reward": base.title,
             "expiry": (rem.created_at + datetime.timedelta(days=EXPIRY_DAYS)).isoformat()
         }
+        # Send loyalty milestone email
+        if usr.email:
+            from app.services.transactional_notifications import send_loyalty_milestone
+            background_tasks.add_task(
+                send_loyalty_milestone,
+                db,
+                to_email=usr.email,
+                to_name=usr.first_name or "Customer",
+                tenant_id=usr.tenant_id,
+                visit_count=visits,
+                reward_title=base.title,
+            )
     return {"message": "Visit logged", "total_visits": visits, "reward_issued": reward_issued}
 
 @router.post(
@@ -361,6 +374,7 @@ def claim_reward(
 )
 def redeem(
     body: RedeemIn,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     payload = jwt.decode(body.token, SECRET_KEY, algorithms=["HS256"])
@@ -388,6 +402,20 @@ def redeem(
             except Exception as e:
                 # Don't fail the redemption if the hook fails
                 print(f"Error in vertical hook: {e}")
+
+    # Send reward redemption receipt email
+    usr = db.query(User).filter_by(id=payload["user_id"]).first()
+    if usr and usr.email:
+        from app.services.transactional_notifications import send_reward_redemption_receipt
+        background_tasks.add_task(
+            send_reward_redemption_receipt,
+            db,
+            to_email=usr.email,
+            to_name=usr.first_name or "Customer",
+            tenant_id=redemption.tenant_id,
+            reward_title=payload.get("reward", "Reward"),
+            milestone=redemption.milestone,
+        )
 
     return {
         "message": "Reward redeemed successfully", 

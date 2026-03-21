@@ -281,7 +281,7 @@ def create_checkout_session(
         tenant.subscription_status = 'active'
         # Clear stripe subscription if exists? Maybe. For now just update local state.
         db.commit()
-        return {"url": f"{settings.frontend_url}/admin/subscription?success=true&session_id=free_upgrade"}
+        return {"url": f"{settings.frontend_url}/admin/billing?status=success&session_id=free_upgrade"}
 
     # Mock Mode Handling
     if IS_MOCK_STRIPE:
@@ -296,7 +296,7 @@ def create_checkout_session(
         tenant.stripe_subscription_id = f"sub_mock_{plan_id}"
         db.commit()
         
-        return {"url": f"{settings.frontend_url}/admin/subscription?success=true&session_id=mock_session_123"}
+        return {"url": f"{settings.frontend_url}/admin/billing?status=success&session_id=mock_session_123"}
 
     try:
         # Create or get customer
@@ -330,8 +330,8 @@ def create_checkout_session(
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url=f"{settings.frontend_url}/admin/subscription?success=true&session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{settings.frontend_url}/admin/subscription?canceled=true",
+            success_url=f"{settings.frontend_url}/admin/billing?status=success&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{settings.frontend_url}/admin/billing?status=cancelled",
             metadata={
                 "tenant_id": tenant.id,
                 "plan_id": plan_id
@@ -389,6 +389,86 @@ def get_subscription_status(
         "stripe_customer_id": tenant.stripe_customer_id,
         "stripe_subscription_id": tenant.stripe_subscription_id
     }
+
+@router.get("/invoices")
+def list_invoices(
+    tenant_context: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """List Stripe invoices for the current tenant.
+
+    Returns the most recent invoices including amount, status, date and
+    a hosted URL for the customer to view/download the invoice PDF.
+    """
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if IS_MOCK_STRIPE or not tenant.stripe_customer_id:
+        # Return empty list when in mock mode or no Stripe customer
+        return []
+
+    try:
+        invoices = stripe.Invoice.list(
+            customer=tenant.stripe_customer_id,
+            limit=24,  # Two years of monthly invoices
+        )
+        return [
+            {
+                "id": inv.id,
+                "amount_due": inv.amount_due,
+                "amount_paid": inv.amount_paid,
+                "currency": inv.currency,
+                "status": inv.status,
+                "created": inv.created,
+                "hosted_invoice_url": inv.hosted_invoice_url,
+                "invoice_pdf": inv.invoice_pdf,
+            }
+            for inv in invoices.auto_paging_iter()
+        ]
+    except stripe.error.StripeError as e:
+        logger.error(f"Failed to fetch invoices for tenant {tenant.id}: {e}")
+        raise HTTPException(status_code=502, detail="Failed to fetch invoices from Stripe")
+
+
+@router.get("/payment-method")
+def get_payment_method(
+    tenant_context: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    """Return the default payment method on file (last 4 digits, brand, expiry).
+
+    Returns ``null`` when no payment method is attached or in mock mode.
+    """
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_context.id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if IS_MOCK_STRIPE or not tenant.stripe_customer_id:
+        return None
+
+    try:
+        customer = stripe.Customer.retrieve(
+            tenant.stripe_customer_id,
+            expand=["invoice_settings.default_payment_method"],
+        )
+        pm = getattr(
+            getattr(customer, "invoice_settings", None),
+            "default_payment_method",
+            None,
+        )
+        if pm and hasattr(pm, "card") and pm.card:
+            return {
+                "brand": pm.card.brand,
+                "last4": pm.card.last4,
+                "exp_month": pm.card.exp_month,
+                "exp_year": pm.card.exp_year,
+            }
+        return None
+    except stripe.error.StripeError as e:
+        logger.error(f"Failed to fetch payment method for tenant {tenant.id}: {e}")
+        raise HTTPException(status_code=502, detail="Failed to fetch payment method from Stripe")
+
 
 @router.get("/usage")
 def get_usage(
@@ -479,6 +559,9 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         _handle_checkout_completed(session, db)
+    elif event['type'] == 'invoice.paid':
+        invoice = event['data']['object']
+        _handle_invoice_paid(invoice, db)
     elif event['type'] == 'customer.subscription.updated':
         subscription = event['data']['object']
         _handle_subscription_updated(subscription, db)
@@ -499,6 +582,19 @@ def _handle_checkout_completed(session, db: Session):
             tenant.stripe_subscription_id = session.get('subscription')
             tenant.subscription_status = 'active'
             db.commit()
+
+def _handle_invoice_paid(invoice, db: Session):
+    """Mark tenant subscription as active when an invoice is successfully paid."""
+    customer_id = invoice.get('customer')
+    subscription_id = invoice.get('subscription')
+    if not customer_id:
+        return
+    tenant = db.query(Tenant).filter(Tenant.stripe_customer_id == customer_id).first()
+    if tenant:
+        tenant.subscription_status = 'active'
+        if subscription_id:
+            tenant.stripe_subscription_id = subscription_id
+        db.commit()
 
 def _handle_subscription_updated(subscription, db: Session):
     customer_id = subscription.get('customer')

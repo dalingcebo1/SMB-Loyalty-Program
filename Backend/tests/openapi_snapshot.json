@@ -4482,6 +4482,251 @@
         "title": "OccasionResponse",
         "type": "object"
       },
+      "OnboardingBrandingPayload": {
+        "properties": {
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "primary_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Color"
+          },
+          "secondary_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondary Color"
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tagline"
+          }
+        },
+        "title": "OnboardingBrandingPayload",
+        "type": "object"
+      },
+      "OnboardingLoyaltyPayload": {
+        "properties": {
+          "points_per_rand": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Per Rand"
+          },
+          "reward_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reward Description"
+          },
+          "visit_milestone": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visit Milestone"
+          }
+        },
+        "title": "OnboardingLoyaltyPayload",
+        "type": "object"
+      },
+      "OnboardingPayload": {
+        "description": "Composite payload for the onboarding wizard.",
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "branding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OnboardingBrandingPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "business_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Name"
+          },
+          "business_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Type"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "loyalty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OnboardingLoyaltyPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "services": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OnboardingServiceItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Services"
+          },
+          "team_invites": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OnboardingTeamInvite"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Invites"
+          },
+          "verticals": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verticals"
+          }
+        },
+        "title": "OnboardingPayload",
+        "type": "object"
+      },
+      "OnboardingServiceItem": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_cents": {
+            "title": "Price Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "price_cents"
+        ],
+        "title": "OnboardingServiceItem",
+        "type": "object"
+      },
+      "OnboardingTeamInvite": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "OnboardingTeamInvite",
+        "type": "object"
+      },
       "OrderCreate": {
         "properties": {
           "customer_id": {
@@ -7476,6 +7721,10 @@
             "title": "Name",
             "type": "string"
           },
+          "onboarding_completed": {
+            "title": "Onboarding Completed",
+            "type": "boolean"
+          },
           "primary_domain": {
             "anyOf": [
               {
@@ -7525,6 +7774,7 @@
           "theme_color",
           "admin_ids",
           "config",
+          "onboarding_completed",
           "features"
         ],
         "title": "TenantOut",
@@ -12878,6 +13128,199 @@
         ]
       }
     },
+    "/api/admin/transactions/export": {
+      "get": {
+        "description": "Export filtered transactions as CSV.",
+        "operationId": "export_transactions_api_admin_transactions_export_get",
+        "parameters": [
+          {
+            "description": "Export format: csv",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "csv",
+              "description": "Export format: csv",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by payment status (comma separated)",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by payment status (comma separated)",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Filter by payment method",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by payment method",
+              "title": "Method"
+            }
+          },
+          {
+            "description": "Filter by payment source",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by payment source",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Search reference, transaction id, email, phone, or order id",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search reference, transaction id, email, phone, or order id",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Filter payments created on/after this ISO date",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter payments created on/after this ISO date",
+              "title": "Start Date"
+            }
+          },
+          {
+            "description": "Filter payments created on/before this ISO date",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter payments created on/before this ISO date",
+              "title": "End Date"
+            }
+          },
+          {
+            "description": "Minimum payment amount in cents",
+            "in": "query",
+            "name": "min_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum payment amount in cents",
+              "title": "Min Amount"
+            }
+          },
+          {
+            "description": "Maximum payment amount in cents",
+            "in": "query",
+            "name": "max_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum payment amount in cents",
+              "title": "Max Amount"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Export Transactions",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/analytics/customers/refresh": {
       "post": {
         "operationId": "refresh_customers_api_analytics_customers_refresh_post",
@@ -13255,6 +13698,55 @@
           }
         ],
         "summary": "Get loyalty tier metrics like progression rates and avg time in tier",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/loyalty/export": {
+      "get": {
+        "description": "Export loyalty members as CSV.",
+        "operationId": "export_loyalty_api_analytics_loyalty_export_get",
+        "parameters": [
+          {
+            "description": "Export format: csv",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "csv",
+              "description": "Export format: csv",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Export Loyalty",
         "tags": [
           "analytics"
         ]
@@ -21203,6 +21695,52 @@
         "summary": "List Customers"
       }
     },
+    "/api/customers/export": {
+      "get": {
+        "description": "Export all customers as CSV.",
+        "operationId": "export_customers_api_customers_export_get",
+        "parameters": [
+          {
+            "description": "Export format: csv",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "csv",
+              "description": "Export format: csv",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Export Customers"
+      }
+    },
     "/api/customers/{customer_id}": {
       "get": {
         "description": "Return a single customer's profile, loyalty, and recent activity.",
@@ -24410,6 +24948,70 @@
         "summary": "Create Expense"
       }
     },
+    "/api/expenses/export": {
+      "get": {
+        "description": "Export expenses as CSV.",
+        "operationId": "export_expenses_api_expenses_export_get",
+        "parameters": [
+          {
+            "description": "Export format: csv",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "csv",
+              "description": "Export format: csv",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by category",
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Export Expenses"
+      }
+    },
     "/api/expenses/{expense_id}": {
       "delete": {
         "description": "Delete an expense record.",
@@ -25246,6 +25848,70 @@
           }
         ],
         "summary": "Create Invoice"
+      }
+    },
+    "/api/invoices/export": {
+      "get": {
+        "description": "Export invoices as CSV.",
+        "operationId": "export_invoices_api_invoices_export_get",
+        "parameters": [
+          {
+            "description": "Export format: csv",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "csv",
+              "description": "Export format: csv",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by status",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Export Invoices"
       }
     },
     "/api/invoices/{invoice_id}": {
@@ -30837,6 +31503,86 @@
         "summary": "Get Profit And Loss"
       }
     },
+    "/api/reports/profit-loss/export": {
+      "get": {
+        "description": "Export Profit & Loss report as PDF or CSV.",
+        "operationId": "export_profit_loss_api_reports_profit_loss_export_get",
+        "parameters": [
+          {
+            "description": "Export format: pdf or csv",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "description": "Export format: pdf or csv",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Export Profit Loss"
+      }
+    },
     "/api/reports/revenue-chart": {
       "get": {
         "description": "Get revenue data for charts grouped by time period.",
@@ -33452,6 +34198,62 @@
           }
         ],
         "summary": "Invite Tenant Admin",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/api/tenants/{tenant_id}/onboarding": {
+      "patch": {
+        "description": "Bulk-update tenant settings from the onboarding wizard.\n\nAccepts business info, branding, selected verticals, loyalty config,\ninitial services, and team invite emails in one call. Marks the tenant\nas onboarding-complete on success.",
+        "operationId": "complete_onboarding_api_tenants__tenant_id__onboarding_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Complete Onboarding",
         "tags": [
           "tenants"
         ]

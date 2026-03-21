@@ -116,11 +116,18 @@ def get_cached_tenant_branding(tenant_id: str, db: Session) -> Optional[Dict[str
         
         # Build branding dict
         branding_dict = {
-            "logo_url": branding.logo_url,
+            "public_name": branding.public_name,
+            "short_name": branding.short_name,
             "primary_color": branding.primary_color,
             "secondary_color": branding.secondary_color,
-            "font_family": branding.font_family,
-            "custom_css": branding.custom_css,
+            "accent_color": branding.accent_color,
+            "logo_light_url": branding.logo_light_url,
+            "logo_dark_url": branding.logo_dark_url,
+            "favicon_url": branding.favicon_url,
+            "app_icon_url": branding.app_icon_url,
+            "support_email": branding.support_email,
+            "support_phone": branding.support_phone,
+            "extra": branding.extra or {},
         }
         
         # Store in cache
@@ -134,11 +141,18 @@ def get_cached_tenant_branding(tenant_id: str, db: Session) -> Optional[Dict[str
         branding = db.query(TenantBranding).filter(TenantBranding.tenant_id == tenant_id).first()
         if branding:
             return {
-                "logo_url": branding.logo_url,
+                "public_name": branding.public_name,
+                "short_name": branding.short_name,
                 "primary_color": branding.primary_color,
                 "secondary_color": branding.secondary_color,
-                "font_family": branding.font_family,
-                "custom_css": branding.custom_css,
+                "accent_color": branding.accent_color,
+                "logo_light_url": branding.logo_light_url,
+                "logo_dark_url": branding.logo_dark_url,
+                "favicon_url": branding.favicon_url,
+                "app_icon_url": branding.app_icon_url,
+                "support_email": branding.support_email,
+                "support_phone": branding.support_phone,
+                "extra": branding.extra or {},
             }
         return None
     except Exception as e:

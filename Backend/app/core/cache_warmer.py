@@ -71,7 +71,7 @@ def warm_startup_caches() -> int:
 
 def _warm_vertical_registry():
     """Warm vertical registry cache"""
-    from app.verticals.registry import VerticalRegistry
+    from app.verticals import registry
     from app.core.cache import CacheConfig
     
     cache = get_cache()
@@ -79,7 +79,7 @@ def _warm_vertical_registry():
         return
     
     # Cache vertical list
-    verticals = VerticalRegistry.list_all()
+    verticals = registry.list_all()
     vertical_data = [
         {
             "key": v.vertical_key,

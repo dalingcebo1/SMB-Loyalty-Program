@@ -1,0 +1,3 @@
+/* Forward to the canonical location. Several vertical pages import from
+   src/styles/ while the file lives in src/features/admin/styles/. */
+@import '../features/admin/styles/admin-modern.css';

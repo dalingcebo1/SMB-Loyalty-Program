@@ -3207,6 +3207,52 @@
         "title": "ExtraUpdate",
         "type": "object"
       },
+      "FlowerOrderPayRequest": {
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "FlowerOrderPayRequest",
+        "type": "object"
+      },
+      "FlowerOrderPayResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "payment_status": {
+            "title": "Payment Status",
+            "type": "string"
+          },
+          "total_cents": {
+            "title": "Total Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "order_number",
+          "payment_status",
+          "total_cents",
+          "message"
+        ],
+        "title": "FlowerOrderPayResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -15082,6 +15128,91 @@
           }
         },
         "summary": "Update Order",
+        "tags": [
+          "Flowershop"
+        ]
+      }
+    },
+    "/api/api/flowershop/orders/{order_id}/pay": {
+      "post": {
+        "description": "Process Yoco card payment for a flower order.\n\nAccepts a Yoco token from the frontend SDK popup, charges the order total\nvia the Yoco API, and updates payment_status accordingly.  On success the\norder is moved to ``confirmed`` and loyalty points are awarded immediately.",
+        "operationId": "pay_flower_order_api_api_flowershop_orders__order_id__pay_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlowerOrderPayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlowerOrderPayResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pay Flower Order",
         "tags": [
           "Flowershop"
         ]

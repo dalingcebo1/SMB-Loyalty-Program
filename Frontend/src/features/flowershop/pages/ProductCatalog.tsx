@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FaShoppingCart,
@@ -64,6 +64,36 @@ interface CartItem extends OrderItem {
   product: Product;
 }
 
+interface YocoResult {
+  id: string;
+  status: string;
+  error?: { message?: string };
+  [key: string]: unknown;
+}
+
+interface OrderConfirmation {
+  orderId: number;
+  orderNumber: string;
+  paymentStatus: string;
+  totalCents: number;
+}
+
+declare global {
+  interface Window {
+    YocoSDK: {
+      new (options: { publicKey: string }): {
+        showPopup: (options: {
+          amountInCents: number;
+          currency: string;
+          name: string;
+          description: string;
+          callback: (result: YocoResult) => void;
+        }) => void;
+      };
+    };
+  }
+}
+
 export default function ProductCatalog() {
   const { tenantId } = useTenant();
   const { user } = useAuth();
@@ -94,6 +124,36 @@ export default function ProductCatalog() {
   const [giftMessage, setGiftMessage] = useState('');
   const [includeSenderName, setIncludeSenderName] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('card');
+
+  // Payment state
+  const [yocoLoaded, setYocoLoaded] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  const publicKey = import.meta.env.VITE_YOCO_PUBLIC_KEY as string | undefined;
+
+  // Load Yoco SDK
+  useEffect(() => {
+    if (window.YocoSDK) {
+      setYocoLoaded(true);
+      return;
+    }
+
+    const scriptId = 'yoco-sdk';
+    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (!existing) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://js.yoco.com/sdk/v1/yoco-sdk-web.js';
+      script.async = true;
+      script.onload = () => setYocoLoaded(true);
+      script.onerror = () => setYocoLoaded(true); // proceed even if SDK fails
+      document.body.appendChild(script);
+    } else {
+      existing.onload = () => setYocoLoaded(true);
+    }
+  }, []);
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -167,19 +227,102 @@ export default function ProductCatalog() {
         })),
       };
 
-      return api.post('/api/flowershop/orders', orderData);
+      const response = await api.post('/api/flowershop/orders', orderData);
+      return response.data as {
+        id: number;
+        order_number: string;
+        total_cents: number;
+        payment_status: string;
+        payment_method: string;
+      };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['flowershop', 'orders'] });
-      setCart([]);
-      setShowCheckout(false);
-      setShowCart(false);
-      alert('Order placed successfully! 🌸');
+
+      if (data.payment_method === 'card') {
+        // Initiate Yoco payment
+        initiateYocoPayment(data.id, data.order_number, data.total_cents);
+      } else {
+        // Cash/EFT — order stays pending for staff confirmation
+        setCart([]);
+        setShowCheckout(false);
+        setShowCart(false);
+        setPaymentError(null);
+        setOrderConfirmation({
+          orderId: data.id,
+          orderNumber: data.order_number,
+          paymentStatus: 'pending',
+          totalCents: data.total_cents,
+        });
+      }
     },
-    onError: (error: any) => {
-      alert(error.response?.data?.detail || 'Failed to place order');
+    onError: (error: unknown) => {
+      const message =
+        (error as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || 'Failed to place order';
+      setPaymentError(message);
     },
   });
+
+  const initiateYocoPayment = useCallback(
+    (orderId: number, orderNumber: string, totalCents: number) => {
+      setPaymentError(null);
+
+      if (!publicKey || !window.YocoSDK) {
+        setPaymentError(
+          'Payment system is not available. Please try again or choose a different payment method.'
+        );
+        return;
+      }
+
+      setPaying(true);
+
+      try {
+        const popup = new window.YocoSDK({ publicKey });
+        popup.showPopup({
+          amountInCents: totalCents,
+          currency: 'ZAR',
+          name: 'Flower Order Payment',
+          description: `Order #${orderNumber}`,
+          callback: async (result: YocoResult) => {
+            if (result.error) {
+              setPaying(false);
+              setPaymentError(result.error.message || 'Payment failed. Please try again.');
+              return;
+            }
+
+            try {
+              const payResponse = await api.post(
+                `/api/flowershop/orders/${orderId}/pay`,
+                { token: result.id }
+              );
+
+              setPaying(false);
+              setCart([]);
+              setShowCheckout(false);
+              setShowCart(false);
+              setOrderConfirmation({
+                orderId: payResponse.data.order_id,
+                orderNumber: payResponse.data.order_number,
+                paymentStatus: payResponse.data.payment_status,
+                totalCents: payResponse.data.total_cents,
+              });
+            } catch (error: unknown) {
+              setPaying(false);
+              const message =
+                (error as { response?: { data?: { detail?: string } } })?.response
+                  ?.data?.detail || 'Payment could not be completed. Please contact support.';
+              setPaymentError(message);
+            }
+          },
+        });
+      } catch {
+        setPaying(false);
+        setPaymentError('Unexpected error starting payment. Please try again.');
+      }
+    },
+    [publicKey]
+  );
 
   const addToCart = (product: Product) => {
     const existingItem = cart.find((item) => item.product_id === product.id);
@@ -249,6 +392,7 @@ export default function ProductCatalog() {
       return;
     }
 
+    setPaymentError(null);
     createOrderMutation.mutate();
   };
 
@@ -857,6 +1001,21 @@ export default function ProductCatalog() {
 
               {/* Checkout Footer */}
               <div className="p-6 border-t bg-gray-50">
+                {/* Order item summary */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Order Summary</h3>
+                  <div className="space-y-1">
+                    {cart.map((item) => {
+                      const price = item.product.sale_price_cents || item.product.price_cents;
+                      return (
+                        <div key={item.product_id} className="flex justify-between text-sm text-gray-600">
+                          <span>{item.product.name} × {item.quantity}</span>
+                          <span>{formatCents(price * item.quantity)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-gray-700">
                     <span>Subtotal:</span>
@@ -871,14 +1030,83 @@ export default function ProductCatalog() {
                     <span className="text-pink-600">{formatCents(total)}</span>
                   </div>
                 </div>
+                {paymentError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    {paymentError}
+                  </div>
+                )}
                 <button
                   onClick={handlePlaceOrder}
-                  disabled={createOrderMutation.isPending}
+                  disabled={createOrderMutation.isPending || paying || (paymentMethod === 'card' && !yocoLoaded)}
                   className="w-full bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition font-semibold disabled:opacity-50"
                 >
-                  {createOrderMutation.isPending ? 'Placing Order...' : 'Place Order 🌸'}
+                  {createOrderMutation.isPending || paying
+                    ? 'Processing...'
+                    : paymentMethod === 'card'
+                      ? `Pay Now ${formatCents(total)} 💳`
+                      : 'Place Order 🌸'}
                 </button>
+                {paymentMethod !== 'card' && (
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    {paymentMethod === 'cash'
+                      ? 'Payment will be collected on delivery/pickup. Staff will confirm your order.'
+                      : 'Please complete EFT payment using the details provided. Staff will confirm once received.'}
+                  </p>
+                )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Confirmation */}
+        {orderConfirmation && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 text-center">
+              <div className="text-6xl mb-4">
+                {orderConfirmation.paymentStatus === 'paid' ? '✅' : '📋'}
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                {orderConfirmation.paymentStatus === 'paid'
+                  ? 'Payment Successful!'
+                  : 'Order Placed!'}
+              </h2>
+              <p className="text-gray-600 mb-4">
+                {orderConfirmation.paymentStatus === 'paid'
+                  ? 'Your order has been confirmed and is being prepared.'
+                  : 'Your order is pending. Our staff will confirm it shortly.'}
+              </p>
+              <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-2">
+                <div className="flex justify-between text-gray-700">
+                  <span>Order Number:</span>
+                  <span className="font-bold text-pink-600">
+                    {orderConfirmation.orderNumber}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-700">
+                  <span>Total:</span>
+                  <span className="font-semibold">
+                    {formatCents(orderConfirmation.totalCents)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-700">
+                  <span>Status:</span>
+                  <span
+                    className={`font-semibold ${
+                      orderConfirmation.paymentStatus === 'paid'
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                    }`}
+                  >
+                    {orderConfirmation.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setOrderConfirmation(null)}
+                className="w-full bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition font-semibold"
+              >
+                Continue Shopping 🌸
+              </button>
             </div>
           </div>
         )}

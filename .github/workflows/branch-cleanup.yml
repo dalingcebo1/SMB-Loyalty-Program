@@ -22,6 +22,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   cleanup:
@@ -50,10 +51,15 @@ jobs:
           # Get all remote branches
           git fetch --all --prune
           
+          # Get list of branches with open PRs (these should be skipped)
+          echo "Fetching branches with open pull requests..."
+          open_pr_branches=$(gh pr list --state open --json headRefName -q '.[].headRefName' 2>/dev/null || echo "")
+          
           # Calculate cutoff date
           cutoff_date=$(date -d "$DAYS_STALE days ago" +%s)
           
           stale_branches=()
+          skipped_pr_branches=()
           
           echo "| Branch | Last Commit | Days Old | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------------|----------|--------|" >> $GITHUB_STEP_SUMMARY
@@ -64,8 +70,9 @@ jobs:
               continue
             fi
             
-            # Skip current PR branches (copilot/*)
-            if [[ "$branch" == copilot/* ]]; then
+            # Skip branches with open PRs
+            if echo "$open_pr_branches" | grep -qx "$branch"; then
+              skipped_pr_branches+=("$branch")
               continue
             fi
             
@@ -82,6 +89,20 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Total stale branches:** ${#stale_branches[@]}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ ${#skipped_pr_branches[@]} -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Skipped (have open PRs):** ${#skipped_pr_branches[@]}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Branches with open PRs</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            for b in "${skipped_pr_branches[@]}"; do
+              echo "- \`$b\`" >> $GITHUB_STEP_SUMMARY
+            done
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ ${#stale_branches[@]} -eq 0 ]; then
@@ -99,10 +120,10 @@ jobs:
             
             for branch in "${stale_branches[@]}"; do
               echo "Deleting branch: $branch"
-              if git push origin --delete "$branch" 2>/dev/null; then
-                echo "- ✅ \`$branch\`" >> $GITHUB_STEP_SUMMARY
+              if git push origin --delete "$branch" 2>&1; then
+                echo "- ✅ \`$branch\` - deleted successfully" >> $GITHUB_STEP_SUMMARY
               else
-                echo "- ❌ \`$branch\` (failed or has open PR)" >> $GITHUB_STEP_SUMMARY
+                echo "- ❌ \`$branch\` - deletion failed (check permissions)" >> $GITHUB_STEP_SUMMARY
               fi
             done
           else

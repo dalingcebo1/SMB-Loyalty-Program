@@ -1,4 +1,4 @@
-name: Deploy API (Azure Container Apps - Dev)
+name: "Backend: Deploy Dev (Azure Container Apps)"
 
 permissions:
   contents: read
@@ -16,7 +16,7 @@ on:
       - "test/**"
     paths:
       - 'Backend/**'
-      - '.github/workflows/backend-azure-containerapps-dev.yml'
+      - '.github/workflows/backend-deploy-dev.yml'
   workflow_dispatch:
     inputs:
       run_migrations:

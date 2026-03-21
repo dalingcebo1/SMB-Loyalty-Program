@@ -1,0 +1,186 @@
+name: "Backend: DB Bootstrap & Migrate"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+      resource_group:
+        description: Azure Resource Group
+        required: false
+        default: SMB-Loyalty-Group
+      containerapp_name:
+        description: "Container App name (leave empty to use default based on environment)"
+        required: false
+        default: ""
+      run_seed:
+        description: "Run seed_all.py after migrations (true/false)"
+        required: false
+        default: 'false'
+      force_update_seed:
+        description: "Pass --force-update to seed_all.py (true/false)"
+        required: false
+        default: 'false'
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine Container App name
+        id: resolve
+        run: |
+          ENV="${{ inputs.environment }}"
+          CUSTOM_APP="${{ inputs.containerapp_name }}"
+          if [ -n "$CUSTOM_APP" ]; then
+            APP_NAME="$CUSTOM_APP"
+          elif [ "$ENV" = "dev" ]; then
+            APP_NAME="apismbloyaltyapp-dev"
+          else
+            APP_NAME="apismbloyaltyapp"
+          fi
+          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
+          echo "Resolved Container App: $APP_NAME (environment: $ENV)"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Azure Container Apps extension
+        run: az extension add --name containerapp --upgrade
+
+      - name: Verify Container App exists
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ steps.resolve.outputs.app_name }}
+        run: |
+          set -euo pipefail
+          echo "Verifying Container App '$APP' exists in resource group '$RG'"
+          if ! az containerapp show -g "$RG" -n "$APP" --query name -o tsv > /dev/null 2>&1; then
+            echo "::error::Container App '$APP' not found in resource group '$RG'"
+            exit 1
+          fi
+          echo "Container App verified: $APP"
+
+      - name: Ensure target database exists (via container exec Python)
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ steps.resolve.outputs.app_name }}
+        run: |
+          set -euo pipefail
+          echo "Introspecting DATABASE_URL from running container and creating DB if missing"
+          az containerapp exec -g "$RG" -n "$APP" --command "python - <<'PY'
+          import os, sys
+          from urllib.parse import urlparse, parse_qs, unquote
+          import psycopg2
+
+          du = os.environ.get('DATABASE_URL')
+          if not du:
+              print('DATABASE_URL not set inside container', file=sys.stderr)
+              sys.exit(1)
+
+          u = urlparse(du)
+          user = u.username
+          password = unquote(u.password or '')
+          host = u.hostname
+          port = u.port or 5432
+          target_db = (u.path or '/').lstrip('/') or 'postgres'
+          sslmode = parse_qs(u.query).get('sslmode', ['require'])[0]
+
+          try:
+              # Connect to the maintenance DB 'postgres'
+              conn = psycopg2.connect(host=host, port=port, dbname='postgres', user=user, password=password, sslmode=sslmode)
+              conn.autocommit = True
+              cur = conn.cursor()
+              cur.execute('SELECT 1 FROM pg_database WHERE datname = %s', (target_db,))
+              exists = cur.fetchone() is not None
+              if exists:
+                  print(f\"Database '{target_db}' already exists\")
+              else:
+                  # Create with UTF8 and assign owner to the same user
+                  cur.execute(f'CREATE DATABASE \"{target_db}\" OWNER \"{user}\" TEMPLATE template0 ENCODING \\'UTF8\\'')
+                  print(f\"Created database '{target_db}' owned by '{user}'\")
+              cur.close()
+              conn.close()
+          except Exception as e:
+              print(f'Database bootstrap failed: {e}', file=sys.stderr)
+              sys.exit(1)
+          PY"
+
+      - name: Run Alembic migrations
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ steps.resolve.outputs.app_name }}
+        run: |
+          set -euo pipefail
+          echo "Running Alembic migrations in the container ($APP)"
+          az containerapp exec -g "$RG" -n "$APP" --command "bash -lc 'cd /app && alembic -c alembic.ini upgrade head'"
+          echo "Migrations completed successfully"
+
+      - name: Show current migration heads
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ steps.resolve.outputs.app_name }}
+        run: |
+          set -euo pipefail
+          echo "Current Alembic heads:"
+          az containerapp exec -g "$RG" -n "$APP" --command "bash -lc 'cd /app && alembic -c alembic.ini heads'" || true
+
+      - name: Run seed_all.py (optional)
+        if: inputs.run_seed == 'true'
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ steps.resolve.outputs.app_name }}
+        run: |
+          set -euo pipefail
+          seed_args=""
+          if [ "${{ inputs.force_update_seed }}" = "true" ]; then
+            seed_args="--force-update"
+          fi
+          echo "Running seed_all.py $seed_args"
+          az containerapp exec -g "$RG" -n "$APP" --command "bash -lc 'cd /app && python seed_all.py $seed_args'"
+          echo "Seeding completed"
+
+      - name: Smoke check DB-backed public endpoints
+        env:
+          RG: ${{ inputs.resource_group }}
+          APP: ${{ steps.resolve.outputs.app_name }}
+        run: |
+          set -euo pipefail
+          fqdn=$(az containerapp show -g "$RG" -n "$APP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "FQDN: https://$fqdn"
+          
+          success=true
+          for ep in /health/ready /api/public/tenant-meta; do
+            code=$(curl -sk -o /dev/null -w "%{http_code}" "https://$fqdn$ep")
+            echo "$ep -> $code"
+            if [ "$code" -ge 500 ]; then
+              echo "::warning::Endpoint $ep returned $code"
+              success=false
+            fi
+          done
+          
+          if [ "$success" = false ]; then
+            echo "::error::Some endpoints returned 5xx errors"
+            exit 1
+          fi
+          echo "All smoke checks passed"

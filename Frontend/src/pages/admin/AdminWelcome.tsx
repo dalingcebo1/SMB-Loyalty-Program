@@ -297,7 +297,7 @@ const AdminWelcome: React.FC = () => {
 
       {/* 3b. VERTICAL: Show relevant cards based on selected business vertical */}
       {verticalCards.length > 0 && (
-        <AdminSection title={`${vertical ? vertical.charAt(0).toUpperCase() + vertical.slice(1) : 'Business'} Tools`}>
+        <AdminSection title={`${vertical ? vertical.charAt(0).toUpperCase() + vertical.slice(1) : 'Your Business'} Tools`}>
           <AdminGrid cols={{ mobile: 2, tablet: 3, desktop: 4, xl: 4 }} gap="sm">
             {verticalCards.map((card) => (
               <Link key={card.to} to={card.to}>

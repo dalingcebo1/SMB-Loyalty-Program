@@ -1,7 +1,7 @@
 """Tests for request-origin helpers and origin-aware URL building."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from starlette.testclient import TestClient
@@ -75,7 +75,7 @@ def simple_tenant():
         name="Origin Test",
         loyalty_type="visits",
         config={"urls": {"frontend": "https://configured-domain.com"}},
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
 
 

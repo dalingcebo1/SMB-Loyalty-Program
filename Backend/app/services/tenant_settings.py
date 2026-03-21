@@ -215,10 +215,21 @@ class TenantSettingsService:
             "auth": asdict(self.auth),
         }
 
-    def build_frontend_url(self, path: str) -> str:
-        """Join the tenant's frontend base URL with the provided ``path``."""
+    def build_frontend_url(self, path: str, *, origin: Optional[str] = None) -> str:
+        """Join the tenant's frontend base URL with the provided ``path``.
 
-        base = self.email.frontend_url.rstrip("/")
+        Parameters
+        ----------
+        path:
+            Relative path to append (e.g. ``"reset-password?token=abc"``).
+        origin:
+            When supplied (typically from :func:`app.utils.request_origin.get_request_origin`),
+            this value is used as the base URL instead of the configured
+            ``FRONTEND_URL``.  This prevents redirect-links from landing on
+            the wrong domain when multiple frontends share a single backend.
+        """
+
+        base = (origin or self.email.frontend_url).rstrip("/")
         suffix = path.lstrip("/")
         if not suffix:
             return base or settings.frontend_url

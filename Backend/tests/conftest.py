@@ -120,6 +120,17 @@ def initialize_db():
     yield
 
 @pytest.fixture(scope="session", autouse=True)
+def initialize_test_cache():
+    """Initialize cache layer for tests (memory-only, no Redis).
+
+    Must run before any code path that calls get_cache(), such as
+    UsageTracker or domain verification services.
+    """
+    from app.core.cache import initialize_cache
+    initialize_cache(redis_url=None)
+    yield
+
+@pytest.fixture(scope="session", autouse=True)
 def create_all_once():
     """Ensure tables exist before any module-level setup_module executes.
 

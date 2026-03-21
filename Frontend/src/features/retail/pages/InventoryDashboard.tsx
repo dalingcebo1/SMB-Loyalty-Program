@@ -257,3 +257,5 @@ export const InventoryDashboard: React.FC = () => {
     </AdminPageContainer>
   );
 };
+
+export default InventoryDashboard;

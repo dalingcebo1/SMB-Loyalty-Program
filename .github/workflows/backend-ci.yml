@@ -72,7 +72,7 @@ jobs:
 
       - name: Run migrations
         run: |
-          alembic -c Backend/alembic.ini upgrade head
+          cd Backend && alembic upgrade head
 
       - name: Migration drift check
         run: |

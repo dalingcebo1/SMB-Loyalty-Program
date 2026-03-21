@@ -5,6 +5,8 @@ Provides DB setup, rate limit reset, and a configured TestClient with auth
 dependency overrides where appropriate.
 """
 import os
+import sys
+from pathlib import Path
 
 # Ensure the test database URL is configured *before* importing the database layer
 # so the engine and SessionLocal bind to the fast in-memory sqlite database even if
@@ -14,12 +16,47 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 # Clear Prometheus registry before importing metrics to avoid duplicate registration
 os.environ["PYTEST_CURRENT_TEST"] = "1"
 
+# Fix sys.path for pytest's assertion rewriting hook
+# This must run BEFORE any other imports
+_backend_dir = Path(__file__).resolve().parent.parent
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
+_repo_root = _backend_dir.parent
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
 import pytest
 from fastapi.testclient import TestClient
 from app.core.database import Base, get_db, engine, SessionLocal as TestingSessionLocal
-import main
 
-app = main.app
+# Import main lazily to avoid issues with pytest's assertion rewriting
+_main_module = None
+
+def _get_main():
+    global _main_module
+    if _main_module is None:
+        import main
+        _main_module = main
+    return _main_module
+
+app = None  # Will be set after imports work
+
+try:  # best-effort initial metadata creation
+    Base.metadata.create_all(bind=engine)
+except Exception:  # pragma: no cover
+    pass
+
+@pytest.fixture(scope="session")
+def fastapi_app():
+    """Provide the FastAPI app instance for tests without shadowing globals."""
+    return _get_main().app
+
+# Set app at module level after we've defined fastapi_app fixture
+try:
+    app = _get_main().app
+except Exception:
+    # If import fails here, app will be None and fixtures will handle it
+    app = None
 try:  # best-effort initial metadata creation
     Base.metadata.create_all(bind=engine)
 except Exception:  # pragma: no cover
@@ -144,11 +181,14 @@ def db_session(initialize_db):
 
 @pytest.fixture(scope="function")
 def client(db_session, monkeypatch):
+    # Get the app lazily to avoid import issues
+    app_instance = _get_main().app
+    
     # Override get_db to use the test session
     def override_get_db():
         yield db_session
 
-    app.dependency_overrides[get_db] = override_get_db
+    app_instance.dependency_overrides[get_db] = override_get_db
     # Override auth dependencies for tests
     from app.plugins.auth.routes import require_staff, require_admin, get_current_user
     from app.models import User
@@ -157,8 +197,8 @@ def client(db_session, monkeypatch):
     from jose import jwt, JWTError
 
     # Bypass staff & admin requirements for test convenience (role-specific tests should remove these overrides locally)
-    app.dependency_overrides[require_staff] = lambda: None
-    app.dependency_overrides[require_admin] = lambda: None
+    app_instance.dependency_overrides[require_staff] = lambda: None
+    app_instance.dependency_overrides[require_admin] = lambda: None
 
     # Provide a default current_user from the test DB
     def override_get_current_user(request: Request):
@@ -185,6 +225,6 @@ def client(db_session, monkeypatch):
         # Fallback: first user in DB
         return db_session.query(User).first()
 
-    app.dependency_overrides[get_current_user] = override_get_current_user
+    app_instance.dependency_overrides[get_current_user] = override_get_current_user
     # Do NOT override developer_only so authz role tests validate actual logic
-    return TestClient(app)
+    return TestClient(app_instance)

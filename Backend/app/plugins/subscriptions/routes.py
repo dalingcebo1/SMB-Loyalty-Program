@@ -411,7 +411,7 @@ def list_invoices(
     try:
         invoices = stripe.Invoice.list(
             customer=tenant.stripe_customer_id,
-            limit=24,
+            limit=24,  # Two years of monthly invoices
         )
         return [
             {

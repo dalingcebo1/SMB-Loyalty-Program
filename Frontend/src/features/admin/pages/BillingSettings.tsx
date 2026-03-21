@@ -19,7 +19,7 @@ import {
   FaExternalLinkAlt,
 } from 'react-icons/fa';
 import api from '../../../api/api';
-import { formatCents } from '../../../utils/format';
+import { formatCents, formatDate } from '../../../utils/format';
 import { AdminPageContainer, AdminSection } from '../components/AdminGrid';
 import { AdminCard, StatCard } from '../components/AdminCard';
 
@@ -577,11 +577,7 @@ const BillingSettings = () => {
                   {invoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        {new Date(inv.created * 1000).toLocaleDateString('en-ZA', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
+                        {formatDate(new Date(inv.created * 1000))}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                         {formatCents(inv.amount_paid || inv.amount_due)}

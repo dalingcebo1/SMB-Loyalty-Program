@@ -6,7 +6,7 @@ and customer bookings with loyalty points integration.
 """
 from datetime import datetime, time, timedelta, date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from pydantic import BaseModel, Field, validator
@@ -710,6 +710,7 @@ def award_loyalty_points_for_booking(booking: CourtBooking, db: Session, tenant_
 @router.post("/bookings", response_model=BookingResponse, status_code=201)
 def create_booking(
     booking: BookingCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
@@ -811,6 +812,23 @@ def create_booking(
     
     logger.info(f"Created booking {db_booking.id} for court {court.court_number}")
     
+    # Send booking confirmation email
+    customer = db.query(User).filter(User.id == booking.customer_id).first()
+    if customer and customer.email:
+        from app.services.transactional_notifications import send_padel_booking_confirmation
+        background_tasks.add_task(
+            send_padel_booking_confirmation,
+            db,
+            to_email=customer.email,
+            to_name=customer.first_name or "Customer",
+            tenant_id=tenant_id,
+            court_number=court.court_number,
+            booking_date=booking.booking_date,
+            start_time=booking.start_time,
+            duration_minutes=booking.duration_minutes,
+            total_price_cents=total_price,
+        )
+
     # Prepare response
     response_data = {
         **db_booking.__dict__,

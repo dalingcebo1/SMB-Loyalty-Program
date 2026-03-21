@@ -11,7 +11,7 @@ Handles flower shop operations including:
 
 from datetime import date, datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from pydantic import BaseModel, Field, validate_email
@@ -696,6 +696,7 @@ def award_loyalty_points_for_order(order: FlowerOrder, db: Session, tenant_ctx: 
 @router.post("/orders", response_model=OrderResponse, status_code=201)
 def create_order(
     order: OrderCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
@@ -827,6 +828,26 @@ def create_order(
     
     logger.info(f"Created order {db_order.order_number} for tenant {tenant_id}")
     
+    # Send order confirmation email
+    if customer.email:
+        items_summary = ", ".join(
+            f"{item['product_name']} x{item['quantity']}" for item in order_items
+        )
+        from app.services.transactional_notifications import send_flower_order_confirmation
+        background_tasks.add_task(
+            send_flower_order_confirmation,
+            db,
+            to_email=customer.email,
+            to_name=customer.first_name or "Customer",
+            tenant_id=tenant_id,
+            order_number=db_order.order_number,
+            delivery_date=db_order.delivery_date,
+            delivery_time_slot=db_order.delivery_time_slot or "",
+            recipient_name=db_order.recipient_name or "",
+            items_summary=items_summary,
+            total_cents=total_cents,
+        )
+
     # Build response with items
     response_data = {
         **db_order.__dict__,
@@ -905,6 +926,7 @@ def get_order(
 def update_order(
     order_id: int,
     order_update: OrderUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
@@ -946,6 +968,22 @@ def update_order(
     
     logger.info(f"Updated order {order_id}")
     
+    # Send status update email for key transitions
+    if 'status' in update_data and order.status != old_status:
+        if order.status in ("out_for_delivery", "delivered"):
+            customer = db.query(User).filter(User.id == order.customer_id).first()
+            if customer and customer.email:
+                from app.services.transactional_notifications import send_flower_order_status_update
+                background_tasks.add_task(
+                    send_flower_order_status_update,
+                    db,
+                    to_email=customer.email,
+                    to_name=customer.first_name or "Customer",
+                    tenant_id=tenant_id,
+                    order_number=order.order_number,
+                    new_status=order.status,
+                )
+
     response_data = {
         **order.__dict__,
         'items': [OrderItemResponse(**item.__dict__) for item in order.items]

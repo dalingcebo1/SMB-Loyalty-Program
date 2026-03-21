@@ -169,9 +169,28 @@ class ReminderService:
                 appointment_time=appointment.start_time,
             )
             
-            # TODO: Integrate with SendGrid
-            # For now, just log the email
-            print(f"Email to {customer.email}: Subject: {subject}\n{body}")
+            # Send via SendGrid (gracefully falls back to logging if not configured)
+            from app.external.sendgrid_service import get_sendgrid_service
+            sg = get_sendgrid_service()
+            if sg:
+                html_content = sg.create_html_email(
+                    title=subject,
+                    heading=subject,
+                    body_text=body.replace("\n", "<br/>"),
+                    footer_text="This is an automated reminder.",
+                )
+                result = sg.send_email(
+                    to_email=customer.email,
+                    subject=subject,
+                    html_content=html_content,
+                    to_name=customer.name,
+                )
+                if not result["success"]:
+                    self._mark_failed(reminder, result.get("error", "SendGrid send failed"))
+                    return False
+            else:
+                # Fallback: log the email when SendGrid is not configured
+                print(f"Email to {customer.email}: Subject: {subject}\n{body}")
             
             # Mark as sent
             reminder.status = "sent"

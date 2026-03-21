@@ -1018,42 +1018,49 @@ def public_tenant_meta(request: Request, db: Session = Depends(get_db)):
     simple IP-based rate limit (capacity/window via settings).
     """
     from config import settings as _settings  # local import to avoid circulars
-    # Resolve tenant context with production fallback to avoid 500s
-    ctx = _resolve_public_tenant(request, db)
-    
-    # Handle missing tenant gracefully instead of causing 500 error
-    if ctx is None:
-        return JSONResponse(
-            status_code=404,
-            content={"error": "tenant_not_found", "detail": "No tenant available for this request"}
-        )
-    
-    ip_key = _ip_key(request)
-    scope_name = "ip_public_meta"
-    cap = _settings.rate_limit_public_meta_capacity
-    win = _settings.rate_limit_public_meta_window_seconds
-    if not check_rate(scope=scope_name, key=ip_key, capacity=cap, per_seconds=win):
-        retry_after = compute_retry_after(scope_name, ip_key, cap, win)
-        payload = build_429_payload(scope_name, retry_after, detail="Rate limit exceeded")
-        resp = JSONResponse(status_code=429, content=payload)
-        if retry_after:
-            resp.headers["Retry-After"] = f"{int(retry_after)}"
-        return resp
-    # Expose tenant id to logging middleware (if present there)
-    request.state.tenant_id = ctx.id
-    data = tenant_meta_dict(ctx, db=db)
-    etag = _etag_for(data)
-    inm = request.headers.get('if-none-match')
-    if inm == etag:
-        from fastapi import Response
-        resp = Response(status_code=304)
-        resp.headers['ETag'] = etag
+    try:
+        # Resolve tenant context with production fallback to avoid 500s
+        ctx = _resolve_public_tenant(request, db)
+        
+        # Handle missing tenant gracefully instead of causing 500 error
+        if ctx is None:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "tenant_not_found", "detail": "No tenant available for this request"}
+            )
+        
+        ip_key = _ip_key(request)
+        scope_name = "ip_public_meta"
+        cap = _settings.rate_limit_public_meta_capacity
+        win = _settings.rate_limit_public_meta_window_seconds
+        if not check_rate(scope=scope_name, key=ip_key, capacity=cap, per_seconds=win):
+            retry_after = compute_retry_after(scope_name, ip_key, cap, win)
+            payload = build_429_payload(scope_name, retry_after, detail="Rate limit exceeded")
+            resp = JSONResponse(status_code=429, content=payload)
+            if retry_after:
+                resp.headers["Retry-After"] = f"{int(retry_after)}"
+            return resp
+        # Expose tenant id to logging middleware (if present there)
+        request.state.tenant_id = ctx.id
+        data = tenant_meta_dict(ctx, db=db)
+        etag = _etag_for(data)
+        inm = request.headers.get('if-none-match')
+        if inm == etag:
+            from fastapi import Response
+            resp = Response(status_code=304)
+            resp.headers['ETag'] = etag
+            resp.headers['Cache-Control'] = 'public, max-age=60'
+            return resp
+        resp = JSONResponse(content=data)
         resp.headers['Cache-Control'] = 'public, max-age=60'
+        resp.headers['ETag'] = etag
         return resp
-    resp = JSONResponse(content=data)
-    resp.headers['Cache-Control'] = 'public, max-age=60'
-    resp.headers['ETag'] = etag
-    return resp
+    except Exception as exc:
+        logger.error(f"public_tenant_meta failed: {exc}", exc_info=True)
+        return JSONResponse(
+            status_code=503,
+            content={"error": "service_unavailable", "detail": "Tenant metadata temporarily unavailable"}
+        )
 
 @app.get('/api/public/tenant-theme')
 def public_tenant_theme(request: Request, db: Session = Depends(get_db)):

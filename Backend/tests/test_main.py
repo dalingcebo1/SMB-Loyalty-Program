@@ -11,5 +11,5 @@ def test_openapi_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert "openapi" in data
-    assert data["info"]["title"] == "SMB Loyalty Program"
-    assert data["info"]["version"] == "0.1"
+    assert data["info"]["title"] == "SMB Loyalty Program API"
+    assert data["info"]["version"] == "2.0.0"

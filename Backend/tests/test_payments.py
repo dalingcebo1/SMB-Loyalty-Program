@@ -67,10 +67,11 @@ def test_charge_and_payment_flow(client: TestClient, db_session: Session, monkey
     # create order (auto integer id)
     user = db_session.query(User).first()
     order = create_test_order(db_session, user.id)
-    # patch requests.post
+    # patch requests.post — use direct module reference to avoid path resolution issues
     def fake_post(url, json, headers, timeout):
         return DummyResp({"chargeId": "ch1", "status": "successful", "source": {"brand": "VISA"}})
-    monkeypatch.setattr("app.plugins.payments.routes.requests.post", fake_post)
+    from app.plugins.payments import routes as _payments_routes
+    monkeypatch.setattr(_payments_routes.requests, "post", fake_post)
 
     resp = client.post("/api/payments/charge", json={"token": "tok","orderId": order.id, "amount": 500})
     assert resp.status_code == 200

@@ -62,11 +62,6 @@ try:  # best-effort initial metadata creation
 except Exception:  # pragma: no cover
     pass
 
-@pytest.fixture(scope="session")
-def fastapi_app():
-    """Provide the FastAPI app instance for tests without shadowing globals."""
-    return main.app
-
 @pytest.fixture(scope="function", autouse=True)
 def initialize_db():
     # Import all models to register with Base.metadata

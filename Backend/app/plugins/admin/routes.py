@@ -12,6 +12,7 @@ from app.core.audit import log_audit
 from app.models import AuditLog
 from typing import Optional, Dict, Any
 import math
+from app.services.export_service import generate_csv
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -312,3 +313,106 @@ def list_transactions(
         },
         "available_filters": available_filters,
     }
+
+
+@router.get("/transactions/export")
+def export_transactions(
+    format: str = Query("csv", description="Export format: csv"),
+    status: Optional[str] = Query(None, description="Filter by payment status (comma separated)"),
+    method: Optional[str] = Query(None, description="Filter by payment method"),
+    source: Optional[str] = Query(None, description="Filter by payment source"),
+    search: Optional[str] = Query(None, description="Search reference, transaction id, email, phone, or order id"),
+    start_date: Optional[str] = Query(None, description="Filter payments created on/after this ISO date"),
+    end_date: Optional[str] = Query(None, description="Filter payments created on/before this ISO date"),
+    min_amount: Optional[int] = Query(None, description="Minimum payment amount in cents"),
+    max_amount: Optional[int] = Query(None, description="Maximum payment amount in cents"),
+    current_user: User = Depends(require_capability("payments.view")),
+    db: Session = Depends(get_db),
+):
+    """Export filtered transactions as CSV."""
+    tenant_scope = current_user.tenant_id
+
+    filters = []
+    if tenant_scope:
+        filters.append(Order.tenant_id == tenant_scope)
+
+    if status:
+        statuses = [s.strip() for s in status.split(",") if s.strip()]
+        if statuses:
+            filters.append(Payment.status.in_(statuses))
+
+    if method:
+        methods = [m.strip() for m in method.split(",") if m.strip()]
+        if methods:
+            filters.append(Payment.method.in_(methods))
+
+    if source:
+        sources = [s.strip() for s in source.split(",") if s.strip()]
+        if sources:
+            filters.append(Payment.source.in_(sources))
+
+    start_dt = _parse_iso_date(start_date, "start_date")
+    end_dt = _parse_iso_date(end_date, "end_date")
+    if start_dt and end_dt and start_dt > end_dt:
+        raise HTTPException(status_code=400, detail="start_date must be before end_date")
+
+    if start_dt:
+        filters.append(Payment.created_at >= start_dt)
+    if end_dt:
+        filters.append(Payment.created_at <= end_dt)
+
+    if min_amount is not None:
+        filters.append(Payment.amount >= min_amount)
+    if max_amount is not None:
+        filters.append(Payment.amount <= max_amount)
+
+    if search:
+        term = f"%{search.lower()}%"
+        search_clauses = [
+            func.lower(Payment.transaction_id).like(term),
+            func.lower(Payment.reference).like(term),
+            func.lower(User.email).like(term),
+            func.lower(User.phone).like(term),
+            cast(Order.id, String).like(f"%{search}%"),
+        ]
+        filters.append(or_(*search_clauses))
+
+    query = (
+        db.query(Payment, Order, User, Service)
+        .outerjoin(Order, Payment.order_id == Order.id)
+        .outerjoin(User, Order.user_id == User.id)
+        .outerjoin(Service, Order.service_id == Service.id)
+    )
+    if filters:
+        query = query.filter(*filters)
+
+    rows = query.order_by(Payment.created_at.desc()).all()
+
+    columns = [
+        ("date", "Date"),
+        ("reference", "Reference"),
+        ("transaction_id", "Transaction ID"),
+        ("customer_email", "Customer Email"),
+        ("customer_name", "Customer Name"),
+        ("service", "Service"),
+        ("method", "Method"),
+        ("status", "Status"),
+        ("amount", "Amount (ZAR)"),
+    ]
+
+    export_rows = []
+    for payment, order, user, service in rows:
+        export_rows.append({
+            "date": payment.created_at.strftime("%Y-%m-%d") if payment.created_at else "",
+            "reference": payment.reference or "",
+            "transaction_id": payment.transaction_id or "",
+            "customer_email": user.email if user else "",
+            "customer_name": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else "",
+            "service": service.name if service else "",
+            "method": payment.method or "",
+            "status": payment.status or "",
+            "amount": f"{(payment.amount or 0) / 100:.2f}",
+        })
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return generate_csv(export_rows, columns, f"transactions_{today}.csv")

@@ -169,8 +169,66 @@ def handle_customer_subscription_updated(event: stripe.Event, db: Session) -> No
     logger.info(f"Updated tenant {tenant.id} subscription status to {new_status}")
 
 
+def handle_checkout_session_completed(event: stripe.Event, db: Session) -> None:
+    """
+    Handle completed checkout session.
+
+    Updates tenant plan and subscription status when a Stripe Checkout
+    session finishes successfully.
+    """
+    session = event.data.object
+    customer_id = session.get('customer')
+    tenant_id = session.get('metadata', {}).get('tenant_id')
+    plan_id = session.get('metadata', {}).get('plan_id')
+
+    tenant = None
+    if tenant_id:
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant and customer_id:
+        tenant = get_tenant_by_stripe_customer(db, customer_id)
+
+    if not tenant:
+        logger.warning(f"Tenant not found for checkout session {session.get('id')}")
+        return
+
+    if plan_id:
+        tenant.subscription_plan_id = plan_id
+    subscription_id = session.get('subscription')
+    if subscription_id:
+        tenant.stripe_subscription_id = subscription_id
+    if customer_id and not tenant.stripe_customer_id:
+        tenant.stripe_customer_id = customer_id
+    tenant.subscription_status = 'active'
+    db.commit()
+    logger.info(f"Checkout completed for tenant {tenant.id}, plan={plan_id}")
+
+
+def handle_invoice_paid(event: stripe.Event, db: Session) -> None:
+    """
+    Handle invoice.paid event.
+
+    Ensures tenant subscription stays active after a successful payment.
+    """
+    invoice = event.data.object
+    customer_id = invoice.get('customer')
+    subscription_id = invoice.get('subscription')
+
+    tenant = get_tenant_by_stripe_customer(db, customer_id)
+    if not tenant:
+        logger.warning(f"Tenant not found for Stripe customer {customer_id}")
+        return
+
+    tenant.subscription_status = 'active'
+    if subscription_id:
+        tenant.stripe_subscription_id = subscription_id
+    db.commit()
+    logger.info(f"Invoice paid for tenant {tenant.id}")
+
+
 # Event handler mapping
 EVENT_HANDLERS = {
+    'checkout.session.completed': handle_checkout_session_completed,
+    'invoice.paid': handle_invoice_paid,
     'invoice.payment_succeeded': handle_invoice_payment_succeeded,
     'invoice.payment_failed': handle_invoice_payment_failed,
     'customer.subscription.deleted': handle_customer_subscription_deleted,

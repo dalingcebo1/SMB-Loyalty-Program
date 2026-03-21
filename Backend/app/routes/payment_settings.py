@@ -184,7 +184,7 @@ def update_payment_settings(
 
     config = dict(integration.config or {})
     secrets = dict(integration.secrets or {})
-    changed_fields: list[str] = []
+    changed_fields: List[str] = []
 
     if payload.yoco_public_key is not None:
         config["public_key"] = payload.yoco_public_key
@@ -192,8 +192,6 @@ def update_payment_settings(
 
     if payload.yoco_secret_key is not None:
         secrets["secret_key_encrypted"] = encrypt_value(payload.yoco_secret_key)
-        # Also store as fallback for TenantSettingsService resolution
-        secrets["secret_key"] = {"fallback": payload.yoco_secret_key}
         changed_fields.append("yoco_secret_key")
 
     integration.config = config

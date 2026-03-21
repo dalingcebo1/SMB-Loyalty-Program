@@ -199,7 +199,7 @@ const PaymentSettings = () => {
       <AdminPageContainer title="Payment Settings" description="Failed to load payment settings.">
         <AdminCard variant="error">
           <p className="text-red-600">
-            {(error as { message?: string })?.message || 'An unexpected error occurred.'}
+            Failed to load payment settings. Please try again or contact support.
           </p>
         </AdminCard>
       </AdminPageContainer>
@@ -313,8 +313,10 @@ const PaymentSettings = () => {
                 className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300 whitespace-nowrap"
                 onClick={() => {
                   if (yoco?.webhook_url) {
-                    navigator.clipboard.writeText(yoco.webhook_url);
-                    setStatusMessage({ type: 'success', text: 'Webhook URL copied to clipboard.' });
+                    navigator.clipboard.writeText(yoco.webhook_url).then(
+                      () => setStatusMessage({ type: 'success', text: 'Webhook URL copied to clipboard.' }),
+                      () => setStatusMessage({ type: 'error', text: 'Failed to copy to clipboard.' }),
+                    );
                   }
                 }}
               >

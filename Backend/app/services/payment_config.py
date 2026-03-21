@@ -89,10 +89,9 @@ def build_webhook_url(tenant_id: str) -> str:
     """Generate the auto-generated webhook URL for a tenant."""
     backend_url = getattr(settings, "backend_url", "") or ""
     if not backend_url:
+        # Best-effort fallback: use the frontend URL base.  In production the
+        # ``backend_url`` setting should be configured explicitly.
         backend_url = getattr(settings, "frontend_url", "").rstrip("/")
-        # Attempt to derive backend URL from frontend URL
-        if backend_url:
-            backend_url = backend_url.replace("://", "://api.")
     return f"{backend_url}/api/webhooks/yoco/{tenant_id}"
 
 

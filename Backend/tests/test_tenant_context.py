@@ -44,3 +44,12 @@ def test_tenant_meta_not_found():
         # Verify it's the fallback default tenant
         data = r.json()
         assert data["tenant_id"] == "default"
+
+
+def test_tenant_meta_includes_onboarding_completed():
+    """Verify the /api/public/tenant-meta response includes onboarding_completed."""
+    r = client.get("/api/public/tenant-meta", headers={"X-Tenant-ID": "tcar"})
+    assert r.status_code == 200
+    data = r.json()
+    assert "onboarding_completed" in data
+    assert isinstance(data["onboarding_completed"], bool)

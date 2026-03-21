@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { HiUsers, HiUserAdd, HiCog, HiOfficeBuilding, HiChartBar, HiShieldCheck, HiClipboardList, HiBell, HiClock, HiLockClosed } from 'react-icons/hi';
+import { HiUsers, HiUserAdd, HiCog, HiOfficeBuilding, HiChartBar, HiShieldCheck, HiClipboardList, HiBell, HiClock, HiLockClosed, HiSparkles, HiCalendar, HiColorSwatch, HiShoppingCart } from 'react-icons/hi';
 import api from '../../api/api';
 import { useAuth } from '../../auth/AuthProvider';
+import { TenantConfigContext } from '../../config/TenantConfigProvider';
 import { formatCurrency as formatCurrencyZAR } from '../../utils/format';
 import { AdminPageContainer, AdminSection, AdminGrid } from '../../features/admin/components/AdminGrid';
 import { StatCard, ActionCard } from '../../features/admin/components/AdminCard';
@@ -39,6 +40,7 @@ interface BusinessAnalyticsSummary {
  */
 const AdminWelcome: React.FC = () => {
   const { user } = useAuth();
+  const tenantConfig = useContext(TenantConfigContext);
 
   // Check if onboarding is completed; redirect to wizard if not
   const { data: tenantData, isLoading: tenantLoading } = useQuery<{ onboarding_completed?: boolean }>({
@@ -136,6 +138,44 @@ const AdminWelcome: React.FC = () => {
       action: 'View Orders',
       to: '/staff/dashboard'
     });
+  }
+
+  // Build vertical-specific quick action cards based on selected vertical
+  const vertical = tenantConfig?.vertical;
+  const verticalCards: Array<{ to: string; title: string; description: string; icon: React.ReactNode }> = [];
+
+  if (vertical === 'carwash') {
+    verticalCards.push(
+      { to: '/admin/staff/dashboard', title: 'Staff Dashboard', description: 'Manage washes', icon: <HiUsers className="w-4 h-4" /> },
+      { to: '/admin/staff/vehicle-manager', title: 'Vehicles', description: 'Manage vehicles', icon: <HiClipboardList className="w-4 h-4" /> },
+    );
+  } else if (vertical === 'beauty') {
+    verticalCards.push(
+      { to: '/admin/beauty/services', title: 'Beauty Services', description: 'Manage treatments', icon: <HiSparkles className="w-4 h-4" /> },
+      { to: '/admin/beauty/stylists', title: 'Stylists', description: 'Manage team', icon: <HiUsers className="w-4 h-4" /> },
+      { to: '/admin/beauty/appointments', title: 'Appointments', description: 'View calendar', icon: <HiCalendar className="w-4 h-4" /> },
+    );
+  } else if (vertical === 'padel') {
+    verticalCards.push(
+      { to: '/admin/padel/courts', title: 'Courts', description: 'Court management', icon: <HiColorSwatch className="w-4 h-4" /> },
+      { to: '/admin/padel/bookings', title: 'Bookings', description: 'View schedule', icon: <HiCalendar className="w-4 h-4" /> },
+    );
+  } else if (vertical === 'flowershop') {
+    verticalCards.push(
+      { to: '/flowershop', title: 'Product Catalog', description: 'Manage products', icon: <HiShoppingCart className="w-4 h-4" /> },
+    );
+  } else if (vertical === 'dispensary') {
+    verticalCards.push(
+      { to: '/admin/dispensary/products', title: 'Products', description: 'Product management', icon: <HiShoppingCart className="w-4 h-4" /> },
+      { to: '/admin/dispensary/categories', title: 'Categories', description: 'Organize catalog', icon: <HiClipboardList className="w-4 h-4" /> },
+      { to: '/admin/dispensary/verifications', title: 'Verifications', description: 'Compliance checks', icon: <HiShieldCheck className="w-4 h-4" /> },
+    );
+  } else if (vertical === 'retail') {
+    verticalCards.push(
+      { to: '/admin/retail/inventory', title: 'Retail Inventory', description: 'Stock management', icon: <HiClipboardList className="w-4 h-4" /> },
+      { to: '/admin/retail/pos', title: 'POS Terminal', description: 'Point of sale', icon: <HiShoppingCart className="w-4 h-4" /> },
+      { to: '/admin/retail/sales', title: 'Sales Reports', description: 'Revenue insights', icon: <HiChartBar className="w-4 h-4" /> },
+    );
   }
 
   return (
@@ -254,6 +294,25 @@ const AdminWelcome: React.FC = () => {
           </Link>
         </AdminGrid>
       </AdminSection>
+
+      {/* 3b. VERTICAL: Show relevant cards based on selected business vertical */}
+      {verticalCards.length > 0 && (
+        <AdminSection title={`${vertical ? vertical.charAt(0).toUpperCase() + vertical.slice(1) : 'Business'} Tools`}>
+          <AdminGrid cols={{ mobile: 2, tablet: 3, desktop: 4, xl: 4 }} gap="sm">
+            {verticalCards.map((card) => (
+              <Link key={card.to} to={card.to}>
+                <ActionCard
+                  title={card.title}
+                  description={card.description}
+                  icon={card.icon}
+                  onClick={() => {}}
+                  variant="primary"
+                />
+              </Link>
+            ))}
+          </AdminGrid>
+        </AdminSection>
+      )}
 
       {/* 4. SETTINGS: Less Frequent Configuration */}
       <AdminSection title="Settings & Configuration">

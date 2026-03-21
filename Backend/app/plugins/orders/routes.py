@@ -1,5 +1,6 @@
 # Orders plugin routes (migrated from Backend/routes/orders.py)
 import random
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException  # type: ignore
 from sqlalchemy.orm import Session  # type: ignore
@@ -8,6 +9,7 @@ from sqlalchemy.exc import IntegrityError  # type: ignore
 from datetime import datetime
 from app.core.database import get_db
 from app.plugins.auth.routes import get_current_user
+from app.services.event_bus import get_event_bus
 from app.models import (
     Order,
     OrderItem,
@@ -153,6 +155,16 @@ def create_order(
                 default_vehicle_id = user_vehicles[0].id
                 db.add(OrderVehicle(order_id=new_order.id, vehicle_id=default_vehicle_id))
                 db.commit(); db.refresh(new_order)
+            # Publish new-order event for staff dashboards
+            try:
+                bus = get_event_bus()
+                bus.publish(
+                    tenant_id=getattr(new_order, "tenant_id", None) or "default",
+                    event_type="new_notification",
+                    data={"order_id": str(new_order.id), "message": "New order placed"},
+                )
+            except Exception:
+                pass  # Non-critical: don't block order creation
             return OrderCreateResponse(
                 order_id=str(new_order.id),  # keep response as string for backward compat
                 qr_data=str(new_order.id),
@@ -382,6 +394,14 @@ def start_wash(order_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Order not found")
     order.status = "in_progress"
     db.commit(); db.refresh(order)
+    try:
+        get_event_bus().publish(
+            tenant_id=getattr(order, "tenant_id", None) or "default",
+            event_type="order_status_changed",
+            data={"order_id": str(order.id), "new_status": "in_progress"},
+        )
+    except Exception:
+        pass
     # return standardized order detail response
     return _build_order_response(order)
 
@@ -404,6 +424,15 @@ def complete_wash(order_id: str, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
     
+    try:
+        get_event_bus().publish(
+            tenant_id=getattr(order, "tenant_id", None) or "default",
+            event_type="order_status_changed",
+            data={"order_id": str(order.id), "new_status": "completed"},
+        )
+    except Exception:
+        pass
+
     # Trigger async background processing (notifications, loyalty points)
     try:
         from app.workers.tasks import process_order_completion
@@ -433,5 +462,13 @@ def redeem_order(order_id: str, db: Session = Depends(get_db)):
     order.status = "paid"
     db.commit()
     db.refresh(order)
+    try:
+        get_event_bus().publish(
+            tenant_id=getattr(order, "tenant_id", None) or "default",
+            event_type="order_status_changed",
+            data={"order_id": str(order.id), "new_status": "paid"},
+        )
+    except Exception:
+        pass
     # return standardized order detail response
     return _build_order_response(order)

@@ -17,6 +17,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.database import get_db
+from app.services.event_bus import get_event_bus
 from app.models import (
     Order,
     OrderVehicle,
@@ -411,6 +412,14 @@ def verify_payment(
     if not already:
         order.order_redeemed_at = datetime.utcnow()
         db.commit()
+        try:
+            get_event_bus().publish(
+                tenant_id=getattr(order, "tenant_id", None) or "default",
+                event_type="payment_verified",
+                data={"order_id": str(order.id)},
+            )
+        except Exception:
+            pass
 
     resp = {
         "status": "already_redeemed" if already else "ok",
@@ -526,6 +535,14 @@ def verify_pos(
         order.status = 'paid'
         _log_visit_for_paid_order(db, order)
     db.commit()
+    try:
+        get_event_bus().publish(
+            tenant_id=getattr(order, "tenant_id", None) or "default",
+            event_type="payment_verified",
+            data={"order_id": str(order.id)},
+        )
+    except Exception:
+        pass
     return {"status": "ok", "type": "pos", "order_id": order.id}
 
 @router.get("/recent-verifications")

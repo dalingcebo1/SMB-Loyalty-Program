@@ -64,6 +64,7 @@ export const adminNavGroups: NavGroup[] = [
     title: 'Payments & Billing',
     items: [
       { key: 'transactions', label: 'Transactions', path: '/admin/transactions', cap: 'payments.view', feature: 'enablePayments' },
+      { key: 'payment-settings', label: 'Payment Settings', path: '/admin/settings/payments', cap: 'manage-settings', feature: 'enablePayments' },
       { key: 'billing', label: 'Billing & Usage', path: '/admin/billing', cap: 'tenant.edit' },
     ],
   },

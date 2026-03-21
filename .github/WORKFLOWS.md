@@ -57,7 +57,12 @@ inputs:
     options:
       - dev   # Uses apismbloyaltyapp-dev
       - prod  # Uses apismbloyaltyapp
+  containerapp_name:
+    description: "Override Container App name (optional)"
+    default: ""  # If provided, overrides environment-based naming
 ```
+
+**Note:** If you provide a custom `containerapp_name`, it will be used regardless of the environment selection. Leave it empty to use the environment-based defaults.
 
 ## Ringfenced Health Strategy
 

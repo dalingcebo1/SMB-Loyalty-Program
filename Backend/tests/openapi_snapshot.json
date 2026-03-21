@@ -1,7 +1,4 @@
 {
-  "_snapshot_meta": {
-    "note": "Do not hand-edit. Regenerate with dump_openapi.py"
-  },
   "components": {
     "schemas": {
       "AIContentRequest": {
@@ -5935,6 +5932,24 @@
         "title": "PaymentMethod",
         "type": "string"
       },
+      "PaymentMethodsOut": {
+        "properties": {
+          "accepted": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Accepted",
+            "type": "array"
+          },
+          "default_method": {
+            "default": "card",
+            "title": "Default Method",
+            "type": "string"
+          }
+        },
+        "title": "PaymentMethodsOut",
+        "type": "object"
+      },
       "PaymentResponse": {
         "properties": {
           "amount_cents": {
@@ -5984,6 +5999,74 @@
           "created_at"
         ],
         "title": "PaymentResponse",
+        "type": "object"
+      },
+      "PaymentSettingsOut": {
+        "properties": {
+          "payment_methods": {
+            "$ref": "#/components/schemas/PaymentMethodsOut"
+          },
+          "stripe": {
+            "$ref": "#/components/schemas/StripeConfigOut"
+          },
+          "yoco": {
+            "$ref": "#/components/schemas/YocoConfigOut"
+          }
+        },
+        "title": "PaymentSettingsOut",
+        "type": "object"
+      },
+      "PaymentSettingsUpdate": {
+        "properties": {
+          "accepted_methods": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Methods"
+          },
+          "default_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Method"
+          },
+          "yoco_public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yoco Public Key"
+          },
+          "yoco_secret_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yoco Secret Key"
+          }
+        },
+        "title": "PaymentSettingsUpdate",
         "type": "object"
       },
       "PeakDay": {
@@ -7028,6 +7111,28 @@
         "title": "StockAdjustment",
         "type": "object"
       },
+      "StripeConfigOut": {
+        "properties": {
+          "current_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Plan"
+          },
+          "status": {
+            "default": "not_connected",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "StripeConfigOut",
+        "type": "object"
+      },
       "StylistCreate": {
         "properties": {
           "accepts_walk_ins": {
@@ -7872,6 +7977,47 @@
           }
         },
         "title": "TenantUpdate",
+        "type": "object"
+      },
+      "TestConnectionRequest": {
+        "properties": {
+          "secret_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Key"
+          }
+        },
+        "title": "TestConnectionRequest",
+        "type": "object"
+      },
+      "TestConnectionResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "TestConnectionResponse",
         "type": "object"
       },
       "TierDistributionItem": {
@@ -9096,6 +9242,32 @@
           "amount"
         ],
         "title": "YocoChargeRequest",
+        "type": "object"
+      },
+      "YocoConfigOut": {
+        "properties": {
+          "public_key": {
+            "default": "",
+            "title": "Public Key",
+            "type": "string"
+          },
+          "secret_key_masked": {
+            "default": "",
+            "title": "Secret Key Masked",
+            "type": "string"
+          },
+          "status": {
+            "default": "not_configured",
+            "title": "Status",
+            "type": "string"
+          },
+          "webhook_url": {
+            "default": "",
+            "title": "Webhook Url",
+            "type": "string"
+          }
+        },
+        "title": "YocoConfigOut",
         "type": "object"
       },
       "app__plugins__auth__routes__UserOut": {
@@ -12613,6 +12785,125 @@
         "summary": "Remove Rate Limit",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/admin/settings/payments": {
+      "get": {
+        "description": "Return the current payment configuration for the caller's tenant.",
+        "operationId": "get_payment_settings_api_admin_settings_payments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Payment Settings",
+        "tags": [
+          "payment-settings"
+        ]
+      },
+      "patch": {
+        "description": "Update payment provider configuration for the caller's tenant.",
+        "operationId": "update_payment_settings_api_admin_settings_payments_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Payment Settings",
+        "tags": [
+          "payment-settings"
+        ]
+      }
+    },
+    "/api/admin/settings/payments/test": {
+      "post": {
+        "description": "Test the Yoco connection with the provided (or stored) secret key.",
+        "operationId": "test_payment_connection_api_admin_settings_payments_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestConnectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Test Payment Connection",
+        "tags": [
+          "payment-settings"
         ]
       }
     },

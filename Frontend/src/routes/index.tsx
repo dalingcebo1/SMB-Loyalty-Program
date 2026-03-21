@@ -107,6 +107,8 @@ const NotificationsAdmin = lazy(() => import('../features/admin/pages/Notificati
 const SubscriptionManagePage = lazy(() => import('../pages/admin/SubscriptionManagePageNew'));
 // Billing and usage page
 const BillingSettings = lazy(() => import('../features/admin/pages/BillingSettings'));
+// Payment provider settings
+const PaymentSettings = lazy(() => import('../features/admin/pages/PaymentSettings'));
 // Financial admin pages
 const FinancialDashboard = lazyWithRetry(() => import('../features/admin/pages/FinancialDashboard'));
 const InvoicesPage = lazyWithRetry(() => import('../features/admin/pages/InvoicesPage'));
@@ -245,6 +247,7 @@ const AppRoutes: React.FC = () => {
             { path: 'analytics', element: <AnalyticsAdmin /> },
             { path: 'notifications', element: <NotificationsAdmin /> },
             { path: 'settings', element: <OrganizationSettings /> },
+            { path: 'settings/payments', element: <PaymentSettings /> },
             { path: 'billing', element: <BillingSettings /> },
             // Financial routes
             { path: 'financial', element: <FinancialDashboard /> },

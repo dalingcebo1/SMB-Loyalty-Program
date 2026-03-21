@@ -259,7 +259,7 @@ def _role_capabilities(role: str) -> List[str]:
     base = {
         'user': ['loyalty.view','orders.create','orders.view_own'],
         'staff': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update'],
-        'admin': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced','audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view','platform.manage_tenants','manage_customers','view_reports','manage_notifications'],
+        'admin': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced','audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view','platform.manage_tenants','manage_customers','view_reports','manage_notifications','manage-settings'],
         'developer': ['dev.tools','jobs.view','jobs.retry','audit.view','rate_limit.edit'],
         'superadmin': ['*']
     }

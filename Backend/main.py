@@ -1189,15 +1189,11 @@ def on_startup():
         # Re-raise after logging so container/platform surfaces failure clearly
         logger.exception("Environment validation failed during startup")
         raise
-    from app.core.database import Base, engine
     from config import settings as _settings
     if _settings.environment == 'production' and not _settings.csp_policy:
         logger.warning("Production environment without CSP policy configured; consider setting CSP_POLICY for stronger protection.")
-    # In non-production environments allow automatic metadata create for convenience.
-    if _settings.environment != 'production':
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-    else:  # pragma: no cover - production path
-        logger.info("Startup: skipping Base.metadata.create_all in production (use Alembic migrations).")
+    # Rely on Alembic migrations for schema management in all environments.
+    logger.info("Startup: schema is managed by Alembic migrations.")
 
     # Initialize database query monitoring
     if _settings.enable_metrics_endpoint:

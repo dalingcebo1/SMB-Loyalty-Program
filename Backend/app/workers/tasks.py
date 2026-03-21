@@ -580,9 +580,9 @@ def seed_tenant_defaults(
         Seeding result
     """
     try:
-        from app.verticals.registry import VerticalRegistry
+        from app.verticals import registry as vertical_registry
         
-        vertical = VerticalRegistry.get(vertical_type)
+        vertical = vertical_registry.get(vertical_type)
         if not vertical:
             return {"status": "vertical_not_found"}
         

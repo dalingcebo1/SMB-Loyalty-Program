@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { HiUsers, HiUserAdd, HiCog, HiOfficeBuilding, HiChartBar, HiShieldCheck, HiClipboardList, HiBell, HiClock, HiLockClosed } from 'react-icons/hi';
 import api from '../../api/api';
@@ -40,6 +40,17 @@ interface BusinessAnalyticsSummary {
 const AdminWelcome: React.FC = () => {
   const { user } = useAuth();
 
+  // Check if onboarding is completed; redirect to wizard if not
+  const { data: tenantData, isLoading: tenantLoading } = useQuery<{ onboarding_completed?: boolean }>({
+    queryKey: ['admin-welcome', 'tenant-onboarding', user?.tenant_id],
+    enabled: !!user?.tenant_id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await api.get(`/tenants/${user!.tenant_id}`);
+      return data as { onboarding_completed?: boolean };
+    },
+  });
+
   const {
     data: summary,
     isLoading: summaryLoading,
@@ -67,6 +78,11 @@ const AdminWelcome: React.FC = () => {
       return data as BusinessAnalyticsSummary;
     },
   });
+
+  // Redirect to onboarding wizard if setup is not complete
+  if (!tenantLoading && tenantData && tenantData.onboarding_completed === false) {
+    return <Navigate to="/admin/onboarding" replace />;
+  }
 
   const isLoadingMetrics = summaryLoading || analyticsLoading;
   const hasMetricsError = summaryError || analyticsError;

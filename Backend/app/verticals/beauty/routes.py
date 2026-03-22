@@ -362,7 +362,7 @@ def create_review(
         tenant_ctx.tenant_id,
         current_user.id,
         review_data,
-        customer_name=current_user.name,
+        customer_name=f"{current_user.first_name} {current_user.last_name}",
     )
 
 

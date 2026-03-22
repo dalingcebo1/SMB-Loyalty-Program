@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.tenant_context import get_tenant_context, TenantContext
 from app.models import User
+from app.plugins.auth.routes import require_capability
 
 from .schemas import (
     AvailabilityQuery,
@@ -47,6 +48,7 @@ def create_court(
     court: CourtCreate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_courts")),
 ):
     """Create a new padel court."""
     return CourtService.create_court(db, tenant_ctx.id, court)
@@ -57,6 +59,7 @@ def list_courts(
     active_only: bool = Query(True, description="Filter active courts only"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """List all padel courts for current tenant."""
     return CourtService.list_courts(db, tenant_ctx.id, active_only)
@@ -67,6 +70,7 @@ def get_court(
     court_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """Get a specific padel court."""
     return CourtService.get_court(db, tenant_ctx.id, court_id)
@@ -78,6 +82,7 @@ def update_court(
     court_update: CourtUpdate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_courts")),
 ):
     """Update a padel court."""
     return CourtService.update_court(db, tenant_ctx.id, court_id, court_update)
@@ -88,6 +93,7 @@ def delete_court(
     court_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_courts")),
 ):
     """Soft delete a padel court."""
     CourtService.delete_court(db, tenant_ctx.id, court_id)
@@ -102,6 +108,7 @@ def create_pricing_rule(
     pricing: PricingRuleCreate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_pricing")),
 ):
     """Create a pricing rule for a court."""
     return PricingService.create_rule(db, tenant_ctx.id, court_id, pricing)
@@ -112,6 +119,7 @@ def list_pricing_rules(
     court_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """List all pricing rules for a court."""
     return PricingService.list_rules(db, tenant_ctx.id, court_id)
@@ -123,6 +131,7 @@ def delete_pricing_rule(
     pricing_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_pricing")),
 ):
     """Delete a pricing rule."""
     PricingService.delete_rule(db, tenant_ctx.id, court_id, pricing_id)
@@ -136,6 +145,7 @@ def create_equipment(
     equipment: EquipmentCreate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_equipment")),
 ):
     """Create new rental equipment."""
     return EquipmentService.create_equipment(db, tenant_ctx.id, equipment)
@@ -147,6 +157,7 @@ def list_equipment(
     equipment_type: Optional[str] = Query(None, description="Filter by equipment type"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """List all rental equipment."""
     return EquipmentService.list_equipment(db, tenant_ctx.id, active_only, equipment_type)
@@ -157,6 +168,7 @@ def get_equipment(
     equipment_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """Get specific equipment details."""
     return EquipmentService.get_equipment(db, tenant_ctx.id, equipment_id)
@@ -168,6 +180,7 @@ def update_equipment(
     equipment_update: EquipmentUpdate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_equipment")),
 ):
     """Update equipment details."""
     return EquipmentService.update_equipment(db, tenant_ctx.id, equipment_id, equipment_update)
@@ -178,6 +191,7 @@ def delete_equipment(
     equipment_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.manage_equipment")),
 ):
     """Soft delete equipment."""
     EquipmentService.delete_equipment(db, tenant_ctx.id, equipment_id)
@@ -192,6 +206,7 @@ def create_booking(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.create_booking")),
 ):
     """Create a new court booking."""
     tenant_id = tenant_ctx.id
@@ -225,6 +240,7 @@ def list_bookings(
     status: Optional[str] = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """List bookings with optional filters."""
     bookings = BookingService.list_bookings(
@@ -238,6 +254,7 @@ def get_booking(
     booking_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """Get specific booking details."""
     booking = BookingService.get_booking(db, tenant_ctx.id, booking_id)
@@ -250,6 +267,7 @@ def update_booking(
     booking_update: BookingUpdate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_all_bookings")),
 ):
     """Update a booking."""
     booking = BookingService.update_booking(
@@ -263,6 +281,7 @@ def cancel_booking(
     booking_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.cancel_booking")),
 ):
     """Cancel a booking."""
     BookingService.cancel_booking(db, tenant_ctx.id, booking_id)
@@ -276,6 +295,7 @@ def check_availability(
     query: AvailabilityQuery,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("padel.view_bookings")),
 ):
     """Find available time slots for all courts on a given date."""
     return BookingService.find_available_slots(

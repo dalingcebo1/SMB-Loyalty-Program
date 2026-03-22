@@ -23,4 +23,8 @@ from .registry import VerticalRegistry
 # Singleton registry instance
 registry = VerticalRegistry()
 
-__all__ = ['VerticalModule', 'registry', 'VerticalRegistry']
+__all__ = [
+    'VerticalModule',
+    'registry',
+    'VerticalRegistry',
+]

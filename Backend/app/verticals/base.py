@@ -225,6 +225,59 @@ class VerticalModule(ABC):
             List[str]: Field names
         """
         return []
-    
+
+    # ------------------------------------------------------------------
+    # Vertical standardization helpers (Issue #4 — Foundation)
+    # ------------------------------------------------------------------
+
+    def get_router_prefix(self) -> str:
+        """
+        URL prefix used when auto-mounting this vertical's routes.
+
+        Override to customise; defaults to ``/api/{vertical_key}``.
+
+        Returns:
+            str: Router prefix, e.g. ``"/api/retail"``.
+        """
+        return f"/api/{self.vertical_key}"
+
+    def get_router_tags(self) -> List[str]:
+        """
+        OpenAPI tags applied to all routes from this vertical.
+
+        Defaults to ``[display_name]``.
+
+        Returns:
+            List[str]: Tag strings for OpenAPI documentation.
+        """
+        return [self.display_name]
+
+    def get_schemas(self) -> Dict[str, Any]:
+        """
+        Expose create / update / response Pydantic models for documentation.
+
+        Returns a mapping of logical names to schema classes, e.g.::
+
+            {"ProductCreate": ProductCreate, "ProductUpdate": ProductUpdate}
+
+        Returns:
+            Dict[str, Any]: Schema name → Pydantic model class.
+        """
+        return {}
+
+    def get_required_capabilities(self) -> Dict[str, str]:
+        """
+        Map operations to capability strings for authorisation.
+
+        Example::
+
+            {"product.create": "retail.products.write",
+             "product.delete": "retail.products.delete"}
+
+        Returns:
+            Dict[str, str]: operation → capability string.
+        """
+        return {}
+
     def __repr__(self) -> str:
         return f"<VerticalModule: {self.vertical_key} - {self.display_name}>"

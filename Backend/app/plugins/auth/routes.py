@@ -258,8 +258,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 def _role_capabilities(role: str) -> List[str]:
     base = {
         'user': ['loyalty.view','orders.create','orders.view_own'],
-        'staff': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update'],
-        'admin': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced','audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view','platform.manage_tenants','manage_customers','view_reports','manage_notifications','manage-settings'],
+        'staff': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','reports.view','retail.products.read','retail.inventory.read','retail.suppliers.read','retail.categories.read','pos.sales.write','pos.sales.read'],
+        'admin': ['loyalty.view','orders.create','orders.view','orders.manage_active','payments.verify','payments.view','vehicles.view','vehicles.update','tenant.edit','services.manage','pricing.update','users.invite','users.role.update','analytics.advanced','audit.view','jobs.view','jobs.retry','rate_limit.edit','security.ip_ban','rewards.adjust','exports.generate','config.version.view','platform.manage_tenants','manage_customers','view_reports','manage_notifications','manage-settings','reports.view','retail.products.read','retail.products.write','retail.inventory.read','retail.inventory.write','retail.suppliers.read','retail.suppliers.write','retail.categories.read','retail.categories.write','pos.sales.write','pos.sales.read'],
         'developer': ['dev.tools','jobs.view','jobs.retry','audit.view','rate_limit.edit'],
         'superadmin': ['*']
     }

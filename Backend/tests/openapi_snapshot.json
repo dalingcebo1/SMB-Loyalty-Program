@@ -1,4 +1,7 @@
 {
+  "_snapshot_meta": {
+    "note": "Do not hand-edit. Regenerate with dump_openapi.py"
+  },
   "components": {
     "schemas": {
       "AIContentRequest": {
@@ -11911,7 +11914,7 @@
         "title": "ProductUpdate",
         "type": "object"
       },
-      "app__routes__pos__SaleCreate": {
+      "app__verticals__pos__schemas__SaleCreate": {
         "properties": {
           "customer_id": {
             "anyOf": [
@@ -11952,7 +11955,7 @@
         "title": "SaleCreate",
         "type": "object"
       },
-      "app__routes__pos__SaleItemCreate": {
+      "app__verticals__pos__schemas__SaleItemCreate": {
         "properties": {
           "discount_cents": {
             "default": 0,
@@ -11977,7 +11980,7 @@
         "title": "SaleItemCreate",
         "type": "object"
       },
-      "app__routes__pos__SaleItemResponse": {
+      "app__verticals__pos__schemas__SaleItemResponse": {
         "properties": {
           "discount_cents": {
             "title": "Discount Cents",
@@ -12032,7 +12035,7 @@
         "title": "SaleItemResponse",
         "type": "object"
       },
-      "app__routes__pos__SaleResponse": {
+      "app__verticals__pos__schemas__SaleResponse": {
         "properties": {
           "completed_at": {
             "anyOf": [
@@ -12073,7 +12076,7 @@
           "items": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/app__routes__pos__SaleItemResponse"
+              "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleItemResponse"
             },
             "title": "Items",
             "type": "array"
@@ -12137,7 +12140,7 @@
         "title": "SaleResponse",
         "type": "object"
       },
-      "app__routes__retail__CategoryCreate": {
+      "app__verticals__retail__schemas__CategoryCreate": {
         "properties": {
           "description": {
             "anyOf": [
@@ -12174,7 +12177,7 @@
         "title": "CategoryCreate",
         "type": "object"
       },
-      "app__routes__retail__CategoryResponse": {
+      "app__verticals__retail__schemas__CategoryResponse": {
         "properties": {
           "active": {
             "title": "Active",
@@ -12226,7 +12229,7 @@
         "title": "CategoryResponse",
         "type": "object"
       },
-      "app__routes__retail__ProductCreate": {
+      "app__verticals__retail__schemas__ProductCreate": {
         "properties": {
           "barcode": {
             "anyOf": [
@@ -12324,7 +12327,7 @@
         "title": "ProductCreate",
         "type": "object"
       },
-      "app__routes__retail__ProductResponse": {
+      "app__verticals__retail__schemas__ProductResponse": {
         "properties": {
           "active": {
             "title": "Active",
@@ -12468,6 +12471,111 @@
           "created_at"
         ],
         "title": "ProductResponse",
+        "type": "object"
+      },
+      "app__verticals__retail__schemas__ProductUpdate": {
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "barcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Barcode"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "cost_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Cents"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "low_stock_threshold": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low Stock Threshold"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "price_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Cents"
+          },
+          "supplier_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Id"
+          }
+        },
+        "title": "ProductUpdate",
         "type": "object"
       }
     },
@@ -16503,7 +16611,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__retail__CategoryResponse"
+                    "$ref": "#/components/schemas/app__verticals__retail__schemas__CategoryResponse"
                   },
                   "title": "Response List Categories Api Api Retail Categories Get",
                   "type": "array"
@@ -16574,7 +16682,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__retail__CategoryCreate"
+                "$ref": "#/components/schemas/app__verticals__retail__schemas__CategoryCreate"
               }
             }
           },
@@ -16585,7 +16693,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__retail__CategoryResponse"
+                  "$ref": "#/components/schemas/app__verticals__retail__schemas__CategoryResponse"
                 }
               }
             },
@@ -16709,7 +16817,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__retail__ProductResponse"
+                    "$ref": "#/components/schemas/app__verticals__retail__schemas__ProductResponse"
                   },
                   "title": "Response List Products Api Api Retail Products Get",
                   "type": "array"
@@ -16780,7 +16888,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__retail__ProductCreate"
+                "$ref": "#/components/schemas/app__verticals__retail__schemas__ProductCreate"
               }
             }
           },
@@ -16791,7 +16899,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__retail__ProductResponse"
+                  "$ref": "#/components/schemas/app__verticals__retail__schemas__ProductResponse"
                 }
               }
             },
@@ -16814,6 +16922,96 @@
           }
         ],
         "summary": "Create Product",
+        "tags": [
+          "retail"
+        ]
+      }
+    },
+    "/api/api/retail/products/{product_id}": {
+      "put": {
+        "description": "Update an existing product.",
+        "operationId": "update_product_api_api_retail_products__product_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "title": "Product Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__verticals__retail__schemas__ProductUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__verticals__retail__schemas__ProductResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Product",
         "tags": [
           "retail"
         ]
@@ -32309,7 +32507,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__pos__SaleResponse"
+                    "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleResponse"
                   },
                   "title": "Response List Sales Api Retail Pos Sales Get",
                   "type": "array"
@@ -32380,7 +32578,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__pos__SaleCreate"
+                "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleCreate"
               }
             }
           },
@@ -32391,7 +32589,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__pos__SaleResponse"
+                  "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleResponse"
                 }
               }
             },
@@ -32471,7 +32669,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__pos__SaleResponse"
+                  "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleResponse"
                 }
               }
             },
@@ -32551,7 +32749,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__pos__SaleResponse"
+                  "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleResponse"
                 }
               }
             },
@@ -32630,7 +32828,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__pos__SaleItemCreate"
+                "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleItemCreate"
               }
             }
           },
@@ -32641,7 +32839,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__pos__SaleItemResponse"
+                  "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleItemResponse"
                 }
               }
             },
@@ -32893,7 +33091,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__pos__SaleResponse"
+                  "$ref": "#/components/schemas/app__verticals__pos__schemas__SaleResponse"
                 }
               }
             },

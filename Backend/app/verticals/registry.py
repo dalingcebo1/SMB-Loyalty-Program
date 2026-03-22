@@ -151,10 +151,16 @@ class VerticalRegistry:
             logger.warning(f"Could not register carwash vertical: {e}")
 
         try:
-            from .retail import RetailVertical
+            from .retail.module import RetailVertical
             self.register(RetailVertical())
         except ImportError as e:
             logger.warning(f"Could not register retail vertical: {e}")
+
+        try:
+            from .pos.module import POSVertical
+            self.register(POSVertical())
+        except ImportError as e:
+            logger.warning(f"Could not register POS vertical: {e}")
         
         try:
             from .dispensary import DispensaryVertical

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.tenant_context import get_tenant_context, TenantContext
 from app.models import User
+from app.plugins.auth.routes import require_capability
 
 from .schemas import (
     CategoryCreate,
@@ -52,6 +53,7 @@ def create_category(
     category: CategoryCreate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_products")),
 ):
     """Create a new product category."""
     return CategoryService.create_category(db, tenant_ctx.id, category)
@@ -62,6 +64,7 @@ def list_categories(
     active_only: bool = Query(True, description="Filter active categories only"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_products")),
 ):
     """List all product categories."""
     return CategoryService.list_categories(db, tenant_ctx.id, active_only)
@@ -72,6 +75,7 @@ def get_category(
     category_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_products")),
 ):
     """Get a specific category."""
     return CategoryService.get_category(db, tenant_ctx.id, category_id)
@@ -83,6 +87,7 @@ def update_category(
     category_update: CategoryUpdate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_products")),
 ):
     """Update a category."""
     return CategoryService.update_category(db, tenant_ctx.id, category_id, category_update)
@@ -93,6 +98,7 @@ def delete_category(
     category_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_products")),
 ):
     """Soft delete a category."""
     CategoryService.delete_category(db, tenant_ctx.id, category_id)
@@ -105,6 +111,7 @@ def create_occasion(
     occasion: OccasionCreate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_collections")),
 ):
     """Create a new occasion."""
     return OccasionService.create_occasion(db, tenant_ctx.id, occasion)
@@ -115,6 +122,7 @@ def list_occasions(
     active_only: bool = Query(True, description="Filter active occasions only"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_products")),
 ):
     """List all occasions."""
     return OccasionService.list_occasions(db, tenant_ctx.id, active_only)
@@ -127,6 +135,7 @@ def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_products")),
 ):
     """Create a new flower product."""
     return ProductService.create_product(db, tenant_ctx.id, product)
@@ -142,6 +151,7 @@ def list_products(
     search: Optional[str] = Query(None, description="Search in name and description"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_products")),
 ):
     """List all flower products with optional filters."""
     return ProductService.list_products(
@@ -157,6 +167,7 @@ def get_product(
     product_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_products")),
 ):
     """Get a specific product."""
     return ProductService.get_product(db, tenant_ctx.id, product_id)
@@ -168,6 +179,7 @@ def update_product(
     product_update: ProductUpdate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_products")),
 ):
     """Update a product."""
     return ProductService.update_product(db, tenant_ctx.id, product_id, product_update)
@@ -178,6 +190,7 @@ def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_products")),
 ):
     """Soft delete a product."""
     ProductService.delete_product(db, tenant_ctx.id, product_id)
@@ -191,6 +204,7 @@ def create_order(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.process_orders")),
 ):
     """Create a new flower order."""
     tenant_id = tenant_ctx.id
@@ -227,6 +241,7 @@ def list_orders(
     customer_id: Optional[int] = Query(None, description="Filter by customer"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_orders")),
 ):
     """List orders with optional filters."""
     orders = OrderService.list_orders(
@@ -240,6 +255,7 @@ def get_order(
     order_id: int,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_orders")),
 ):
     """Get specific order details."""
     order = OrderService.get_order(db, tenant_ctx.id, order_id)
@@ -253,6 +269,7 @@ def update_order(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_all_orders")),
 ):
     """Update an order."""
     tenant_id = tenant_ctx.id
@@ -285,6 +302,7 @@ def pay_flower_order(
     pay_request: FlowerOrderPayRequest,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.process_orders")),
 ):
     """Process Yoco card payment for a flower order."""
     tenant_id = tenant_ctx.id
@@ -299,6 +317,7 @@ def create_delivery_slot(
     slot: DeliverySlotCreate,
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.manage_delivery")),
 ):
     """Create a delivery slot."""
     return DeliverySlotService.create_slot(db, tenant_ctx.id, slot)
@@ -310,6 +329,7 @@ def list_delivery_slots(
     available_only: bool = Query(True, description="Show only available slots"),
     db: Session = Depends(get_db),
     tenant_ctx: TenantContext = Depends(get_tenant_context),
+    _user: User = Depends(require_capability("flowershop.view_orders")),
 ):
     """List delivery slots."""
     return DeliverySlotService.list_slots(db, tenant_ctx.id, delivery_date, available_only)

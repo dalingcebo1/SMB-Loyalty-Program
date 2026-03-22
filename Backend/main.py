@@ -48,7 +48,7 @@ from app.verticals.pos.routes import router as pos_router
 from app.routes.beauty import router as beauty_router
 from app.verticals.padel.routes import router as padel_router
 from app.verticals.flowershop.routes import router as flowershop_router
-from app.routes.dispensary import router as dispensary_router
+from app.verticals.dispensary.routes import router as dispensary_router
 from app.routes.campaigns import router as campaigns_router
 from app.routes.financial import router as financial_router
 from app.routes.providers import router as providers_router
@@ -779,7 +779,7 @@ router_mounts = [
     ("",               beauty_router),  # Beauty/salon appointment booking
     ("/api",           padel_router),  # Padel court booking system
     ("/api",           flowershop_router),  # Flower shop orders and delivery
-    ("/api",           dispensary_router),  # Cannabis dispensary compliance system
+    ("",               dispensary_router),  # Cannabis dispensary compliance system
     ("",              campaigns_router),   # Marketing campaigns (email/SMS) with AI content
     ("/api",           financial_router),  # Financial tools (invoices, expenses, P&L)
     ("/api/providers", providers_router),  # External provider health checks and webhooks

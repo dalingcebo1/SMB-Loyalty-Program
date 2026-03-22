@@ -43,8 +43,8 @@ from app.routes.tenant_domains import router as tenant_domains_router
 from app.routes.domain_verification import router as domain_verification_router
 from app.routes.metrics import router as metrics_router
 from app.routes.usage import router as usage_router
-from app.routes.retail import router as retail_router
-from app.routes.pos import router as pos_router
+from app.verticals.retail.routes import router as retail_router
+from app.verticals.pos.routes import router as pos_router
 from app.routes.beauty import router as beauty_router
 from app.routes.padel import router as padel_router
 from app.routes.flowershop import router as flowershop_router

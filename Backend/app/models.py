@@ -821,6 +821,9 @@ class LowStockAlert(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     
+    # Relationships
+    product = relationship("Product")
+    
     __table_args__ = (
         Index('ix_alerts_tenant_unresolved', 'tenant_id', 'resolved'),
     )

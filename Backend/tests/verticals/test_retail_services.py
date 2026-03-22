@@ -252,6 +252,26 @@ class TestInventoryService:
         alerts = InventoryService.list_low_stock_alerts(db_session, tenant_id)
         assert isinstance(alerts, list)
 
+    def test_low_stock_alert_created_on_adjust(self, db_session: Session):
+        """Adjusting stock below threshold should create a low stock alert with product info."""
+        tenant_id = settings.default_tenant
+        staff = _make_staff_user(db_session, tenant_id)
+        product = _make_product(db_session, tenant_id, sku="LOWSTOCK-001", price_cents=1000)
+        _make_inventory(db_session, tenant_id, product.id, quantity=10)
+
+        # Adjust stock down below threshold (5)
+        InventoryService.adjust_stock(
+            db_session, tenant_id, product.id, -7, "Sold", staff.id,
+        )
+
+        alerts = InventoryService.list_low_stock_alerts(db_session, tenant_id)
+        matching = [a for a in alerts if a.product_id == product.id]
+        assert len(matching) >= 1
+        alert = matching[0]
+        assert alert.product_name == product.name
+        assert alert.product_sku == product.sku
+        assert alert.current_quantity <= product.low_stock_threshold
+
 
 # ── Tenant isolation test ──────────────────────────────────────────────────
 

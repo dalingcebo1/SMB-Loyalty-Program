@@ -389,6 +389,7 @@ class TestPOSEndpoints:
         data = resp.json()
         assert data["sale_status"] == "pending"
         assert "receipt_number" in data
+        assert data["receipt_number"].startswith("POS-main-")
 
     def test_get_stats_endpoint(self, client: TestClient, db_session: Session):
         user = db_session.query(User).first()
@@ -399,6 +400,10 @@ class TestPOSEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert "total_sales" in data
+        assert "total_revenue_cents" in data
+        assert "average_sale_cents" in data
+        assert "sales_today" in data
+        assert "revenue_today_cents" in data
 
     def test_list_sales_endpoint(self, client: TestClient, db_session: Session):
         user = db_session.query(User).first()
@@ -419,3 +424,147 @@ class TestPOSEndpoints:
             "location": "main",
         })
         assert resp.status_code == 403
+
+    def test_full_sale_workflow(self, client: TestClient, db_session: Session):
+        """End-to-end: create sale → add item → pay → complete → verify inventory."""
+        user = db_session.query(User).first()
+        user.role = "admin"
+        db_session.commit()
+
+        h = self.TENANT_HEADERS
+        tenant_id = settings.default_tenant
+
+        # Create product with stock
+        r = client.post("/api/api/retail/products", headers=h, json={
+            "sku": "FLOW-001", "name": "Flow Product", "price_cents": 5000,
+            "cost_cents": 3000, "initial_stock": 20,
+        })
+        assert r.status_code == 201
+        product_id = r.json()["id"]
+
+        # Create sale (no tax for simpler math)
+        r = client.post("/api/retail/pos/sales", headers=h, json={
+            "location": "main", "tax_rate": 0,
+        })
+        assert r.status_code == 201
+        sale_id = r.json()["id"]
+
+        # Add 3 items
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/items", headers=h, json={
+            "product_id": product_id, "quantity": 3,
+        })
+        assert r.status_code == 201
+        assert r.json()["total_cents"] == 15000  # 3 * 5000
+
+        # Verify totals
+        r = client.get(f"/api/retail/pos/sales/{sale_id}", headers=h)
+        assert r.json()["total_cents"] == 15000
+
+        # Pay exact amount
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/payments", headers=h, json={
+            "amount_cents": 15000, "payment_method": "card",
+        })
+        assert r.status_code == 201
+
+        # Complete
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/complete", headers=h)
+        assert r.status_code == 200
+        assert r.json()["sale_status"] == "completed"
+
+        # Verify inventory decremented
+        r = client.get("/api/api/retail/products?search=FLOW-001", headers=h)
+        assert r.json()[0]["current_stock"] == 17  # 20 - 3
+
+    def test_void_sale_workflow(self, client: TestClient, db_session: Session):
+        """Voiding a sale should work and prevent further modifications."""
+        user = db_session.query(User).first()
+        user.role = "admin"
+        db_session.commit()
+
+        h = self.TENANT_HEADERS
+        r = client.post("/api/retail/pos/sales", headers=h, json={"location": "main"})
+        sale_id = r.json()["id"]
+
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/void", headers=h)
+        assert r.status_code == 200
+        assert r.json()["sale_status"] == "voided"
+
+        # Cannot void again
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/void", headers=h)
+        assert r.status_code == 404
+
+    def test_cash_change_calculation(self, client: TestClient, db_session: Session):
+        """Cash overpayment should calculate correct change."""
+        user = db_session.query(User).first()
+        user.role = "admin"
+        db_session.commit()
+
+        h = self.TENANT_HEADERS
+
+        # Create product
+        r = client.post("/api/api/retail/products", headers=h, json={
+            "sku": "CASH-001", "name": "Cash Test", "price_cents": 7500,
+            "initial_stock": 10,
+        })
+        product_id = r.json()["id"]
+
+        # Sale with 0 tax
+        r = client.post("/api/retail/pos/sales", headers=h, json={
+            "location": "main", "tax_rate": 0,
+        })
+        sale_id = r.json()["id"]
+
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/items", headers=h, json={
+            "product_id": product_id, "quantity": 1,
+        })
+
+        # Overpay with cash
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/payments", headers=h, json={
+            "amount_cents": 10000, "payment_method": "cash",
+        })
+        assert r.status_code == 201
+        assert r.json()["change_given_cents"] == 2500  # 10000 - 7500
+
+    def test_error_complete_no_items(self, client: TestClient, db_session: Session):
+        """Cannot complete a sale with no items."""
+        user = db_session.query(User).first()
+        user.role = "admin"
+        db_session.commit()
+
+        h = self.TENANT_HEADERS
+        r = client.post("/api/retail/pos/sales", headers=h, json={"location": "main"})
+        sale_id = r.json()["id"]
+
+        # Pay something (payment_status becomes completed)
+        client.post(f"/api/retail/pos/sales/{sale_id}/payments", headers=h, json={
+            "amount_cents": 100, "payment_method": "card",
+        })
+
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/complete", headers=h)
+        assert r.status_code == 400
+        assert "no items" in r.json()["detail"].lower()
+
+    def test_error_complete_no_payment(self, client: TestClient, db_session: Session):
+        """Cannot complete a sale without full payment."""
+        user = db_session.query(User).first()
+        user.role = "admin"
+        db_session.commit()
+
+        h = self.TENANT_HEADERS
+
+        r = client.post("/api/api/retail/products", headers=h, json={
+            "sku": "NOPAY-001", "name": "No Pay", "price_cents": 5000,
+            "initial_stock": 10,
+        })
+        product_id = r.json()["id"]
+
+        r = client.post("/api/retail/pos/sales", headers=h, json={"location": "main"})
+        sale_id = r.json()["id"]
+
+        client.post(f"/api/retail/pos/sales/{sale_id}/items", headers=h, json={
+            "product_id": product_id, "quantity": 1,
+        })
+
+        r = client.post(f"/api/retail/pos/sales/{sale_id}/complete", headers=h)
+        assert r.status_code == 400
+        assert "payment" in r.json()["detail"].lower()

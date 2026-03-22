@@ -28,6 +28,15 @@ TENANT_HEADERS = {"X-Tenant-ID": settings.default_tenant}
 TENANT_ID = settings.default_tenant
 
 
+@pytest.fixture(autouse=True)
+def _set_admin_role(db_session: Session):
+    """Ensure the default test user has admin role for capability checks."""
+    user = db_session.query(User).first()
+    if user:
+        user.role = "admin"
+        db_session.commit()
+
+
 def _ensure_category(db: Session, name: str = "Bouquets") -> FlowerCategory:
     cat = db.query(FlowerCategory).filter_by(
         tenant_id=TENANT_ID, name=name

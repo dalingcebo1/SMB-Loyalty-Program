@@ -16,10 +16,10 @@ from pydantic import BaseModel, Field, validator
 
 class CourtBase(BaseModel):
     court_number: str = Field(..., description="Court number (e.g., '1', 'A', 'Center')")
-    court_type: str = Field(default="standard", description="Court type: standard, professional, training")
-    surface_type: str = Field(default="synthetic_grass", description="Surface: synthetic_grass, concrete, artificial_turf")
+    court_type: Optional[str] = Field(default="standard", description="Court type: standard, professional, training")
+    surface_type: Optional[str] = Field(default="synthetic_grass", description="Surface: synthetic_grass, concrete, artificial_turf")
     has_lighting: bool = Field(default=False, description="Whether court has lighting for night play")
-    base_price_cents: int = Field(..., gt=0, description="Base hourly price in cents")
+    base_price_cents: int = Field(..., ge=0, description="Base hourly price in cents")
     notes: Optional[str] = None
 
 class CourtCreate(CourtBase):

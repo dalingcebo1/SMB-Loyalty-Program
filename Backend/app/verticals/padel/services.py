@@ -377,9 +377,9 @@ class BookingService:
 
         transaction = LoyaltyTransaction(
             tenant_id=tenant_id,
-            customer_id=booking.customer_id,
+            user_id=booking.customer_id,
             points=points_to_award,
-            transaction_type="earn",
+            type="EARN",
             reference_type="court_booking",
             reference_id=str(booking.id),
             description=f"Court booking on {booking.booking_date.strftime('%Y-%m-%d')}"

@@ -126,7 +126,7 @@ class PricingService:
         if not court:
             raise HTTPException(status_code=404, detail="Court not found")
 
-        db_pricing = CourtPricing(tenant_id=tenant_id, court_id=court_id, **data.model_dump())
+        db_pricing = CourtPricing(court_id=court_id, **data.model_dump())
         db.add(db_pricing)
         db.commit()
         db.refresh(db_pricing)
@@ -144,16 +144,22 @@ class PricingService:
 
         return db.query(CourtPricing).filter(
             CourtPricing.court_id == court_id,
-            CourtPricing.tenant_id == tenant_id,
             CourtPricing.active == True
         ).order_by(CourtPricing.priority.desc(), CourtPricing.start_time).all()
 
     @staticmethod
     def delete_rule(db: Session, tenant_id: str, court_id: int, pricing_id: int) -> None:
+        # Verify court belongs to tenant
+        court = db.query(PadelCourt).filter(
+            PadelCourt.id == court_id,
+            PadelCourt.tenant_id == tenant_id
+        ).first()
+        if not court:
+            raise HTTPException(status_code=404, detail="Court not found")
+
         pricing = db.query(CourtPricing).filter(
             CourtPricing.id == pricing_id,
             CourtPricing.court_id == court_id,
-            CourtPricing.tenant_id == tenant_id
         ).first()
         if not pricing:
             raise HTTPException(status_code=404, detail="Pricing rule not found")
@@ -245,7 +251,6 @@ class BookingService:
 
         pricing_rule = db.query(CourtPricing).filter(
             CourtPricing.court_id == court.id,
-            CourtPricing.tenant_id == tenant_id,
             CourtPricing.active == True,
             or_(
                 CourtPricing.day_of_week == day_of_week,

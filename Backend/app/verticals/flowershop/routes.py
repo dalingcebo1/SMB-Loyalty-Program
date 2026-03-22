@@ -54,7 +54,7 @@ def create_category(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new product category."""
-    return CategoryService.create_category(db, tenant_ctx.tenant_id, category)
+    return CategoryService.create_category(db, tenant_ctx.id, category)
 
 
 @router.get("/categories", response_model=List[CategoryResponse])
@@ -64,7 +64,7 @@ def list_categories(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """List all product categories."""
-    return CategoryService.list_categories(db, tenant_ctx.tenant_id, active_only)
+    return CategoryService.list_categories(db, tenant_ctx.id, active_only)
 
 
 @router.get("/categories/{category_id}", response_model=CategoryResponse)
@@ -74,7 +74,7 @@ def get_category(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Get a specific category."""
-    return CategoryService.get_category(db, tenant_ctx.tenant_id, category_id)
+    return CategoryService.get_category(db, tenant_ctx.id, category_id)
 
 
 @router.put("/categories/{category_id}", response_model=CategoryResponse)
@@ -85,7 +85,7 @@ def update_category(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Update a category."""
-    return CategoryService.update_category(db, tenant_ctx.tenant_id, category_id, category_update)
+    return CategoryService.update_category(db, tenant_ctx.id, category_id, category_update)
 
 
 @router.delete("/categories/{category_id}", status_code=204)
@@ -95,7 +95,7 @@ def delete_category(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Soft delete a category."""
-    CategoryService.delete_category(db, tenant_ctx.tenant_id, category_id)
+    CategoryService.delete_category(db, tenant_ctx.id, category_id)
 
 
 # ── Occasion Management ─────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ def create_occasion(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new occasion."""
-    return OccasionService.create_occasion(db, tenant_ctx.tenant_id, occasion)
+    return OccasionService.create_occasion(db, tenant_ctx.id, occasion)
 
 
 @router.get("/occasions", response_model=List[OccasionResponse])
@@ -117,7 +117,7 @@ def list_occasions(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """List all occasions."""
-    return OccasionService.list_occasions(db, tenant_ctx.tenant_id, active_only)
+    return OccasionService.list_occasions(db, tenant_ctx.id, active_only)
 
 
 # ── Product Management ──────────────────────────────────────────────────────
@@ -129,7 +129,7 @@ def create_product(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new flower product."""
-    return ProductService.create_product(db, tenant_ctx.tenant_id, product)
+    return ProductService.create_product(db, tenant_ctx.id, product)
 
 
 @router.get("/products", response_model=List[ProductResponse])
@@ -145,7 +145,7 @@ def list_products(
 ):
     """List all flower products with optional filters."""
     return ProductService.list_products(
-        db, tenant_ctx.tenant_id,
+        db, tenant_ctx.id,
         category_id=category_id, occasion_id=occasion_id,
         featured_only=featured_only, seasonal_only=seasonal_only,
         active_only=active_only, search=search,
@@ -159,7 +159,7 @@ def get_product(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Get a specific product."""
-    return ProductService.get_product(db, tenant_ctx.tenant_id, product_id)
+    return ProductService.get_product(db, tenant_ctx.id, product_id)
 
 
 @router.put("/products/{product_id}", response_model=ProductResponse)
@@ -170,7 +170,7 @@ def update_product(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Update a product."""
-    return ProductService.update_product(db, tenant_ctx.tenant_id, product_id, product_update)
+    return ProductService.update_product(db, tenant_ctx.id, product_id, product_update)
 
 
 @router.delete("/products/{product_id}", status_code=204)
@@ -180,7 +180,7 @@ def delete_product(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Soft delete a product."""
-    ProductService.delete_product(db, tenant_ctx.tenant_id, product_id)
+    ProductService.delete_product(db, tenant_ctx.id, product_id)
 
 
 # ── Orders ──────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ def create_order(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new flower order."""
-    tenant_id = tenant_ctx.tenant_id
+    tenant_id = tenant_ctx.id
     db_order, order_items = OrderService.create_order(db, tenant_id, order)
 
     customer = db.query(User).filter(User.id == order.customer_id).first()
@@ -230,7 +230,7 @@ def list_orders(
 ):
     """List orders with optional filters."""
     orders = OrderService.list_orders(
-        db, tenant_ctx.tenant_id, from_date, to_date, status, customer_id
+        db, tenant_ctx.id, from_date, to_date, status, customer_id
     )
     return [_build_order_response(o) for o in orders]
 
@@ -242,7 +242,7 @@ def get_order(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Get specific order details."""
-    order = OrderService.get_order(db, tenant_ctx.tenant_id, order_id)
+    order = OrderService.get_order(db, tenant_ctx.id, order_id)
     return _build_order_response(order)
 
 
@@ -255,7 +255,7 @@ def update_order(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Update an order."""
-    tenant_id = tenant_ctx.tenant_id
+    tenant_id = tenant_ctx.id
     order, old_status = OrderService.update_order(db, tenant_id, order_id, order_update)
 
     update_data = order_update.model_dump(exclude_unset=True)
@@ -301,7 +301,7 @@ def create_delivery_slot(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a delivery slot."""
-    return DeliverySlotService.create_slot(db, tenant_ctx.tenant_id, slot)
+    return DeliverySlotService.create_slot(db, tenant_ctx.id, slot)
 
 
 @router.get("/delivery-slots", response_model=List[DeliverySlotResponse])
@@ -312,4 +312,4 @@ def list_delivery_slots(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """List delivery slots."""
-    return DeliverySlotService.list_slots(db, tenant_ctx.tenant_id, delivery_date, available_only)
+    return DeliverySlotService.list_slots(db, tenant_ctx.id, delivery_date, available_only)

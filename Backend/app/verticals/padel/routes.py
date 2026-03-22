@@ -49,7 +49,7 @@ def create_court(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new padel court."""
-    return CourtService.create_court(db, tenant_ctx.tenant_id, court)
+    return CourtService.create_court(db, tenant_ctx.id, court)
 
 
 @router.get("/courts", response_model=List[CourtResponse])
@@ -59,7 +59,7 @@ def list_courts(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """List all padel courts for current tenant."""
-    return CourtService.list_courts(db, tenant_ctx.tenant_id, active_only)
+    return CourtService.list_courts(db, tenant_ctx.id, active_only)
 
 
 @router.get("/courts/{court_id}", response_model=CourtResponse)
@@ -69,7 +69,7 @@ def get_court(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Get a specific padel court."""
-    return CourtService.get_court(db, tenant_ctx.tenant_id, court_id)
+    return CourtService.get_court(db, tenant_ctx.id, court_id)
 
 
 @router.put("/courts/{court_id}", response_model=CourtResponse)
@@ -80,7 +80,7 @@ def update_court(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Update a padel court."""
-    return CourtService.update_court(db, tenant_ctx.tenant_id, court_id, court_update)
+    return CourtService.update_court(db, tenant_ctx.id, court_id, court_update)
 
 
 @router.delete("/courts/{court_id}", status_code=204)
@@ -90,7 +90,7 @@ def delete_court(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Soft delete a padel court."""
-    CourtService.delete_court(db, tenant_ctx.tenant_id, court_id)
+    CourtService.delete_court(db, tenant_ctx.id, court_id)
     return None
 
 
@@ -104,7 +104,7 @@ def create_pricing_rule(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a pricing rule for a court."""
-    return PricingService.create_rule(db, tenant_ctx.tenant_id, court_id, pricing)
+    return PricingService.create_rule(db, tenant_ctx.id, court_id, pricing)
 
 
 @router.get("/courts/{court_id}/pricing", response_model=List[PricingRuleResponse])
@@ -114,7 +114,7 @@ def list_pricing_rules(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """List all pricing rules for a court."""
-    return PricingService.list_rules(db, tenant_ctx.tenant_id, court_id)
+    return PricingService.list_rules(db, tenant_ctx.id, court_id)
 
 
 @router.delete("/courts/{court_id}/pricing/{pricing_id}", status_code=204)
@@ -125,7 +125,7 @@ def delete_pricing_rule(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Delete a pricing rule."""
-    PricingService.delete_rule(db, tenant_ctx.tenant_id, court_id, pricing_id)
+    PricingService.delete_rule(db, tenant_ctx.id, court_id, pricing_id)
     return None
 
 
@@ -138,7 +138,7 @@ def create_equipment(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create new rental equipment."""
-    return EquipmentService.create_equipment(db, tenant_ctx.tenant_id, equipment)
+    return EquipmentService.create_equipment(db, tenant_ctx.id, equipment)
 
 
 @router.get("/equipment", response_model=List[EquipmentResponse])
@@ -149,7 +149,7 @@ def list_equipment(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """List all rental equipment."""
-    return EquipmentService.list_equipment(db, tenant_ctx.tenant_id, active_only, equipment_type)
+    return EquipmentService.list_equipment(db, tenant_ctx.id, active_only, equipment_type)
 
 
 @router.get("/equipment/{equipment_id}", response_model=EquipmentResponse)
@@ -159,7 +159,7 @@ def get_equipment(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Get specific equipment details."""
-    return EquipmentService.get_equipment(db, tenant_ctx.tenant_id, equipment_id)
+    return EquipmentService.get_equipment(db, tenant_ctx.id, equipment_id)
 
 
 @router.put("/equipment/{equipment_id}", response_model=EquipmentResponse)
@@ -170,7 +170,7 @@ def update_equipment(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Update equipment details."""
-    return EquipmentService.update_equipment(db, tenant_ctx.tenant_id, equipment_id, equipment_update)
+    return EquipmentService.update_equipment(db, tenant_ctx.id, equipment_id, equipment_update)
 
 
 @router.delete("/equipment/{equipment_id}", status_code=204)
@@ -180,7 +180,7 @@ def delete_equipment(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Soft delete equipment."""
-    EquipmentService.delete_equipment(db, tenant_ctx.tenant_id, equipment_id)
+    EquipmentService.delete_equipment(db, tenant_ctx.id, equipment_id)
     return None
 
 
@@ -194,7 +194,7 @@ def create_booking(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new court booking."""
-    tenant_id = tenant_ctx.tenant_id
+    tenant_id = tenant_ctx.id
     db_booking, court = BookingService.create_booking(db, tenant_id, booking)
 
     # Send booking confirmation email
@@ -228,7 +228,7 @@ def list_bookings(
 ):
     """List bookings with optional filters."""
     bookings = BookingService.list_bookings(
-        db, tenant_ctx.tenant_id, from_date, to_date, court_id, status
+        db, tenant_ctx.id, from_date, to_date, court_id, status
     )
     return [_build_booking_response(b) for b in bookings]
 
@@ -240,7 +240,7 @@ def get_booking(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Get specific booking details."""
-    booking = BookingService.get_booking(db, tenant_ctx.tenant_id, booking_id)
+    booking = BookingService.get_booking(db, tenant_ctx.id, booking_id)
     return _build_booking_response(booking)
 
 
@@ -253,7 +253,7 @@ def update_booking(
 ):
     """Update a booking."""
     booking = BookingService.update_booking(
-        db, tenant_ctx.tenant_id, booking_id, booking_update
+        db, tenant_ctx.id, booking_id, booking_update
     )
     return _build_booking_response(booking)
 
@@ -265,7 +265,7 @@ def cancel_booking(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Cancel a booking."""
-    BookingService.cancel_booking(db, tenant_ctx.tenant_id, booking_id)
+    BookingService.cancel_booking(db, tenant_ctx.id, booking_id)
     return None
 
 
@@ -279,5 +279,5 @@ def check_availability(
 ):
     """Find available time slots for all courts on a given date."""
     return BookingService.find_available_slots(
-        db, tenant_ctx.tenant_id, query.date, query.duration_minutes
+        db, tenant_ctx.id, query.date, query.duration_minutes
     )

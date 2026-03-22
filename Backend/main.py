@@ -46,8 +46,8 @@ from app.routes.usage import router as usage_router
 from app.verticals.retail.routes import router as retail_router
 from app.verticals.pos.routes import router as pos_router
 from app.routes.beauty import router as beauty_router
-from app.routes.padel import router as padel_router
-from app.routes.flowershop import router as flowershop_router
+from app.verticals.padel.routes import router as padel_router
+from app.verticals.flowershop.routes import router as flowershop_router
 from app.routes.dispensary import router as dispensary_router
 from app.routes.campaigns import router as campaigns_router
 from app.routes.financial import router as financial_router

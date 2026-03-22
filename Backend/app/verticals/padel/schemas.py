@@ -39,7 +39,7 @@ class CourtResponse(CourtBase):
     id: int
     active: bool
     maintenance_mode: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -62,7 +62,7 @@ class PricingRuleResponse(PricingRuleBase):
     id: int
     court_id: int
     active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -91,7 +91,7 @@ class EquipmentUpdate(BaseModel):
 class EquipmentResponse(EquipmentBase):
     id: int
     active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True

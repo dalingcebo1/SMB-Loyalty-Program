@@ -45,7 +45,7 @@ from app.routes.metrics import router as metrics_router
 from app.routes.usage import router as usage_router
 from app.verticals.retail.routes import router as retail_router
 from app.verticals.pos.routes import router as pos_router
-from app.routes.beauty import router as beauty_router
+from app.verticals.beauty.routes import router as beauty_router
 from app.verticals.padel.routes import router as padel_router
 from app.verticals.flowershop.routes import router as flowershop_router
 from app.verticals.dispensary.routes import router as dispensary_router

@@ -9,7 +9,7 @@ Provides florist and flower delivery features:
 - Occasion-based recommendations
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter
 from sqlalchemy.orm import Session
 import logging
@@ -40,17 +40,40 @@ class FlowershopVertical(VerticalModule):
     
     def get_features(self) -> List[str]:
         return [
-            "product_catalog",       # Bouquets, arrangements
-            "seasonal_collections",  # Valentine's, Mother's Day
-            "delivery_scheduling",   # Same-day, scheduled delivery
-            "gift_messages",         # Personalized cards
-            "occasion_reminders",    # Birthdays, anniversaries
-            "subscription_service",  # Weekly/monthly flowers
-            "loyalty_rewards",       # Purchase-based rewards
+            "product_catalog",
+            "seasonal_collections",
+            "delivery_scheduling",
+            "gift_messages",
+            "occasion_reminders",
+            "subscription_service",
+            "loyalty_rewards",
         ]
+
+    def get_routes(self) -> List[APIRouter]:
+        from app.verticals.flowershop.routes import router
+        return [router]
+
+    def get_router_prefix(self) -> str:
+        return "/api/flowershop"
+
+    def get_router_tags(self) -> List[str]:
+        return ["Flowershop"]
+
+    def get_required_capabilities(self) -> Dict[str, str]:
+        return {
+            "category.create": "flowershop.manage_products",
+            "category.update": "flowershop.manage_products",
+            "category.delete": "flowershop.manage_products",
+            "product.create": "flowershop.manage_products",
+            "product.update": "flowershop.manage_products",
+            "product.delete": "flowershop.manage_products",
+            "occasion.create": "flowershop.manage_collections",
+            "order.create": "flowershop.process_orders",
+            "order.update": "flowershop.view_all_orders",
+            "slot.create": "flowershop.manage_delivery",
+        }
     
     def get_default_config(self) -> Dict[str, Any]:
-        """Default configuration for new flower shop tenants."""
         return {
             "features": {
                 "product_catalog": True,
@@ -63,7 +86,7 @@ class FlowershopVertical(VerticalModule):
             },
             "settings": {
                 "enable_same_day_delivery": True,
-                "delivery_cutoff_hour": 15,  # 3 PM
+                "delivery_cutoff_hour": 15,
                 "loyalty_points_per_rand": 1,
                 "enable_gift_wrapping": True,
                 "max_message_length": 200,
@@ -75,20 +98,12 @@ class FlowershopVertical(VerticalModule):
         }
     
     def on_tenant_created(self, tenant_id: str, db: Session) -> None:
-        """Initialize flower shop tenant."""
         logger.info(f"Initializing flowershop vertical for tenant {tenant_id}")
-        
-        # TODO: Seed product categories (Bouquets, Plants, Arrangements)
-        # TODO: Create default occasions (Birthday, Anniversary, Sympathy)
-        # TODO: Set up delivery zones
-        
         logger.info(f"Flowershop vertical initialized for tenant {tenant_id}")
     
     def decorate_tenant_meta(self, meta: Dict[str, Any], tenant: Any) -> None:
-        """Add flower shop-specific metadata."""
         if tenant.vertical_type != self.vertical_key:
             return
-        
         meta["flowershop"] = {
             "features_enabled": meta.get("features", {}),
             "same_day_delivery_available": True,
@@ -96,7 +111,6 @@ class FlowershopVertical(VerticalModule):
         }
     
     def get_admin_capabilities(self) -> List[str]:
-        """Admin-level capabilities for flower shop."""
         return [
             "flowershop.manage_products",
             "flowershop.manage_collections",
@@ -106,7 +120,6 @@ class FlowershopVertical(VerticalModule):
         ]
     
     def get_staff_capabilities(self) -> List[str]:
-        """Staff-level capabilities for flower shop."""
         return [
             "flowershop.process_orders",
             "flowershop.view_orders",
@@ -115,12 +128,8 @@ class FlowershopVertical(VerticalModule):
         ]
     
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate flower shop configuration."""
         settings = config.get("settings", {})
-        
-        # Validate delivery cutoff hour
         cutoff = settings.get("delivery_cutoff_hour", 15)
         if not (0 <= cutoff <= 23):
             raise ValueError("Delivery cutoff hour must be between 0 and 23")
-        
         return config

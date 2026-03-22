@@ -22,6 +22,15 @@ from app.models import (
 TENANT_HEADERS = {"X-Tenant-ID": settings.default_tenant}
 
 
+@pytest.fixture(autouse=True)
+def _set_admin_role(db_session: Session):
+    """Ensure the default test user has admin role for capability checks."""
+    user = db_session.query(User).first()
+    if user:
+        user.role = "admin"
+        db_session.commit()
+
+
 def _ensure_category(db: Session) -> FlowerCategory:
     cat = db.query(FlowerCategory).filter_by(
         tenant_id=settings.default_tenant, name="Bouquets"
@@ -111,7 +120,7 @@ def _create_flower_order(db: Session, user_id: int, product_id: int, payment_met
     return order
 
 
-@patch("app.routes.flowershop.http_requests.post")
+@patch("app.verticals.flowershop.services.http_requests.post")
 def test_pay_flower_order_success(mock_post, client: TestClient, db_session: Session):
     """Yoco charge succeeds → order becomes paid + confirmed."""
     user = db_session.query(User).first()
@@ -147,7 +156,7 @@ def test_pay_flower_order_success(mock_post, client: TestClient, db_session: Ses
     assert order.payment_reference == "ch_test_123"
 
 
-@patch("app.routes.flowershop.http_requests.post")
+@patch("app.verticals.flowershop.services.http_requests.post")
 def test_pay_flower_order_yoco_failure(mock_post, client: TestClient, db_session: Session):
     """Yoco charge fails → order payment_status becomes failed."""
     user = db_session.query(User).first()

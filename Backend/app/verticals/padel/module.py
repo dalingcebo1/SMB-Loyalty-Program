@@ -9,7 +9,7 @@ Provides padel court booking and management features:
 - Player profiles
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter
 from sqlalchemy.orm import Session
 import logging
@@ -40,18 +40,42 @@ class PadelVertical(VerticalModule):
     
     def get_features(self) -> List[str]:
         return [
-            "court_booking",         # Reserve courts
-            "time_slot_management",  # Configure available slots
-            "player_profiles",       # Track player info
-            "tournament_mode",       # Organize tournaments
-            "equipment_rental",      # Rent rackets, balls
-            "recurring_bookings",    # Weekly/monthly bookings
-            "group_bookings",        # Book for multiple players
-            "loyalty_rewards",       # Booking-based rewards
+            "court_booking",
+            "time_slot_management",
+            "player_profiles",
+            "tournament_mode",
+            "equipment_rental",
+            "recurring_bookings",
+            "group_bookings",
+            "loyalty_rewards",
         ]
+
+    def get_routes(self) -> List[APIRouter]:
+        from app.verticals.padel.routes import router
+        return [router]
+
+    def get_router_prefix(self) -> str:
+        return "/api/padel"
+
+    def get_router_tags(self) -> List[str]:
+        return ["padel"]
+
+    def get_required_capabilities(self) -> Dict[str, str]:
+        return {
+            "court.create": "padel.manage_courts",
+            "court.update": "padel.manage_courts",
+            "court.delete": "padel.manage_courts",
+            "pricing.create": "padel.manage_pricing",
+            "pricing.delete": "padel.manage_pricing",
+            "equipment.create": "padel.manage_equipment",
+            "equipment.update": "padel.manage_equipment",
+            "equipment.delete": "padel.manage_equipment",
+            "booking.create": "padel.create_booking",
+            "booking.update": "padel.view_all_bookings",
+            "booking.delete": "padel.cancel_booking",
+        }
     
     def get_default_config(self) -> Dict[str, Any]:
-        """Default configuration for new padel tenants."""
         return {
             "features": {
                 "court_booking": True,
@@ -77,28 +101,18 @@ class PadelVertical(VerticalModule):
         }
     
     def on_tenant_created(self, tenant_id: str, db: Session) -> None:
-        """Initialize padel tenant with default setup."""
         logger.info(f"Initializing padel vertical for tenant {tenant_id}")
-        
-        # TODO: Create default courts (Court 1, Court 2, etc.)
-        # TODO: Set up default time slots (8 AM - 10 PM)
-        # TODO: Create pricing tiers (peak, off-peak)
-        
         logger.info(f"Padel vertical initialized for tenant {tenant_id}")
     
     def decorate_tenant_meta(self, meta: Dict[str, Any], tenant: Any) -> None:
-        """Add padel-specific metadata."""
         if tenant.vertical_type != self.vertical_key:
             return
-        
         meta["padel"] = {
             "features_enabled": meta.get("features", {}),
             "slot_duration_minutes": 90,
-            # Could add: "available_courts": get_court_count(tenant.id)
         }
     
     def get_admin_capabilities(self) -> List[str]:
-        """Admin-level capabilities for padel."""
         return [
             "padel.manage_courts",
             "padel.manage_time_slots",
@@ -109,7 +123,6 @@ class PadelVertical(VerticalModule):
         ]
     
     def get_staff_capabilities(self) -> List[str]:
-        """Staff-level capabilities for padel."""
         return [
             "padel.view_bookings",
             "padel.create_booking",
@@ -118,17 +131,11 @@ class PadelVertical(VerticalModule):
         ]
     
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate padel configuration."""
         settings = config.get("settings", {})
-        
-        # Validate slot duration
         slot_duration = settings.get("default_slot_duration_minutes", 90)
         if not (30 <= slot_duration <= 240):
             raise ValueError("Slot duration must be between 30 and 240 minutes")
-        
-        # Validate advance booking days
         advance_days = settings.get("advance_booking_days", 14)
         if advance_days < 1:
             raise ValueError("Advance booking days must be at least 1")
-        
         return config

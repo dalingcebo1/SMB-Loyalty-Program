@@ -496,6 +496,8 @@ class AppointmentService:
             appointment_date=data.appointment_date,
             start_time=data.start_time,
             end_time=end_time,
+            duration_minutes=total_minutes,
+            price_cents=service.price_cents,
             status="pending",
             customer_notes=data.customer_notes,
         )
@@ -686,12 +688,14 @@ class PackageService:
             raise HTTPException(status_code=404, detail="One or more services not found")
 
         # Create package
+        total_duration = sum(s.duration_minutes + s.buffer_minutes for s in services)
         package = BeautyPackage(
             tenant_id=tenant_id,
             name=data.name,
             description=data.description,
             price_cents=data.price_cents,
             discount_percent=data.discount_percent,
+            total_duration_minutes=total_duration,
             valid_from=data.valid_from,
             valid_until=data.valid_until,
             max_bookings=data.max_bookings,
@@ -1034,7 +1038,7 @@ class ReviewService:
             id=review.id,
             appointment_id=review.appointment_id,
             customer_id=review.customer_id,
-            customer_name=customer.name if customer else "Anonymous",
+            customer_name=f"{customer.first_name} {customer.last_name}" if customer else "Anonymous",
             service_id=review.service_id,
             service_name=service.name if service else "Unknown",
             stylist_id=review.stylist_id,

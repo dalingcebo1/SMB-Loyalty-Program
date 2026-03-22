@@ -51,7 +51,7 @@ def get_tenant_query(db: Session, model: type, tenant_id: str) -> Query:
     return db.query(model).filter(model.tenant_id == tenant_id)  # type: ignore[attr-defined]
 
 
-def raise_not_found(resource: str, resource_id: str) -> NoReturn:
+def raise_not_found(resource: str, resource_id: str | int) -> NoReturn:
     """Raise a standardized 404 ``HTTPException``.
 
     Args:

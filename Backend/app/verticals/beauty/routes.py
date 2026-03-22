@@ -53,7 +53,7 @@ def list_services(
 ):
     """List all beauty services for the tenant."""
     return ServiceCatalogService.list_services(
-        db, tenant_ctx.tenant_id, category=category, active_only=active_only
+        db, tenant_ctx.id, category=category, active_only=active_only
     )
 
 
@@ -64,7 +64,7 @@ def create_service(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new beauty service."""
-    return ServiceCatalogService.create_service(db, tenant_ctx.tenant_id, service)
+    return ServiceCatalogService.create_service(db, tenant_ctx.id, service)
 
 
 @router.put("/services/{service_id}", response_model=ServiceResponse)
@@ -75,7 +75,7 @@ def update_service(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Update a beauty service."""
-    return ServiceCatalogService.update_service(db, tenant_ctx.tenant_id, service_id, service)
+    return ServiceCatalogService.update_service(db, tenant_ctx.id, service_id, service)
 
 
 @router.delete("/services/{service_id}", status_code=204)
@@ -85,7 +85,7 @@ def delete_service(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Delete a beauty service."""
-    ServiceCatalogService.delete_service(db, tenant_ctx.tenant_id, service_id)
+    ServiceCatalogService.delete_service(db, tenant_ctx.id, service_id)
 
 
 # === Stylist Endpoints ===
@@ -99,7 +99,7 @@ def list_stylists(
 ):
     """List all stylists for the tenant."""
     return StylistManagementService.list_stylists(
-        db, tenant_ctx.tenant_id, active_only=active_only
+        db, tenant_ctx.id, active_only=active_only
     )
 
 
@@ -110,7 +110,7 @@ def create_stylist(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Create a new stylist."""
-    return StylistManagementService.create_stylist(db, tenant_ctx.tenant_id, stylist)
+    return StylistManagementService.create_stylist(db, tenant_ctx.id, stylist)
 
 
 @router.put("/stylists/{stylist_id}", response_model=StylistResponse)
@@ -122,7 +122,7 @@ def update_stylist(
 ):
     """Update a stylist."""
     return StylistManagementService.update_stylist(
-        db, tenant_ctx.tenant_id, stylist_id, stylist
+        db, tenant_ctx.id, stylist_id, stylist
     )
 
 
@@ -133,7 +133,7 @@ def delete_stylist(
     tenant_ctx: TenantContext = Depends(get_tenant_context),
 ):
     """Delete a stylist."""
-    StylistManagementService.delete_stylist(db, tenant_ctx.tenant_id, stylist_id)
+    StylistManagementService.delete_stylist(db, tenant_ctx.id, stylist_id)
 
 
 # === Stylist Services Endpoints ===
@@ -148,7 +148,7 @@ def assign_service_to_stylist(
 ):
     """Assign a service to a stylist with optional custom pricing."""
     return StylistManagementService.assign_service(
-        db, tenant_ctx.tenant_id, stylist_id, stylist_service
+        db, tenant_ctx.id, stylist_id, stylist_service
     )
 
 
@@ -161,7 +161,7 @@ def remove_service_from_stylist(
 ):
     """Remove a service from a stylist."""
     StylistManagementService.remove_service(
-        db, tenant_ctx.tenant_id, stylist_id, service_id
+        db, tenant_ctx.id, stylist_id, service_id
     )
 
 
@@ -177,7 +177,7 @@ def set_stylist_availability(
 ):
     """Set availability for a stylist (recurring or specific date)."""
     return StylistManagementService.set_availability(
-        db, tenant_ctx.tenant_id, stylist_id, availability
+        db, tenant_ctx.id, stylist_id, availability
     )
 
 
@@ -189,7 +189,7 @@ def get_stylist_availability(
 ):
     """Get availability schedule for a stylist."""
     return StylistManagementService.get_availability(
-        db, tenant_ctx.tenant_id, stylist_id
+        db, tenant_ctx.id, stylist_id
     )
 
 
@@ -209,7 +209,7 @@ def list_appointments(
     """List appointments with optional filters."""
     return AppointmentService.list_appointments(
         db,
-        tenant_ctx.tenant_id,
+        tenant_ctx.id,
         stylist_id=stylist_id,
         customer_id=customer_id,
         start_date=start_date,
@@ -227,7 +227,7 @@ def create_appointment(
 ):
     """Create a new appointment."""
     result = AppointmentService.create_appointment(
-        db, tenant_ctx.tenant_id, appointment
+        db, tenant_ctx.id, appointment
     )
     db_appointment = result["appointment"]
     customer = result["customer"]
@@ -242,7 +242,7 @@ def create_appointment(
             db,
             to_email=customer.email,
             to_name=customer.first_name or "Customer",
-            tenant_id=tenant_ctx.tenant_id,
+            tenant_id=tenant_ctx.id,
             stylist_name=stylist.name,
             service_name=service.name,
             appointment_date=appointment.appointment_date,
@@ -261,7 +261,7 @@ def update_appointment(
 ):
     """Update an appointment status or notes."""
     db_appointment, _status_changed = AppointmentService.update_appointment(
-        db, tenant_ctx.tenant_id, appointment_id, appointment
+        db, tenant_ctx.id, appointment_id, appointment
     )
     return db_appointment
 
@@ -277,7 +277,7 @@ def find_available_slots(
     """Find available time slots for a service on a specific date."""
     return AvailabilityService.find_available_slots(
         db,
-        tenant_ctx.tenant_id,
+        tenant_ctx.id,
         service_id,
         appointment_date,
         stylist_id=stylist_id,
@@ -294,7 +294,7 @@ def list_packages(
     db: Session = Depends(get_db),
 ):
     """List all beauty packages for the tenant."""
-    return PackageService.list_packages(db, tenant_ctx.tenant_id, active_only=active_only)
+    return PackageService.list_packages(db, tenant_ctx.id, active_only=active_only)
 
 
 @router.post("/packages", response_model=PackageResponse)
@@ -304,7 +304,7 @@ def create_package(
     db: Session = Depends(get_db),
 ):
     """Create a new beauty package (admin only)."""
-    return PackageService.create_package(db, tenant_ctx.tenant_id, package_data)
+    return PackageService.create_package(db, tenant_ctx.id, package_data)
 
 
 @router.patch("/packages/{package_id}", response_model=PackageResponse)
@@ -316,7 +316,7 @@ def update_package(
 ):
     """Update an existing package."""
     return PackageService.update_package(
-        db, tenant_ctx.tenant_id, package_id, package_data
+        db, tenant_ctx.id, package_id, package_data
     )
 
 
@@ -329,7 +329,7 @@ def book_package(
 ):
     """Customer books a beauty package."""
     return PackageService.book_package(
-        db, tenant_ctx.tenant_id, current_user.id, booking_data
+        db, tenant_ctx.id, current_user.id, booking_data
     )
 
 
@@ -342,7 +342,7 @@ def list_package_bookings(
 ):
     """List customer's package bookings."""
     return PackageService.list_package_bookings(
-        db, tenant_ctx.tenant_id, current_user.id, status=status
+        db, tenant_ctx.id, current_user.id, status=status
     )
 
 
@@ -359,7 +359,7 @@ def create_review(
     """Submit a review for a completed appointment."""
     return ReviewService.create_review(
         db,
-        tenant_ctx.tenant_id,
+        tenant_ctx.id,
         current_user.id,
         review_data,
         customer_name=f"{current_user.first_name} {current_user.last_name}",
@@ -377,7 +377,7 @@ def list_reviews(
     """List approved reviews (public endpoint)."""
     return ReviewService.list_reviews(
         db,
-        tenant_ctx.tenant_id,
+        tenant_ctx.id,
         service_id=service_id,
         stylist_id=stylist_id,
         approved_only=approved_only,
@@ -391,7 +391,7 @@ def approve_review(
     db: Session = Depends(get_db),
 ):
     """Approve a pending review (admin only)."""
-    return ReviewService.approve_review(db, tenant_ctx.tenant_id, review_id)
+    return ReviewService.approve_review(db, tenant_ctx.id, review_id)
 
 
 @router.get("/reviews/pending", response_model=List[ReviewResponse])
@@ -400,4 +400,4 @@ def list_pending_reviews(
     db: Session = Depends(get_db),
 ):
     """List pending reviews for moderation (admin only)."""
-    return ReviewService.list_pending_reviews(db, tenant_ctx.tenant_id)
+    return ReviewService.list_pending_reviews(db, tenant_ctx.id)

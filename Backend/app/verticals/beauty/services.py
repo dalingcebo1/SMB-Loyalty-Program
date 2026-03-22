@@ -704,8 +704,8 @@ class PackageService:
             online_booking_enabled=data.online_booking_enabled,
             requires_deposit=data.requires_deposit,
             active=data.active,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
 
         db.add(package)
@@ -769,7 +769,7 @@ class PackageService:
         for field, value in update_data.items():
             setattr(package, field, value)
 
-        package.updated_at = datetime.now()
+        package.updated_at = datetime.utcnow()
 
         # Update service associations if provided
         if service_ids is not None:
@@ -857,12 +857,12 @@ class PackageService:
             customer_id=customer_id,
             tenant_id=tenant_id,
             status="active",
-            booked_at=datetime.now(),
+            booked_at=datetime.utcnow(),
             expires_at=package.valid_until,
             price_paid_cents=package.price_cents,
             notes=data.notes,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
 
         db.add(booking)
@@ -989,8 +989,8 @@ class ReviewService:
             approved=False,  # Requires moderation
             featured=False,
             flagged=False,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
 
         db.add(review)
@@ -1092,7 +1092,7 @@ class ReviewService:
             raise HTTPException(status_code=404, detail="Review not found")
 
         review.approved = True
-        review.updated_at = datetime.now()
+        review.updated_at = datetime.utcnow()
 
         db.commit()
 

@@ -46,7 +46,7 @@ def get_inventory_stats(
     db: Session = Depends(get_db),
 ):
     """Get inventory statistics for dashboard."""
-    return InventoryService.get_stats(db, tenant_ctx.tenant_id)
+    return InventoryService.get_stats(db, tenant_ctx.id)
 
 
 # ── Products ────────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ def list_products(
     """List all products with inventory levels."""
     return ProductService.list_products(
         db,
-        tenant_ctx.tenant_id,
+        tenant_ctx.id,
         search=search,
         category_id=category_id,
         low_stock_only=low_stock_only,
@@ -80,7 +80,7 @@ def create_product(
     db: Session = Depends(get_db),
 ):
     """Create a new product."""
-    return ProductService.create_product(db, tenant_ctx.tenant_id, data, current_user.id)
+    return ProductService.create_product(db, tenant_ctx.id, data, current_user.id)
 
 
 @router.put("/products/{product_id}", response_model=ProductResponse)
@@ -92,7 +92,7 @@ def update_product(
     db: Session = Depends(get_db),
 ):
     """Update an existing product."""
-    return ProductService.update_product(db, tenant_ctx.tenant_id, product_id, data)
+    return ProductService.update_product(db, tenant_ctx.id, product_id, data)
 
 
 # ── Stock ───────────────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ def adjust_stock(
     """Adjust inventory level for a product."""
     return InventoryService.adjust_stock(
         db,
-        tenant_ctx.tenant_id,
+        tenant_ctx.id,
         data.product_id,
         data.quantity,
         data.reason,
@@ -124,7 +124,7 @@ def list_low_stock_alerts(
     db: Session = Depends(get_db),
 ):
     """List low stock alerts."""
-    return InventoryService.list_low_stock_alerts(db, tenant_ctx.tenant_id, resolved)
+    return InventoryService.list_low_stock_alerts(db, tenant_ctx.id, resolved)
 
 
 # ── Suppliers ───────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ def list_suppliers(
     db: Session = Depends(get_db),
 ):
     """List all suppliers."""
-    return SupplierService.list_suppliers(db, tenant_ctx.tenant_id, active_only)
+    return SupplierService.list_suppliers(db, tenant_ctx.id, active_only)
 
 
 @router.post("/suppliers", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
@@ -148,7 +148,7 @@ def create_supplier(
     db: Session = Depends(get_db),
 ):
     """Create a new supplier."""
-    return SupplierService.create_supplier(db, tenant_ctx.tenant_id, data)
+    return SupplierService.create_supplier(db, tenant_ctx.id, data)
 
 
 # ── Categories ──────────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ def list_categories(
     db: Session = Depends(get_db),
 ):
     """List all product categories."""
-    return CategoryService.list_categories(db, tenant_ctx.tenant_id)
+    return CategoryService.list_categories(db, tenant_ctx.id)
 
 
 @router.post("/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
@@ -171,4 +171,4 @@ def create_category(
     db: Session = Depends(get_db),
 ):
     """Create a new product category."""
-    return CategoryService.create_category(db, tenant_ctx.tenant_id, data)
+    return CategoryService.create_category(db, tenant_ctx.id, data)

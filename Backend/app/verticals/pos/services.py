@@ -112,10 +112,10 @@ class TransactionService:
             )
             .first()
         )
-        if inventory and inventory.quantity_in_stock < item.quantity:
+        if inventory and inventory.quantity < item.quantity:
             raise HTTPException(
                 status_code=400,
-                detail=f"Insufficient stock. Available: {inventory.quantity_in_stock}",
+                detail=f"Insufficient stock. Available: {inventory.quantity}",
             )
 
         unit_price = product.price_cents
@@ -471,23 +471,24 @@ class TransactionService:
                 detail=f"No inventory record found for product {product_id}",
             )
 
-        if inventory.quantity_in_stock < quantity:
+        if inventory.quantity < quantity:
             raise HTTPException(
                 status_code=400,
-                detail=f"Insufficient stock for product {product_id}. Available: {inventory.quantity_in_stock}, Required: {quantity}",
+                detail=f"Insufficient stock for product {product_id}. Available: {inventory.quantity}, Required: {quantity}",
             )
 
-        inventory.quantity_in_stock -= quantity
-        inventory.last_updated = datetime.utcnow()
+        inventory.quantity -= quantity
+        inventory.updated_at = datetime.utcnow()
 
         movement = StockMovement(
             tenant_id=tenant_id,
             product_id=product_id,
-            quantity_change=-quantity,
-            movement_type="sale",
-            reference_id=str(sale_id),
-            notes=f"POS Sale #{sale_id}",
-            user_id=user_id,
+            quantity=-quantity,
+            type="sale",
+            reference_type="sale",
+            reference_id=sale_id,
+            reason=f"POS Sale #{sale_id}",
+            performed_by=user_id,
         )
         db.add(movement)
 
@@ -506,7 +507,7 @@ class TransactionService:
             .first()
         )
 
-        if not loyalty_program or not loyalty_program.active:
+        if not loyalty_program:
             return None
 
         points_earned = int(sale_amount_cents * loyalty_program.accrual_ratio)

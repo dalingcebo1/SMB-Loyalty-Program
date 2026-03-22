@@ -40,7 +40,7 @@ async def create_sale(
     current_user: User = Depends(require_capability("pos.sales.write")),
 ):
     """Create a new POS sale transaction."""
-    return TransactionService.create_sale(db, tenant_ctx.tenant_id, current_user.id, sale_data)
+    return TransactionService.create_sale(db, tenant_ctx.id, current_user.id, sale_data)
 
 
 @router.post("/sales/{sale_id}/items", response_model=SaleItemResponse, status_code=201)
@@ -52,7 +52,7 @@ async def add_sale_item(
     current_user: User = Depends(require_capability("pos.sales.write")),
 ):
     """Add a line item to a pending sale."""
-    return TransactionService.add_item(db, tenant_ctx.tenant_id, sale_id, item_data)
+    return TransactionService.add_item(db, tenant_ctx.id, sale_id, item_data)
 
 
 @router.delete("/sales/{sale_id}/items/{item_id}", status_code=204)
@@ -64,7 +64,7 @@ async def remove_sale_item(
     current_user: User = Depends(require_capability("pos.sales.write")),
 ):
     """Remove a line item from a pending sale."""
-    TransactionService.remove_item(db, tenant_ctx.tenant_id, sale_id, item_id)
+    TransactionService.remove_item(db, tenant_ctx.id, sale_id, item_id)
     return None
 
 
@@ -77,7 +77,7 @@ async def add_payment(
     current_user: User = Depends(require_capability("pos.sales.write")),
 ):
     """Add a payment to a sale."""
-    return TransactionService.record_payment(db, tenant_ctx.tenant_id, sale_id, payment_data)
+    return TransactionService.record_payment(db, tenant_ctx.id, sale_id, payment_data)
 
 
 @router.post("/sales/{sale_id}/complete", response_model=SaleResponse)
@@ -88,7 +88,7 @@ async def complete_sale(
     current_user: User = Depends(require_capability("pos.sales.write")),
 ):
     """Complete a sale and decrement inventory."""
-    return TransactionService.complete_sale(db, tenant_ctx.tenant_id, sale_id, current_user.id)
+    return TransactionService.complete_sale(db, tenant_ctx.id, sale_id, current_user.id)
 
 
 @router.post("/sales/{sale_id}/void", response_model=SaleResponse)
@@ -99,7 +99,7 @@ async def void_sale(
     current_user: User = Depends(require_capability("pos.sales.write")),
 ):
     """Void a pending sale."""
-    return TransactionService.void_sale(db, tenant_ctx.tenant_id, sale_id)
+    return TransactionService.void_sale(db, tenant_ctx.id, sale_id)
 
 
 # ── Read operations ─────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ async def get_sale(
     current_user: User = Depends(require_capability("pos.sales.read")),
 ):
     """Get sale details."""
-    return TransactionService.get_sale(db, tenant_ctx.tenant_id, sale_id)
+    return TransactionService.get_sale(db, tenant_ctx.id, sale_id)
 
 
 @router.get("/sales", response_model=List[SaleResponse])
@@ -130,7 +130,7 @@ async def list_sales(
     """List sales with optional filters."""
     return TransactionService.list_sales(
         db,
-        tenant_ctx.tenant_id,
+        tenant_ctx.id,
         status=status,
         location=location,
         start_date=start_date,
@@ -149,4 +149,4 @@ async def get_sales_stats(
     current_user: User = Depends(require_capability("pos.sales.read")),
 ):
     """Get sales statistics."""
-    return TransactionService.get_stats(db, tenant_ctx.tenant_id)
+    return TransactionService.get_stats(db, tenant_ctx.id)

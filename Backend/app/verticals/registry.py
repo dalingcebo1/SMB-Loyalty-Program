@@ -8,6 +8,8 @@ and retrieval of vertical plugins.
 from typing import Dict, List, Optional
 import logging
 
+from fastapi import FastAPI
+
 from .base import VerticalModule
 
 logger = logging.getLogger(__name__)
@@ -180,6 +182,34 @@ class VerticalRegistry:
         
         self._registered = True
         logger.info(f"Auto-registration complete. {len(self._verticals)} verticals registered.")
-    
+
+    # ------------------------------------------------------------------
+    # Route mounting (Issue #4 — Foundation)
+    # ------------------------------------------------------------------
+
+    def mount_all(self, app: FastAPI) -> None:
+        """Mount routes from every registered vertical onto *app*.
+
+        For each vertical that returns non-empty ``get_routes()``,
+        each router is included with the vertical's prefix and tags.
+
+        Args:
+            app: The FastAPI application instance.
+        """
+        for vertical in self._verticals.values():
+            routes = vertical.get_routes()
+            if not routes:
+                continue
+            prefix = vertical.get_router_prefix()
+            tags = vertical.get_router_tags()
+            for router in routes:
+                app.include_router(router, prefix=prefix, tags=tags)
+            logger.info(
+                "Registered vertical %s: %d route(s) at %s",
+                vertical.vertical_key,
+                len(routes),
+                prefix,
+            )
+
     def __repr__(self) -> str:
         return f"<VerticalRegistry: {len(self._verticals)} verticals>"

@@ -8,7 +8,7 @@ export const flowershopKeys = {
   all: ['flowershop'] as const,
   categories: ['flowershop', 'categories'] as const,
   occasions: ['flowershop', 'occasions'] as const,
-  products: (params?: Record<string, unknown>) => ['flowershop', 'products', params] as const,
+  products: (params?: unknown) => ['flowershop', 'products', params] as const,
   product: (id: number) => ['flowershop', 'products', id] as const,
   deliverySlots: (date: string) => ['flowershop', 'delivery-slots', date] as const,
 };
@@ -32,7 +32,7 @@ export function useFlowershopOccasions() {
 // ── Products ────────────────────────────────────────────────────────
 export function useFlowershopProducts(params?: { category_id?: number; occasion_id?: number; featured?: boolean; search?: string }) {
   return useQuery({
-    queryKey: flowershopKeys.products(params as Record<string, unknown>),
+    queryKey: flowershopKeys.products(params),
     queryFn: () => flowershopApi.listProducts(params).then(r => r.data),
   });
 }

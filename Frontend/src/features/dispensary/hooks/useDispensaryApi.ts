@@ -14,12 +14,12 @@ import type {
 export const dispensaryKeys = {
   all: ['dispensary'] as const,
   categories: ['dispensary', 'categories'] as const,
-  products: (params?: Record<string, unknown>) => ['dispensary', 'products', params] as const,
+  products: (params?: unknown) => ['dispensary', 'products', params] as const,
   product: (id: number) => ['dispensary', 'products', id] as const,
-  sales: (params?: Record<string, unknown>) => ['dispensary', 'sales', params] as const,
-  verifications: (params?: Record<string, unknown>) => ['dispensary', 'verifications', params] as const,
+  sales: (params?: unknown) => ['dispensary', 'sales', params] as const,
+  verifications: (params?: unknown) => ['dispensary', 'verifications', params] as const,
   purchaseLimits: (customerId: number) => ['dispensary', 'purchase-limits', customerId] as const,
-  compliance: (params?: Record<string, unknown>) => ['dispensary', 'compliance', params] as const,
+  compliance: (params?: unknown) => ['dispensary', 'compliance', params] as const,
 };
 
 // ── Categories ──────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ export function useDeleteDispensaryCategory() {
 // ── Products ────────────────────────────────────────────────────────
 export function useDispensaryProducts(params?: PaginationParams & { category_id?: number; search?: string; active_only?: boolean }) {
   return useQuery({
-    queryKey: dispensaryKeys.products(params as Record<string, unknown>),
+    queryKey: dispensaryKeys.products(params),
     queryFn: () => dispensaryApi.listProducts(params).then(r => r.data),
   });
 }
@@ -123,7 +123,7 @@ export function useDeleteDispensaryProduct() {
 // ── Sales ────────────────────────────────────────────────────────────
 export function useDispensarySales(params?: PaginationParams & { date_from?: string; date_to?: string; status?: string }) {
   return useQuery({
-    queryKey: dispensaryKeys.sales(params as Record<string, unknown>),
+    queryKey: dispensaryKeys.sales(params),
     queryFn: () => dispensaryApi.listSales(params).then(r => r.data),
   });
 }
@@ -131,7 +131,7 @@ export function useDispensarySales(params?: PaginationParams & { date_from?: str
 // ── Verifications ───────────────────────────────────────────────────
 export function useDispensaryVerifications(params?: { status?: string }) {
   return useQuery({
-    queryKey: dispensaryKeys.verifications(params as Record<string, unknown>),
+    queryKey: dispensaryKeys.verifications(params),
     queryFn: () => dispensaryApi.listVerifications(params).then(r => r.data),
   });
 }
@@ -161,7 +161,7 @@ export function useDispensaryPurchaseLimits(customerId: number) {
 // ── Compliance ──────────────────────────────────────────────────────
 export function useDispensaryComplianceReport(params?: { date_from?: string; date_to?: string }) {
   return useQuery({
-    queryKey: dispensaryKeys.compliance(params as Record<string, unknown>),
+    queryKey: dispensaryKeys.compliance(params),
     queryFn: () => dispensaryApi.getComplianceReport(params).then(r => r.data),
   });
 }

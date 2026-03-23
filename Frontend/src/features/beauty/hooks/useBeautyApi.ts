@@ -14,19 +14,19 @@ import type {
 // ── Query key factory ──────────────────────────────────────────────
 export const beautyKeys = {
   all: ['beauty'] as const,
-  services: (params?: Record<string, unknown>) => ['beauty', 'services', params] as const,
+  services: (params?: unknown) => ['beauty', 'services', params] as const,
   service: (id: number) => ['beauty', 'services', id] as const,
   stylists: ['beauty', 'stylists'] as const,
   stylist: (id: number) => ['beauty', 'stylists', id] as const,
   stylistAvailability: (id: number) => ['beauty', 'stylists', id, 'availability'] as const,
-  appointments: (params?: Record<string, unknown>) => ['beauty', 'appointments', params] as const,
-  availableSlots: (params?: Record<string, unknown>) => ['beauty', 'available-slots', params] as const,
+  appointments: (params?: unknown) => ['beauty', 'appointments', params] as const,
+  availableSlots: (params?: unknown) => ['beauty', 'available-slots', params] as const,
 };
 
 // ── Services ────────────────────────────────────────────────────────
 export function useBeautyServices(params?: { category?: string; active_only?: boolean }) {
   return useQuery({
-    queryKey: beautyKeys.services(params as Record<string, unknown>),
+    queryKey: beautyKeys.services(params),
     queryFn: () => beautyApi.listServices(params).then(r => r.data),
   });
 }
@@ -150,7 +150,7 @@ export function useUpdateStylistAvailability() {
 // ── Appointments ────────────────────────────────────────────────────
 export function useAppointments(params?: { date_from?: string; date_to?: string; stylist_id?: number; status?: string }) {
   return useQuery({
-    queryKey: beautyKeys.appointments(params as Record<string, unknown>),
+    queryKey: beautyKeys.appointments(params),
     queryFn: () => beautyApi.listAppointments(params).then(r => r.data),
   });
 }
@@ -183,7 +183,7 @@ export function useUpdateAppointment() {
 // ── Availability Slots ──────────────────────────────────────────────
 export function useAvailableSlots(params: { service_id: number; appointment_date: string }) {
   return useQuery({
-    queryKey: beautyKeys.availableSlots(params as unknown as Record<string, unknown>),
+    queryKey: beautyKeys.availableSlots(params),
     queryFn: () => beautyApi.getAvailableSlots(params).then(r => r.data),
     enabled: !!params.service_id && !!params.appointment_date,
   });

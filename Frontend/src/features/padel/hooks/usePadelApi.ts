@@ -16,8 +16,8 @@ export const padelKeys = {
   court: (id: number) => ['padel', 'courts', id] as const,
   pricingRules: (courtId: number) => ['padel', 'courts', courtId, 'pricing'] as const,
   equipment: ['padel', 'equipment'] as const,
-  bookings: (params?: Record<string, unknown>) => ['padel', 'bookings', params] as const,
-  availability: (params?: Record<string, unknown>) => ['padel', 'availability', params] as const,
+  bookings: (params?: unknown) => ['padel', 'bookings', params] as const,
+  availability: (params?: unknown) => ['padel', 'availability', params] as const,
 };
 
 // ── Courts ──────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ export function usePadelEquipment() {
 // ── Bookings ────────────────────────────────────────────────────────
 export function usePadelBookings(params?: { date_from?: string; date_to?: string; court_id?: number; status?: string }) {
   return useQuery({
-    queryKey: padelKeys.bookings(params as Record<string, unknown>),
+    queryKey: padelKeys.bookings(params),
     queryFn: () => padelApi.listBookings(params).then(r => r.data),
   });
 }
@@ -144,7 +144,7 @@ export function useUpdatePadelBooking() {
 // ── Availability ────────────────────────────────────────────────────
 export function usePadelAvailableSlots(params: { booking_date: string; duration_minutes?: number }) {
   return useQuery({
-    queryKey: padelKeys.availability(params as unknown as Record<string, unknown>),
+    queryKey: padelKeys.availability(params),
     queryFn: () => padelApi.getAvailableSlots(params).then(r => r.data),
     enabled: !!params.booking_date,
   });

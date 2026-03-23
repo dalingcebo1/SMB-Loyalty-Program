@@ -7,19 +7,19 @@ import type { RetailProductCreate, RetailProductUpdate } from '../types';
 // ── Query key factory ──────────────────────────────────────────────
 export const retailKeys = {
   all: ['retail'] as const,
-  products: (params?: Record<string, unknown>) => ['retail', 'products', params] as const,
+  products: (params?: unknown) => ['retail', 'products', params] as const,
   product: (id: number) => ['retail', 'products', id] as const,
   categories: ['retail', 'categories'] as const,
   suppliers: ['retail', 'suppliers'] as const,
   stats: ['retail', 'stats'] as const,
-  sales: (params?: Record<string, unknown>) => ['retail', 'sales', params] as const,
-  salesStats: (params?: Record<string, unknown>) => ['retail', 'sales-stats', params] as const,
+  sales: (params?: unknown) => ['retail', 'sales', params] as const,
+  salesStats: (params?: unknown) => ['retail', 'sales-stats', params] as const,
 };
 
 // ── Products ────────────────────────────────────────────────────────
 export function useRetailProducts(params?: PaginationParams & { search?: string; category_id?: number; low_stock_only?: boolean }) {
   return useQuery({
-    queryKey: retailKeys.products(params as Record<string, unknown>),
+    queryKey: retailKeys.products(params),
     queryFn: () => retailApi.listProducts(params).then(r => r.data),
   });
 }
@@ -98,14 +98,14 @@ export function useRetailStats() {
 // ── Sales ────────────────────────────────────────────────────────────
 export function useRetailSales(params?: PaginationParams & { date_from?: string; date_to?: string }) {
   return useQuery({
-    queryKey: retailKeys.sales(params as Record<string, unknown>),
+    queryKey: retailKeys.sales(params),
     queryFn: () => retailApi.listSales(params).then(r => r.data),
   });
 }
 
 export function useRetailSalesStats(params?: { date_from?: string; date_to?: string }) {
   return useQuery({
-    queryKey: retailKeys.salesStats(params as Record<string, unknown>),
+    queryKey: retailKeys.salesStats(params),
     queryFn: () => retailApi.getSalesStats(params).then(r => r.data),
   });
 }

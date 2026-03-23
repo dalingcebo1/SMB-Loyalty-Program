@@ -8,26 +8,8 @@ import {
   FiChevronRight,
   FiInfo,
 } from 'react-icons/fi';
-
-interface BeautyService {
-  id: number;
-  name: string;
-  description: string | null;
-  category: string;
-  price_cents: number;
-  duration_minutes: number;
-  buffer_minutes: number;
-  online_booking_enabled: boolean;
-  points_multiplier: number;
-  active: boolean;
-}
-
-interface AvailableSlot {
-  stylist_id: number;
-  stylist_name: string;
-  start_time: string;
-  end_time: string;
-}
+import { beautyApi } from '../../../api/verticals/beauty';
+import type { BeautyService, AvailableSlot } from '../types';
 
 interface User {
   id: number;
@@ -56,10 +38,8 @@ export default function CustomerBooking() {
   const { data: services = [], isLoading: servicesLoading } = useQuery({
     queryKey: ['beauty-services-public'],
     queryFn: async () => {
-      const response = await fetch('/api/beauty/services?active_only=true');
-      if (!response.ok) throw new Error('Failed to fetch services');
-      const data = await response.json();
-      return data.filter((s: BeautyService) => s.online_booking_enabled);
+      const response = await beautyApi.listServices({ active_only: true });
+      return (response.data as BeautyService[]).filter((s) => s.online_booking_enabled);
     },
   });
 
@@ -68,11 +48,11 @@ export default function CustomerBooking() {
     queryKey: ['available-slots', selectedService?.id, selectedDate],
     queryFn: async () => {
       if (!selectedService || !selectedDate) return [];
-      const response = await fetch(
-        `/api/beauty/availability?service_id=${selectedService.id}&appointment_date=${selectedDate}`
-      );
-      if (!response.ok) throw new Error('Failed to fetch available slots');
-      return response.json();
+      const response = await beautyApi.getAvailableSlots({
+        service_id: selectedService.id,
+        appointment_date: selectedDate,
+      });
+      return response.data;
     },
     enabled: !!selectedService && !!selectedDate,
   });
@@ -87,16 +67,8 @@ export default function CustomerBooking() {
       start_time: string;
       customer_notes?: string;
     }) => {
-      const response = await fetch('/api/beauty/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create appointment');
-      }
-      return response.json();
+      const response = await beautyApi.createAppointment(data);
+      return response.data;
     },
     onSuccess: () => {
       setBookingComplete(true);

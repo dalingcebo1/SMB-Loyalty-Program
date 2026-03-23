@@ -1,36 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiPlus, FiEdit2, FiTrash2, FiClock, FiCheck, FiX } from 'react-icons/fi';
-
-interface Stylist {
-  id: number;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  title: string | null;
-  bio: string | null;
-  photo_url: string | null;
-  commission_rate: number;
-  accepts_walk_ins: boolean;
-  active: boolean;
-}
-
-interface BeautyService {
-  id: number;
-  name: string;
-  category: string;
-  price_cents: number;
-  duration_minutes: number;
-}
-
-interface StylistAvailability {
-  id: number;
-  day_of_week: number | null;
-  start_time: string;
-  end_time: string;
-  specific_date: string | null;
-  is_available: boolean;
-}
+import { beautyApi } from '../../../api/verticals/beauty';
+import type { Stylist, BeautyService, StylistAvailability } from '../types';
 
 interface StylistFormData {
   name: string;
@@ -71,9 +43,8 @@ export default function StylistManagement() {
   const { data: stylists = [], isLoading } = useQuery({
     queryKey: ['stylists'],
     queryFn: async () => {
-      const response = await fetch('/api/beauty/stylists');
-      if (!response.ok) throw new Error('Failed to fetch stylists');
-      return response.json();
+      const response = await beautyApi.listStylists();
+      return response.data;
     },
   });
 
@@ -81,9 +52,8 @@ export default function StylistManagement() {
   const { data: allServices = [] } = useQuery({
     queryKey: ['beauty-services'],
     queryFn: async () => {
-      const response = await fetch('/api/beauty/services');
-      if (!response.ok) throw new Error('Failed to fetch services');
-      return response.json();
+      const response = await beautyApi.listServices();
+      return response.data;
     },
   });
 
@@ -92,22 +62,16 @@ export default function StylistManagement() {
     queryKey: ['stylist-availability', selectedStylist],
     enabled: !!selectedStylist,
     queryFn: async () => {
-      const response = await fetch(`/api/beauty/stylists/${selectedStylist}/availability`);
-      if (!response.ok) throw new Error('Failed to fetch availability');
-      return response.json();
+      const response = await beautyApi.getStylistAvailability(selectedStylist!);
+      return response.data;
     },
   });
 
   // Create stylist mutation
   const createMutation = useMutation({
     mutationFn: async (data: StylistFormData) => {
-      const response = await fetch('/api/beauty/stylists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to create stylist');
-      return response.json();
+      const response = await beautyApi.createStylist(data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stylists'] });
@@ -119,13 +83,8 @@ export default function StylistManagement() {
   // Update stylist mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: StylistFormData }) => {
-      const response = await fetch(`/api/beauty/stylists/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update stylist');
-      return response.json();
+      const response = await beautyApi.updateStylist(id, data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stylists'] });
@@ -138,10 +97,7 @@ export default function StylistManagement() {
   // Delete stylist mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/beauty/stylists/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete stylist');
+      await beautyApi.deleteStylist(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stylists'] });
@@ -151,13 +107,8 @@ export default function StylistManagement() {
   // Add service to stylist mutation
   const assignServiceMutation = useMutation({
     mutationFn: async ({ stylistId, serviceId }: { stylistId: number; serviceId: number }) => {
-      const response = await fetch(`/api/beauty/stylists/${stylistId}/services`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_id: serviceId }),
-      });
-      if (!response.ok) throw new Error('Failed to assign service');
-      return response.json();
+      const response = await beautyApi.updateStylistServices(stylistId, [serviceId]);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stylists'] });
@@ -179,13 +130,8 @@ export default function StylistManagement() {
         is_available: boolean;
       };
     }) => {
-      const response = await fetch(`/api/beauty/stylists/${stylistId}/availability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to add availability');
-      return response.json();
+      const response = await beautyApi.updateStylistAvailability(stylistId, [data]);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stylist-availability'] });

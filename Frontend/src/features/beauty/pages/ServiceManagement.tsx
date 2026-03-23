@@ -1,19 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiPlus, FiEdit2, FiTrash2, FiTag } from 'react-icons/fi';
-
-interface BeautyService {
-  id: number;
-  name: string;
-  description: string | null;
-  category: string;
-  price_cents: number;
-  duration_minutes: number;
-  buffer_minutes: number;
-  online_booking_enabled: boolean;
-  points_multiplier: number;
-  active: boolean;
-}
+import { beautyApi } from '../../../api/verticals/beauty';
+import type { BeautyService } from '../types';
 
 interface ServiceFormData {
   name: string;
@@ -50,24 +39,18 @@ export default function ServiceManagement() {
   const { data: services = [], isLoading } = useQuery({
     queryKey: ['beauty-services', selectedCategory],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedCategory) params.append('category', selectedCategory);
-      const response = await fetch(`/api/beauty/services?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch services');
-      return response.json();
+      const params: { category?: string } = {};
+      if (selectedCategory) params.category = selectedCategory;
+      const response = await beautyApi.listServices(params);
+      return response.data;
     },
   });
 
   // Create service mutation
   const createMutation = useMutation({
     mutationFn: async (data: ServiceFormData) => {
-      const response = await fetch('/api/beauty/services', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to create service');
-      return response.json();
+      const response = await beautyApi.createService(data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['beauty-services'] });
@@ -79,13 +62,8 @@ export default function ServiceManagement() {
   // Update service mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: ServiceFormData }) => {
-      const response = await fetch(`/api/beauty/services/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update service');
-      return response.json();
+      const response = await beautyApi.updateService(id, data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['beauty-services'] });
@@ -98,10 +76,7 @@ export default function ServiceManagement() {
   // Delete service mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/beauty/services/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete service');
+      await beautyApi.deleteService(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['beauty-services'] });

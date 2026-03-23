@@ -5,35 +5,13 @@ import {
   FiChevronRight,
   FiX,
 } from 'react-icons/fi';
-
-interface Appointment {
-  id: number;
-  customer_id: number;
-  stylist_id: number;
-  service_id: number;
-  appointment_date: string;
-  start_time: string;
-  end_time: string;
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-  customer_notes: string | null;
-  staff_notes: string | null;
-  reminder_sent: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { beautyApi } from '../../../api/verticals/beauty';
+import type { Appointment, BeautyService } from '../types';
 
 interface Stylist {
   id: number;
   name: string;
   active: boolean;
-}
-
-interface BeautyService {
-  id: number;
-  name: string;
-  price_cents: number;
-  duration_minutes: number;
-  points_multiplier: number;
 }
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -68,9 +46,8 @@ export default function AppointmentCalendar() {
   const { data: stylists = [] } = useQuery({
     queryKey: ['beauty-stylists'],
     queryFn: async () => {
-      const response = await fetch('/api/beauty/stylists');
-      if (!response.ok) throw new Error('Failed to fetch stylists');
-      return response.json();
+      const response = await beautyApi.listStylists();
+      return response.data;
     },
   });
 
@@ -78,9 +55,8 @@ export default function AppointmentCalendar() {
   const { data: services = [] } = useQuery({
     queryKey: ['beauty-services-all'],
     queryFn: async () => {
-      const response = await fetch('/api/beauty/services?active_only=false');
-      if (!response.ok) throw new Error('Failed to fetch services');
-      return response.json();
+      const response = await beautyApi.listServices({ active_only: false });
+      return response.data;
     },
   });
 
@@ -120,16 +96,15 @@ export default function AppointmentCalendar() {
       selectedStylist,
     ],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-      });
+      const params: { date_from?: string; date_to?: string; stylist_id?: number } = {
+        date_from: startDate.toISOString().split('T')[0],
+        date_to: endDate.toISOString().split('T')[0],
+      };
       if (selectedStylist) {
-        params.append('stylist_id', selectedStylist.toString());
+        params.stylist_id = selectedStylist;
       }
-      const response = await fetch(`/api/beauty/appointments?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch appointments');
-      return response.json();
+      const response = await beautyApi.listAppointments(params);
+      return response.data;
     },
   });
 
@@ -140,15 +115,10 @@ export default function AppointmentCalendar() {
       data,
     }: {
       id: number;
-      data: { status?: string; staff_notes?: string };
+      data: { status?: Appointment['status']; staff_notes?: string };
     }) => {
-      const response = await fetch(`/api/beauty/appointments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update appointment');
-      return response.json();
+      const response = await beautyApi.updateAppointment(id, data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['beauty-appointments'] });
@@ -600,7 +570,7 @@ function AppointmentDetailsModal({
   getStylistName: (id: number) => string;
   getServiceName: (id: number) => string;
   onClose: () => void;
-  onUpdate: (data: { status?: string; staff_notes?: string }) => void;
+  onUpdate: (data: { status?: Appointment['status']; staff_notes?: string }) => void;
   isUpdating: boolean;
 }) {
   const [status, setStatus] = useState(appointment.status);

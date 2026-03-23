@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { HiMenuAlt2, HiBell, HiSearch } from 'react-icons/hi';
 import { useAuth } from '../auth/AuthProvider';
 import { allAdminNavItems } from '../features/admin/nav/adminNavConfig';
@@ -76,8 +76,8 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({ onSidebarOpen }) => {
               <p className="text-sm font-medium text-gray-900">{user?.firstName || 'Admin'}</p>
               <p className="text-xs text-gray-500">{user?.email}</p>
             </div>
-            <a href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Your Profile</a>
-            <a href="/admin/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Settings</a>
+            <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Your Profile</Link>
+            <Link to="/admin/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Settings</Link>
             <div className="border-t border-gray-50 my-1"></div>
             <button 
               onClick={() => logout()}

@@ -6,8 +6,8 @@ export const Header: React.FC = () => (
     <nav>
       <Link to="/">Home</Link>{" | "}
       <Link to="/services">Services</Link>{" | "}
-      <Link to="/cart">Cart</Link>{" | "}
-      <Link to="/staff">Staff</Link>
+      <Link to="/order">Book</Link>{" | "}
+      <Link to="/account">Account</Link>
     </nav>
   </header>
 );

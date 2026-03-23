@@ -53,6 +53,8 @@ const OrderConfirmation = lazy(() => import('../pages/OrderConfirmation'));
 const PastOrders = lazy(() => import('../pages/PastOrders'));
 const Account = lazy(() => import('../pages/Account'));
 const EnhancedProfile = lazy(() => import('../pages/EnhancedProfile'));
+const Services = lazy(() => import('../pages/Services'));
+const RewardsPage = lazy(() => import('../pages/rewards'));
 
 // Auth pages (using unified onboarding flow)
 const Signup = lazy(() => import('../features/auth/pages/Signup'));
@@ -194,6 +196,8 @@ const AppRoutes: React.FC = () => {
             enableUsers && { path: '/account', element: <Account /> },
             enableUsers && { path: '/profile', element: <EnhancedProfile /> },
             enableOrders && { path: '/past-orders', element: <PastOrders /> },
+            enableOrders && { path: '/services', element: <Services /> },
+            enableLoyalty && { path: '/rewards', element: <RewardsPage /> },
             // Vertical-specific customer pages
             { path: '/dispensary', element: <DispensaryProductCatalog /> },
             { path: '/padel/book', element: <PadelCustomerBooking /> },

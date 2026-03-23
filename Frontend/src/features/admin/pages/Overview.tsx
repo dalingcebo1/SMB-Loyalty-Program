@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../../auth/AuthProvider';
 import api from '../../../api/api';
 import { AdminPageContainer, AdminSection, AdminGrid } from '../components/AdminGrid';
@@ -130,12 +131,12 @@ const Overview: React.FC = () => {
                     )}
                   </div>
                 ))}
-                <a 
-                  href="/admin/audit" 
+                <Link 
+                  to="/admin/audit" 
                   className="inline-block text-xs text-blue-600 hover:text-blue-700 font-medium mt-2"
                 >
                   View all audit logs →
-                </a>
+                </Link>
               </div>
             )}
           </AdminCard>
@@ -149,9 +150,9 @@ const Overview: React.FC = () => {
                   </svg>
                   <div className="flex-1">
                     <div className="text-sm font-medium text-red-800">{jobs.dead.length} failed job(s)</div>
-                    <a href="/admin/jobs" className="text-xs text-red-600 hover:text-red-700 font-medium">
+                    <Link to="/admin/jobs" className="text-xs text-red-600 hover:text-red-700 font-medium">
                       View &amp; retry →
-                    </a>
+                    </Link>
                   </div>
                 </div>
               )}
@@ -164,9 +165,9 @@ const Overview: React.FC = () => {
                   </svg>
                   <div className="flex-1">
                     <div className="text-sm font-medium text-amber-800">{rateLimits.bans.length} active IP ban(s)</div>
-                    <a href="/admin/rate-limits" className="text-xs text-amber-600 hover:text-amber-700 font-medium">
+                    <Link to="/admin/rate-limits" className="text-xs text-amber-600 hover:text-amber-700 font-medium">
                       Manage bans →
-                    </a>
+                    </Link>
                   </div>
                 </div>
               )}

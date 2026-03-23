@@ -2,12 +2,12 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { moduleFlags } from '../config/modules';
-import { FaHome, FaCar, FaHistory, FaGift, FaUser, FaClipboardList, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaCar, FaHistory, FaGift, FaUser, FaClipboardList, FaSignOutAlt, FaCog } from 'react-icons/fa';
 import './BottomNav.css';
 
 const BottomNav: React.FC = () => {
   const { user, logout } = useAuth();
-  const { enableLoyalty, enableOrders, enablePayments, enableUsers } = moduleFlags;
+  const { enableLoyalty, enableOrders, enableUsers } = moduleFlags;
 
   const isStaffOnly = user?.role === 'staff';
   const isAdmin = user?.role === 'admin';
@@ -24,8 +24,8 @@ const BottomNav: React.FC = () => {
       ...(enableLoyalty ? [{ to: '/myloyalty', label: 'Loyalty', icon: <FaGift /> }] : []),
       ...(enableOrders ? [{ to: '/past-orders', label: 'Orders', icon: <FaHistory /> }] : []),
       ...(enableUsers ? [{ to: '/account', label: 'Account', icon: <FaUser /> }] : []),
-      ...((isAdmin || isStaffOnly) && enablePayments
-        ? [{ to: '/staff/dashboard', label: 'Wash', icon: <FaCar /> }]
+      ...(isAdmin
+        ? [{ to: '/admin', label: 'Admin', icon: <FaCog /> }]
         : []),
     ];
   }

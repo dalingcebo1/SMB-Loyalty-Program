@@ -162,7 +162,7 @@ const AdminWelcome: React.FC = () => {
     );
   } else if (vertical === 'flowershop') {
     verticalCards.push(
-      { to: '/flowershop', title: 'Product Catalog', description: 'Manage products', icon: <HiShoppingCart className="w-4 h-4" /> },
+      { to: '/admin/inventory', title: 'Product Catalog', description: 'Manage products', icon: <HiShoppingCart className="w-4 h-4" /> },
     );
   } else if (vertical === 'dispensary') {
     verticalCards.push(

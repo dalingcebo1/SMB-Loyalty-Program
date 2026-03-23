@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifySuccessKey, notifyErrorKey } from '../../utils/notifications';
 import api from '../../api/api';
@@ -337,9 +338,9 @@ const ModulesAdmin: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm p-6 text-center">
           <p className="text-sm text-gray-600">
             Need to add more modules to your plan? Contact support or{' '}
-            <a href="/admin/subscription" className="text-indigo-600 hover:text-indigo-800 font-medium">
+            <Link to="/admin/subscription" className="text-indigo-600 hover:text-indigo-800 font-medium">
               upgrade your subscription
-            </a>
+            </Link>
           </p>
         </div>
       </div>

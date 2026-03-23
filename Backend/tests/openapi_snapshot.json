@@ -15231,7 +15231,6 @@
         ],
         "summary": "List Categories",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -15311,7 +15310,6 @@
         ],
         "summary": "Create Category",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -15385,7 +15383,6 @@
         ],
         "summary": "Delete Category",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -15464,7 +15461,6 @@
         ],
         "summary": "Get Category",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -15553,7 +15549,6 @@
         ],
         "summary": "Update Category",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -15660,7 +15655,6 @@
         ],
         "summary": "List Delivery Slots",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -15740,7 +15734,6 @@
         ],
         "summary": "Create Delivery Slot",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -15828,7 +15821,6 @@
         ],
         "summary": "List Occasions",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -15908,7 +15900,6 @@
         ],
         "summary": "Create Occasion",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -16058,7 +16049,6 @@
         ],
         "summary": "List Orders",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -16138,7 +16128,6 @@
         ],
         "summary": "Create Order",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -16219,7 +16208,6 @@
         ],
         "summary": "Get Order",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -16308,7 +16296,6 @@
         ],
         "summary": "Update Order",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -16399,7 +16386,6 @@
         ],
         "summary": "Pay Flower Order",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -16565,7 +16551,6 @@
         ],
         "summary": "List Products",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -16645,7 +16630,6 @@
         ],
         "summary": "Create Product",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -16719,7 +16703,6 @@
         ],
         "summary": "Delete Product",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -16798,7 +16781,6 @@
         ],
         "summary": "Get Product",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       },
@@ -16887,7 +16869,6 @@
         ],
         "summary": "Update Product",
         "tags": [
-          "Flowershop",
           "Flowershop"
         ]
       }
@@ -16963,7 +16944,6 @@
         ],
         "summary": "List Categories",
         "tags": [
-          "Retail",
           "retail"
         ]
       },
@@ -17043,7 +17023,6 @@
         ],
         "summary": "Create Category",
         "tags": [
-          "Retail",
           "retail"
         ]
       }
@@ -17171,7 +17150,6 @@
         ],
         "summary": "List Products",
         "tags": [
-          "Retail",
           "retail"
         ]
       },
@@ -17251,7 +17229,6 @@
         ],
         "summary": "Create Product",
         "tags": [
-          "Retail",
           "retail"
         ]
       }
@@ -17342,7 +17319,6 @@
         ],
         "summary": "Update Product",
         "tags": [
-          "Retail",
           "retail"
         ]
       }
@@ -17414,7 +17390,6 @@
         ],
         "summary": "Get Inventory Stats",
         "tags": [
-          "Retail",
           "retail"
         ]
       }
@@ -17494,7 +17469,6 @@
         ],
         "summary": "Adjust Stock",
         "tags": [
-          "Retail",
           "retail"
         ]
       }
@@ -17580,7 +17554,6 @@
         ],
         "summary": "List Low Stock Alerts",
         "tags": [
-          "Retail",
           "retail"
         ]
       }
@@ -17666,7 +17639,6 @@
         ],
         "summary": "List Suppliers",
         "tags": [
-          "Retail",
           "retail"
         ]
       },
@@ -17746,7 +17718,6 @@
         ],
         "summary": "Create Supplier",
         "tags": [
-          "Retail",
           "retail"
         ]
       }
@@ -18863,7 +18834,6 @@
         },
         "summary": "List Appointments",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -18938,7 +18908,6 @@
         },
         "summary": "Create Appointment",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19024,7 +18993,6 @@
         },
         "summary": "Update Appointment",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19130,7 +19098,6 @@
         },
         "summary": "Find Available Slots",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19225,7 +19192,6 @@
         },
         "summary": "List Package Bookings",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -19308,7 +19274,6 @@
         },
         "summary": "Book Package",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19389,7 +19354,6 @@
         },
         "summary": "List Packages",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -19464,7 +19428,6 @@
         },
         "summary": "Create Package",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19550,7 +19513,6 @@
         },
         "summary": "Update Package",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19663,7 +19625,6 @@
         },
         "summary": "List Reviews",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -19746,7 +19707,6 @@
         },
         "summary": "Create Review",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19817,7 +19777,6 @@
         },
         "summary": "List Pending Reviews",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19891,7 +19850,6 @@
         },
         "summary": "Approve Review",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -19988,7 +19946,6 @@
         },
         "summary": "List Services",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -20063,7 +20020,6 @@
         },
         "summary": "Create Service",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -20132,7 +20088,6 @@
         },
         "summary": "Delete Service",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -20216,7 +20171,6 @@
         },
         "summary": "Update Service",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -20297,7 +20251,6 @@
         },
         "summary": "List Stylists",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -20372,7 +20325,6 @@
         },
         "summary": "Create Stylist",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -20441,7 +20393,6 @@
         },
         "summary": "Delete Stylist",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -20525,7 +20476,6 @@
         },
         "summary": "Update Stylist",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -20599,7 +20549,6 @@
         },
         "summary": "Get Stylist Availability",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       },
@@ -20681,7 +20630,6 @@
         },
         "summary": "Set Stylist Availability",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -20765,7 +20713,6 @@
         },
         "summary": "Assign Service To Stylist",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -20843,7 +20790,6 @@
         },
         "summary": "Remove Service From Stylist",
         "tags": [
-          "Beauty/Salon",
           "Beauty/Salon"
         ]
       }
@@ -23700,7 +23646,6 @@
         },
         "summary": "Get Categories",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -23775,7 +23720,6 @@
         },
         "summary": "Create Category",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -23844,7 +23788,6 @@
         },
         "summary": "Delete Category",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -23918,7 +23861,6 @@
         },
         "summary": "Get Category",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -24002,7 +23944,6 @@
         },
         "summary": "Update Category",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -24091,7 +24032,6 @@
         },
         "summary": "Get Compliance Sales Report",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -24252,7 +24192,6 @@
         },
         "summary": "Get Products",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -24327,7 +24266,6 @@
         },
         "summary": "Create Product",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -24396,7 +24334,6 @@
         },
         "summary": "Delete Product",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -24470,7 +24407,6 @@
         },
         "summary": "Get Product",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -24554,7 +24490,6 @@
         },
         "summary": "Update Product",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -24630,7 +24565,6 @@
         },
         "summary": "Get Purchase Limits",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -24771,7 +24705,6 @@
         },
         "summary": "Get Sales",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -24846,7 +24779,6 @@
         },
         "summary": "Create Sale",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -24922,7 +24854,6 @@
         },
         "summary": "Get Sale",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -25029,7 +24960,6 @@
         },
         "summary": "List Verifications",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -25104,7 +25034,6 @@
         },
         "summary": "Create Verification",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -25180,7 +25109,6 @@
         },
         "summary": "Get Verification",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       },
@@ -25264,7 +25192,6 @@
         },
         "summary": "Update Verification",
         "tags": [
-          "Dispensary",
           "Dispensary"
         ]
       }
@@ -28576,7 +28503,6 @@
         ],
         "summary": "Check Availability",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -28726,7 +28652,6 @@
         ],
         "summary": "List Bookings",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -28806,7 +28731,6 @@
         ],
         "summary": "Create Booking",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -28880,7 +28804,6 @@
         ],
         "summary": "Cancel Booking",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -28959,7 +28882,6 @@
         ],
         "summary": "Get Booking",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -29048,7 +28970,6 @@
         ],
         "summary": "Update Booking",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -29136,7 +29057,6 @@
         ],
         "summary": "List Courts",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -29216,7 +29136,6 @@
         ],
         "summary": "Create Court",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -29290,7 +29209,6 @@
         ],
         "summary": "Delete Court",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -29369,7 +29287,6 @@
         ],
         "summary": "Get Court",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -29458,7 +29375,6 @@
         ],
         "summary": "Update Court",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -29543,7 +29459,6 @@
         ],
         "summary": "List Pricing Rules",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -29632,7 +29547,6 @@
         ],
         "summary": "Create Pricing Rule",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -29715,7 +29629,6 @@
         ],
         "summary": "Delete Pricing Rule",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -29821,7 +29734,6 @@
         ],
         "summary": "List Equipment",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -29901,7 +29813,6 @@
         ],
         "summary": "Create Equipment",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -29975,7 +29886,6 @@
         ],
         "summary": "Delete Equipment",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -30054,7 +29964,6 @@
         ],
         "summary": "Get Equipment",
         "tags": [
-          "padel",
           "padel"
         ]
       },
@@ -30143,7 +30052,6 @@
         ],
         "summary": "Update Equipment",
         "tags": [
-          "padel",
           "padel"
         ]
       }
@@ -33027,7 +32935,6 @@
         ],
         "summary": "List Sales",
         "tags": [
-          "POS",
           "pos"
         ]
       },
@@ -33107,7 +33014,6 @@
         ],
         "summary": "Create Sale",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -33188,7 +33094,6 @@
         ],
         "summary": "Get Sale",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -33269,7 +33174,6 @@
         ],
         "summary": "Complete Sale",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -33360,7 +33264,6 @@
         ],
         "summary": "Add Sale Item",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -33443,7 +33346,6 @@
         ],
         "summary": "Remove Sale Item",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -33534,7 +33436,6 @@
         ],
         "summary": "Add Payment",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -33615,7 +33516,6 @@
         ],
         "summary": "Void Sale",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -33687,7 +33587,6 @@
         ],
         "summary": "Get Sales Stats",
         "tags": [
-          "POS",
           "pos"
         ]
       }
@@ -36395,7 +36294,6 @@
         },
         "summary": "List Wash Packages",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       }
@@ -36471,7 +36369,6 @@
         },
         "summary": "Get Wash Package",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       }
@@ -36545,7 +36442,6 @@
         ],
         "summary": "Get Package Popularity",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       }
@@ -36619,7 +36515,6 @@
         ],
         "summary": "Get Vehicle Count",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       }
@@ -36695,7 +36590,6 @@
         ],
         "summary": "List Vehicles",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       },
@@ -36775,7 +36669,6 @@
         ],
         "summary": "Create Vehicle",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       }
@@ -36849,7 +36742,6 @@
         ],
         "summary": "Delete Vehicle",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       },
@@ -36928,7 +36820,6 @@
         ],
         "summary": "Get Vehicle",
         "tags": [
-          "Car Wash & Detailing",
           "Carwash Vertical"
         ]
       }

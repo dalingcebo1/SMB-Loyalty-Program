@@ -315,8 +315,10 @@ def get_order(order_id: str, db: Session = Depends(get_db), user=Depends(get_cur
             # Attach vertical_type heuristic (from user's tenant)
             vt = order.user.tenant.vertical_type if order.user and order.user.tenant else ''
             setattr(order, 'vertical_type', vt)  # transient attribute for hook logic
-            from app.plugins.verticals.vertical_dispatch import dispatch as vdispatch
-            dynamic_points = vdispatch('compute_loyalty_earn', order)
+            from app.verticals import registry
+            vertical = registry.get(vt)
+            if vertical:
+                dynamic_points = vertical.compute_loyalty_earn(order)
     except Exception:
         dynamic_points = None
     # base response

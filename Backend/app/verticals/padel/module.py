@@ -55,7 +55,7 @@ class PadelVertical(VerticalModule):
         return [router]
 
     def get_router_prefix(self) -> str:
-        return "/api/padel"
+        return "/api"
 
     def get_router_tags(self) -> List[str]:
         return ["padel"]
@@ -107,6 +107,9 @@ class PadelVertical(VerticalModule):
     def decorate_tenant_meta(self, meta: Dict[str, Any], tenant: Any) -> None:
         if tenant.vertical_type != self.vertical_key:
             return
+        branding = meta.setdefault("branding", {})
+        if "tagline" not in branding:
+            branding["tagline"] = "Game On"
         meta["padel"] = {
             "features_enabled": meta.get("features", {}),
             "slot_duration_minutes": 90,

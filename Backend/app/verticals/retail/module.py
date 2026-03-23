@@ -48,7 +48,7 @@ class RetailVertical(VerticalModule):
         return [router]
 
     def get_router_prefix(self) -> str:
-        return "/api/retail"
+        return "/api"
 
     def get_router_tags(self) -> List[str]:
         return ["Retail"]

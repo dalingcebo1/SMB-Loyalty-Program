@@ -369,7 +369,7 @@ class TestCarwashBackwardCompat:
         from app.verticals.carwash.module import CarwashVertical
 
         cw = CarwashVertical()
-        assert cw.get_router_prefix() == "/api/carwash"
+        assert cw.get_router_prefix() == ""  # prefix is in the router itself
         assert cw.get_router_tags() == ["Car Wash & Detailing"]
         assert cw.get_schemas() == {}
         assert cw.get_required_capabilities() == {}

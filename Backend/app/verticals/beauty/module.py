@@ -92,10 +92,13 @@ class BeautyVertical(VerticalModule):
         if tenant.vertical_type != self.vertical_key:
             return
 
+        branding = meta.setdefault("branding", {})
+        if "tagline" not in branding:
+            branding["tagline"] = "Radiate Confidence"
+
         meta["beauty"] = {
             "features_enabled": meta.get("features", {}),
             "appointment_duration_minutes": 60,
-            # Could add: "available_stylists": get_stylist_count(tenant.id)
         }
 
     def get_admin_capabilities(self) -> List[str]:

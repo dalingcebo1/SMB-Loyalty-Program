@@ -228,6 +228,9 @@ class LoyaltyProgram(Base):
     
     # Tiers Configuration
     tiers_enabled = Column(Boolean, default=False)
+
+    # Program active flag (referenced by beauty vertical award_loyalty_points)
+    active = Column(Boolean, default=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -181,7 +181,7 @@ class VerticalRegistry:
             logger.warning(f"Could not register flowershop vertical: {e}")
         
         try:
-            from .beauty import BeautyVertical
+            from .beauty.module import BeautyVertical
             self.register(BeautyVertical())
         except ImportError as e:
             logger.warning(f"Could not register beauty vertical: {e}")

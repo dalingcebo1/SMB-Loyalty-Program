@@ -18,7 +18,6 @@ from functools import cached_property
 
 from app.core.database import get_db
 from app.models import Tenant, VerticalType, SubscriptionPlan
-from app.plugins.verticals.vertical_dispatch import dispatch
 from app.core.modules import VERTICAL_EXTRA_MODULES
 from app.core.plans import PLAN_REGISTRY, get_plan
 from config import settings
@@ -325,13 +324,7 @@ def tenant_meta_dict(ctx: TenantContext, db: Session | None = None) -> dict:
         "loyalty": cfg.get("loyalty", {}),
         "onboarding_completed": bool(getattr(ctx.tenant, "onboarding_completed", False)),
     }
-    # Allow vertical plugins to decorate meta in-place (legacy dispatch system)
-    try:  # defensive: plugin errors shouldn't break core endpoint
-        dispatch('decorate_tenant_meta', meta, ctx.tenant)
-    except Exception:  # pragma: no cover - log future
-        pass
-    
-    # Use new vertical registry system to decorate metadata
+    # Use vertical registry system to decorate metadata (single dispatch path)
     try:
         from app.verticals import registry
         vertical = registry.get(ctx.vertical)

@@ -54,7 +54,7 @@ class FlowershopVertical(VerticalModule):
         return [router]
 
     def get_router_prefix(self) -> str:
-        return "/api/flowershop"
+        return "/api"
 
     def get_router_tags(self) -> List[str]:
         return ["Flowershop"]
@@ -100,10 +100,18 @@ class FlowershopVertical(VerticalModule):
     def on_tenant_created(self, tenant_id: str, db: Session) -> None:
         logger.info(f"Initializing flowershop vertical for tenant {tenant_id}")
         logger.info(f"Flowershop vertical initialized for tenant {tenant_id}")
-    
+
+    def compute_loyalty_earn(self, order: Any) -> Optional[int]:
+        """Flowershop loyalty: 1 point per 120 cents (~0.83× base rate)."""
+        amt = getattr(order, "amount", 0) or 0
+        return max(1, amt // 120)
+
     def decorate_tenant_meta(self, meta: Dict[str, Any], tenant: Any) -> None:
         if tenant.vertical_type != self.vertical_key:
             return
+        branding = meta.setdefault("branding", {})
+        if "tagline" not in branding:
+            branding["tagline"] = "Blooms That Last"
         meta["flowershop"] = {
             "features_enabled": meta.get("features", {}),
             "same_day_delivery_available": True,

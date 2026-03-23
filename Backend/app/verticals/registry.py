@@ -197,7 +197,8 @@ class VerticalRegistry:
         """Mount routes from every registered vertical onto *app*.
 
         For each vertical that returns non-empty ``get_routes()``,
-        each router is included with the vertical's prefix and tags.
+        each router is included with the vertical's prefix.  Tags are
+        only applied when the router does not already define its own.
 
         Args:
             app: The FastAPI application instance.
@@ -209,7 +210,10 @@ class VerticalRegistry:
             prefix = vertical.get_router_prefix()
             tags = vertical.get_router_tags()
             for router in routes:
-                app.include_router(router, prefix=prefix, tags=tags)
+                # Only inject tags when the router has none of its own
+                # to avoid duplicate OpenAPI tags.
+                extra_tags = tags if not getattr(router, "tags", None) else None
+                app.include_router(router, prefix=prefix, tags=extra_tags)
             logger.info(
                 "Registered vertical %s: %d route(s) at %s",
                 vertical.vertical_key,

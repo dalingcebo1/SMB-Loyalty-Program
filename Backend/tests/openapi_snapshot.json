@@ -1791,7 +1791,7 @@
         "properties": {
           "base_price_cents": {
             "description": "Base hourly price in cents",
-            "exclusiveMinimum": 0.0,
+            "minimum": 0.0,
             "title": "Base Price Cents",
             "type": "integer"
           },
@@ -1801,10 +1801,17 @@
             "type": "string"
           },
           "court_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "standard",
             "description": "Court type: standard, professional, training",
-            "title": "Court Type",
-            "type": "string"
+            "title": "Court Type"
           },
           "has_lighting": {
             "default": false,
@@ -1824,10 +1831,17 @@
             "title": "Notes"
           },
           "surface_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "synthetic_grass",
             "description": "Surface: synthetic_grass, concrete, artificial_turf",
-            "title": "Surface Type",
-            "type": "string"
+            "title": "Surface Type"
           }
         },
         "required": [
@@ -1845,7 +1859,7 @@
           },
           "base_price_cents": {
             "description": "Base hourly price in cents",
-            "exclusiveMinimum": 0.0,
+            "minimum": 0.0,
             "title": "Base Price Cents",
             "type": "integer"
           },
@@ -1855,15 +1869,29 @@
             "type": "string"
           },
           "court_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "standard",
             "description": "Court type: standard, professional, training",
-            "title": "Court Type",
-            "type": "string"
+            "title": "Court Type"
           },
           "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
           },
           "has_lighting": {
             "default": false,
@@ -1891,10 +1919,17 @@
             "title": "Notes"
           },
           "surface_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "synthetic_grass",
             "description": "Surface: synthetic_grass, concrete, artificial_turf",
-            "title": "Surface Type",
-            "type": "string"
+            "title": "Surface Type"
           }
         },
         "required": [
@@ -1902,8 +1937,7 @@
           "base_price_cents",
           "id",
           "active",
-          "maintenance_mode",
-          "created_at"
+          "maintenance_mode"
         ],
         "title": "CourtResponse",
         "type": "object"
@@ -2739,9 +2773,16 @@
             "type": "boolean"
           },
           "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
           },
           "description": {
             "anyOf": [
@@ -2787,8 +2828,7 @@
           "quantity_available",
           "rental_price_cents",
           "id",
-          "active",
-          "created_at"
+          "active"
         ],
         "title": "EquipmentResponse",
         "type": "object"
@@ -6187,9 +6227,16 @@
             "type": "integer"
           },
           "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
           },
           "day_of_week": {
             "anyOf": [
@@ -6246,8 +6293,7 @@
           "label",
           "id",
           "court_id",
-          "active",
-          "created_at"
+          "active"
         ],
         "title": "PricingRuleResponse",
         "type": "object"
@@ -6317,7 +6363,7 @@
           "vehicles": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/VehicleResponse"
+              "$ref": "#/components/schemas/app__routes__profile__VehicleResponse"
             },
             "title": "Vehicles",
             "type": "array"
@@ -8506,41 +8552,6 @@
         "title": "ValidationError",
         "type": "object"
       },
-      "VehicleCreate": {
-        "properties": {
-          "make": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Make"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "plate": {
-            "title": "Plate",
-            "type": "string"
-          }
-        },
-        "required": [
-          "plate"
-        ],
-        "title": "VehicleCreate",
-        "type": "object"
-      },
       "VehicleIn": {
         "properties": {
           "make": {
@@ -8590,46 +8601,6 @@
           "model"
         ],
         "title": "VehicleOut",
-        "type": "object"
-      },
-      "VehicleResponse": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "make": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Make"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "plate": {
-            "title": "Plate",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "plate"
-        ],
-        "title": "VehicleResponse",
         "type": "object"
       },
       "VerificationCreate": {
@@ -9224,6 +9195,40 @@
         "title": "VerticalType",
         "type": "string"
       },
+      "WashPackageResponse": {
+        "description": "Schema for wash package response.",
+        "properties": {
+          "base_price": {
+            "title": "Base Price",
+            "type": "integer"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "loyalty_eligible": {
+            "title": "Loyalty Eligible",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "base_price",
+          "loyalty_eligible"
+        ],
+        "title": "WashPackageResponse",
+        "type": "object"
+      },
       "YocoChargeRequest": {
         "properties": {
           "amount": {
@@ -9539,7 +9544,82 @@
         "title": "UserOut",
         "type": "object"
       },
-      "app__routes__beauty__ServiceCreate": {
+      "app__routes__profile__VehicleCreate": {
+        "properties": {
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "plate": {
+            "title": "Plate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plate"
+        ],
+        "title": "VehicleCreate",
+        "type": "object"
+      },
+      "app__routes__profile__VehicleResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "plate": {
+            "title": "Plate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plate"
+        ],
+        "title": "VehicleResponse",
+        "type": "object"
+      },
+      "app__verticals__beauty__schemas__ServiceCreate": {
         "properties": {
           "active": {
             "default": true,
@@ -9606,7 +9686,138 @@
         "title": "ServiceCreate",
         "type": "object"
       },
-      "app__routes__dispensary__CategoryCreate": {
+      "app__verticals__carwash__routes__VehicleCreate": {
+        "description": "Schema for creating a vehicle.",
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vehicle color",
+            "title": "Color"
+          },
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vehicle make/manufacturer",
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vehicle model",
+            "title": "Model"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Additional notes",
+            "title": "Notes"
+          },
+          "registration": {
+            "description": "Vehicle registration number",
+            "title": "Registration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration"
+        ],
+        "title": "VehicleCreate",
+        "type": "object"
+      },
+      "app__verticals__carwash__routes__VehicleResponse": {
+        "description": "Schema for vehicle response.",
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "registration": {
+            "title": "Registration",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "registration"
+        ],
+        "title": "VehicleResponse",
+        "type": "object"
+      },
+      "app__verticals__dispensary__schemas__CategoryCreate": {
         "properties": {
           "active": {
             "default": true,
@@ -9658,7 +9869,7 @@
         "title": "CategoryCreate",
         "type": "object"
       },
-      "app__routes__dispensary__CategoryResponse": {
+      "app__verticals__dispensary__schemas__CategoryResponse": {
         "properties": {
           "active": {
             "title": "Active",
@@ -9726,7 +9937,7 @@
         "title": "CategoryResponse",
         "type": "object"
       },
-      "app__routes__dispensary__CategoryUpdate": {
+      "app__verticals__dispensary__schemas__CategoryUpdate": {
         "properties": {
           "active": {
             "anyOf": [
@@ -9800,7 +10011,7 @@
         "title": "CategoryUpdate",
         "type": "object"
       },
-      "app__routes__dispensary__ProductCreate": {
+      "app__verticals__dispensary__schemas__ProductCreate": {
         "properties": {
           "active": {
             "default": true,
@@ -10035,7 +10246,7 @@
         "title": "ProductCreate",
         "type": "object"
       },
-      "app__routes__dispensary__ProductResponse": {
+      "app__verticals__dispensary__schemas__ProductResponse": {
         "properties": {
           "active": {
             "title": "Active",
@@ -10298,7 +10509,7 @@
         "title": "ProductResponse",
         "type": "object"
       },
-      "app__routes__dispensary__ProductUpdate": {
+      "app__verticals__dispensary__schemas__ProductUpdate": {
         "properties": {
           "active": {
             "anyOf": [
@@ -10585,7 +10796,7 @@
         "title": "ProductUpdate",
         "type": "object"
       },
-      "app__routes__dispensary__SaleCreate": {
+      "app__verticals__dispensary__schemas__SaleCreate": {
         "properties": {
           "compliance_notes": {
             "anyOf": [
@@ -10604,7 +10815,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/app__routes__dispensary__SaleItemCreate"
+              "$ref": "#/components/schemas/app__verticals__dispensary__schemas__SaleItemCreate"
             },
             "minItems": 1,
             "title": "Items",
@@ -10641,7 +10852,7 @@
         "title": "SaleCreate",
         "type": "object"
       },
-      "app__routes__dispensary__SaleItemCreate": {
+      "app__verticals__dispensary__schemas__SaleItemCreate": {
         "properties": {
           "product_id": {
             "title": "Product Id",
@@ -10660,7 +10871,7 @@
         "title": "SaleItemCreate",
         "type": "object"
       },
-      "app__routes__dispensary__SaleItemResponse": {
+      "app__verticals__dispensary__schemas__SaleItemResponse": {
         "properties": {
           "batch_number": {
             "anyOf": [
@@ -10751,7 +10962,7 @@
         "title": "SaleItemResponse",
         "type": "object"
       },
-      "app__routes__dispensary__SaleResponse": {
+      "app__verticals__dispensary__schemas__SaleResponse": {
         "properties": {
           "compliance_notes": {
             "anyOf": [
@@ -10799,7 +11010,7 @@
           "items": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/app__routes__dispensary__SaleItemResponse"
+              "$ref": "#/components/schemas/app__verticals__dispensary__schemas__SaleItemResponse"
             },
             "title": "Items",
             "type": "array"
@@ -10918,7 +11129,7 @@
         "title": "SaleResponse",
         "type": "object"
       },
-      "app__routes__flowershop__CategoryCreate": {
+      "app__verticals__flowershop__schemas__CategoryCreate": {
         "properties": {
           "description": {
             "anyOf": [
@@ -10960,7 +11171,7 @@
         "title": "CategoryCreate",
         "type": "object"
       },
-      "app__routes__flowershop__CategoryResponse": {
+      "app__verticals__flowershop__schemas__CategoryResponse": {
         "properties": {
           "active": {
             "title": "Active",
@@ -11018,7 +11229,7 @@
         "title": "CategoryResponse",
         "type": "object"
       },
-      "app__routes__flowershop__CategoryUpdate": {
+      "app__verticals__flowershop__schemas__CategoryUpdate": {
         "properties": {
           "active": {
             "anyOf": [
@@ -11081,7 +11292,7 @@
         "title": "CategoryUpdate",
         "type": "object"
       },
-      "app__routes__flowershop__OrderResponse": {
+      "app__verticals__flowershop__schemas__OrderResponse": {
         "properties": {
           "confirmed_at": {
             "anyOf": [
@@ -11344,7 +11555,7 @@
         "title": "OrderResponse",
         "type": "object"
       },
-      "app__routes__flowershop__ProductCreate": {
+      "app__verticals__flowershop__schemas__ProductCreate": {
         "properties": {
           "available_for_delivery": {
             "default": true,
@@ -11494,7 +11705,7 @@
         "title": "ProductCreate",
         "type": "object"
       },
-      "app__routes__flowershop__ProductResponse": {
+      "app__verticals__flowershop__schemas__ProductResponse": {
         "properties": {
           "active": {
             "title": "Active",
@@ -11676,7 +11887,7 @@
         "title": "ProductResponse",
         "type": "object"
       },
-      "app__routes__flowershop__ProductUpdate": {
+      "app__verticals__flowershop__schemas__ProductUpdate": {
         "properties": {
           "active": {
             "anyOf": [
@@ -14993,7 +15204,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__flowershop__CategoryResponse"
+                    "$ref": "#/components/schemas/app__verticals__flowershop__schemas__CategoryResponse"
                   },
                   "title": "Response List Categories Api Api Flowershop Categories Get",
                   "type": "array"
@@ -15013,6 +15224,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Categories",
         "tags": [
           "Flowershop"
@@ -15059,7 +15275,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__flowershop__CategoryCreate"
+                "$ref": "#/components/schemas/app__verticals__flowershop__schemas__CategoryCreate"
               }
             }
           },
@@ -15070,7 +15286,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__CategoryResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__CategoryResponse"
                 }
               }
             },
@@ -15087,6 +15303,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Category",
         "tags": [
           "Flowershop"
@@ -15155,6 +15376,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Delete Category",
         "tags": [
           "Flowershop"
@@ -15211,7 +15437,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__CategoryResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__CategoryResponse"
                 }
               }
             },
@@ -15228,6 +15454,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Get Category",
         "tags": [
           "Flowershop"
@@ -15283,7 +15514,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__flowershop__CategoryUpdate"
+                "$ref": "#/components/schemas/app__verticals__flowershop__schemas__CategoryUpdate"
               }
             }
           },
@@ -15294,7 +15525,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__CategoryResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__CategoryResponse"
                 }
               }
             },
@@ -15311,6 +15542,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Update Category",
         "tags": [
           "Flowershop"
@@ -15412,6 +15648,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Delivery Slots",
         "tags": [
           "Flowershop"
@@ -15486,6 +15727,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Delivery Slot",
         "tags": [
           "Flowershop"
@@ -15568,6 +15814,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Occasions",
         "tags": [
           "Flowershop"
@@ -15642,6 +15893,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Occasion",
         "tags": [
           "Flowershop"
@@ -15766,7 +16022,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__flowershop__OrderResponse"
+                    "$ref": "#/components/schemas/app__verticals__flowershop__schemas__OrderResponse"
                   },
                   "title": "Response List Orders Api Api Flowershop Orders Get",
                   "type": "array"
@@ -15786,6 +16042,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Orders",
         "tags": [
           "Flowershop"
@@ -15843,7 +16104,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__OrderResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__OrderResponse"
                 }
               }
             },
@@ -15860,6 +16121,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Order",
         "tags": [
           "Flowershop"
@@ -15918,7 +16184,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__OrderResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__OrderResponse"
                 }
               }
             },
@@ -15935,6 +16201,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Get Order",
         "tags": [
           "Flowershop"
@@ -16001,7 +16272,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__OrderResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__OrderResponse"
                 }
               }
             },
@@ -16018,6 +16289,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Update Order",
         "tags": [
           "Flowershop"
@@ -16026,7 +16302,7 @@
     },
     "/api/api/flowershop/orders/{order_id}/pay": {
       "post": {
-        "description": "Process Yoco card payment for a flower order.\n\nAccepts a Yoco token from the frontend SDK popup, charges the order total\nvia the Yoco API, and updates payment_status accordingly.  On success the\norder is moved to ``confirmed`` and loyalty points are awarded immediately.",
+        "description": "Process Yoco card payment for a flower order.",
         "operationId": "pay_flower_order_api_api_flowershop_orders__order_id__pay_post",
         "parameters": [
           {
@@ -16103,6 +16379,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Pay Flower Order",
         "tags": [
           "Flowershop"
@@ -16243,7 +16524,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__flowershop__ProductResponse"
+                    "$ref": "#/components/schemas/app__verticals__flowershop__schemas__ProductResponse"
                   },
                   "title": "Response List Products Api Api Flowershop Products Get",
                   "type": "array"
@@ -16263,6 +16544,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Products",
         "tags": [
           "Flowershop"
@@ -16309,7 +16595,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__flowershop__ProductCreate"
+                "$ref": "#/components/schemas/app__verticals__flowershop__schemas__ProductCreate"
               }
             }
           },
@@ -16320,7 +16606,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__ProductResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__ProductResponse"
                 }
               }
             },
@@ -16337,6 +16623,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Product",
         "tags": [
           "Flowershop"
@@ -16405,6 +16696,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Delete Product",
         "tags": [
           "Flowershop"
@@ -16461,7 +16757,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__ProductResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__ProductResponse"
                 }
               }
             },
@@ -16478,6 +16774,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Get Product",
         "tags": [
           "Flowershop"
@@ -16533,7 +16834,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__flowershop__ProductUpdate"
+                "$ref": "#/components/schemas/app__verticals__flowershop__schemas__ProductUpdate"
               }
             }
           },
@@ -16544,7 +16845,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__flowershop__ProductResponse"
+                  "$ref": "#/components/schemas/app__verticals__flowershop__schemas__ProductResponse"
                 }
               }
             },
@@ -16561,6 +16862,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Update Product",
         "tags": [
           "Flowershop"
@@ -19684,7 +19990,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__beauty__ServiceCreate"
+                "$ref": "#/components/schemas/app__verticals__beauty__schemas__ServiceCreate"
               }
             }
           },
@@ -19835,7 +20141,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__beauty__ServiceCreate"
+                "$ref": "#/components/schemas/app__verticals__beauty__schemas__ServiceCreate"
               }
             }
           },
@@ -23318,7 +23624,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__dispensary__CategoryResponse"
+                    "$ref": "#/components/schemas/app__verticals__dispensary__schemas__CategoryResponse"
                   },
                   "title": "Response Get Categories Api Dispensary Categories Get",
                   "type": "array"
@@ -23384,7 +23690,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__dispensary__CategoryCreate"
+                "$ref": "#/components/schemas/app__verticals__dispensary__schemas__CategoryCreate"
               }
             }
           },
@@ -23395,7 +23701,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__CategoryResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__CategoryResponse"
                 }
               }
             },
@@ -23536,7 +23842,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__CategoryResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__CategoryResponse"
                 }
               }
             },
@@ -23608,7 +23914,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__dispensary__CategoryUpdate"
+                "$ref": "#/components/schemas/app__verticals__dispensary__schemas__CategoryUpdate"
               }
             }
           },
@@ -23619,7 +23925,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__CategoryResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__CategoryResponse"
                 }
               }
             },
@@ -23864,7 +24170,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__dispensary__ProductResponse"
+                    "$ref": "#/components/schemas/app__verticals__dispensary__schemas__ProductResponse"
                   },
                   "title": "Response Get Products Api Dispensary Products Get",
                   "type": "array"
@@ -23930,7 +24236,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__dispensary__ProductCreate"
+                "$ref": "#/components/schemas/app__verticals__dispensary__schemas__ProductCreate"
               }
             }
           },
@@ -23941,7 +24247,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__ProductResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__ProductResponse"
                 }
               }
             },
@@ -24082,7 +24388,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__ProductResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__ProductResponse"
                 }
               }
             },
@@ -24154,7 +24460,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__dispensary__ProductUpdate"
+                "$ref": "#/components/schemas/app__verticals__dispensary__schemas__ProductUpdate"
               }
             }
           },
@@ -24165,7 +24471,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__ProductResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__ProductResponse"
                 }
               }
             },
@@ -24377,7 +24683,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routes__dispensary__SaleResponse"
+                    "$ref": "#/components/schemas/app__verticals__dispensary__schemas__SaleResponse"
                   },
                   "title": "Response Get Sales Api Dispensary Sales Get",
                   "type": "array"
@@ -24443,7 +24749,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__routes__dispensary__SaleCreate"
+                "$ref": "#/components/schemas/app__verticals__dispensary__schemas__SaleCreate"
               }
             }
           },
@@ -24454,7 +24760,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__SaleResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__SaleResponse"
                 }
               }
             },
@@ -24529,7 +24835,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__routes__dispensary__SaleResponse"
+                  "$ref": "#/components/schemas/app__verticals__dispensary__schemas__SaleResponse"
                 }
               }
             },
@@ -28190,6 +28496,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Check Availability",
         "tags": [
           "padel"
@@ -28334,6 +28645,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Bookings",
         "tags": [
           "padel"
@@ -28408,6 +28724,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Booking",
         "tags": [
           "padel"
@@ -28476,6 +28797,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Cancel Booking",
         "tags": [
           "padel"
@@ -28549,6 +28875,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Get Booking",
         "tags": [
           "padel"
@@ -28632,6 +28963,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Update Booking",
         "tags": [
           "padel"
@@ -28714,6 +29050,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Courts",
         "tags": [
           "padel"
@@ -28788,6 +29129,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Court",
         "tags": [
           "padel"
@@ -28856,6 +29202,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Delete Court",
         "tags": [
           "padel"
@@ -28929,6 +29280,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Get Court",
         "tags": [
           "padel"
@@ -29012,6 +29368,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Update Court",
         "tags": [
           "padel"
@@ -29091,6 +29452,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Pricing Rules",
         "tags": [
           "padel"
@@ -29174,6 +29540,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Pricing Rule",
         "tags": [
           "padel"
@@ -29251,6 +29622,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Delete Pricing Rule",
         "tags": [
           "padel"
@@ -29351,6 +29727,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "List Equipment",
         "tags": [
           "padel"
@@ -29425,6 +29806,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Create Equipment",
         "tags": [
           "padel"
@@ -29493,6 +29879,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Delete Equipment",
         "tags": [
           "padel"
@@ -29566,6 +29957,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Get Equipment",
         "tags": [
           "padel"
@@ -29649,6 +30045,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "summary": "Update Equipment",
         "tags": [
           "padel"
@@ -31100,7 +31501,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/VehicleResponse"
+                    "$ref": "#/components/schemas/app__routes__profile__VehicleResponse"
                   },
                   "title": "Response Get My Vehicles Api Profile Me Vehicles Get",
                   "type": "array"
@@ -31124,7 +31525,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VehicleCreate"
+                "$ref": "#/components/schemas/app__routes__profile__VehicleCreate"
               }
             }
           },
@@ -31135,7 +31536,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VehicleResponse"
+                  "$ref": "#/components/schemas/app__routes__profile__VehicleResponse"
                 }
               }
             },
@@ -31220,7 +31621,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VehicleCreate"
+                "$ref": "#/components/schemas/app__routes__profile__VehicleCreate"
               }
             }
           },
@@ -31231,7 +31632,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VehicleResponse"
+                  "$ref": "#/components/schemas/app__routes__profile__VehicleResponse"
                 }
               }
             },
@@ -35806,6 +36207,620 @@
         "tags": [
           "ops",
           "cache"
+        ]
+      }
+    },
+    "/vertical/carwash/packages": {
+      "get": {
+        "description": "List available wash packages for the current tenant.\n\nReturns all service packages (wash types) available at this car wash location.",
+        "operationId": "list_wash_packages_vertical_carwash_packages_get",
+        "parameters": [
+          {
+            "description": "Filter by category",
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WashPackageResponse"
+                  },
+                  "title": "Response List Wash Packages Vertical Carwash Packages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Wash Packages",
+        "tags": [
+          "Carwash Vertical"
+        ]
+      }
+    },
+    "/vertical/carwash/packages/{package_id}": {
+      "get": {
+        "description": "Get details of a specific wash package.\n\nReturns pricing, description, and loyalty eligibility information.",
+        "operationId": "get_wash_package_vertical_carwash_packages__package_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WashPackageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Wash Package",
+        "tags": [
+          "Carwash Vertical"
+        ]
+      }
+    },
+    "/vertical/carwash/stats/package-popularity": {
+      "get": {
+        "description": "Get popularity statistics for wash packages.\n\nReturns usage count per package (requires order history integration).\nRequires reports.view capability (staff/admin only).",
+        "operationId": "get_package_popularity_vertical_carwash_stats_package_popularity_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Package Popularity Vertical Carwash Stats Package Popularity Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Package Popularity",
+        "tags": [
+          "Carwash Vertical"
+        ]
+      }
+    },
+    "/vertical/carwash/stats/vehicle-count": {
+      "get": {
+        "description": "Get total count of registered vehicles.\n\nRequires reports.view capability (staff/admin only).",
+        "operationId": "get_vehicle_count_vertical_carwash_stats_vehicle_count_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Vehicle Count Vertical Carwash Stats Vehicle Count Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Vehicle Count",
+        "tags": [
+          "Carwash Vertical"
+        ]
+      }
+    },
+    "/vertical/carwash/vehicles": {
+      "get": {
+        "description": "List all vehicles for the current user.\n\nReturns vehicles owned by the authenticated user in the current tenant.",
+        "operationId": "list_vehicles_vertical_carwash_vehicles_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/app__verticals__carwash__routes__VehicleResponse"
+                  },
+                  "title": "Response List Vehicles Vertical Carwash Vehicles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Vehicles",
+        "tags": [
+          "Carwash Vertical"
+        ]
+      },
+      "post": {
+        "description": "Create a new vehicle for the current user.\n\nAllows users to register their vehicles for faster check-in and service tracking.",
+        "operationId": "create_vehicle_vertical_carwash_vehicles_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__verticals__carwash__routes__VehicleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__verticals__carwash__routes__VehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Vehicle",
+        "tags": [
+          "Carwash Vertical"
+        ]
+      }
+    },
+    "/vertical/carwash/vehicles/{vehicle_id}": {
+      "delete": {
+        "description": "Delete a vehicle.\n\nOnly allows deletion of vehicles owned by the current user.",
+        "operationId": "delete_vehicle_vertical_carwash_vehicles__vehicle_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "title": "Vehicle Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Vehicle",
+        "tags": [
+          "Carwash Vertical"
+        ]
+      },
+      "get": {
+        "description": "Get a specific vehicle by ID.\n\nOnly returns the vehicle if it belongs to the current user and tenant.",
+        "operationId": "get_vehicle_vertical_carwash_vehicles__vehicle_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "title": "Vehicle Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Tenant-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Bypass-Tenant-Cache",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bypass-Tenant-Cache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__verticals__carwash__routes__VehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Vehicle",
+        "tags": [
+          "Carwash Vertical"
         ]
       }
     },

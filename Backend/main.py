@@ -43,12 +43,6 @@ from app.routes.tenant_domains import router as tenant_domains_router
 from app.routes.domain_verification import router as domain_verification_router
 from app.routes.metrics import router as metrics_router
 from app.routes.usage import router as usage_router
-from app.verticals.retail.routes import router as retail_router
-from app.verticals.pos.routes import router as pos_router
-from app.verticals.beauty.routes import router as beauty_router
-from app.verticals.padel.routes import router as padel_router
-from app.verticals.flowershop.routes import router as flowershop_router
-from app.verticals.dispensary.routes import router as dispensary_router
 from app.routes.campaigns import router as campaigns_router
 from app.routes.financial import router as financial_router
 from app.routes.providers import router as providers_router
@@ -747,6 +741,7 @@ if settings.enable_metrics_endpoint:
 # ─── Global Generic Rate Limiter (simple per-IP) ───────────────────────────
 
 # Mount plugin routers under /api
+# Core plugin routes (non-vertical) — still manual
 router_mounts = [
     ("/api/auth",      auth_router),
     ("/api/users",     users_router),
@@ -774,12 +769,6 @@ router_mounts = [
     ("",               domain_verification_router),  # Domain verification endpoints
     ("/api",           tenant_domains_router),
     ("/api",           usage_router),  # Usage tracking and limits
-    ("/api",           retail_router),  # Retail inventory management
-    ("",               pos_router),  # POS sales system (prefix inside router)
-    ("",               beauty_router),  # Beauty/salon appointment booking
-    ("/api",           padel_router),  # Padel court booking system
-    ("/api",           flowershop_router),  # Flower shop orders and delivery
-    ("",               dispensary_router),  # Cannabis dispensary compliance system
     ("",              campaigns_router),   # Marketing campaigns (email/SMS) with AI content
     ("/api",           financial_router),  # Financial tools (invoices, expenses, P&L)
     ("/api/providers", providers_router),  # External provider health checks and webhooks
@@ -796,6 +785,11 @@ if _verticals_router_available and verticals_router:
 
 for prefix, router in router_mounts:
     app.include_router(router, prefix=prefix)
+
+# Vertical routes — auto-mounted from registry
+from app.verticals import registry
+registry.auto_register_all()
+registry.mount_all(app)
 
 # ─── Root Landing Page (simple HTML) ────────────────────────────────────────
 # Provides a human-friendly page instead of a generic 400/404 when visiting

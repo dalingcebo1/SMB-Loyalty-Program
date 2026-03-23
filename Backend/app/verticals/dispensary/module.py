@@ -111,6 +111,10 @@ class DispensaryVertical(VerticalModule):
         if tenant.vertical_type != self.vertical_key:
             return
 
+        branding = meta.setdefault("branding", {})
+        if "tagline" not in branding:
+            branding["tagline"] = "Elevate Your Day"
+
         meta["dispensary"] = {
             "features_enabled": meta.get("features", {}),
             "compliance_status": "active",  # Would be dynamic

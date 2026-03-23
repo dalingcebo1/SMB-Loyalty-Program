@@ -53,7 +53,10 @@ class CarwashVertical(VerticalModule):
         """Return carwash-specific routes."""
         from app.verticals.carwash.routes import router
         return [router]
-    
+
+    def get_router_prefix(self) -> str:
+        return ""  # prefix is in the router itself
+
     def get_models(self) -> List[type]:
         """Return carwash-specific models."""
         from app.verticals.carwash.models import (
@@ -114,7 +117,12 @@ class CarwashVertical(VerticalModule):
             )
         
         logger.info(f"Carwash vertical initialized for tenant {tenant_id}")
-    
+
+    def compute_loyalty_earn(self, order: Any) -> Optional[int]:
+        """Carwash loyalty: 1 point per 80 cents (1.25× base rate)."""
+        amt = getattr(order, "amount", 0) or 0
+        return max(1, amt // 80)
+
     def decorate_tenant_meta(self, meta: Dict[str, Any], tenant: Any) -> None:
         """
         Add carwash-specific metadata to tenant response.
@@ -123,17 +131,20 @@ class CarwashVertical(VerticalModule):
         - Available wash packages
         - Bay status (if enabled)
         - Queue length (if enabled)
+        - Vertical tagline
         """
         if tenant.vertical_type != self.vertical_key:
             return
-        
+
+        # Inject vertical tagline if missing
+        branding = meta.setdefault("branding", {})
+        if "tagline" not in branding:
+            branding["tagline"] = "Shine Every Time"
+
         # Add carwash-specific metadata
         meta["carwash"] = {
             "features_enabled": meta.get("features", {}),
             "loyalty_multiplier": 1.5,
-            # Could add dynamic data like:
-            # "active_bays": get_active_bay_count(tenant.id),
-            # "queue_length": get_current_queue_length(tenant.id),
         }
     
     def get_admin_capabilities(self) -> List[str]:

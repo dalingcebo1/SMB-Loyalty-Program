@@ -226,6 +226,23 @@ class VerticalModule(ABC):
         """
         return []
 
+    def compute_loyalty_earn(self, order: Any) -> Optional[int]:
+        """
+        Compute loyalty points to award for an order.
+
+        Override in vertical modules to provide custom earn logic.
+        The default implementation awards ``amount // 100`` points
+        (1 point per 100 cents spent).
+
+        Args:
+            order: The order instance (must have an ``amount`` attribute).
+
+        Returns:
+            Optional[int]: Points to award, or ``None`` to skip.
+        """
+        amt = getattr(order, "amount", 0) or 0
+        return amt // 100
+
     # ------------------------------------------------------------------
     # Vertical standardization helpers (Issue #4 — Foundation)
     # ------------------------------------------------------------------

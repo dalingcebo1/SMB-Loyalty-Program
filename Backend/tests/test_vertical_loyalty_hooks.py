@@ -1,16 +1,15 @@
 from app.core.database import SessionLocal, Base, engine
 from app.models import Tenant, User, Order, Payment
 from datetime import datetime
-from app.plugins.verticals.vertical_dispatch import dispatch
-from app.core.plugin_manager import PluginManager
-from fastapi import FastAPI
+from app.verticals import registry
+
 
 def test_compute_loyalty_variants():
     # Ensure tables exist (SQLite test env may not run migrations automatically)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-    # ensure vertical plugin hooks registered (instantiate minimal app + plugin manager)
-    PluginManager(FastAPI()).register_routes()
+    # ensure vertical modules registered
+    registry.auto_register_all()
     # create tenants for two verticals
     car = db.query(Tenant).filter_by(id='vhcar').first() or Tenant(id='vhcar', name='VH Car', loyalty_type='standard', vertical_type='carwash', created_at=datetime.utcnow())
     flower = db.query(Tenant).filter_by(id='vhflw').first() or Tenant(id='vhflw', name='VH Flower', loyalty_type='standard', vertical_type='flowershop', created_at=datetime.utcnow())
@@ -24,8 +23,10 @@ def test_compute_loyalty_variants():
     # attach vertical_type (transient) for hooks
     ocar.vertical_type = 'carwash'
     oflw.vertical_type = 'flowershop'
-    p1 = dispatch('compute_loyalty_earn', ocar)
-    p2 = dispatch('compute_loyalty_earn', oflw)
+    carwash_vertical = registry.get('carwash')
+    flowershop_vertical = registry.get('flowershop')
+    p1 = carwash_vertical.compute_loyalty_earn(ocar)
+    p2 = flowershop_vertical.compute_loyalty_earn(oflw)
     # Baseline default would be amount//100 = 100
     # Carwash specialization divides by 80 -> 125
     # Flowershop specialization divides by 120 -> 83 (floor)

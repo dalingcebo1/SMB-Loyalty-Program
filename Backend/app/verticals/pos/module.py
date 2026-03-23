@@ -46,7 +46,7 @@ class POSVertical(VerticalModule):
         return [router]
 
     def get_router_prefix(self) -> str:
-        return "/api/retail/pos"
+        return ""  # prefix is in the router itself
 
     def get_router_tags(self) -> List[str]:
         return ["POS"]
